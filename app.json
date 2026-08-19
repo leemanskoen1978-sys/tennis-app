@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Tennisclub Racso",
+    "slug": "tennis-racso",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "tennisracso",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "web": { "bundler": "metro", "output": "single" },
+    "plugins": ["expo-router"]
+  }
+}
