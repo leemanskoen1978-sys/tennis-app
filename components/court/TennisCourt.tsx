@@ -1,20 +1,21 @@
 import React from 'react';
-import Svg, { Rect, Line } from 'react-native-svg';
+import Svg, { Rect, Line, G } from 'react-native-svg';
 import { tennisColors } from '../../constants/tennis-colors';
 
+export type CourtOrientation = 'vertical' | 'horizontal';
+
 /**
- * A proportional tennis court (portrait) drawn with correct markings:
- * doubles boundary, singles sidelines, net, service lines + boxes,
- * center service line and center marks. Clay surface.
+ * A proportional tennis court with correct markings (doubles boundary, singles
+ * sidelines, net, service lines + boxes, center service line, center marks).
+ * Drawn once in a 400x820 portrait space; horizontal mode rotates that group 90°.
+ * The clay surface is painted full-bleed by the canvas behind this SVG.
  */
-export function TennisCourt() {
+export function TennisCourt({ orientation = 'vertical' }: { orientation?: CourtOrientation }) {
   const W = tennisColors.white;
   const sw = 4;
-  // Lines only + a transparent background: the clay is painted full-bleed by the
-  // canvas behind this SVG, so the court fills the whole screen. The viewBox is
-  // cropped tight to the court so meet-scaling makes the lines as large as possible.
-  return (
-    <Svg width="100%" height="100%" viewBox="10 8 380 804" preserveAspectRatio="xMidYMid meet">
+
+  const lines = (
+    <>
       {/* doubles boundary (baselines are its top/bottom edges) */}
       <Rect x={20} y={20} width={360} height={780} fill="none" stroke={W} strokeWidth={sw} />
       {/* singles sidelines */}
@@ -30,6 +31,20 @@ export function TennisCourt() {
       <Line x1={200} y1={788} x2={200} y2={800} stroke={W} strokeWidth={sw} />
       {/* net */}
       <Line x1={20} y1={410} x2={380} y2={410} stroke={W} strokeWidth={sw + 1} opacity={0.95} />
+    </>
+  );
+
+  if (orientation === 'horizontal') {
+    // Rotate the portrait court into an 820x400 landscape box.
+    return (
+      <Svg width="100%" height="100%" viewBox="0 0 820 400" preserveAspectRatio="xMidYMid meet">
+        <G transform="translate(820,0) rotate(90)">{lines}</G>
+      </Svg>
+    );
+  }
+  return (
+    <Svg width="100%" height="100%" viewBox="0 0 400 820" preserveAspectRatio="xMidYMid meet">
+      {lines}
     </Svg>
   );
 }

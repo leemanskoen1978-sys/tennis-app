@@ -4,8 +4,8 @@ import {
   type LayoutChangeEvent, type GestureResponderEvent,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { Pencil, Cone, PersonStanding, Undo2, Trash2 } from 'lucide-react-native';
-import { TennisCourt } from '../../components/court/TennisCourt';
+import { Pencil, Cone, PersonStanding, Undo2, Trash2, RotateCw } from 'lucide-react-native';
+import { TennisCourt, type CourtOrientation } from '../../components/court/TennisCourt';
 import { CourtObjectGlyph, type CourtObjectType } from '../../components/court/CourtIcons';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, minTapTarget, webCursor } from '../../constants/theme';
@@ -30,6 +30,7 @@ export default function Drawing() {
   const [objects, setObjects] = useState<PlacedObject[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const [orientation, setOrientation] = useState<CourtOrientation>('vertical');
 
   // Refs so the (once-created) PanResponder reads the latest tool/color/path.
   const toolRef = useRef(tool); toolRef.current = tool;
@@ -109,6 +110,12 @@ export default function Drawing() {
         <ToolButton label="Kegel" active={tool === 'cone'} onPress={() => setTool('cone')} icon={<Cone size={18} color={tool === 'cone' ? tennisColors.white : tennisColors.text} />} />
         <ToolButton label="Speler" active={tool === 'player'} onPress={() => setTool('player')} icon={<PersonStanding size={18} color={tool === 'player' ? tennisColors.white : tennisColors.text} />} />
         <ToolButton label="Racket" active={tool === 'racket'} onPress={() => setTool('racket')} icon={<Text style={{ fontSize: 15 }}>🎾</Text>} />
+        <ToolButton
+          label={orientation === 'vertical' ? 'Horizontaal' : 'Verticaal'}
+          active={false}
+          onPress={() => setOrientation((o) => (o === 'vertical' ? 'horizontal' : 'vertical'))}
+          icon={<RotateCw size={18} color={tennisColors.text} />}
+        />
         <ToolButton label="Ongedaan" active={false} onPress={undo} icon={<Undo2 size={18} color={tennisColors.text} />} />
         <ToolButton label="Wissen" active={false} onPress={clearAll} danger icon={<Trash2 size={18} color={tennisColors.danger} />} />
       </ScrollView>
@@ -135,7 +142,7 @@ export default function Drawing() {
       <View style={styles.canvas} onLayout={onLayout}>
         {/* Court background */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <TennisCourt />
+          <TennisCourt orientation={orientation} />
         </View>
 
         {/* Drawing + placement surface */}
