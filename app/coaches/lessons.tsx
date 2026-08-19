@@ -156,9 +156,21 @@ export default function LessonsScreen(): React.JSX.Element {
                 <BookOpen size={22} color={tennisColors.primary} />
               </View>
               <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>{lesson.title}</Text>
+                <Text style={styles.rowTitle}>
+                  {lesson.training_number !== undefined
+                    ? `${lesson.training_number}. ${lesson.title}`
+                    : lesson.title}
+                </Text>
                 <Text style={styles.rowMuted}>
                   Voor: {studentNameFor(lesson.student_id)}
+                  {lesson.duration_minutes !== undefined
+                    ? ` • ${Math.floor(lesson.duration_minutes / 60)}u${String(
+                        lesson.duration_minutes % 60,
+                      ).padStart(2, '0')}`
+                    : ''}
+                  {lesson.exercises !== undefined && lesson.exercises.length > 0
+                    ? ` • ${lesson.exercises.length} oefeningen`
+                    : ''}
                   {lesson.attachments !== undefined && lesson.attachments.length > 0
                     ? ` • ${lesson.attachments.length} PDF`
                     : ''}

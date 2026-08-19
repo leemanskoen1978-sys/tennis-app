@@ -8,7 +8,7 @@ import { AttachmentList, LessonAttachments } from './LessonAttachments';
 import { CourtScene } from './court/CourtScene';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow, webCursor } from '../constants/theme';
-import type { Lesson, LessonAttachment } from '../lib/types';
+import type { Lesson, LessonAttachment, TrainingExercise } from '../lib/types';
 
 function confirmDelete(message: string, onYes: () => void) {
   if (Platform.OS === 'web') { if (window.confirm(message)) onYes(); return; }
@@ -106,6 +106,37 @@ export function LessonDetailModal({
                 <Text style={styles.meta}>Voor: {studentName}</Text>
                 {lesson.description ? <Text style={styles.desc}>{lesson.description}</Text> : <Text style={styles.descMuted}>Geen beschrijving.</Text>}
 
+                {lesson.duration_minutes !== undefined ? (
+                  <Text style={styles.meta}>Duur: {formatDuration(lesson.duration_minutes)}</Text>
+                ) : null}
+
+                {lesson.focus_points !== undefined && lesson.focus_points.length > 0 ? (
+                  <>
+                    <Text style={styles.label}>Aandachtspunten training</Text>
+                    {lesson.focus_points.map((point) => (
+                      <Text key={point} style={styles.bullet}>• {point}</Text>
+                    ))}
+                  </>
+                ) : null}
+
+                {lesson.materials !== undefined && lesson.materials.length > 0 ? (
+                  <>
+                    <Text style={styles.label}>Materiaal per terrein</Text>
+                    {lesson.materials.map((item) => (
+                      <Text key={item} style={styles.bullet}>• {item}</Text>
+                    ))}
+                  </>
+                ) : null}
+
+                {lesson.exercises !== undefined && lesson.exercises.length > 0 ? (
+                  <>
+                    <Text style={styles.label}>Oefeningen</Text>
+                    {lesson.exercises.map((exercise, i) => (
+                      <ExerciseCard key={`${exercise.nr}-${i}`} exercise={exercise} />
+                    ))}
+                  </>
+                ) : null}
+
                 {lesson.url ? (
                   <Button label="Video openen" variant="primary" icon={<ExternalLink size={18} color={tennisColors.white} />} onPress={() => { if (lesson.url) void Linking.openURL(lesson.url); }} />
                 ) : (
@@ -137,6 +168,46 @@ export function LessonDetailModal({
   );
 }
 
+/** "1u30" reads better on a session plan than "90 minuten". */
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h}u` : `${h}u${String(m).padStart(2, '0')}`;
+}
+
+/**
+ * One row of the training table. Every column keeps its own label — the booklet's headings
+ * are the vocabulary the coach reads on court, so flattening them into prose would lose it.
+ */
+function ExerciseCard({ exercise }: { exercise: TrainingExercise }) {
+  return (
+    <View style={styles.exercise}>
+      <View style={styles.exerciseHead}>
+        <Text style={styles.exerciseNr}>{exercise.nr}</Text>
+        {exercise.duration ? <Text style={styles.exerciseChip}>{exercise.duration}</Text> : null}
+        {exercise.situation ? <Text style={styles.exerciseChip}>{exercise.situation}</Text> : null}
+        {exercise.purpose ? <Text style={styles.exercisePurpose}>{exercise.purpose}</Text> : null}
+      </View>
+      {exercise.description ? (
+        <Text style={styles.exerciseText}>{exercise.description}</Text>
+      ) : null}
+      {exercise.quality ? (
+        <>
+          <Text style={styles.exerciseLabel}>Kwaliteit</Text>
+          <Text style={styles.exerciseText}>{exercise.quality}</Text>
+        </>
+      ) : null}
+      {exercise.organisation ? (
+        <>
+          <Text style={styles.exerciseLabel}>Organisatie / materiaal</Text>
+          <Text style={styles.exerciseText}>{exercise.organisation}</Text>
+        </>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   sheet: {
@@ -157,4 +228,23 @@ const styles = StyleSheet.create({
   },
   multiline: { minHeight: 72, textAlignVertical: 'top' },
   actions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
+  bullet: { fontSize: 14, color: tennisColors.text, marginTop: 2, lineHeight: 20 },
+  exercise: {
+    backgroundColor: tennisColors.surfaceAlt,
+    borderWidth: 1, borderColor: tennisColors.border, borderRadius: radius.md,
+    padding: spacing.md, marginTop: spacing.sm,
+  },
+  exerciseHead: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
+  exerciseNr: {
+    fontSize: 13, fontWeight: '800', color: tennisColors.white,
+    backgroundColor: tennisColors.primary, borderRadius: radius.pill,
+    minWidth: 24, textAlign: 'center', paddingHorizontal: 6, paddingVertical: 2,
+  },
+  exerciseChip: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted },
+  exercisePurpose: { fontSize: 12, fontWeight: '800', color: tennisColors.court },
+  exerciseLabel: {
+    fontSize: 11, fontWeight: '800', color: tennisColors.textMuted,
+    textTransform: 'uppercase', marginTop: spacing.sm,
+  },
+  exerciseText: { fontSize: 14, color: tennisColors.text, marginTop: 4, lineHeight: 20 },
 });

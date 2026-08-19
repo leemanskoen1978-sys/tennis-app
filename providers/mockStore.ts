@@ -5,6 +5,8 @@ import type { Booking, Court, Lesson, StudentProgress, User, Settings } from '..
 import {
   seedUsers, seedCourts, seedBookings, seedLessons, seedProgress, defaultSettings,
 } from '../lib/seed';
+import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
+import { installCatalogue } from '../lib/catalogue';
 
 const STORE_KEY = 'tennis.mockStore.v1';
 
@@ -15,6 +17,9 @@ export interface StoreData {
   lessons: Lesson[];
   progress: StudentProgress[];
   settings: Settings;
+  /** Which shipped lesson catalogues have already been added, so a deleted
+   *  training stays deleted instead of reappearing on the next load. */
+  installed_catalogues?: string[];
 }
 
 function freshSeed(): StoreData {
@@ -25,7 +30,18 @@ function freshSeed(): StoreData {
     lessons: [...seedLessons],
     progress: [...seedProgress],
     settings: { ...defaultSettings },
+    installed_catalogues: [],
   };
+}
+
+/**
+ * Shipped lesson catalogues are added to whatever store already exists, once each. Seeding
+ * only runs on an empty store, so a new catalogue would otherwise never reach anyone who
+ * has been using the app — and wiping their bookings to deliver it is not a trade worth
+ * making.
+ */
+function withCatalogues(data: StoreData): StoreData {
+  return installCatalogue(data, U9_CATALOGUE_ID, u9Trainings);
 }
 
 export function newId(prefix: string): string {
@@ -37,15 +53,18 @@ export async function loadStore(): Promise<StoreData> {
   try {
     const raw = await AsyncStorage.getItem(STORE_KEY);
     if (!raw) {
-      const seeded = freshSeed();
+      const seeded = withCatalogues(freshSeed());
       await saveStore(seeded);
       return seeded;
     }
-    return JSON.parse(raw) as StoreData;
+    const stored = JSON.parse(raw) as StoreData;
+    const merged = withCatalogues(stored);
+    if (merged !== stored) await saveStore(merged);
+    return merged;
   } catch {
     // Parse/read error: surface fresh seed in-memory but do NOT overwrite storage
     // (no automatic cleanup — that is only the explicit emergency button's job).
-    return freshSeed();
+    return withCatalogues(freshSeed());
   }
 }
 
@@ -58,7 +77,7 @@ export async function saveStore(data: StoreData): Promise<void> {
 }
 
 export async function resetStore(): Promise<StoreData> {
-  const seeded = freshSeed();
+  const seeded = withCatalogues(freshSeed());
   await saveStore(seeded);
   return seeded;
 }

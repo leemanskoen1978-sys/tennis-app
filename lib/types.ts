@@ -91,6 +91,20 @@ export interface LessonAttachment {
   drive_file_id?: string; // set once the file lives in Google Drive
 }
 
+/**
+ * One row of a training table: the columns of the KDT session plan, each kept as its own
+ * field rather than one blob, so a screen can label them and a search can reach them.
+ */
+export interface TrainingExercise {
+  nr: string;           // N°
+  duration: string;     // Duur, e.g. "20'"
+  situation: string;    // Situatie
+  purpose: string;      // Bedoeling
+  description: string;  // Omschrijving
+  quality: string;      // Kwaliteit
+  organisation: string; // Organ./Mat.
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -102,6 +116,12 @@ export interface Lesson {
   status?: LessonStatus; // part of a player's plan: planned vs given
   attachments?: LessonAttachment[]; // PDFs etc. — see docs/lesson-attachments.md
   drawing?: CourtDrawing; // a court situation drawn on the Tekenveld
+  // A full session plan: one page of the club's training booklet.
+  training_number?: number;      // its place in the series
+  duration_minutes?: number;     // 90 for a KDT session
+  focus_points?: string[];       // Aandachtspunten training
+  materials?: string[];          // Materiaal per terrein
+  exercises?: TrainingExercise[];
 }
 
 export interface StudentProgress {
