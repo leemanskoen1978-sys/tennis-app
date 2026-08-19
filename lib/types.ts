@@ -105,6 +105,12 @@ export interface TrainingExercise {
   organisation: string; // Organ./Mat.
 }
 
+/** One line of running commentary a coach adds to a court situation over time. */
+export interface ExplanationPoint {
+  id: string;
+  text: string;
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -116,6 +122,7 @@ export interface Lesson {
   status?: LessonStatus; // part of a player's plan: planned vs given
   attachments?: LessonAttachment[]; // PDFs etc. — see docs/lesson-attachments.md
   drawing?: CourtDrawing; // a court situation drawn on the Tekenveld
+  explanation?: ExplanationPoint[]; // notes about that situation, added one at a time
   // A full session plan: one page of the club's training booklet.
   training_number?: number;      // its place in the series
   duration_minutes?: number;     // 90 for a KDT session

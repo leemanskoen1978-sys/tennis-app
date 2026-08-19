@@ -250,15 +250,43 @@ de maat waarin getekend is. Dat blijft klein, blijft scherp op elk formaat, en l
 oefening later heropenen — een PNG zou geen van drieën doen. Het veld hangt aan `Lesson`,
 niet aan `StudentProgress`.
 
-**Bewaren gebeurt op het tekenveld zelf.** "Bewaren als lesmateriaal" staat uitgeschakeld
-zolang er niets getekend is. In het paneel geef je een titel, optioneel een beschrijving,
-en optioneel meteen een speler — die laatste maakt er in één keer een geplande les van.
-Daarna sta je in de bibliotheek, waar de rij "veldsituatie" vermeldt en het detailvenster
-de tekening toont.
+**Er zijn twee wegen naar het tekenveld.** Zonder les erbij maak je een nieuwe: je geeft
+een titel, optioneel een beschrijving en optioneel meteen een speler. Vanuit een les —
+`/coaches/drawing?lessonId=…` — teken je de situatie die bij díé les hoort; de knop heet
+dan "Bewaren bij <lestitel>", slaat direct op en brengt je terug.
 
-**Er is geen tussenopslag meer.** De vorige opzet gaf de tekening via een
-`PendingDrawingProvider` door aan het notitieformulier; dat is vervallen samen met de
-route. Het tekenveld schrijft nu rechtstreeks een les weg.
+**Het id uit de URL wordt getoetst.** Het komt van buiten, dus het wordt gecontroleerd
+tegen de echte lessenlijst voordat het wordt vertrouwd. Klopt het niet, dan gedraagt het
+tekenveld zich als vanouds en maakt het een nieuwe les.
 
-Wat er nog niet is: een bewaarde tekening heropenen om hem aan te passen. Hij is
-zichtbaar bij de les, maar niet bewerkbaar.
+## Een bewaarde tekening heropenen
+
+**Aanpassen laadt de tekening terug in het canvas.** `rescaleDrawing` in `lib/drawing.ts`
+schaalt de scène naar de huidige canvasmaat met één factor voor beide assen — de kleinste
+van de twee — zodat een veld zijn verhouding houdt in plaats van tot een ovaal te rekken.
+Anders dan `scaleFactor` schaalt deze wél omhoog: heropen je op een groter scherm, dan
+hoort de tekening dat scherm te vullen, niet in een hoek te blijven zitten. De paden zijn
+ons eigen formaat (`M x,y L x,y …`), dus elk getal erin is een coördinaat en kan worden
+geschaald zonder SVG te parsen.
+
+Ongedaan en Wissen werken daarna gewoon: de ingeladen streken en objecten komen in
+dezelfde geschiedenis terecht als wat je er daarna bij tekent.
+
+Bij de les staan **Aanpassen** en **Verwijderen**; is er nog niets, dan staat er
+**Veldsituatie toevoegen**.
+
+## Uitleg bij de veldsituatie
+
+**De uitleg groeit aan onder de tekening.** Losse punten, vrij te bewerken en te
+verwijderen — geen datum en geen auteur, want de huidige stand telt, niet de geschiedenis
+van hoe hij zo geworden is. Een oud punt corrigeer je gewoon.
+
+**De uitleg staat in het leesvenster, niet achter de bewerkknop.** Een punt toevoegen is
+de handeling die je vaak doet; die moet geen drie tikken kosten. Elke wijziging wordt
+meteen weggeschreven.
+
+Het label zegt expliciet "Uitleg bij de veldsituatie", omdat een les intussen ook
+`focus_points` heeft ("Aandachtspunten training", uit het KDT-boekje). Twee lijsten punten
+op één scherm hebben elk een eigen naam nodig, anders weet je niet waar je moet typen.
+
+Wat er niet is: meerdere veldsituaties per les. Eén les, één tekening.

@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Modal, View, Text, TextInput, Pressable, Linking, Platform, Alert, StyleSheet, ScrollView } from 'react-native';
-import { X, ExternalLink, Pencil, Trash2 } from 'lucide-react-native';
+import { X, ExternalLink, Pencil, Trash2, PenLine, Plus } from 'lucide-react-native';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { StudentCombobox } from './ui/StudentCombobox';
 import { Button } from './ui/Button';
 import { AttachmentList, LessonAttachments } from './LessonAttachments';
 import { CourtScene } from './court/CourtScene';
+import { LessonExplanation } from './LessonExplanation';
 import {
   TrainingPlanView, TrainingPlanEditor, planFrom, planPatch, type TrainingPlan,
 } from './LessonTraining';
@@ -30,6 +32,7 @@ export function LessonDetailModal({
   onClose: () => void;
   canEdit: boolean;
 }) {
+  const router = useRouter();
   const { users, lessons, updateLesson, deleteLesson } = useSimpleData();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState('');
@@ -73,6 +76,20 @@ export function LessonDetailModal({
       ...planPatch(plan),
     });
     setEditing(false);
+  };
+
+  // The canvas is a screen, not a sheet: close this one first so we do not navigate from
+  // underneath an open modal.
+  const openCanvas = () => {
+    const id = lesson.id;
+    close();
+    router.push(`/coaches/drawing?lessonId=${encodeURIComponent(id)}`);
+  };
+
+  const removeDrawing = () => {
+    confirmDelete('Veldsituatie verwijderen?', async () => {
+      await updateLesson(lesson.id, { drawing: undefined });
+    });
   };
 
   const remove = () => {
@@ -128,12 +145,52 @@ export function LessonDetailModal({
                   <Text style={styles.descMuted}>Geen video-link.</Text>
                 )}
 
+                <Text style={styles.label}>Veldsituatie</Text>
                 {lesson.drawing ? (
                   <>
-                    <Text style={styles.label}>Veldsituatie</Text>
                     <CourtScene drawing={lesson.drawing} width={240} />
+                    {canEdit ? (
+                      <View style={styles.linkRow}>
+                        <Pressable
+                          onPress={() => openCanvas()}
+                          accessibilityRole="button"
+                          accessibilityLabel="Veldsituatie aanpassen"
+                          style={[styles.link, webCursor]}
+                        >
+                          <PenLine size={16} color={tennisColors.primary} />
+                          <Text style={styles.linkText}>Aanpassen</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={removeDrawing}
+                          accessibilityRole="button"
+                          accessibilityLabel="Veldsituatie verwijderen"
+                          style={[styles.link, webCursor]}
+                        >
+                          <Trash2 size={16} color={tennisColors.danger} />
+                          <Text style={styles.linkTextDanger}>Verwijderen</Text>
+                        </Pressable>
+                      </View>
+                    ) : null}
                   </>
-                ) : null}
+                ) : canEdit ? (
+                  <Pressable
+                    onPress={() => openCanvas()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Veldsituatie toevoegen"
+                    style={[styles.link, webCursor]}
+                  >
+                    <Plus size={16} color={tennisColors.primary} />
+                    <Text style={styles.linkText}>Veldsituatie toevoegen</Text>
+                  </Pressable>
+                ) : (
+                  <Text style={styles.descMuted}>Geen veldsituatie.</Text>
+                )}
+
+                <LessonExplanation
+                  lessonId={lesson.id}
+                  points={lesson.explanation ?? []}
+                  canEdit={canEdit}
+                />
 
                 <Text style={styles.label}>PDF-bijlagen</Text>
                 <AttachmentList attachments={lesson.attachments} />
@@ -173,4 +230,8 @@ const styles = StyleSheet.create({
   },
   multiline: { minHeight: 72, textAlignVertical: 'top' },
   actions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
+  linkRow: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.xs },
+  link: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6 },
+  linkText: { fontSize: 14, fontWeight: '600', color: tennisColors.primary },
+  linkTextDanger: { fontSize: 14, fontWeight: '600', color: tennisColors.danger },
 });

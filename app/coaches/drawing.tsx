@@ -1,9 +1,9 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, PanResponder, Pressable, Text, StyleSheet, ScrollView, Modal, TextInput,
   type LayoutChangeEvent, type GestureResponderEvent,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import { Pencil, Cone, PersonStanding, Undo2, Trash2, RotateCw, Save, X } from 'lucide-react-native';
 import { TennisCourt } from '../../components/court/TennisCourt';
@@ -11,7 +11,7 @@ import { CourtObjectGlyph } from '../../components/court/CourtIcons';
 import { StudentCombobox } from '../../components/ui/StudentCombobox';
 import { Button } from '../../components/ui/Button';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { isEmptyDrawing } from '../../lib/drawing';
+import { isEmptyDrawing, rescaleDrawing } from '../../lib/drawing';
 import type {
   CourtDrawing, CourtObject, CourtObjectType, CourtOrientation, CourtStroke,
 } from '../../lib/types';
@@ -31,7 +31,13 @@ const PEN_COLORS = [tennisColors.danger, tennisColors.court, tennisColors.white,
 
 export default function Drawing() {
   const router = useRouter();
-  const { currentUser, users, addLesson } = useSimpleData();
+  const { currentUser, users, lessons, addLesson, updateLesson } = useSimpleData();
+
+  // Arriving from a lesson: draw the situation that belongs to it and go back when done.
+  // The id comes from a URL, so it is checked against the real lessons before it is
+  // trusted; an unknown id falls back to the plain "make a new lesson" behaviour.
+  const { lessonId } = useLocalSearchParams<{ lessonId?: string }>();
+  const forLesson = lessons.find((l) => l.id === lessonId) ?? null;
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveTitle, setSaveTitle] = useState('');
   const [saveDescription, setSaveDescription] = useState('');
@@ -45,6 +51,23 @@ export default function Drawing() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [orientation, setOrientation] = useState<CourtOrientation>('vertical');
+  const loadedFor = useRef<string | null>(null);
+
+  // Load the lesson's drawing once the canvas knows its size — it was saved in whatever
+  // size it was drawn in, so it has to be rescaled to fit this one.
+  useEffect(() => {
+    if (!forLesson?.drawing || size.w === 0 || size.h === 0) return;
+    if (loadedFor.current === forLesson.id) return;
+    loadedFor.current = forLesson.id;
+    const scene = rescaleDrawing(forLesson.drawing, size.w, size.h);
+    setStrokes(scene.strokes);
+    setObjects(scene.objects);
+    setOrientation(scene.orientation);
+    setHistory([
+      ...scene.strokes.map((x) => ({ kind: 'stroke' as const, id: x.id })),
+      ...scene.objects.map((x) => ({ kind: 'object' as const, id: x.id })),
+    ]);
+  }, [forLesson, size.w, size.h]);
 
   // Refs so the (once-created) PanResponder reads the latest tool/color/path.
   const toolRef = useRef(tool); toolRef.current = tool;
@@ -120,6 +143,13 @@ export default function Drawing() {
   });
   const nothingDrawn = isEmptyDrawing(scene());
 
+  /** Drawing for a lesson that already exists: save straight onto it and go back. */
+  const saveToLesson = async () => {
+    if (!forLesson || nothingDrawn) return;
+    await updateLesson(forLesson.id, { drawing: scene() });
+    router.back();
+  };
+
   /**
    * A court situation is teaching material: an exercise you draw once and use again, not
    * a remark about one player. So it becomes a lesson in the library. Assigning it to a
@@ -164,10 +194,10 @@ export default function Drawing() {
         <ToolButton label="Wissen" active={false} onPress={clearAll} danger icon={<Trash2 size={18} color={tennisColors.danger} />} />
         {isCoach ? (
           <ToolButton
-            label="Bewaren als lesmateriaal"
+            label={forLesson ? `Bewaren bij "${forLesson.title}"` : 'Bewaren als lesmateriaal'}
             active={false}
             disabled={nothingDrawn}
-            onPress={() => setSaveOpen(true)}
+            onPress={() => { if (forLesson) void saveToLesson(); else setSaveOpen(true); }}
             icon={<Save size={18} color={nothingDrawn ? tennisColors.textMuted : tennisColors.text} />}
           />
         ) : null}
