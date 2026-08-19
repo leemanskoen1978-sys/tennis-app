@@ -1,10 +1,13 @@
 import { View } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Home, CalendarDays, BookOpen, TrendingUp, BarChart3, Pencil, UserCircle } from 'lucide-react-native';
 import { tennisColors } from '../../constants/tennis-colors';
 import { PaymentGate } from '../../components/PaymentGate';
+import { useSimpleData } from '../../providers/SimpleDataProvider';
 
 export default function TabsLayout() {
+  const { currentUser } = useSimpleData();
+  if (!currentUser) return <Redirect href="/login" />;
   return (
     <View style={{ flex: 1 }}>
       <Tabs

@@ -7,12 +7,16 @@ import {
   StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Redirect } from 'expo-router';
 import { User as UserIcon, Award } from 'lucide-react-native';
 import { tennisColors } from '../constants/tennis-colors';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 
 export default function Login(): React.JSX.Element {
-  const { users, login, error } = useSimpleData();
+  const { users, login, error, currentUser } = useSimpleData();
+
+  // Once logged in, leave the login screen for the tabs.
+  if (currentUser) return <Redirect href="/(tabs)/home" />;
 
   const handleLogin = (userId: string): void => {
     // Root layout auto-redirects na succesvolle login — geen handmatige navigatie.
