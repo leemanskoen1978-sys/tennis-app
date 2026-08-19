@@ -104,7 +104,7 @@ export default function Drawing() {
 
   return (
     <View style={styles.container}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.toolbar}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.toolbarWrap} contentContainerStyle={styles.toolbar}>
         <ToolButton label="Tekenen" active={tool === 'pen'} onPress={() => setTool('pen')} icon={<Pencil size={18} color={tool === 'pen' ? tennisColors.white : tennisColors.text} />} />
         <ToolButton label="Kegel" active={tool === 'cone'} onPress={() => setTool('cone')} icon={<Cone size={18} color={tool === 'cone' ? tennisColors.white : tennisColors.text} />} />
         <ToolButton label="Speler" active={tool === 'player'} onPress={() => setTool('player')} icon={<PersonStanding size={18} color={tool === 'player' ? tennisColors.white : tennisColors.text} />} />
@@ -215,8 +215,9 @@ function DraggableObject({ obj, onMove, bounds }: {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#20241F' },
-  toolbar: { flexDirection: 'row', gap: spacing.sm, padding: spacing.md, alignItems: 'center' },
+  container: { flex: 1, backgroundColor: tennisColors.background },
+  toolbarWrap: { flexGrow: 0, flexShrink: 0 },
+  toolbar: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, alignItems: 'center' },
   tool: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     minHeight: minTapTarget, paddingHorizontal: spacing.md,
@@ -226,10 +227,10 @@ const styles = StyleSheet.create({
   toolActive: { backgroundColor: tennisColors.primary, borderColor: tennisColors.primary },
   toolText: { fontSize: 13, fontWeight: '600', color: tennisColors.text },
   toolTextActive: { color: tennisColors.white },
-  swatches: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.sm, flexWrap: 'wrap' },
-  swatch: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, borderColor: 'transparent' },
-  swatchActive: { borderColor: tennisColors.white },
-  hint: { color: 'rgba(255,255,255,0.75)', fontSize: 12, flexShrink: 1 },
-  canvas: { flex: 1, margin: spacing.md, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: '#20241F' },
+  swatches: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.xs, flexWrap: 'wrap' },
+  swatch: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: tennisColors.border },
+  swatchActive: { borderColor: tennisColors.primary, borderWidth: 3 },
+  hint: { color: tennisColors.textMuted, fontSize: 12, flexShrink: 1 },
+  canvas: { flex: 1, overflow: 'hidden', backgroundColor: tennisColors.clay },
   object: { position: 'absolute', width: OBJECT_SIZE, height: OBJECT_SIZE * 1.3, alignItems: 'center', justifyContent: 'center' },
 });
