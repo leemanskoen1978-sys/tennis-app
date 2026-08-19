@@ -1,4 +1,4 @@
-import type { Booking, Court } from './types';
+import type { Booking, Court, User } from './types';
 
 const PAYABLE_STATUSES: Booking['status'][] = ['confirmed', 'completed', 'synchronized'];
 
@@ -12,6 +12,19 @@ export function needsPayment(b: Booking): boolean {
 
 export function filterPendingPayment(bookings: Booking[]): Booking[] {
   return bookings.filter(needsPayment);
+}
+
+/**
+ * The payments a user is allowed to handle. Money stays per coach: a coach handles the
+ * payments for their own bookings, a player only sees their own. Nobody settles a
+ * colleague's lesson.
+ */
+export function pendingPaymentsFor(user: User | null, bookings: Booking[]): Booking[] {
+  if (!user) return [];
+  const mine = bookings.filter((b) =>
+    user.role === 'coach' ? b.coach_id === user.id : b.player_id === user.id,
+  );
+  return filterPendingPayment(mine);
 }
 
 /** Realized cash income: sums court hourly_rate for paid, non-cancelled bookings. */

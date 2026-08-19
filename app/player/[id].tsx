@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Star, Plus, X, CheckCircle2, Circle, BookOpen } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
@@ -29,6 +29,7 @@ function fmtTime(iso: string): string {
 
 export default function PlayerDossier() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const {
     currentUser, users, bookings, courts, lessons, progress,
     addLesson, updateLesson, addProgress,
@@ -62,9 +63,9 @@ export default function PlayerDossier() {
 
   // The dossier is shared between every coach who works with this player. The relation is
   // derived from bookings/lessons/progress — there is no assignment screen to keep in sync.
-  const coachNames = coachesForPlayer(player.id, bookings, lessons, progress)
-    .map(nameOf)
-    .sort((a, b) => a.localeCompare(b, 'nl'));
+  const playerCoaches = coachesForPlayer(player.id, bookings, lessons, progress)
+    .map((cid) => ({ id: cid, name: nameOf(cid) }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'nl'));
 
   const now = Date.now();
   const playerBookings = bookings.filter((b) => b.player_id === player.id && b.status !== 'cancelled');
@@ -108,8 +109,23 @@ export default function PlayerDossier() {
         <Badge label={player.role === 'coach' ? 'Coach' : player.role === 'parent' ? 'Ouder' : 'Speler'} color={tennisColors.primary} />
         {player.email ? <Text style={styles.contact}>{player.email}</Text> : null}
         {player.phone ? <Text style={styles.contact}>{player.phone}</Text> : null}
-        {coachNames.length > 0 ? (
-          <Text style={styles.coachRow}>Trainers: {coachNames.join(' · ')}</Text>
+        {playerCoaches.length > 0 ? (
+          <View style={styles.coachRow}>
+            <Text style={styles.coachRowLabel}>Trainers: </Text>
+            {playerCoaches.map((c, i) => (
+              <View key={c.id} style={styles.coachRowItem}>
+                {i > 0 ? <Text style={styles.coachRowLabel}> · </Text> : null}
+                <Pressable
+                  onPress={() => router.push(`/coach/${c.id}`)}
+                  style={webCursor}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open dossier van trainer ${c.name}`}
+                >
+                  <Text style={styles.coachLink}>{c.name}</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
         ) : null}
       </Card>
 
@@ -314,7 +330,10 @@ function AssignLessonModal({ visible, onClose, playerId }: { visible: boolean; o
 const styles = StyleSheet.create({
   name: { ...typography.h1, color: tennisColors.text },
   contact: { fontSize: 14, color: tennisColors.textMuted, marginTop: 2 },
-  coachRow: { fontSize: 14, fontWeight: '600', color: tennisColors.text, marginTop: spacing.sm },
+  coachRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: spacing.sm },
+  coachRowItem: { flexDirection: 'row', alignItems: 'center' },
+  coachRowLabel: { fontSize: 14, fontWeight: '600', color: tennisColors.text },
+  coachLink: { fontSize: 14, fontWeight: '600', color: tennisColors.primary, textDecorationLine: 'underline' },
   section: { ...typography.h2, color: tennisColors.text, marginTop: spacing.sm },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
   subLabel: { fontSize: 13, fontWeight: '700', color: tennisColors.textMuted, marginTop: spacing.sm, textTransform: 'uppercase' },

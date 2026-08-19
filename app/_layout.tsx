@@ -28,6 +28,16 @@ function Root() {
         }}
       />
       <Stack.Screen
+        name="coach/[id]"
+        options={{
+          headerShown: true,
+          title: 'Trainer-dossier',
+          headerTintColor: tennisColors.primary,
+          headerStyle: { backgroundColor: tennisColors.surface },
+          headerTitleStyle: { color: tennisColors.text },
+        }}
+      />
+      <Stack.Screen
         name="players"
         options={{
           headerShown: true,

@@ -139,6 +139,30 @@ Eén hulpfunctie voor alle drie de plekken:
 const nameOf = (id?: string) => users.find((u) => u.id === id)?.name ?? 'Onbekend';
 ```
 
+## Betalingen zijn ook geld
+
+`usePendingPaymentBookings()` gaf alle openstaande betalingen van de club, dus trainer A
+zag en kon de onbetaalde les van trainer B afvinken. Dat valt onder dezelfde regel als de
+omzet, dus de hook is gescoped op de huidige gebruiker via een nieuwe pure helper
+`pendingPaymentsFor(user, bookings)` in `lib/payments.ts`. Eén plek, drie schermen
+gerepareerd: de Beheer-badge op de hub, de teller in `CoachDashboard` en de
+`PaymentStatusModal`.
+
+Dezelfde omzetlek zat ook in `components/CoachDashboard.tsx` — daar stond eveneens
+`totalRevenue(bookings, courts)` over de hele club, gelabeld "Inkomsten (cash)". Ook
+gescoped, label nu "Jouw inkomsten (cash)".
+
+## Trainerdossier
+
+De trainersrij bovenaan het spelerdossier is doorklikbaar naar `app/coach/[id].tsx`:
+gegevens, de agenda van die trainer, en zijn spelers (uit `playersForCoach()`),
+doorklikbaar terug naar het spelerdossier. Dat sluit de cross-link "opvolging van een
+speler vanuit Trainers".
+
+De route heet `coach/[id]` en niet `coaches/[id]` zoals in de ontwerpnota, omdat het
+naast het bestaande `player/[id]` moet passen. Bij de navigatie-herstructurering worden
+beide tegelijk meervoud.
+
 ## Wat níét verandert
 
 - `lib/payments.ts` — zuiver, blijft zoals het is.

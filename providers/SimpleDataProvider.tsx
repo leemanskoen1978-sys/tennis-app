@@ -1,7 +1,7 @@
 import React, {
   createContext, useContext, useEffect, useState, useCallback, useMemo,
 } from 'react';
-import { filterPendingPayment } from '../lib/payments';
+import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
 import { loadStore, saveStore, resetStore, newId, type StoreData } from './mockStore';
 import type {
@@ -215,7 +215,8 @@ export function useSimpleData(): DataShape {
   return ctx;
 }
 
+/** Payments the current user may handle — scoped to them. Money stays per coach. */
 export function usePendingPaymentBookings(): Booking[] {
-  const { bookings } = useSimpleData();
-  return useMemo(() => filterPendingPayment(bookings), [bookings]);
+  const { currentUser, bookings } = useSimpleData();
+  return useMemo(() => pendingPaymentsFor(currentUser, bookings), [currentUser, bookings]);
 }

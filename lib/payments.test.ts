@@ -1,5 +1,7 @@
-import { needsPayment, filterPendingPayment, totalRevenue } from './payments';
-import type { Booking, Court } from './types';
+import {
+  needsPayment, filterPendingPayment, pendingPaymentsFor, totalRevenue,
+} from './payments';
+import type { Booking, Court, User } from './types';
 
 const base: Booking = {
   id: '1', player_id: 'p', coach_id: 'c', court_id: 'court1',
@@ -63,5 +65,34 @@ describe('totalRevenue', () => {
     expect(totalRevenue(all, courts)).toBe(60);
     expect(totalRevenue(koensBookings, courts)).toBe(30);
     expect(totalRevenue(koensBookings, courts)).not.toBe(totalRevenue(all, courts));
+  });
+});
+
+describe('pendingPaymentsFor', () => {
+  const koen: User = { id: 'koen', name: 'Koen', email: 'k@x', role: 'coach' };
+  const sanne: User = { id: 'sanne', name: 'Sanne', email: 's@x', role: 'coach' };
+  const mathis: User = { id: 'mathis', name: 'Mathis', email: 'm@x', role: 'player' };
+  const list: Booking[] = [
+    { ...base, id: '1', coach_id: 'koen', player_id: 'mathis' },
+    { ...base, id: '2', coach_id: 'sanne', player_id: 'mathis' },
+    { ...base, id: '3', coach_id: 'sanne', player_id: 'lotte' },
+  ];
+
+  it('gives a coach only their own bookings, never a colleague\'s', () => {
+    expect(pendingPaymentsFor(koen, list).map((b) => b.id)).toEqual(['1']);
+    expect(pendingPaymentsFor(sanne, list).map((b) => b.id)).toEqual(['2', '3']);
+  });
+
+  it('gives a player only their own bookings', () => {
+    expect(pendingPaymentsFor(mathis, list).map((b) => b.id)).toEqual(['1', '2']);
+  });
+
+  it('is empty without a user', () => {
+    expect(pendingPaymentsFor(null, list)).toEqual([]);
+  });
+
+  it('still only returns bookings that actually need payment', () => {
+    const settled: Booking[] = [{ ...base, id: '1', coach_id: 'koen', payment_status: 'paid' }];
+    expect(pendingPaymentsFor(koen, settled)).toEqual([]);
   });
 });
