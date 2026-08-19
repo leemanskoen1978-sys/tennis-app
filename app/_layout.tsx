@@ -17,6 +17,26 @@ function Root() {
       <Stack.Screen name="index" />
       <Stack.Screen name="login" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen
+        name="player/[id]"
+        options={{
+          headerShown: true,
+          title: 'Speler-dossier',
+          headerTintColor: tennisColors.primary,
+          headerStyle: { backgroundColor: tennisColors.surface },
+          headerTitleStyle: { color: tennisColors.text },
+        }}
+      />
+      <Stack.Screen
+        name="players"
+        options={{
+          headerShown: true,
+          title: 'Spelers',
+          headerTintColor: tennisColors.primary,
+          headerStyle: { backgroundColor: tennisColors.surface },
+          headerTitleStyle: { color: tennisColors.text },
+        }}
+      />
     </Stack>
   );
 }

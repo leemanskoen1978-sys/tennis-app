@@ -3,7 +3,7 @@ import { View, Text, Modal, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   CalendarPlus, CalendarDays, BookOpen, TrendingUp, CreditCard,
-  UserPlus, BarChart3, SlidersHorizontal, ChevronRight, X, type LucideIcon,
+  UserPlus, BarChart3, SlidersHorizontal, ChevronRight, X, Users, type LucideIcon,
 } from 'lucide-react-native';
 import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
 import { Screen } from '../../components/ui/Screen';
@@ -100,6 +100,11 @@ export default function Hub() {
               label="Openstaande betalingen"
               badge={pending.length}
               onPress={() => { setManageOpen(false); setPaymentsOpen(true); }}
+            />
+            <MenuRow
+              icon={Users}
+              label="Spelers"
+              onPress={() => { setManageOpen(false); router.push('/players'); }}
             />
             <MenuRow
               icon={UserPlus}

@@ -4,9 +4,10 @@ import { X, ExternalLink, Pencil, Trash2 } from 'lucide-react-native';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { StudentCombobox } from './ui/StudentCombobox';
 import { Button } from './ui/Button';
+import { AttachmentList, LessonAttachments } from './LessonAttachments';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow, webCursor } from '../constants/theme';
-import type { Lesson } from '../lib/types';
+import type { Lesson, LessonAttachment } from '../lib/types';
 
 function confirmDelete(message: string, onYes: () => void) {
   if (Platform.OS === 'web') { if (window.confirm(message)) onYes(); return; }
@@ -31,6 +32,7 @@ export function LessonDetailModal({
   const [url, setUrl] = useState('');
   const [description, setDescription] = useState('');
   const [studentId, setStudentId] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<LessonAttachment[]>([]);
 
   if (!lesson) return null;
   const students = users.filter((u) => u.role !== 'coach');
@@ -43,6 +45,7 @@ export function LessonDetailModal({
     setUrl(lesson.url ?? '');
     setDescription(lesson.description ?? '');
     setStudentId(lesson.student_id ?? null);
+    setAttachments(lesson.attachments ?? []);
     setEditing(true);
   };
 
@@ -53,6 +56,7 @@ export function LessonDetailModal({
       url: url.trim() || undefined,
       description: description.trim() || undefined,
       student_id: studentId ?? undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
     setEditing(false);
   };
@@ -86,6 +90,8 @@ export function LessonDetailModal({
                 <TextInput style={styles.input} value={url} onChangeText={setUrl} placeholder="https://…" placeholderTextColor={tennisColors.textMuted} autoCapitalize="none" />
                 <Text style={styles.label}>Beschrijving</Text>
                 <TextInput style={[styles.input, styles.multiline]} value={description} onChangeText={setDescription} placeholder="Beschrijving" placeholderTextColor={tennisColors.textMuted} multiline />
+                <Text style={styles.label}>PDF-bijlagen</Text>
+                <LessonAttachments attachments={attachments} onChange={setAttachments} />
                 <Text style={styles.label}>Voor wie</Text>
                 <StudentCombobox students={students} value={studentId} onChange={setStudentId} />
                 <View style={styles.actions}>
@@ -104,6 +110,9 @@ export function LessonDetailModal({
                 ) : (
                   <Text style={styles.descMuted}>Geen video-link.</Text>
                 )}
+
+                <Text style={styles.label}>PDF-bijlagen</Text>
+                <AttachmentList attachments={lesson.attachments} />
 
                 {canEdit ? (
                   <View style={styles.actions}>

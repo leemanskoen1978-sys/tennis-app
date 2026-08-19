@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { ChevronRight } from 'lucide-react-native';
 
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Screen } from '../../components/ui/Screen';
 import { PaymentStatusModal } from '../../components/PaymentStatusModal';
-import { spacing, typography } from '../../constants/theme';
+import { spacing, typography, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import type { Booking, BookingStatus, PaymentStatus } from '../../lib/types';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
@@ -46,6 +48,7 @@ function paymentMeta(payment: PaymentStatus): BadgeMeta {
 export default function BookingsScreen(): React.JSX.Element {
   const { currentUser, bookings, users, courts, updateBooking } =
     useSimpleData();
+  const router = useRouter();
   const [paymentModalVisible, setPaymentModalVisible] = useState<boolean>(false);
 
   const isCoach = currentUser?.role === 'coach';
@@ -101,29 +104,39 @@ export default function BookingsScreen(): React.JSX.Element {
         visibleBookings.map((booking) => {
           const status = statusMeta(booking.status);
           const payment = paymentMeta(booking.payment_status);
-          return (
-            <Card key={booking.id}>
+          const info = (
+            <>
               <Text style={styles.cardDate}>
                 {new Date(booking.start_time).toLocaleString('nl-BE')}
               </Text>
               <Text style={styles.cardCourt}>{courtName(booking.court_id)}</Text>
-              <Text style={styles.cardParty}>
-                {isCoach ? 'Speler: ' : 'Coach: '}
-                {otherPartyName(booking)}
-              </Text>
-
-              <View style={styles.badgeRow}>
-                <Badge
-                  label={status.label}
-                  color={status.color}
-                  subtle={status.subtle}
-                />
-                <Badge
-                  label={payment.label}
-                  color={payment.color}
-                  subtle={payment.subtle}
-                />
+              <View style={styles.partyRow}>
+                <Text style={styles.cardParty}>
+                  {isCoach ? 'Speler: ' : 'Coach: '}
+                  {otherPartyName(booking)}
+                </Text>
+                {isCoach ? <ChevronRight size={18} color={tennisColors.textMuted} /> : null}
               </View>
+              <View style={styles.badgeRow}>
+                <Badge label={status.label} color={status.color} subtle={status.subtle} />
+                <Badge label={payment.label} color={payment.color} subtle={payment.subtle} />
+              </View>
+            </>
+          );
+          return (
+            <Card key={booking.id}>
+              {isCoach ? (
+                <Pressable
+                  onPress={() => router.push(`/player/${booking.player_id}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open dossier van ${otherPartyName(booking)}`}
+                  style={webCursor}
+                >
+                  {info}
+                </Pressable>
+              ) : (
+                info
+              )}
 
               {canCancel(booking.status) ? (
                 <View style={styles.cancelRow}>
@@ -170,6 +183,11 @@ const styles = StyleSheet.create({
   cardCourt: {
     ...typography.body,
     color: tennisColors.textMuted,
+  },
+  partyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   cardParty: {
     ...typography.body,

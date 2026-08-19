@@ -6,10 +6,11 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StudentCombobox } from '../../components/ui/StudentCombobox';
 import { LessonDetailModal } from '../../components/LessonDetailModal';
+import { LessonAttachments } from '../../components/LessonAttachments';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import type { Lesson, User } from '../../lib/types';
+import type { Lesson, LessonAttachment, User } from '../../lib/types';
 
 export default function LessonsScreen(): React.JSX.Element {
   const { currentUser, lessons, users, addLesson, error } = useSimpleData();
@@ -18,6 +19,7 @@ export default function LessonsScreen(): React.JSX.Element {
   const [url, setUrl] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [studentId, setStudentId] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<LessonAttachment[]>([]);
 
   const [selected, setSelected] = useState<Lesson | null>(null);
   const [detailOpen, setDetailOpen] = useState<boolean>(false);
@@ -62,12 +64,14 @@ export default function LessonsScreen(): React.JSX.Element {
       uploaded_by: currentUser.id,
       coach_id: currentUser.id,
       student_id: studentId ?? undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
 
     setTitle('');
     setUrl('');
     setDescription('');
     setStudentId(null);
+    setAttachments([]);
   };
 
   return (
@@ -111,6 +115,9 @@ export default function LessonsScreen(): React.JSX.Element {
             multiline
           />
 
+          <Text style={styles.label}>PDF (optioneel)</Text>
+          <LessonAttachments attachments={attachments} onChange={setAttachments} />
+
           <Text style={styles.label}>Voor wie</Text>
           <StudentCombobox
             students={students}
@@ -152,6 +159,9 @@ export default function LessonsScreen(): React.JSX.Element {
                 <Text style={styles.rowTitle}>{lesson.title}</Text>
                 <Text style={styles.rowMuted}>
                   Voor: {studentNameFor(lesson.student_id)}
+                  {lesson.attachments !== undefined && lesson.attachments.length > 0
+                    ? ` • ${lesson.attachments.length} PDF`
+                    : ''}
                 </Text>
               </View>
               <View style={styles.rowChevron}>

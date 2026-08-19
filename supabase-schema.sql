@@ -51,8 +51,11 @@ create table if not exists lessons (
   uploaded_by uuid references users(id) on delete set null,
   student_id uuid references users(id) on delete set null,
   coach_id uuid references users(id) on delete set null,
+  attachments jsonb, -- [{id,name,mime,size,source,uri,drive_file_id}] — see docs/lesson-attachments.md
   created_at timestamptz default now()
 );
+
+alter table lessons add column if not exists attachments jsonb;
 
 create table if not exists student_progress (
   id uuid primary key default gen_random_uuid(),

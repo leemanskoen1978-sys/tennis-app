@@ -1,85 +1,26 @@
 import React, { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Star, UserPlus } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Chip } from '../../components/ui/Chip';
 import { StudentCombobox } from '../../components/ui/StudentCombobox';
+import {
+  TRAINING_TYPES, TRAINING_LABELS, byDateDesc, ProgressEntryCard, ReportSummary,
+} from '../../components/progress/ProgressViews';
 import { spacing, typography, radius, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { UserManagement } from '../../components/UserManagement';
 import { VoiceRecorder } from '../../components/VoiceRecorder';
-import type { StudentProgress, TrainingType } from '../../lib/types';
+import type { TrainingType } from '../../lib/types';
 
-const TRAINING_TYPES: readonly TrainingType[] = ['techniek', 'tactiek', 'fysiek', 'mentaal', 'match'] as const;
-const TRAINING_LABELS: Record<TrainingType, string> = {
-  techniek: 'Techniek', tactiek: 'Tactiek', fysiek: 'Fysiek', mentaal: 'Mentaal', match: 'Match',
-};
 const RATINGS: readonly number[] = [1, 2, 3, 4, 5] as const;
 
-const byDateDesc = (a: StudentProgress, b: StudentProgress) =>
-  (b.created_at ?? '').localeCompare(a.created_at ?? '');
-
-function formatDate(iso?: string): string {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString('nl-BE', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function Stars({ count }: { count: number }) {
-  if (!count) return null;
-  return (
-    <View style={styles.starsInline} accessibilityRole="image" accessibilityLabel={`${count} sterren`}>
-      {Array.from({ length: count }).map((_, i) => (
-        <Star key={i} size={14} fill={tennisColors.warning} color={tennisColors.warning} />
-      ))}
-    </View>
-  );
-}
-
-function AudioMemo({ uri }: { uri: string }) {
-  if (Platform.OS !== 'web') return <Text style={styles.memoNative}>🔊 Spraakmemo</Text>;
-  return React.createElement('audio', { src: uri, controls: true, style: { height: 32, width: '100%', marginTop: 4 } });
-}
-
-function EntryCard({ p, studentName, showStudent }: { p: StudentProgress; studentName: string; showStudent: boolean }) {
-  return (
-    <Card style={styles.entryCard}>
-      <View style={styles.entryHeader}>
-        <Text style={styles.entryType}>{TRAINING_LABELS[p.training_type]}</Text>
-        <Stars count={p.rating ?? 0} />
-      </View>
-      {showStudent ? <Text style={styles.entryStudent}>{studentName}</Text> : null}
-      {p.created_at ? <Text style={styles.entryDate}>{formatDate(p.created_at)}</Text> : null}
-      {p.notes ? <Text style={styles.entryText}>{p.notes}</Text> : null}
-      {p.homework ? <Text style={styles.entryHomework}>Huiswerk: {p.homework}</Text> : null}
-      {p.voice_memo_uri ? <AudioMemo uri={p.voice_memo_uri} /> : null}
-    </Card>
-  );
-}
-
-function ReportSummary({ entries }: { entries: StudentProgress[] }) {
-  const rated = entries.filter((e) => (e.rating ?? 0) > 0);
-  const avg = rated.length ? rated.reduce((s, e) => s + (e.rating ?? 0), 0) / rated.length : 0;
-  const byType = TRAINING_TYPES
-    .map((t) => ({ t, n: entries.filter((e) => e.training_type === t).length }))
-    .filter((x) => x.n > 0);
-  return (
-    <Card>
-      <Text style={styles.cardTitle}>Samenvatting</Text>
-      <Text style={styles.summaryLine}>Aantal sessies: {entries.length}</Text>
-      <Text style={styles.summaryLine}>Gemiddelde beoordeling: {avg ? `${avg.toFixed(1)} / 5` : '—'}</Text>
-      <View style={styles.typeChips}>
-        {byType.map((x) => (
-          <View key={x.t} style={styles.typePill}><Text style={styles.typePillText}>{TRAINING_LABELS[x.t]}: {x.n}</Text></View>
-        ))}
-      </View>
-    </Card>
-  );
-}
-
 export default function ProgressScreen(): React.JSX.Element {
+  const router = useRouter();
   const { currentUser, progress, users, addProgress, error } = useSimpleData();
 
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -118,7 +59,6 @@ export default function ProgressScreen(): React.JSX.Element {
     resetForm();
   };
 
-  // "Waar de trainer mee bezig is": most recent entries by this coach.
   const recent = isCoach && currentUser
     ? [...progress].filter((p) => p.coach_id === currentUser.id).sort(byDateDesc).slice(0, 5)
     : [];
@@ -167,23 +107,10 @@ export default function ProgressScreen(): React.JSX.Element {
             </View>
 
             <Text style={styles.label}>Notities</Text>
-            <TextInput
-              style={[styles.input, styles.multiline]}
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Notities over de training"
-              placeholderTextColor={tennisColors.textMuted}
-              multiline
-            />
+            <TextInput style={[styles.input, styles.multiline]} value={notes} onChangeText={setNotes} placeholder="Notities over de training" placeholderTextColor={tennisColors.textMuted} multiline />
 
             <Text style={styles.label}>Huiswerk</Text>
-            <TextInput
-              style={styles.input}
-              value={homework}
-              onChangeText={setHomework}
-              placeholder="Huiswerk voor de speler"
-              placeholderTextColor={tennisColors.textMuted}
-            />
+            <TextInput style={styles.input} value={homework} onChangeText={setHomework} placeholder="Huiswerk voor de speler" placeholderTextColor={tennisColors.textMuted} />
 
             <Text style={styles.label}>Spraakmemo</Text>
             <VoiceRecorder value={voiceUri} onRecorded={setVoiceUri} onClear={() => setVoiceUri(undefined)} />
@@ -195,21 +122,24 @@ export default function ProgressScreen(): React.JSX.Element {
           {recent.length === 0 ? (
             <Text style={styles.muted}>Nog geen recente activiteit.</Text>
           ) : (
-            recent.map((p) => <EntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent />)
+            recent.map((p) => <ProgressEntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent />)
           )}
 
           <Text style={styles.sectionTitle}>Rapport per speler</Text>
           <StudentCombobox students={students} value={reportStudentId} onChange={setReportStudentId} placeholder="Kies een speler voor het rapport…" />
           {reportStudentId ? (
             <>
-              <Text style={styles.reportName}>{studentName(reportStudentId)}</Text>
+              <View style={styles.reportHeader}>
+                <Text style={styles.reportName}>{studentName(reportStudentId)}</Text>
+                <Button label="Open dossier" variant="secondary" fullWidth={false} onPress={() => router.push(`/player/${reportStudentId}`)} />
+              </View>
               {reportEntries(reportStudentId).length === 0 ? (
                 <Text style={styles.muted}>Nog geen voortgang voor deze speler.</Text>
               ) : (
                 <>
                   <ReportSummary entries={reportEntries(reportStudentId)} />
                   {reportEntries(reportStudentId).map((p) => (
-                    <EntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent={false} />
+                    <ProgressEntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent={false} />
                   ))}
                 </>
               )}
@@ -226,7 +156,7 @@ export default function ProgressScreen(): React.JSX.Element {
           ) : (
             <>
               <ReportSummary entries={ownEntries} />
-              {ownEntries.map((p) => <EntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent={false} />)}
+              {ownEntries.map((p) => <ProgressEntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent={false} />)}
             </>
           )}
         </>
@@ -255,18 +185,6 @@ const styles = StyleSheet.create({
   saveBtn: { marginTop: spacing.lg },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: tennisColors.text, marginTop: spacing.sm, marginBottom: spacing.sm },
   muted: { color: tennisColors.textMuted, fontSize: 14 },
-  reportName: { ...typography.h3, color: tennisColors.text, marginTop: spacing.xs },
-  entryCard: { marginBottom: spacing.md },
-  entryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  entryType: { fontSize: 15, fontWeight: '700', color: tennisColors.primaryDark },
-  starsInline: { flexDirection: 'row', gap: 2 },
-  entryStudent: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted, marginTop: 2 },
-  entryDate: { fontSize: 12, color: tennisColors.textMuted, marginTop: 2 },
-  entryText: { fontSize: 14, color: tennisColors.text, marginTop: 4 },
-  entryHomework: { fontSize: 13, color: tennisColors.clay, fontWeight: '600', marginTop: 4 },
-  memoNative: { fontSize: 13, color: tennisColors.textMuted, marginTop: 4 },
-  summaryLine: { fontSize: 14, color: tennisColors.text },
-  typeChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm },
-  typePill: { backgroundColor: tennisColors.primaryTint, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill },
-  typePillText: { fontSize: 12, fontWeight: '600', color: tennisColors.primaryDark },
+  reportHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.xs, gap: spacing.md },
+  reportName: { ...typography.h3, color: tennisColors.text },
 });

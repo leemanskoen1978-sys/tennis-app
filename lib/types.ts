@@ -45,6 +45,21 @@ export interface Booking {
   actual_end_time?: string;
 }
 
+export type LessonStatus = 'gepland' | 'gegeven';
+
+/** Where the file physically lives. 'local' = data URL in the store, 'drive' = Google Drive file. */
+export type AttachmentSource = 'local' | 'drive';
+
+export interface LessonAttachment {
+  id: string;
+  name: string;
+  mime: string; // 'application/pdf' for now
+  size: number; // bytes
+  source: AttachmentSource;
+  uri: string; // data URL ('local') or Drive webViewLink ('drive')
+  drive_file_id?: string; // set once the file lives in Google Drive
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -53,6 +68,8 @@ export interface Lesson {
   uploaded_by: string;
   student_id?: string;
   coach_id?: string;
+  status?: LessonStatus; // part of a player's plan: planned vs given
+  attachments?: LessonAttachment[]; // PDFs etc. — see docs/lesson-attachments.md
 }
 
 export interface StudentProgress {
@@ -65,6 +82,7 @@ export interface StudentProgress {
   skills?: Record<string, number>;
   homework?: string;
   voice_memo_uri?: string;
+  lesson_id?: string; // optional link to a lesson in the player's plan
   created_at?: string; // ISO — set when the entry is created (for timelines/reports)
 }
 
