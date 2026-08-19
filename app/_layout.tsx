@@ -1,16 +1,23 @@
 import { Stack, Redirect, useSegments } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
 import { SimpleDataProvider, useSimpleData } from '../providers/SimpleDataProvider';
-import { ProfileAvatar } from '../components/ui/ProfileAvatar';
+import { MenuBar } from '../components/ui/MenuBar';
 import { tennisColors } from '../constants/tennis-colors';
 
-// One plain stack, no tab bar. The section you are in comes from the header title and
-// the back button, which follows the path you took rather than the folder tree.
+// One plain stack, no tab bar. A MenuBar sits above the stack on every screen, so the
+// sections are always one tap away; the stack header below it only says where you are.
+//
+// The stack's own back arrow is off: it disappears when the history is empty — after a
+// deep link or a page reload on the web — and then the screen had no way out at all. The
+// MenuBar does not depend on history.
 const headerBase = {
   headerShown: true,
   headerTintColor: tennisColors.primary,
-  headerStyle: { backgroundColor: tennisColors.surface },
+  headerStyle: { backgroundColor: tennisColors.background },
   headerTitleStyle: { color: tennisColors.text },
+  headerBackVisible: false,
+  headerLeft: () => null,
+  headerShadowVisible: false,
 } as const;
 
 /** Screens in the order of the hub: Agenda, Spelers, Trainers, Beheer. */
@@ -50,28 +57,20 @@ function Root() {
     return <Redirect href="/login" />;
   }
 
-  // Profile is not a task like the four tiles, so it sits in the header, not on the hub.
-  const avatar = currentUser
-    ? () => <ProfileAvatar name={currentUser.name} />
-    : undefined;
+  // Every screen carries the bar except login, which has no navigation to offer yet.
+  const showMenu = segments[0] !== 'login';
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="login" />
-      {SCREENS.map((s) => (
-        <Stack.Screen
-          key={s.name}
-          name={s.name}
-          options={{
-            ...headerBase,
-            title: s.title,
-            // Profile itself does not need a shortcut back to profile.
-            headerRight: s.name === 'profile' ? undefined : avatar,
-          }}
-        />
-      ))}
-    </Stack>
+    <View style={{ flex: 1, backgroundColor: tennisColors.background }}>
+      {showMenu ? <MenuBar /> : null}
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        {SCREENS.map((s) => (
+          <Stack.Screen key={s.name} name={s.name} options={{ ...headerBase, title: s.title }} />
+        ))}
+      </Stack>
+    </View>
   );
 }
 

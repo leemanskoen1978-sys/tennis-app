@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { StudentCombobox } from '../../components/ui/StudentCombobox';
 import { LessonDetailModal } from '../../components/LessonDetailModal';
 import { LessonAttachments } from '../../components/LessonAttachments';
-import { spacing, typography, webCursor } from '../../constants/theme';
+import { spacing, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import type { Lesson, LessonAttachment, User } from '../../lib/types';
@@ -76,8 +76,6 @@ export default function LessonsScreen(): React.JSX.Element {
 
   return (
     <Screen>
-      <Text style={styles.heading}>Lessen</Text>
-
       {error !== undefined && error !== null && error.length > 0 ? (
         <Text style={styles.error}>{error}</Text>
       ) : null}
@@ -196,10 +194,6 @@ export default function LessonsScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  heading: {
-    ...typography.h1,
-    color: tennisColors.text,
-  },
   error: {
     color: tennisColors.danger,
     fontSize: 14,

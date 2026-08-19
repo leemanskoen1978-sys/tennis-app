@@ -13,7 +13,6 @@ import {
 import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { ProfileAvatar } from '../components/ui/ProfileAvatar';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
 import { tennisColors } from '../constants/tennis-colors';
@@ -68,7 +67,6 @@ export default function Hub() {
           <Text style={styles.hi}>Hoi {currentUser.name} 👋</Text>
           <Text style={styles.q}>Wat wil je doen?</Text>
         </View>
-        <ProfileAvatar name={currentUser.name} />
       </View>
 
       <View style={styles.grid}>
