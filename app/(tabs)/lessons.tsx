@@ -1,22 +1,15 @@
 import React, { useState } from 'react';
-import {
-  Linking,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { BookOpen, ExternalLink, Plus } from 'lucide-react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { BookOpen, Plus, ChevronRight } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Chip } from '../../components/ui/Chip';
-import { spacing, typography, radius } from '../../constants/theme';
+import { StudentCombobox } from '../../components/ui/StudentCombobox';
+import { LessonDetailModal } from '../../components/LessonDetailModal';
+import { spacing, typography, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-
-const IEDEREEN = '__iedereen__';
+import type { Lesson, User } from '../../lib/types';
 
 export default function LessonsScreen(): React.JSX.Element {
   const { currentUser, lessons, users, addLesson, error } = useSimpleData();
@@ -24,11 +17,14 @@ export default function LessonsScreen(): React.JSX.Element {
   const [title, setTitle] = useState<string>('');
   const [url, setUrl] = useState<string>('');
   const [description, setDescription] = useState<string>('');
-  const [selectedStudent, setSelectedStudent] = useState<string>(IEDEREEN);
+  const [studentId, setStudentId] = useState<string | null>(null);
+
+  const [selected, setSelected] = useState<Lesson | null>(null);
+  const [detailOpen, setDetailOpen] = useState<boolean>(false);
 
   const isCoach = currentUser?.role === 'coach';
 
-  const students = users.filter((u) => u.role !== 'coach');
+  const students: User[] = users.filter((u) => u.role !== 'coach');
 
   const visibleLessons = lessons.filter((l) => {
     if (isCoach) {
@@ -39,6 +35,14 @@ export default function LessonsScreen(): React.JSX.Element {
     }
     return l.student_id === currentUser?.id;
   });
+
+  const studentNameFor = (id: string | null | undefined): string => {
+    if (id === undefined || id === null) {
+      return 'Iedereen';
+    }
+    const match = students.find((s) => s.id === id);
+    return match !== undefined ? match.name : 'Iedereen';
+  };
 
   const handleAdd = async (): Promise<void> => {
     if (!currentUser) {
@@ -57,17 +61,13 @@ export default function LessonsScreen(): React.JSX.Element {
       description: trimmedDescription.length > 0 ? trimmedDescription : undefined,
       uploaded_by: currentUser.id,
       coach_id: currentUser.id,
-      student_id: selectedStudent === IEDEREEN ? undefined : selectedStudent,
+      student_id: studentId ?? undefined,
     });
 
     setTitle('');
     setUrl('');
     setDescription('');
-    setSelectedStudent(IEDEREEN);
-  };
-
-  const handleOpenUrl = (target: string): void => {
-    void Linking.openURL(target);
+    setStudentId(null);
   };
 
   return (
@@ -111,22 +111,13 @@ export default function LessonsScreen(): React.JSX.Element {
             multiline
           />
 
-          <Text style={styles.label}>Voor</Text>
-          <View style={styles.chips}>
-            <Chip
-              label="Iedereen"
-              selected={selectedStudent === IEDEREEN}
-              onPress={() => setSelectedStudent(IEDEREEN)}
-            />
-            {students.map((s) => (
-              <Chip
-                key={s.id}
-                label={s.name}
-                selected={selectedStudent === s.id}
-                onPress={() => setSelectedStudent(s.id)}
-              />
-            ))}
-          </View>
+          <Text style={styles.label}>Voor wie</Text>
+          <StudentCombobox
+            students={students}
+            value={studentId}
+            onChange={setStudentId}
+            placeholder="Iedereen"
+          />
 
           <Button
             label="Toevoegen"
@@ -146,33 +137,37 @@ export default function LessonsScreen(): React.JSX.Element {
       ) : (
         <View style={styles.list}>
           {visibleLessons.map((lesson) => (
-            <Card key={lesson.id} style={styles.row}>
+            <Card
+              key={lesson.id}
+              style={styles.row}
+              onPress={() => {
+                setSelected(lesson);
+                setDetailOpen(true);
+              }}
+            >
               <View style={styles.rowIcon}>
                 <BookOpen size={22} color={tennisColors.primary} />
               </View>
               <View style={styles.rowBody}>
                 <Text style={styles.rowTitle}>{lesson.title}</Text>
-                {lesson.description !== undefined &&
-                lesson.description !== null &&
-                lesson.description.length > 0 ? (
-                  <Text style={styles.rowDescription}>{lesson.description}</Text>
-                ) : null}
-                {lesson.url !== undefined &&
-                lesson.url !== null &&
-                lesson.url.length > 0 ? (
-                  <Pressable
-                    onPress={() => handleOpenUrl(lesson.url as string)}
-                    style={styles.openButton}
-                  >
-                    <ExternalLink size={16} color={tennisColors.primary} />
-                    <Text style={styles.openButtonText}>Openen</Text>
-                  </Pressable>
-                ) : null}
+                <Text style={styles.rowMuted}>
+                  Voor: {studentNameFor(lesson.student_id)}
+                </Text>
+              </View>
+              <View style={styles.rowChevron}>
+                <ChevronRight size={20} color={tennisColors.textMuted} />
               </View>
             </Card>
           ))}
         </View>
       )}
+
+      <LessonDetailModal
+        lesson={selected}
+        visible={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        canEdit={isCoach}
+      />
     </Screen>
   );
 }
@@ -203,7 +198,7 @@ const styles = StyleSheet.create({
     backgroundColor: tennisColors.background,
     borderWidth: 1,
     borderColor: tennisColors.border,
-    borderRadius: radius.sm,
+    borderRadius: 8,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: 15,
@@ -212,11 +207,6 @@ const styles = StyleSheet.create({
   multiline: {
     minHeight: 72,
     textAlignVertical: 'top',
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
   },
   addButton: {
     marginTop: spacing.lg,
@@ -232,10 +222,11 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    alignItems: 'center',
+    ...webCursor,
   },
   rowIcon: {
     marginRight: spacing.md,
-    marginTop: 2,
   },
   rowBody: {
     flex: 1,
@@ -245,21 +236,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: tennisColors.text,
   },
-  rowDescription: {
+  rowMuted: {
     fontSize: 14,
     color: tennisColors.textMuted,
     marginTop: spacing.xs,
   },
-  openButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    alignSelf: 'flex-start',
-  },
-  openButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: tennisColors.primary,
+  rowChevron: {
+    marginLeft: spacing.sm,
   },
 });

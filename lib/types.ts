@@ -65,6 +65,7 @@ export interface StudentProgress {
   skills?: Record<string, number>;
   homework?: string;
   voice_memo_uri?: string;
+  created_at?: string; // ISO — set when the entry is created (for timelines/reports)
 }
 
 export interface Settings {

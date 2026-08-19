@@ -27,12 +27,16 @@ interface DataShape {
   deleteBooking: (id: string) => Promise<void>;
   addUser: (u: Omit<User, 'id'>) => Promise<void>;
   addLesson: (l: Omit<Lesson, 'id'>) => Promise<void>;
+  updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
+  deleteLesson: (id: string) => Promise<void>;
   addProgress: (p: Omit<StudentProgress, 'id'>) => Promise<void>;
   saveSettings: (s: Settings) => Promise<void>;
   emergencyCleanup: () => Promise<void>;
 }
 
 const Ctx = createContext<DataShape | null>(null);
+
+const nowISO = () => new Date().toISOString();
 
 /** Two bookings clash when same coach + overlapping time window (and not cancelled). */
 function overlaps(a: Pick<Booking, 'coach_id' | 'start_time' | 'end_time' | 'status'>, list: Booking[]): boolean {
@@ -132,9 +136,23 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     await commit({ ...store, lessons: [...store.lessons, { ...l, id: newId('l') }] });
   }, [store, commit]);
 
+  const updateLesson = useCallback(async (id: string, patch: Partial<Lesson>) => {
+    if (!store) return;
+    await commit({
+      ...store,
+      lessons: store.lessons.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+    });
+  }, [store, commit]);
+
+  const deleteLesson = useCallback(async (id: string) => {
+    if (!store) return;
+    await commit({ ...store, lessons: store.lessons.filter((l) => l.id !== id) });
+  }, [store, commit]);
+
   const addProgress = useCallback(async (p: Omit<StudentProgress, 'id'>) => {
     if (!store) return;
-    await commit({ ...store, progress: [...store.progress, { ...p, id: newId('p') }] });
+    const entry: StudentProgress = { ...p, id: newId('p'), created_at: p.created_at ?? nowISO() };
+    await commit({ ...store, progress: [...store.progress, entry] });
   }, [store, commit]);
 
   const saveSettings = useCallback(async (s: Settings) => {
@@ -177,13 +195,15 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     deleteBooking,
     addUser,
     addLesson,
+    updateLesson,
+    deleteLesson,
     addProgress,
     saveSettings,
     emergencyCleanup,
   }), [
     store, currentUser, loading, error, clearError, login, logout, refresh,
     addBooking, updateBooking, deleteBooking, addUser, addLesson,
-    addProgress, saveSettings, emergencyCleanup,
+    updateLesson, deleteLesson, addProgress, saveSettings, emergencyCleanup,
   ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
