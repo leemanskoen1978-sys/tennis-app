@@ -1,4 +1,11 @@
-import { generateSlots, isDateBookable } from './slots';
+import {
+  generateSlots,
+  isDateBookable,
+  worksOnDay,
+  slotsForCoach,
+  formatWorkingDays,
+  DAY_LABELS,
+} from './slots';
 
 describe('generateSlots', () => {
   it('generates hourly slots from 09:00 to end time (exclusive)', () => {
@@ -22,5 +29,83 @@ describe('isDateBookable', () => {
   });
   it('allows future days', () => {
     expect(isDateBookable(new Date('2026-08-20T00:00:00'), today)).toBe(true);
+  });
+});
+
+describe('worksOnDay', () => {
+  // 2026-08-24 is een maandag, 2026-08-25 een dinsdag.
+  const maandag = new Date('2026-08-24T10:00:00');
+  const dinsdag = new Date('2026-08-25T10:00:00');
+
+  it('treats a coach without working_days as available every day', () => {
+    expect(worksOnDay({}, maandag)).toBe(true);
+    expect(worksOnDay({}, dinsdag)).toBe(true);
+  });
+
+  it('treats an empty working_days list as available every day', () => {
+    expect(worksOnDay({ working_days: [] }, maandag)).toBe(true);
+  });
+
+  it('allows a day that is in working_days', () => {
+    expect(worksOnDay({ working_days: [1, 3, 5] }, maandag)).toBe(true);
+  });
+
+  it('blocks a day that is not in working_days', () => {
+    expect(worksOnDay({ working_days: [1, 3, 5] }, dinsdag)).toBe(false);
+  });
+
+  it('counts Sunday as 0, like Date.getDay()', () => {
+    const zondag = new Date('2026-08-23T10:00:00');
+    expect(worksOnDay({ working_days: [0] }, zondag)).toBe(true);
+    expect(worksOnDay({ working_days: [0] }, maandag)).toBe(false);
+  });
+});
+
+describe('slotsForCoach', () => {
+  it('gives the full club window to a coach without working_hours', () => {
+    expect(slotsForCoach({}, '12:00')).toEqual(['09:00', '10:00', '11:00']);
+  });
+
+  it('drops slots before the start hour', () => {
+    expect(slotsForCoach({ working_hours: { start: '11:00', end: '21:00' } }, '13:00'))
+      .toEqual(['11:00', '12:00']);
+  });
+
+  it('drops slots from the end hour onwards', () => {
+    expect(slotsForCoach({ working_hours: { start: '09:00', end: '11:00' } }, '13:00'))
+      .toEqual(['09:00', '10:00']);
+  });
+
+  it('never gives more than the club allows', () => {
+    expect(slotsForCoach({ working_hours: { start: '07:00', end: '23:00' } }, '12:00'))
+      .toEqual(['09:00', '10:00', '11:00']);
+  });
+
+  it('gives nothing when start equals end', () => {
+    expect(slotsForCoach({ working_hours: { start: '09:00', end: '09:00' } }, '21:00'))
+      .toEqual([]);
+  });
+});
+
+describe('formatWorkingDays', () => {
+  it('says every day when nothing is set', () => {
+    expect(formatWorkingDays({})).toBe('Elke dag');
+    expect(formatWorkingDays({ working_days: [] })).toBe('Elke dag');
+  });
+
+  it('lists the days Monday first, whatever order they were stored in', () => {
+    expect(formatWorkingDays({ working_days: [5, 1, 3] })).toBe('Ma · Wo · Vr');
+  });
+
+  it('puts Sunday last', () => {
+    expect(formatWorkingDays({ working_days: [0, 1] })).toBe('Ma · Zo');
+  });
+});
+
+describe('DAY_LABELS', () => {
+  it('is indexed by Date.getDay(), so Sunday comes first', () => {
+    expect(DAY_LABELS[0]).toBe('Zo');
+    expect(DAY_LABELS[1]).toBe('Ma');
+    expect(DAY_LABELS[6]).toBe('Za');
   });
 });
