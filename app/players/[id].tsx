@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Star, Plus, X, CheckCircle2, Circle, BookOpen } from 'lucide-react-native';
+import { Star, Plus, X, CheckCircle2, Circle, BookOpen, CalendarPlus } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -130,7 +130,20 @@ export default function PlayerDossier() {
       </Card>
 
       {/* Lesdagen */}
-      <Text style={styles.section}>Lesdagen</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.section}>Lesdagen</Text>
+        {isCoach ? (
+          <Pressable
+            onPress={() => router.push(`/agenda/new?playerId=${player.id}`)}
+            style={[styles.addLink, webCursor]}
+            accessibilityRole="button"
+            accessibilityLabel={`Nieuwe afspraak met ${player.name}`}
+          >
+            <CalendarPlus size={16} color={tennisColors.primary} />
+            <Text style={styles.addLinkText}>Nieuwe afspraak</Text>
+          </Pressable>
+        ) : null}
+      </View>
       {upcoming.length === 0 && past.length === 0 ? (
         <Text style={styles.muted}>Nog geen afspraken.</Text>
       ) : (

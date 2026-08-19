@@ -92,8 +92,13 @@ export default function BookingsScreen(): React.JSX.Element {
       {isCoach ? (
         <>
           <Button
-            label="Betalingen verwerken"
+            label="Nieuwe afspraak"
             variant="primary"
+            onPress={() => router.push('/agenda/new')}
+          />
+          <Button
+            label="Betalingen verwerken"
+            variant="secondary"
             onPress={() => router.push('/admin/payments')}
           />
           <View style={styles.filterRow}>

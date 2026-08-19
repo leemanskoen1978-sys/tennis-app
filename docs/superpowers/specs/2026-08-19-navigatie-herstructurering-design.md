@@ -208,13 +208,31 @@ eronder in Rapport al gaf. Wat overbleef was een lege huls.
 **`PaymentStatusModal` is verwijderd, niet omgebouwd.** `app/admin/payments.tsx` is
 nieuw geschreven; het modale venster had geen route en kon niet doorlinken.
 
-**De cross-link "Spelerdossier → Nieuwe afspraak, voorgevuld" is er niet.** `BookingModal`
-boekt altijd op naam van de ingelogde gebruiker als speler. Een trainer die daarop klikt
-zou zichzelf als speler boeken. "Trainer boekt namens een speler" is een feature, geen
-herindeling — dat vraagt een eigen beslissing.
+**De cross-link "Spelerdossier → Nieuwe afspraak, voorgevuld" is er alsnog**, nadat
+"trainer boekt namens een speler" als aparte feature is toegevoegd. Zie hieronder.
 
 **De cross-link "Tekenen → voortgang" is er niet.** Het tekenveld kan een tekening nog
 niet bewaren; er is niets om aan een notitie te hangen. Ook een feature.
 
 De hub-badge linkt naar Beheer in plaats van rechtstreeks naar Betalingen. Beheer draagt
 de badge daar nog een keer, zodat je in één stap ziet waar hij vandaan komt.
+
+## Trainer boekt namens een speler
+
+`BookingModal` krijgt een optionele `playerId`. Zonder die prop boekt hij op naam van de
+ingelogde gebruiker — het bestaande spelerpad, ongewijzigd. Mét die prop boekt een trainer
+voor die speler, en noemt het venster de naam ("Voor Mathis"), want per ongeluk voor iemand
+anders boeken is makkelijk gedaan.
+
+**Een trainer boekt alleen op zijn eigen agenda.** Voor een trainer verdwijnt de
+trainerkeuze uit `agenda/new`; `coach_id` is altijd de ingelogde trainer. Andermans agenda
+vullen is een handeling, geen weergave — dat doet die trainer zelf. In plaats van de
+trainerkeuze verschijnt een spelerkiezer (`StudentCombobox`).
+
+**Twee ingangen.** Vanuit het spelerdossier, sectie Lesdagen, met de speler voorgevuld via
+`?playerId=`; en via Agenda › Nieuwe afspraak met een lege kiezer.
+
+**De prefill uit de URL wordt gecontroleerd.** `?playerId=` komt van buiten, dus de id
+wordt getoetst aan de echte spelerslijst voordat hij wordt vertrouwd — anders boekt
+`?playerId=<een trainer>` een trainer als speler. Onbekende of niet-toegestane ids vallen
+terug op "geen speler gekozen", en dan is boeken geblokkeerd.

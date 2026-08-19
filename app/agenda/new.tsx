@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ScrollView, View, Text, Pressable, StyleSheet } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { RefreshCw } from 'lucide-react-native';
 import { tennisColors } from '../../constants/tennis-colors';
 import {
@@ -14,6 +15,7 @@ import { Screen } from '../../components/ui/Screen';
 import { Button } from '../../components/ui/Button';
 import { Chip } from '../../components/ui/Chip';
 import { BookingModal } from '../../components/BookingModal';
+import { StudentCombobox } from '../../components/ui/StudentCombobox';
 import type { User } from '../../lib/types';
 
 const DAY_NAMES = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
@@ -51,9 +53,17 @@ function next14Days(from: Date = new Date()): Date[] {
 }
 
 export default function HomeScreen(): JSX.Element {
-  const { courts, bookings, users, settings, refresh } = useSimpleData();
+  const { currentUser, courts, bookings, users, settings, refresh } = useSimpleData();
+  // Prefilled when you arrive from a player's dossier.
+  const { playerId } = useLocalSearchParams<{ playerId?: string }>();
+
+  const isCoach = currentUser?.role === 'coach';
 
   const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
+  // The prefill comes from a URL, so it is checked against the real player list before
+  // it is trusted: ?playerId=<a coach> would otherwise book a trainer as a player.
+  const prefill = users.find((u) => u.id === playerId && u.role !== 'coach')?.id ?? null;
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(prefill);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
@@ -63,9 +73,21 @@ export default function HomeScreen(): JSX.Element {
     [users],
   );
 
-  // A booking is only possible when a specific coach is selected.
+  const players: User[] = useMemo(
+    () => users.filter((u) => u.role !== 'coach'),
+    [users],
+  );
+
+  // A coach only ever books on their own agenda. Filling a colleague's agenda is an
+  // action, not a view, so it is not something you do on their behalf.
+  const bookingCoachId: string | null = isCoach ? (currentUser?.id ?? null) : selectedCoachId;
+
+  // A booking needs a specific coach, and — when a coach is booking — a player.
   // "Alle coaches" (selectedCoachId === null) is a browse-only state.
-  const hasCoach: boolean = selectedCoachId !== null;
+  const hasCoach: boolean = bookingCoachId !== null;
+  const validPlayerId: string | null =
+    players.find((u) => u.id === selectedPlayerId)?.id ?? null;
+  const canBook: boolean = hasCoach && (!isCoach || validPlayerId !== null);
 
   const days: Date[] = useMemo(() => next14Days(), []);
 
@@ -78,14 +100,14 @@ export default function HomeScreen(): JSX.Element {
   // No coaches[0] fallback: without a specific coach nothing is bookable anyway.
   const takenSlots: Set<string> = useMemo(() => {
     const taken = new Set<string>();
-    if (selectedDate === null || selectedCoachId === null) return taken;
+    if (selectedDate === null || bookingCoachId === null) return taken;
     for (const b of bookings) {
       if (!sameDay(b.start_time, selectedDate)) continue;
-      if (b.coach_id !== selectedCoachId) continue;
+      if (b.coach_id !== bookingCoachId) continue;
       taken.add(timeOf(b.start_time));
     }
     return taken;
-  }, [bookings, selectedDate, selectedCoachId]);
+  }, [bookings, selectedDate, bookingCoachId]);
 
   function openSlot(slot: string): void {
     setSelectedSlot(slot);
@@ -111,23 +133,38 @@ export default function HomeScreen(): JSX.Element {
         />
       </View>
 
-      {/* Coach filter */}
-      <Text style={styles.sectionLabel}>Coach</Text>
-      <View style={styles.chipRow}>
-        <Chip
-          label="Alle coaches"
-          selected={selectedCoachId === null}
-          onPress={() => setSelectedCoachId(null)}
-        />
-        {coaches.map((coach) => (
-          <Chip
-            key={coach.id}
-            label={coach.name}
-            selected={selectedCoachId === coach.id}
-            onPress={() => setSelectedCoachId(coach.id)}
+      {isCoach ? (
+        <>
+          <Text style={styles.sectionLabel}>Speler</Text>
+          <StudentCombobox
+            students={players}
+            value={selectedPlayerId}
+            onChange={setSelectedPlayerId}
+            placeholder="Typ de naam van de speler…"
           />
-        ))}
-      </View>
+          <Text style={styles.hint}>De les komt op jouw agenda.</Text>
+        </>
+      ) : (
+        <>
+          {/* Coach filter */}
+          <Text style={styles.sectionLabel}>Coach</Text>
+          <View style={styles.chipRow}>
+            <Chip
+              label="Alle coaches"
+              selected={selectedCoachId === null}
+              onPress={() => setSelectedCoachId(null)}
+            />
+            {coaches.map((coach) => (
+              <Chip
+                key={coach.id}
+                label={coach.name}
+                selected={selectedCoachId === coach.id}
+                onPress={() => setSelectedCoachId(coach.id)}
+              />
+            ))}
+          </View>
+        </>
+      )}
 
       {/* Date strip */}
       <Text style={styles.sectionLabel}>Datum</Text>
@@ -195,14 +232,16 @@ export default function HomeScreen(): JSX.Element {
       {selectedDate === null && (
         <Text style={styles.hint}>Kies eerst een datum.</Text>
       )}
-      {!hasCoach && (
-        <Text style={styles.hint}>Kies eerst een coach om te boeken.</Text>
+      {!canBook && (
+        <Text style={styles.hint}>
+          {isCoach ? 'Kies eerst een speler om te boeken.' : 'Kies eerst een coach om te boeken.'}
+        </Text>
       )}
       <View style={styles.slotGrid}>
         {slots.map((slot) => {
           const isTaken = takenSlots.has(slot);
           // Bookable only with a date AND a specific coach, and not already taken.
-          const disabled = selectedDate === null || !hasCoach || isTaken;
+          const disabled = selectedDate === null || !canBook || isTaken;
           const stateLabel = isTaken
             ? 'bezet'
             : disabled
@@ -240,7 +279,8 @@ export default function HomeScreen(): JSX.Element {
       <BookingModal
         visible={modalOpen}
         onClose={closeModal}
-        coachId={selectedCoachId ?? ''}
+        coachId={bookingCoachId ?? ''}
+        playerId={isCoach ? validPlayerId ?? undefined : undefined}
         date={selectedDate}
         slot={selectedSlot}
         courts={courts}

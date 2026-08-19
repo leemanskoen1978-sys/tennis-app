@@ -21,6 +21,11 @@ interface BookingModalProps {
   date: Date | null;
   slot: string | null; // "HH:00"
   courts: Court[];
+  /**
+   * Who the lesson is for. Omitted, the booking is for the logged-in user — a player
+   * booking their own lesson. Set, a coach is booking on behalf of that player.
+   */
+  playerId?: string;
 }
 
 function parseHour(slot: string): number {
@@ -29,8 +34,8 @@ function parseHour(slot: string): number {
 }
 
 export function BookingModal(props: BookingModalProps): JSX.Element | null {
-  const { visible, onClose, coachId, date, slot, courts } = props;
-  const { currentUser, addBooking, error } = useSimpleData();
+  const { visible, onClose, coachId, date, slot, courts, playerId } = props;
+  const { currentUser, users, addBooking, error } = useSimpleData();
 
   const [selectedCourtId, setSelectedCourtId] = useState<string>(
     courts[0]?.id ?? '',
@@ -72,7 +77,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
     setSubmitting(true);
     try {
       await addBooking({
-        player_id: currentUser.id,
+        player_id: playerId ?? currentUser.id,
         coach_id: coachId,
         court_id: selectedCourtId || courts[0]?.id || '',
         start_time,
@@ -104,6 +109,12 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
           <Text style={styles.subtitle}>
             {date.toLocaleDateString('nl-BE')} · {slot} – {slotEndLabel}
           </Text>
+          {/* Booking for someone else is easy to do by accident, so name them. */}
+          {playerId && playerId !== currentUser?.id ? (
+            <Text style={styles.forWhom}>
+              Voor {users.find((u) => u.id === playerId)?.name ?? 'onbekende speler'}
+            </Text>
+          ) : null}
 
           <ScrollView
             style={styles.body}
@@ -190,6 +201,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: tennisColors.textMuted,
     marginTop: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  forWhom: {
+    ...typography.body,
+    fontWeight: '600',
+    color: tennisColors.text,
     marginBottom: spacing.md,
   },
   body: {
