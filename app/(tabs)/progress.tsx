@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Star } from 'lucide-react-native';
+import { Star, UserPlus } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Chip } from '../../components/ui/Chip';
-import { spacing, typography } from '../../constants/theme';
+import { spacing, typography, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { UserManagement } from '../../components/UserManagement';
 import { VoiceRecorder } from '../../components/VoiceRecorder';
 import { SpeechToText } from '../../components/SpeechToText';
 import type { TrainingType } from '../../lib/types';
@@ -38,6 +39,7 @@ export default function ProgressScreen(): React.JSX.Element {
   const [rating, setRating] = useState<number>(0);
   const [notes, setNotes] = useState<string>('');
   const [homework, setHomework] = useState<string>('');
+  const [addPlayerOpen, setAddPlayerOpen] = useState<boolean>(false);
 
   const isCoach = currentUser?.role === 'coach';
   const students = users.filter((u) => u.role !== 'coach');
@@ -94,7 +96,18 @@ export default function ProgressScreen(): React.JSX.Element {
         <Card style={styles.formCard}>
           <Text style={styles.cardTitle}>Nieuwe voortgang</Text>
 
-          <Text style={styles.label}>Speler</Text>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>Speler</Text>
+            <Pressable
+              onPress={() => setAddPlayerOpen(true)}
+              style={[styles.addLink, webCursor]}
+              accessibilityRole="button"
+              accessibilityLabel="Speler toevoegen"
+            >
+              <UserPlus size={16} color={tennisColors.primary} />
+              <Text style={styles.addLinkText}>Speler toevoegen</Text>
+            </Pressable>
+          </View>
           <View style={styles.chipRow}>
             {students.length === 0 ? (
               <Text style={styles.muted}>Geen spelers beschikbaar.</Text>
@@ -179,6 +192,8 @@ export default function ProgressScreen(): React.JSX.Element {
         </Card>
       ) : null}
 
+      <UserManagement visible={addPlayerOpen} onClose={() => setAddPlayerOpen(false)} />
+
       <Text style={styles.sectionTitle}>Overzicht</Text>
 
       {visibleProgress.length === 0 ? (
@@ -245,6 +260,22 @@ const styles = StyleSheet.create({
     color: tennisColors.textMuted,
     marginTop: spacing.md,
     marginBottom: spacing.xs,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  addLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+  },
+  addLinkText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: tennisColors.primary,
   },
   chipRow: {
     flexDirection: 'row',

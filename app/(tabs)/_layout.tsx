@@ -1,10 +1,8 @@
-import { View } from 'react-native';
 import { Tabs, Redirect } from 'expo-router';
 import {
   LayoutGrid, Home, CalendarDays, BookOpen, TrendingUp, BarChart3, Pencil, UserCircle,
 } from 'lucide-react-native';
 import { tennisColors } from '../../constants/tennis-colors';
-import { PaymentGate } from '../../components/PaymentGate';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 
 export default function TabsLayout() {
@@ -16,9 +14,8 @@ export default function TabsLayout() {
   const hideFor = (hidden: boolean) => (hidden ? { href: null as null } : {});
 
   return (
-    <View style={{ flex: 1 }}>
-      <Tabs
-        screenOptions={{
+    <Tabs
+      screenOptions={{
           headerShown: true,
           tabBarActiveTintColor: tennisColors.primary,
           tabBarInactiveTintColor: tennisColors.textMuted,
@@ -35,8 +32,6 @@ export default function TabsLayout() {
         <Tabs.Screen name="reports" options={{ title: 'Rapport', tabBarIcon: ({ color, size }) => <BarChart3 color={color} size={size} />, ...hideFor(!isCoach) }} />
         <Tabs.Screen name="drawing" options={{ title: 'Tekenen', tabBarIcon: ({ color, size }) => <Pencil color={color} size={size} />, ...hideFor(!isCoach) }} />
         <Tabs.Screen name="profile" options={{ title: 'Profiel', tabBarIcon: ({ color, size }) => <UserCircle color={color} size={size} /> }} />
-      </Tabs>
-      <PaymentGate />
-    </View>
+    </Tabs>
   );
 }
