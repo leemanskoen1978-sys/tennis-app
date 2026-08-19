@@ -6,6 +6,7 @@ import { ChevronRight } from 'lucide-react-native';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { Chip } from '../../components/ui/Chip';
 import { Screen } from '../../components/ui/Screen';
 import { PaymentStatusModal } from '../../components/PaymentStatusModal';
 import { spacing, typography, webCursor } from '../../constants/theme';
@@ -50,6 +51,9 @@ export default function BookingsScreen(): React.JSX.Element {
     useSimpleData();
   const router = useRouter();
   const [paymentModalVisible, setPaymentModalVisible] = useState<boolean>(false);
+  // View choice, not access control: a coach sees every booking by default and can fall
+  // back to their own lessons on a busy day.
+  const [onlyMine, setOnlyMine] = useState<boolean>(false);
 
   const isCoach = currentUser?.role === 'coach';
 
@@ -58,22 +62,23 @@ export default function BookingsScreen(): React.JSX.Element {
       return [];
     }
     const filtered = bookings.filter((b) =>
-      isCoach ? b.coach_id === currentUser.id : b.player_id === currentUser.id,
+      isCoach
+        ? !onlyMine || b.coach_id === currentUser.id
+        : b.player_id === currentUser.id,
     );
     return [...filtered].sort(
       (a, b) =>
         new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
     );
-  }, [bookings, currentUser, isCoach]);
+  }, [bookings, currentUser, isCoach, onlyMine]);
 
   const courtName = (courtId: string): string => {
     const court = courts.find((c) => c.id === courtId);
     return court ? court.name : 'Onbekend terrein';
   };
 
-  const otherPartyName = (booking: Booking): string => {
-    const otherId = isCoach ? booking.player_id : booking.coach_id;
-    const user = users.find((u) => u.id === otherId);
+  const nameOf = (id?: string): string => {
+    const user = users.find((u) => u.id === id);
     return user ? user.name : 'Onbekend';
   };
 
@@ -89,16 +94,27 @@ export default function BookingsScreen(): React.JSX.Element {
       <Text style={styles.title}>Afspraken</Text>
 
       {isCoach ? (
-        <Button
-          label="Betalingen verwerken"
-          variant="primary"
-          onPress={() => setPaymentModalVisible(true)}
-        />
+        <>
+          <Button
+            label="Betalingen verwerken"
+            variant="primary"
+            onPress={() => setPaymentModalVisible(true)}
+          />
+          <View style={styles.filterRow}>
+            <Chip
+              label="Alleen die van mij"
+              selected={onlyMine}
+              onPress={() => setOnlyMine((v) => !v)}
+            />
+          </View>
+        </>
       ) : null}
 
       {visibleBookings.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Nog geen afspraken.</Text>
+          <Text style={styles.emptyText}>
+            {isCoach && onlyMine ? 'Geen afspraken van jou.' : 'Nog geen afspraken.'}
+          </Text>
         </View>
       ) : (
         visibleBookings.map((booking) => {
@@ -111,10 +127,10 @@ export default function BookingsScreen(): React.JSX.Element {
               </Text>
               <Text style={styles.cardCourt}>{courtName(booking.court_id)}</Text>
               <View style={styles.partyRow}>
-                <Text style={styles.cardParty}>
-                  {isCoach ? 'Speler: ' : 'Coach: '}
-                  {otherPartyName(booking)}
-                </Text>
+                <View>
+                  <Text style={styles.cardParty}>Speler: {nameOf(booking.player_id)}</Text>
+                  <Text style={styles.cardParty}>Trainer: {nameOf(booking.coach_id)}</Text>
+                </View>
                 {isCoach ? <ChevronRight size={18} color={tennisColors.textMuted} /> : null}
               </View>
               <View style={styles.badgeRow}>
@@ -129,7 +145,7 @@ export default function BookingsScreen(): React.JSX.Element {
                 <Pressable
                   onPress={() => router.push(`/player/${booking.player_id}`)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Open dossier van ${otherPartyName(booking)}`}
+                  accessibilityLabel={`Open dossier van ${nameOf(booking.player_id)}`}
                   style={webCursor}
                 >
                   {info}
@@ -175,6 +191,10 @@ const styles = StyleSheet.create({
   emptyText: {
     ...typography.body,
     color: tennisColors.textMuted,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
   },
   cardDate: {
     ...typography.h3,

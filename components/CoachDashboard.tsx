@@ -16,10 +16,14 @@ type CoachDashboardProps = {
 
 export function CoachDashboard(props: CoachDashboardProps): JSX.Element {
   const { onOpenPayments, onOpenUsers } = props;
-  const { bookings, courts } = useSimpleData();
+  const { currentUser, bookings, courts } = useSimpleData();
   const pendingBookings = usePendingPaymentBookings();
 
-  const revenue = totalRevenue(bookings, courts);
+  // Own revenue only — a coach never sees the club total. Same rule as reports.tsx.
+  const myBookings = currentUser
+    ? bookings.filter((b) => b.coach_id === currentUser.id)
+    : [];
+  const revenue = totalRevenue(myBookings, courts);
   const pendingCount = pendingBookings.length;
 
   return (
@@ -56,7 +60,7 @@ export function CoachDashboard(props: CoachDashboardProps): JSX.Element {
             <Euro size={22} color={tennisColors.primary} />
           </View>
           <Text style={styles.statValue}>{`€${revenue}`}</Text>
-          <Text style={styles.statLabel}>Inkomsten (cash)</Text>
+          <Text style={styles.statLabel}>Jouw inkomsten (cash)</Text>
         </View>
 
         <View style={styles.statCard}>

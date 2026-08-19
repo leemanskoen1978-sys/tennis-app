@@ -13,6 +13,7 @@ import {
   TRAINING_TYPES, TRAINING_LABELS, byDateDesc, ProgressEntryCard, ReportSummary,
 } from '../../components/progress/ProgressViews';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { coachesForPlayer } from '../../lib/relations';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, shadow, webCursor } from '../../constants/theme';
 import type { Lesson, TrainingType } from '../../lib/types';
@@ -57,6 +58,14 @@ export default function PlayerDossier() {
   }
 
   const courtName = (cid: string) => courts.find((c) => c.id === cid)?.name ?? '';
+  const nameOf = (uid?: string) => users.find((u) => u.id === uid)?.name ?? 'Onbekend';
+
+  // The dossier is shared between every coach who works with this player. The relation is
+  // derived from bookings/lessons/progress — there is no assignment screen to keep in sync.
+  const coachNames = coachesForPlayer(player.id, bookings, lessons, progress)
+    .map(nameOf)
+    .sort((a, b) => a.localeCompare(b, 'nl'));
+
   const now = Date.now();
   const playerBookings = bookings.filter((b) => b.player_id === player.id && b.status !== 'cancelled');
   const upcoming = playerBookings.filter((b) => new Date(b.end_time).getTime() >= now)
@@ -99,6 +108,9 @@ export default function PlayerDossier() {
         <Badge label={player.role === 'coach' ? 'Coach' : player.role === 'parent' ? 'Ouder' : 'Speler'} color={tennisColors.primary} />
         {player.email ? <Text style={styles.contact}>{player.email}</Text> : null}
         {player.phone ? <Text style={styles.contact}>{player.phone}</Text> : null}
+        {coachNames.length > 0 ? (
+          <Text style={styles.coachRow}>Trainers: {coachNames.join(' · ')}</Text>
+        ) : null}
       </Card>
 
       {/* Lesdagen */}
@@ -114,7 +126,7 @@ export default function PlayerDossier() {
                 <Text style={styles.rowDay}>{fmtDay(b.start_time)}</Text>
                 <Text style={styles.rowTime}>{fmtTime(b.start_time)}–{fmtTime(b.end_time)}</Text>
               </View>
-              <Text style={styles.rowMeta}>{courtName(b.court_id)}</Text>
+              <Text style={styles.rowMeta}>{courtName(b.court_id)} · {nameOf(b.coach_id)}</Text>
             </Card>
           ))}
           {past.length > 0 ? <Text style={styles.subLabel}>Geweest</Text> : null}
@@ -124,7 +136,7 @@ export default function PlayerDossier() {
                 <Text style={styles.rowDay}>{fmtDay(b.start_time)}</Text>
                 <Text style={styles.rowTime}>{fmtTime(b.start_time)}–{fmtTime(b.end_time)}</Text>
               </View>
-              <Text style={styles.rowMeta}>{courtName(b.court_id)}</Text>
+              <Text style={styles.rowMeta}>{courtName(b.court_id)} · {nameOf(b.coach_id)}</Text>
             </Card>
           ))}
         </>
@@ -143,11 +155,11 @@ export default function PlayerDossier() {
 
       <Text style={styles.subLabel}>Doelen / Te doen</Text>
       {planned.length === 0 ? <Text style={styles.muted}>Geen geplande lessen.</Text> : planned.map((l) => (
-        <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given={false} />
+        <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given={false} ownerName={nameOf(l.coach_id)} />
       ))}
       <Text style={styles.subLabel}>Gegeven</Text>
       {given.length === 0 ? <Text style={styles.muted}>Nog niets gegeven.</Text> : given.map((l) => (
-        <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given />
+        <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given ownerName={nameOf(l.coach_id)} />
       ))}
 
       {/* Voortgang */}
@@ -203,7 +215,7 @@ export default function PlayerDossier() {
         <>
           <ReportSummary entries={entries} />
           {entries.map((p) => (
-            <ProgressEntryCard key={p.id} p={p} studentName={player.name} showStudent={false} lessonTitle={lessonTitle(p.lesson_id)} />
+            <ProgressEntryCard key={p.id} p={p} studentName={player.name} showStudent={false} lessonTitle={lessonTitle(p.lesson_id)} coachName={nameOf(p.coach_id)} />
           ))}
         </>
       )}
@@ -214,15 +226,19 @@ export default function PlayerDossier() {
   );
 }
 
-function PlanRow({ lesson, onOpen, onToggle, canEdit, given }: {
+function PlanRow({ lesson, onOpen, onToggle, canEdit, given, ownerName }: {
   lesson: Lesson; onOpen: () => void; onToggle: () => void; canEdit: boolean; given: boolean;
+  ownerName?: string;
 }) {
   return (
     <Card style={styles.rowCard}>
       <View style={styles.planRow}>
         <Pressable onPress={onOpen} style={[styles.planOpen, webCursor]} accessibilityRole="button" accessibilityLabel={lesson.title}>
           <BookOpen size={18} color={tennisColors.primary} />
-          <Text style={styles.planTitle} numberOfLines={1}>{lesson.title}</Text>
+          <View style={styles.planTitleWrap}>
+            <Text style={styles.planTitle} numberOfLines={1}>{lesson.title}</Text>
+            {ownerName ? <Text style={styles.planOwner}>van {ownerName}</Text> : null}
+          </View>
         </Pressable>
         {canEdit ? (
           <Pressable onPress={onToggle} style={[styles.toggle, webCursor]} accessibilityRole="button" accessibilityLabel={given ? 'Terug naar gepland' : 'Markeer als gegeven'}>
@@ -235,11 +251,14 @@ function PlanRow({ lesson, onOpen, onToggle, canEdit, given }: {
 }
 
 function AssignLessonModal({ visible, onClose, playerId }: { visible: boolean; onClose: () => void; playerId: string }) {
-  const { currentUser, lessons, addLesson, updateLesson } = useSimpleData();
+  const { currentUser, users, lessons, addLesson, updateLesson } = useSimpleData();
+  const ownerName = (uid?: string) => users.find((u) => u.id === uid)?.name ?? 'Onbekend';
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
 
-  const library = lessons.filter((l) => !l.student_id && (!currentUser || l.coach_id === currentUser.id));
+  // The whole library, not just your own material: coaches share what they make. The
+  // !student_id check stays — that hides lessons already assigned to a player.
+  const library = lessons.filter((l) => !l.student_id);
 
   const assign = (lessonId: string) => updateLesson(lessonId, { student_id: playerId, status: 'gepland' });
 
@@ -276,7 +295,10 @@ function AssignLessonModal({ visible, onClose, playerId }: { visible: boolean; o
                 <Text style={[styles.label, { marginTop: spacing.lg }]}>Uit bibliotheek</Text>
                 {library.map((l) => (
                   <View key={l.id} style={styles.libRow}>
-                    <Text style={styles.libTitle} numberOfLines={1}>{l.title}</Text>
+                    <View style={styles.libTitleWrap}>
+                      <Text style={styles.libTitle} numberOfLines={1}>{l.title}</Text>
+                      <Text style={styles.libOwner}>van {ownerName(l.coach_id ?? l.uploaded_by)}</Text>
+                    </View>
                     <Button label="Toewijzen" variant="secondary" fullWidth={false} onPress={() => { assign(l.id); onClose(); }} />
                   </View>
                 ))}
@@ -292,6 +314,7 @@ function AssignLessonModal({ visible, onClose, playerId }: { visible: boolean; o
 const styles = StyleSheet.create({
   name: { ...typography.h1, color: tennisColors.text },
   contact: { fontSize: 14, color: tennisColors.textMuted, marginTop: 2 },
+  coachRow: { fontSize: 14, fontWeight: '600', color: tennisColors.text, marginTop: spacing.sm },
   section: { ...typography.h2, color: tennisColors.text, marginTop: spacing.sm },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
   subLabel: { fontSize: 13, fontWeight: '700', color: tennisColors.textMuted, marginTop: spacing.sm, textTransform: 'uppercase' },
@@ -303,7 +326,9 @@ const styles = StyleSheet.create({
   rowMeta: { fontSize: 13, color: tennisColors.textMuted, marginTop: 2 },
   planRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   planOpen: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  planTitle: { flex: 1, fontSize: 15, fontWeight: '600', color: tennisColors.text },
+  planTitleWrap: { flex: 1 },
+  planTitle: { fontSize: 15, fontWeight: '600', color: tennisColors.text },
+  planOwner: { fontSize: 12, color: tennisColors.textMuted, marginTop: 1 },
   toggle: { padding: 4 },
   addLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   addLinkText: { fontSize: 13, fontWeight: '700', color: tennisColors.primary },
@@ -329,5 +354,7 @@ const styles = StyleSheet.create({
   sheetTitle: { ...typography.h2, color: tennisColors.text },
   sheetBody: { paddingBottom: spacing.lg },
   libRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: tennisColors.border },
-  libTitle: { flex: 1, fontSize: 14, color: tennisColors.text },
+  libTitleWrap: { flex: 1 },
+  libTitle: { fontSize: 14, color: tennisColors.text },
+  libOwner: { fontSize: 12, color: tennisColors.textMuted, marginTop: 1 },
 });

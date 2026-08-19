@@ -35,6 +35,7 @@ export default function ProgressScreen(): React.JSX.Element {
   const isCoach = currentUser?.role === 'coach';
   const students = users.filter((u) => u.role !== 'coach');
   const studentName = (id: string): string => users.find((x) => x.id === id)?.name ?? 'Onbekend';
+  const coachName = (id?: string): string => users.find((x) => x.id === id)?.name ?? 'Onbekend';
 
   const resetForm = (): void => {
     setSelectedStudentId(null);
@@ -59,9 +60,8 @@ export default function ProgressScreen(): React.JSX.Element {
     resetForm();
   };
 
-  const recent = isCoach && currentUser
-    ? [...progress].filter((p) => p.coach_id === currentUser.id).sort(byDateDesc).slice(0, 5)
-    : [];
+  // All recent activity, from every coach — with a label saying who wrote it.
+  const recent = isCoach ? [...progress].sort(byDateDesc).slice(0, 5) : [];
 
   const reportEntries = (studentId: string) =>
     progress.filter((p) => p.student_id === studentId).sort(byDateDesc);
@@ -122,7 +122,7 @@ export default function ProgressScreen(): React.JSX.Element {
           {recent.length === 0 ? (
             <Text style={styles.muted}>Nog geen recente activiteit.</Text>
           ) : (
-            recent.map((p) => <ProgressEntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent />)
+            recent.map((p) => <ProgressEntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent coachName={coachName(p.coach_id)} />)
           )}
 
           <Text style={styles.sectionTitle}>Rapport per speler</Text>
@@ -139,7 +139,7 @@ export default function ProgressScreen(): React.JSX.Element {
                 <>
                   <ReportSummary entries={reportEntries(reportStudentId)} />
                   {reportEntries(reportStudentId).map((p) => (
-                    <ProgressEntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent={false} />
+                    <ProgressEntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent={false} coachName={coachName(p.coach_id)} />
                   ))}
                 </>
               )}
@@ -156,7 +156,7 @@ export default function ProgressScreen(): React.JSX.Element {
           ) : (
             <>
               <ReportSummary entries={ownEntries} />
-              {ownEntries.map((p) => <ProgressEntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent={false} />)}
+              {ownEntries.map((p) => <ProgressEntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent={false} coachName={coachName(p.coach_id)} />)}
             </>
           )}
         </>

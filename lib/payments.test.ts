@@ -50,4 +50,18 @@ describe('totalRevenue', () => {
     ];
     expect(totalRevenue(list, courts)).toBe(30);
   });
+
+  // A coach may only see their own revenue, never the club total. totalRevenue is
+  // pure, so scoping is the caller's job: hand it the coach's bookings, not all of
+  // them. This test pins that the distinction is real and measurable.
+  it('is scoped by whatever list it is given, so a coach total differs from the club total', () => {
+    const all: Booking[] = [
+      { ...base, id: '1', coach_id: 'koen', payment_status: 'paid' },
+      { ...base, id: '2', coach_id: 'sanne', payment_status: 'paid' },
+    ];
+    const koensBookings = all.filter((b) => b.coach_id === 'koen');
+    expect(totalRevenue(all, courts)).toBe(60);
+    expect(totalRevenue(koensBookings, courts)).toBe(30);
+    expect(totalRevenue(koensBookings, courts)).not.toBe(totalRevenue(all, courts));
+  });
 });

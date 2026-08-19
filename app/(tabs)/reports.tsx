@@ -55,9 +55,11 @@ export default function ReportsScreen(): React.ReactElement {
     [coachBookings],
   );
 
+  // Scoped to this coach's own bookings: a trainer sees their own revenue, never the
+  // club total. totalRevenue() is pure, so the scoping has to happen here at the call.
   const revenue = useMemo<number>(
-    () => totalRevenue(bookings, courts),
-    [bookings, courts],
+    () => totalRevenue(coachBookings, courts),
+    [coachBookings, courts],
   );
 
   if (!currentUser) {
@@ -84,7 +86,7 @@ export default function ReportsScreen(): React.ReactElement {
             <Text style={styles.cardTitle}>Inkomstenoverzicht</Text>
 
             <View style={styles.revenueBlock}>
-              <Text style={styles.revenueLabel}>Totale omzet</Text>
+              <Text style={styles.revenueLabel}>Jouw omzet</Text>
               <Text style={styles.revenueValue}>€{revenue}</Text>
             </View>
 

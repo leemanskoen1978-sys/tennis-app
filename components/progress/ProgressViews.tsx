@@ -35,8 +35,11 @@ export function AudioMemo({ uri }: { uri: string }) {
   return React.createElement('audio', { src: uri, controls: true, style: { height: 32, width: '100%', marginTop: 4 } });
 }
 
-export function ProgressEntryCard({ p, studentName, showStudent, lessonTitle }: {
+export function ProgressEntryCard({ p, studentName, showStudent, lessonTitle, coachName }: {
   p: StudentProgress; studentName: string; showStudent: boolean; lessonTitle?: string;
+  /** Who wrote this. Required wherever a dossier is shared between coaches — without it
+   *  you cannot weigh a judgement about a player against who gave it. */
+  coachName?: string;
 }) {
   return (
     <Card style={styles.entryCard}>
@@ -45,6 +48,7 @@ export function ProgressEntryCard({ p, studentName, showStudent, lessonTitle }: 
         <Stars count={p.rating ?? 0} />
       </View>
       {showStudent ? <Text style={styles.entryStudent}>{studentName}</Text> : null}
+      {coachName ? <Text style={styles.entryCoach}>Genoteerd door {coachName}</Text> : null}
       {p.created_at ? <Text style={styles.entryDate}>{formatDate(p.created_at)}</Text> : null}
       {lessonTitle ? <Text style={styles.entryLesson}>Les: {lessonTitle}</Text> : null}
       {p.notes ? <Text style={styles.entryText}>{p.notes}</Text> : null}
@@ -81,6 +85,7 @@ const styles = StyleSheet.create({
   entryType: { fontSize: 15, fontWeight: '700', color: tennisColors.primaryDark },
   starsInline: { flexDirection: 'row', gap: 2 },
   entryStudent: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted, marginTop: 2 },
+  entryCoach: { fontSize: 12, color: tennisColors.textMuted, marginTop: 2 },
   entryDate: { fontSize: 12, color: tennisColors.textMuted, marginTop: 2 },
   entryLesson: { fontSize: 13, color: tennisColors.court, fontWeight: '600', marginTop: 2 },
   entryText: { fontSize: 14, color: tennisColors.text, marginTop: 4 },
