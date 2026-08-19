@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Star } from 'lucide-react-native';
 import { Card } from '../ui/Card';
+import { CourtScene } from '../court/CourtScene';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius } from '../../constants/theme';
 import type { StudentProgress, TrainingType } from '../../lib/types';
@@ -54,6 +55,11 @@ export function ProgressEntryCard({ p, studentName, showStudent, lessonTitle, co
       {p.notes ? <Text style={styles.entryText}>{p.notes}</Text> : null}
       {p.homework ? <Text style={styles.entryHomework}>Huiswerk: {p.homework}</Text> : null}
       {p.voice_memo_uri ? <AudioMemo uri={p.voice_memo_uri} /> : null}
+      {p.drawing ? (
+        <View style={styles.entryDrawing}>
+          <CourtScene drawing={p.drawing} width={200} />
+        </View>
+      ) : null}
     </Card>
   );
 }
@@ -85,6 +91,7 @@ const styles = StyleSheet.create({
   entryType: { fontSize: 15, fontWeight: '700', color: tennisColors.primaryDark },
   starsInline: { flexDirection: 'row', gap: 2 },
   entryStudent: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted, marginTop: 2 },
+  entryDrawing: { marginTop: spacing.sm },
   entryCoach: { fontSize: 12, color: tennisColors.textMuted, marginTop: 2 },
   entryDate: { fontSize: 12, color: tennisColors.textMuted, marginTop: 2 },
   entryLesson: { fontSize: 13, color: tennisColors.court, fontWeight: '600', marginTop: 2 },

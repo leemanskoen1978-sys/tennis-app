@@ -74,6 +74,35 @@ export interface Lesson {
   attachments?: LessonAttachment[]; // PDFs etc. — see docs/lesson-attachments.md
 }
 
+export type CourtOrientation = 'vertical' | 'horizontal';
+export type CourtObjectType = 'cone' | 'player' | 'racket';
+
+export interface CourtStroke {
+  id: string;
+  d: string; // SVG path in the drawing's own coordinate space
+  color: string;
+}
+
+export interface CourtObject {
+  id: string;
+  type: CourtObjectType;
+  x: number;
+  y: number;
+}
+
+/**
+ * A court situation, stored as the scene itself rather than a picture: it stays small,
+ * scales to any screen without blurring, and can be reopened later.
+ * All coordinates are in the width x height space the drawing was made in.
+ */
+export interface CourtDrawing {
+  width: number;
+  height: number;
+  orientation: CourtOrientation;
+  strokes: CourtStroke[];
+  objects: CourtObject[];
+}
+
 export interface StudentProgress {
   id: string;
   student_id: string;
@@ -84,6 +113,7 @@ export interface StudentProgress {
   skills?: Record<string, number>;
   homework?: string;
   voice_memo_uri?: string;
+  drawing?: CourtDrawing; // court situation saved with the note
   lesson_id?: string; // optional link to a lesson in the player's plan
   created_at?: string; // ISO — set when the entry is created (for timelines/reports)
 }

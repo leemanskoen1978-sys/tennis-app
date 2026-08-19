@@ -211,8 +211,8 @@ nieuw geschreven; het modale venster had geen route en kon niet doorlinken.
 **De cross-link "Spelerdossier → Nieuwe afspraak, voorgevuld" is er alsnog**, nadat
 "trainer boekt namens een speler" als aparte feature is toegevoegd. Zie hieronder.
 
-**De cross-link "Tekenen → voortgang" is er niet.** Het tekenveld kan een tekening nog
-niet bewaren; er is niets om aan een notitie te hangen. Ook een feature.
+**De cross-link "Tekenen → voortgang" is er alsnog**, nadat het bewaren van een tekening
+als aparte feature is toegevoegd. Zie onderaan.
 
 De hub-badge linkt naar Beheer in plaats van rechtstreeks naar Betalingen. Beheer draagt
 de badge daar nog een keer, zodat je in één stap ziet waar hij vandaan komt.
@@ -236,3 +236,24 @@ trainerkeuze verschijnt een spelerkiezer (`StudentCombobox`).
 wordt getoetst aan de echte spelerslijst voordat hij wordt vertrouwd — anders boekt
 `?playerId=<een trainer>` een trainer als speler. Onbekende of niet-toegestane ids vallen
 terug op "geen speler gekozen", en dan is boeken geblokkeerd.
+
+## Tekening bewaren bij een voortgangsnotitie
+
+**De tekening wordt opgeslagen als de situatie zelf, niet als plaatje.** `CourtDrawing`
+bewaart de streken (SVG-paden), de geplaatste objecten met hun positie, de oriëntatie en
+de maat waarin getekend is. Dat blijft klein, blijft scherp op elk formaat, en laat een
+oefening later heropenen — een PNG zou geen van drieën doen.
+
+**De richting is Tekenen → notitie.** Op het tekenveld staat "Bewaren bij voortgang"
+(uitgeschakeld zolang er niets getekend is). Je kiest de speler en landt in het
+notitieformulier met de tekening er al aan, waar je zelf type, beoordeling en notitie
+invult. De notitie blijft de enige plek waar een oordeel ontstaat; het tekenveld levert
+alleen de bijlage.
+
+**De tekening leeft in een eigen provider, niet in de opslag.** `PendingDrawingProvider`
+houdt de tekening vast voor precies één sprong. Hij wordt niet bewaard: een halfaf
+schetsje moet niet een week later terugkomen. Pas bij het opslaan van de notitie wordt
+hij duurzaam.
+
+Wat er nog niet is: een bewaarde tekening heropenen om hem aan te passen. Hij is
+zichtbaar bij de notitie, maar niet bewerkbaar.

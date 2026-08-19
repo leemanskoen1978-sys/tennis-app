@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Star, UserPlus } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -13,6 +13,8 @@ import {
 import { spacing, typography, radius, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { usePendingDrawing } from '../../providers/PendingDrawing';
+import { CourtScene } from '../../components/court/CourtScene';
 import { UserManagement } from '../../components/UserManagement';
 import { VoiceRecorder } from '../../components/VoiceRecorder';
 import type { TrainingType } from '../../lib/types';
@@ -22,8 +24,12 @@ const RATINGS: readonly number[] = [1, 2, 3, 4, 5] as const;
 export default function ProgressScreen(): React.JSX.Element {
   const router = useRouter();
   const { currentUser, progress, users, addProgress, error } = useSimpleData();
+  // Arriving from the Tekenveld: a player was picked there and the drawing came along.
+  const { playerId } = useLocalSearchParams<{ playerId?: string }>();
+  const { pendingDrawing, setPendingDrawing } = usePendingDrawing();
 
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const prefill = users.find((u) => u.id === playerId && u.role !== 'coach')?.id ?? null;
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(prefill);
   const [selectedType, setSelectedType] = useState<TrainingType>('techniek');
   const [rating, setRating] = useState<number>(0);
   const [notes, setNotes] = useState<string>('');
@@ -44,6 +50,7 @@ export default function ProgressScreen(): React.JSX.Element {
     setNotes('');
     setHomework('');
     setVoiceUri(undefined);
+    setPendingDrawing(null);
   };
 
   const handleSave = async (): Promise<void> => {
@@ -56,6 +63,7 @@ export default function ProgressScreen(): React.JSX.Element {
       notes: notes.trim() || undefined,
       homework: homework.trim() || undefined,
       voice_memo_uri: voiceUri,
+      drawing: pendingDrawing ?? undefined,
     });
     resetForm();
   };
@@ -114,6 +122,23 @@ export default function ProgressScreen(): React.JSX.Element {
             <Text style={styles.label}>Spraakmemo</Text>
             <VoiceRecorder value={voiceUri} onRecorded={setVoiceUri} onClear={() => setVoiceUri(undefined)} />
 
+            {pendingDrawing ? (
+              <>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>Tekening</Text>
+                  <Pressable
+                    onPress={() => setPendingDrawing(null)}
+                    style={[styles.addLink, webCursor]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Tekening verwijderen"
+                  >
+                    <Text style={styles.removeLinkText}>Verwijderen</Text>
+                  </Pressable>
+                </View>
+                <CourtScene drawing={pendingDrawing} width={220} />
+              </>
+            ) : null}
+
             <Button label="Opslaan" variant="primary" onPress={handleSave} disabled={!selectedStudentId} style={styles.saveBtn} />
           </Card>
 
@@ -171,6 +196,7 @@ const styles = StyleSheet.create({
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md },
   label: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted, marginTop: spacing.md, marginBottom: spacing.xs },
   addLink: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
+  removeLinkText: { fontSize: 13, fontWeight: '600', color: tennisColors.danger },
   addLinkText: { fontSize: 13, fontWeight: '700', color: tennisColors.primary },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   starRow: { flexDirection: 'row', flexWrap: 'wrap' },

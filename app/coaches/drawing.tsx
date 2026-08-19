@@ -1,20 +1,28 @@
 import { useCallback, useRef, useState } from 'react';
 import {
-  View, PanResponder, Pressable, Text, StyleSheet, ScrollView,
+  View, PanResponder, Pressable, Text, StyleSheet, ScrollView, Modal,
   type LayoutChangeEvent, type GestureResponderEvent,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
-import { Pencil, Cone, PersonStanding, Undo2, Trash2, RotateCw } from 'lucide-react-native';
-import { TennisCourt, type CourtOrientation } from '../../components/court/TennisCourt';
-import { CourtObjectGlyph, type CourtObjectType } from '../../components/court/CourtIcons';
+import { Pencil, Cone, PersonStanding, Undo2, Trash2, RotateCw, Save, X } from 'lucide-react-native';
+import { TennisCourt } from '../../components/court/TennisCourt';
+import { CourtObjectGlyph } from '../../components/court/CourtIcons';
+import { StudentCombobox } from '../../components/ui/StudentCombobox';
+import { Button } from '../../components/ui/Button';
+import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { usePendingDrawing } from '../../providers/PendingDrawing';
+import { isEmptyDrawing } from '../../lib/drawing';
+import type {
+  CourtDrawing, CourtObject, CourtObjectType, CourtOrientation, CourtStroke,
+} from '../../lib/types';
 import { tennisColors } from '../../constants/tennis-colors';
-import { spacing, radius, minTapTarget, webCursor } from '../../constants/theme';
+import { spacing, radius, typography, minTapTarget, webCursor } from '../../constants/theme';
 
-// Court situations are local UI state only (not persisted).
+// The canvas keeps the situation in local state. It only becomes durable when you hand it
+// to a progress note — see "Bewaren bij voortgang" below.
 
 type Tool = 'pen' | CourtObjectType;
-interface Stroke { id: string; d: string; color: string }
-interface PlacedObject { id: string; type: CourtObjectType; x: number; y: number }
 type HistoryItem = { kind: 'stroke' | 'object'; id: string };
 
 const OBJECT_SIZE = 38;
@@ -23,11 +31,17 @@ const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice
 const PEN_COLORS = [tennisColors.danger, tennisColors.court, tennisColors.white, tennisColors.text];
 
 export default function Drawing() {
+  const router = useRouter();
+  const { currentUser, users } = useSimpleData();
+  const { setPendingDrawing } = usePendingDrawing();
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [savePlayerId, setSavePlayerId] = useState<string | null>(null);
+
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState<string>(tennisColors.danger);
-  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [strokes, setStrokes] = useState<CourtStroke[]>([]);
   const [current, setCurrent] = useState('');
-  const [objects, setObjects] = useState<PlacedObject[]>([]);
+  const [objects, setObjects] = useState<CourtObject[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [orientation, setOrientation] = useState<CourtOrientation>('vertical');
@@ -98,6 +112,23 @@ export default function Drawing() {
     setStrokes([]); setObjects([]); setHistory([]); setCurrent('');
   };
 
+  const isCoach = currentUser?.role === 'coach';
+  const students = users.filter((u) => u.role !== 'coach');
+
+  const scene = (): CourtDrawing => ({
+    width: size.w, height: size.h, orientation, strokes, objects,
+  });
+  const nothingDrawn = isEmptyDrawing(scene());
+
+  /** Hand the situation to the note form; the note is where it becomes durable. */
+  const saveToProgress = () => {
+    if (!savePlayerId || nothingDrawn) return;
+    setPendingDrawing(scene());
+    setSaveOpen(false);
+    setSavePlayerId(null);
+    router.push(`/players/progress?playerId=${savePlayerId}`);
+  };
+
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     setSize({ w: width, h: height });
@@ -118,6 +149,15 @@ export default function Drawing() {
         />
         <ToolButton label="Ongedaan" active={false} onPress={undo} icon={<Undo2 size={18} color={tennisColors.text} />} />
         <ToolButton label="Wissen" active={false} onPress={clearAll} danger icon={<Trash2 size={18} color={tennisColors.danger} />} />
+        {isCoach ? (
+          <ToolButton
+            label="Bewaren bij voortgang"
+            active={false}
+            disabled={nothingDrawn}
+            onPress={() => setSaveOpen(true)}
+            icon={<Save size={18} color={nothingDrawn ? tennisColors.textMuted : tennisColors.text} />}
+          />
+        ) : null}
       </ScrollView>
 
       {tool === 'pen' ? (
@@ -162,29 +202,69 @@ export default function Drawing() {
           <DraggableObject key={o.id} obj={o} onMove={moveObject} bounds={size} />
         ))}
       </View>
+
+      <Modal visible={saveOpen} transparent animationType="slide" onRequestClose={() => setSaveOpen(false)}>
+        <View style={styles.backdrop}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Bewaren bij voortgang</Text>
+              <Pressable
+                onPress={() => setSaveOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Sluiten"
+                style={webCursor}
+              >
+                <X size={22} color={tennisColors.textMuted} />
+              </Pressable>
+            </View>
+            <Text style={styles.sheetHint}>
+              Kies de speler. Je gaat door naar het notitieformulier met deze tekening eraan.
+            </Text>
+            <StudentCombobox
+              students={students}
+              value={savePlayerId}
+              onChange={setSavePlayerId}
+              placeholder="Typ de naam van de speler…"
+            />
+            <Button
+              label="Doorgaan"
+              variant="primary"
+              disabled={!savePlayerId}
+              onPress={saveToProgress}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-function ToolButton({ label, active, onPress, icon, danger }: {
-  label: string; active: boolean; onPress: () => void; icon: React.ReactNode; danger?: boolean;
+function ToolButton({ label, active, onPress, icon, danger, disabled }: {
+  label: string; active: boolean; onPress: () => void; icon: React.ReactNode;
+  danger?: boolean; disabled?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ selected: active }}
+      accessibilityState={{ selected: active, disabled: !!disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={[styles.tool, active && styles.toolActive, webCursor]}
+      style={[styles.tool, active && styles.toolActive, disabled && styles.toolDisabled, webCursor]}
     >
       {icon}
-      <Text style={[styles.toolText, active && styles.toolTextActive, danger && { color: tennisColors.danger }]}>{label}</Text>
+      <Text style={[
+        styles.toolText,
+        active && styles.toolTextActive,
+        danger && { color: tennisColors.danger },
+        disabled && { color: tennisColors.textMuted },
+      ]}>{label}</Text>
     </Pressable>
   );
 }
 
 function DraggableObject({ obj, onMove, bounds }: {
-  obj: PlacedObject; onMove: (id: string, x: number, y: number) => void; bounds: { w: number; h: number };
+  obj: CourtObject; onMove: (id: string, x: number, y: number) => void; bounds: { w: number; h: number };
 }) {
   const posRef = useRef({ x: obj.x, y: obj.y });
   posRef.current = { x: obj.x, y: obj.y };
@@ -232,6 +312,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: tennisColors.border,
   },
   toolActive: { backgroundColor: tennisColors.primary, borderColor: tennisColors.primary },
+  toolDisabled: { opacity: 0.5 },
   toolText: { fontSize: 13, fontWeight: '600', color: tennisColors.text },
   toolTextActive: { color: tennisColors.white },
   swatches: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.xs, flexWrap: 'wrap' },
@@ -240,4 +321,13 @@ const styles = StyleSheet.create({
   hint: { color: tennisColors.textMuted, fontSize: 12, flexShrink: 1 },
   canvas: { flex: 1, overflow: 'hidden', backgroundColor: tennisColors.clay },
   object: { position: 'absolute', width: OBJECT_SIZE, height: OBJECT_SIZE * 1.3, alignItems: 'center', justifyContent: 'center' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: tennisColors.surface,
+    borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
+    padding: spacing.lg, gap: spacing.md,
+  },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sheetTitle: { ...typography.h2, color: tennisColors.text },
+  sheetHint: { fontSize: 13, color: tennisColors.textMuted },
 });
