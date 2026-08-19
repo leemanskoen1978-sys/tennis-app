@@ -35,7 +35,7 @@ export default function Login(): React.JSX.Element {
   const { users, login, error, currentUser } = useSimpleData();
 
   // Once logged in, leave the login screen for the hub.
-  if (currentUser) return <Redirect href="/(tabs)" />;
+  if (currentUser) return <Redirect href="/" />;
 
   const handleLogin = (userId: string): void => {
     // Root layout auto-redirects na succesvolle login — geen handmatige navigatie.

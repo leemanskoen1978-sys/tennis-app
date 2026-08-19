@@ -1,11 +1,11 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronRight, User as UserIcon } from 'lucide-react-native';
-import { Screen } from '../components/ui/Screen';
-import { Card } from '../components/ui/Card';
-import { useSimpleData } from '../providers/SimpleDataProvider';
-import { tennisColors } from '../constants/tennis-colors';
-import { spacing, typography } from '../constants/theme';
+import { Screen } from '../../components/ui/Screen';
+import { Card } from '../../components/ui/Card';
+import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { tennisColors } from '../../constants/tennis-colors';
+import { spacing, typography } from '../../constants/theme';
 
 export default function Players() {
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function Players() {
         <Text style={styles.muted}>Nog geen spelers.</Text>
       ) : (
         players.map((p) => (
-          <Card key={p.id} onPress={() => router.push(`/player/${p.id}`)} accessibilityLabel={p.name} style={styles.row}>
+          <Card key={p.id} onPress={() => router.push(`/players/${p.id}`)} accessibilityLabel={p.name} style={styles.row}>
             <View style={styles.rowContent}>
               <View style={styles.avatar}><UserIcon size={20} color={tennisColors.primary} /></View>
               <View style={styles.info}>

@@ -190,3 +190,31 @@ Klein en additief:
 - Nieuwe unit tests voor de afgeleide relatie: `coachesForPlayer()` en `playersForCoach()`.
 - Handmatige doorloop van elke cross-link uit de tabel hierboven, plus terugknopgedrag.
 - Browser-smoketest met 0 console-errors, als coach én als speler.
+
+---
+
+## Uitgevoerd
+
+De structuur hierboven staat er: `app/(tabs)/` is weg, de mapstructuur spiegelt het
+menu, en de terugknop volgt het pad (doorloop bevestigd: Agenda → trainer Koen → speler
+Mathis → terug landt op Koen, niet op Spelers).
+
+Vier dingen wijken af van het ontwerp, met reden:
+
+**`CoachDashboard` is verwijderd in plaats van verplaatst.** Het toonde knoppen naar
+Betalingen en Speler toevoegen — die staan nu in Beheer — en twee cijfers die de kaart
+eronder in Rapport al gaf. Wat overbleef was een lege huls.
+
+**`PaymentStatusModal` is verwijderd, niet omgebouwd.** `app/admin/payments.tsx` is
+nieuw geschreven; het modale venster had geen route en kon niet doorlinken.
+
+**De cross-link "Spelerdossier → Nieuwe afspraak, voorgevuld" is er niet.** `BookingModal`
+boekt altijd op naam van de ingelogde gebruiker als speler. Een trainer die daarop klikt
+zou zichzelf als speler boeken. "Trainer boekt namens een speler" is een feature, geen
+herindeling — dat vraagt een eigen beslissing.
+
+**De cross-link "Tekenen → voortgang" is er niet.** Het tekenveld kan een tekening nog
+niet bewaren; er is niets om aan een notitie te hangen. Ook een feature.
+
+De hub-badge linkt naar Beheer in plaats van rechtstreeks naar Betalingen. Beheer draagt
+de badge daar nog een keer, zodat je in één stap ziet waar hij vandaan komt.

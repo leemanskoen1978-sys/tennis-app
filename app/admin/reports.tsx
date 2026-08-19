@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { tennisColors } from '../../constants/tennis-colors';
@@ -6,9 +6,6 @@ import { spacing, typography } from '../../constants/theme';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { CoachDashboard } from '../../components/CoachDashboard';
-import { PaymentStatusModal } from '../../components/PaymentStatusModal';
-import { UserManagement } from '../../components/UserManagement';
 import { totalRevenue } from '../../lib/payments';
 import type { Booking, PaymentStatus } from '../../lib/types';
 
@@ -35,8 +32,6 @@ function buildBreakdown(bookings: Booking[]): PaymentBreakdown {
 
 export default function ReportsScreen(): React.ReactElement {
   const { currentUser, bookings, courts } = useSimpleData();
-  const [paymentsOpen, setPaymentsOpen] = useState<boolean>(false);
-  const [usersOpen, setUsersOpen] = useState<boolean>(false);
 
   const isCoach = currentUser?.role === 'coach';
 
@@ -73,15 +68,7 @@ export default function ReportsScreen(): React.ReactElement {
 
   if (isCoach) {
     return (
-      <>
         <Screen>
-          <Text style={styles.pageTitle}>Rapport</Text>
-
-          <CoachDashboard
-            onOpenPayments={() => setPaymentsOpen(true)}
-            onOpenUsers={() => setUsersOpen(true)}
-          />
-
           <Card>
             <Text style={styles.cardTitle}>Inkomstenoverzicht</Text>
 
@@ -116,16 +103,6 @@ export default function ReportsScreen(): React.ReactElement {
             />
           </Card>
         </Screen>
-
-        <PaymentStatusModal
-          visible={paymentsOpen}
-          onClose={() => setPaymentsOpen(false)}
-        />
-        <UserManagement
-          visible={usersOpen}
-          onClose={() => setUsersOpen(false)}
-        />
-      </>
     );
   }
 
@@ -135,8 +112,6 @@ export default function ReportsScreen(): React.ReactElement {
 
   return (
     <Screen>
-      <Text style={styles.pageTitle}>Rapport</Text>
-
       <Card>
         <Text style={styles.cardTitle}>Mijn boekingen</Text>
 
@@ -194,11 +169,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: tennisColors.textMuted,
     textAlign: 'center',
-  },
-  pageTitle: {
-    ...typography.h1,
-    color: tennisColors.text,
-    marginBottom: spacing.xs,
   },
   cardTitle: {
     ...typography.h2,

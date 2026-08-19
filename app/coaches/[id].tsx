@@ -57,6 +57,10 @@ export default function CoachDossier() {
         <Badge label="Trainer" color={tennisColors.primary} />
         {coach.email ? <Text style={styles.contact}>{coach.email}</Text> : null}
         {coach.phone ? <Text style={styles.contact}>{coach.phone}</Text> : null}
+        {/* Display only: the revenue sums run on the court rate, never on this. */}
+        {coach.hourly_rate ? (
+          <Text style={styles.rate}>Uurtarief: €{coach.hourly_rate} per uur</Text>
+        ) : null}
       </Card>
 
       <Text style={styles.section}>Agenda</Text>
@@ -94,7 +98,7 @@ export default function CoachDossier() {
         players.map((p) => (
           <Card key={p.id} style={styles.rowCard}>
             <Pressable
-              onPress={() => router.push(`/player/${p.id}`)}
+              onPress={() => router.push(`/players/${p.id}`)}
               style={[styles.playerRow, webCursor]}
               accessibilityRole="button"
               accessibilityLabel={`Open dossier van ${p.name}`}
@@ -112,6 +116,7 @@ export default function CoachDossier() {
 const styles = StyleSheet.create({
   name: { ...typography.h1, color: tennisColors.text },
   contact: { fontSize: 14, color: tennisColors.textMuted, marginTop: 2 },
+  rate: { fontSize: 14, color: tennisColors.text, marginTop: spacing.sm },
   section: { ...typography.h2, color: tennisColors.text, marginTop: spacing.lg, marginBottom: spacing.sm },
   subLabel: { fontSize: 12, fontWeight: '700', color: tennisColors.textMuted, textTransform: 'uppercase', marginTop: spacing.sm, marginBottom: spacing.xs },
   muted: { fontSize: 14, color: tennisColors.textMuted },

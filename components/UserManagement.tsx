@@ -9,6 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { UserPlus, X } from 'lucide-react-native';
+import { Chip } from './ui/Chip';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, radius } from '../constants/theme';
 import { appConfig } from '../constants/app-config';
@@ -20,11 +21,13 @@ import { useSimpleData } from '../providers/SimpleDataProvider';
 interface UserManagementProps {
   visible: boolean;
   onClose: () => void;
+  /** Which role the sheet starts on. Trainers is reached from the Trainers section. */
+  defaultRole?: Role;
 }
 
 const ROLE_LABELS: Record<Role, string> = {
   player: 'Speler',
-  coach: 'Coach',
+  coach: 'Trainer',
   parent: 'Ouder',
 };
 
@@ -57,26 +60,37 @@ function slugify(name: string): string {
 }
 
 export function UserManagement(props: UserManagementProps): JSX.Element {
-  const { visible, onClose } = props;
+  const { visible, onClose, defaultRole = 'player' } = props;
   const { users, addUser, error } = useSimpleData();
 
   const [name, setName] = useState<string>('');
+  const [role, setRole] = useState<Role>(defaultRole);
+  const [rate, setRate] = useState<string>('');
 
   const trimmedName = name.trim();
   const canSubmit = trimmedName.length > 0;
 
   const generatedEmail = useMemo<string>(() => {
     const slug = slugify(name);
-    const local = slug.length > 0 ? slug : `speler${Date.now().toString(36)}`;
+    const local = slug.length > 0 ? slug : `${role}${Date.now().toString(36)}`;
     return `${local}@${appConfig.emailDomain}`;
-  }, [name]);
+  }, [name, role]);
 
   const handleAdd = async (): Promise<void> => {
     if (!canSubmit) {
       return;
     }
-    await addUser({ name: trimmedName, email: generatedEmail, role: 'player' });
+    const parsedRate = Number(rate.replace(',', '.'));
+    await addUser({
+      name: trimmedName,
+      email: generatedEmail,
+      role,
+      ...(role === 'coach' && rate.trim() && Number.isFinite(parsedRate)
+        ? { hourly_rate: parsedRate }
+        : {}),
+    });
     setName('');
+    setRate('');
   };
 
   return (
@@ -89,7 +103,9 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <View style={styles.header}>
-            <Text style={styles.title}>Speler toevoegen</Text>
+            <Text style={styles.title}>
+              {role === 'coach' ? 'Trainer toevoegen' : 'Speler toevoegen'}
+            </Text>
             <Pressable
               onPress={onClose}
               style={styles.closeButton}
@@ -101,6 +117,18 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
           </View>
 
           <View style={styles.form}>
+            <Text style={styles.label}>Rol</Text>
+            <View style={styles.roleRow}>
+              {(['player', 'coach', 'parent'] as Role[]).map((r) => (
+                <Chip
+                  key={r}
+                  label={ROLE_LABELS[r]}
+                  selected={role === r}
+                  onPress={() => setRole(r)}
+                />
+              ))}
+            </View>
+
             <Text style={styles.label}>Naam</Text>
             <TextInput
               value={name}
@@ -111,10 +139,27 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
             />
             <Text style={styles.helper}>E-mailadres: {generatedEmail}</Text>
 
+            {role === 'coach' ? (
+              <>
+                <Text style={styles.label}>Uurtarief (optioneel)</Text>
+                <TextInput
+                  value={rate}
+                  onChangeText={setRate}
+                  placeholder="bv. 45"
+                  placeholderTextColor={tennisColors.textMuted}
+                  keyboardType="numeric"
+                  style={styles.input}
+                />
+                <Text style={styles.helper}>
+                  Alleen ter informatie — de omzet loopt op het baantarief.
+                </Text>
+              </>
+            ) : null}
+
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <Button
-              label="Toevoegen"
+              label={role === 'coach' ? 'Trainer toevoegen' : 'Toevoegen'}
               onPress={handleAdd}
               disabled={!canSubmit}
               icon={<UserPlus size={18} color={tennisColors.white} />}
@@ -152,6 +197,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
 }
 
 const styles = StyleSheet.create({
+  roleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(28, 43, 30, 0.55)',

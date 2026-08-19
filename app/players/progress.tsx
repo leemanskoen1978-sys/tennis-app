@@ -70,7 +70,6 @@ export default function ProgressScreen(): React.JSX.Element {
 
   return (
     <Screen>
-      <Text style={styles.pageTitle}>Voortgang</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {isCoach && currentUser ? (
@@ -131,7 +130,7 @@ export default function ProgressScreen(): React.JSX.Element {
             <>
               <View style={styles.reportHeader}>
                 <Text style={styles.reportName}>{studentName(reportStudentId)}</Text>
-                <Button label="Open dossier" variant="secondary" fullWidth={false} onPress={() => router.push(`/player/${reportStudentId}`)} />
+                <Button label="Open dossier" variant="secondary" fullWidth={false} onPress={() => router.push(`/players/${reportStudentId}`)} />
               </View>
               {reportEntries(reportStudentId).length === 0 ? (
                 <Text style={styles.muted}>Nog geen voortgang voor deze speler.</Text>
@@ -166,7 +165,6 @@ export default function ProgressScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  pageTitle: { ...typography.h1, color: tennisColors.text, marginBottom: spacing.md },
   error: { color: tennisColors.danger, marginBottom: spacing.md, fontSize: 14 },
   formCard: { marginBottom: spacing.lg },
   cardTitle: { fontSize: 18, fontWeight: '700', color: tennisColors.text, marginBottom: spacing.sm },

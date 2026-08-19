@@ -100,7 +100,6 @@ export default function HomeScreen(): JSX.Element {
   return (
     <Screen>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Reserveren</Text>
         <Button
           label="Vernieuwen"
           variant="secondary"
@@ -256,10 +255,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.md,
-  },
-  title: {
-    ...typography.h1,
-    color: tennisColors.text,
   },
   sectionLabel: {
     ...typography.label,

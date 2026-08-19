@@ -116,7 +116,7 @@ export default function PlayerDossier() {
               <View key={c.id} style={styles.coachRowItem}>
                 {i > 0 ? <Text style={styles.coachRowLabel}> · </Text> : null}
                 <Pressable
-                  onPress={() => router.push(`/coach/${c.id}`)}
+                  onPress={() => router.push(`/coaches/${c.id}`)}
                   style={webCursor}
                   accessibilityRole="button"
                   accessibilityLabel={`Open dossier van trainer ${c.name}`}

@@ -21,6 +21,8 @@ export interface User {
   working_hours?: { start: string; end: string };
   working_days?: number[];
   notification_settings?: Record<string, boolean>;
+  /** Coach only, display-only: revenue is computed from the court rate, not from this. */
+  hourly_rate?: number;
 }
 
 export interface Court {

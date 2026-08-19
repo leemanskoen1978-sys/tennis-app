@@ -8,7 +8,6 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Chip } from '../../components/ui/Chip';
 import { Screen } from '../../components/ui/Screen';
-import { PaymentStatusModal } from '../../components/PaymentStatusModal';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import type { Booking, BookingStatus, PaymentStatus } from '../../lib/types';
@@ -50,7 +49,6 @@ export default function BookingsScreen(): React.JSX.Element {
   const { currentUser, bookings, users, courts, updateBooking } =
     useSimpleData();
   const router = useRouter();
-  const [paymentModalVisible, setPaymentModalVisible] = useState<boolean>(false);
   // View choice, not access control: a coach sees every booking by default and can fall
   // back to their own lessons on a busy day.
   const [onlyMine, setOnlyMine] = useState<boolean>(false);
@@ -91,14 +89,12 @@ export default function BookingsScreen(): React.JSX.Element {
 
   return (
     <Screen>
-      <Text style={styles.title}>Afspraken</Text>
-
       {isCoach ? (
         <>
           <Button
             label="Betalingen verwerken"
             variant="primary"
-            onPress={() => setPaymentModalVisible(true)}
+            onPress={() => router.push('/admin/payments')}
           />
           <View style={styles.filterRow}>
             <Chip
@@ -120,39 +116,46 @@ export default function BookingsScreen(): React.JSX.Element {
         visibleBookings.map((booking) => {
           const status = statusMeta(booking.status);
           const payment = paymentMeta(booking.payment_status);
-          const info = (
-            <>
+          const playerName = nameOf(booking.player_id);
+          const coachName = nameOf(booking.coach_id);
+          return (
+            <Card key={booking.id}>
               <Text style={styles.cardDate}>
                 {new Date(booking.start_time).toLocaleString('nl-BE')}
               </Text>
               <Text style={styles.cardCourt}>{courtName(booking.court_id)}</Text>
+
+              {/* Both names click through: a lesson is the meeting point of the two
+                  sections, so it is the natural jump between Spelers and Trainers. */}
               <View style={styles.partyRow}>
-                <View>
-                  <Text style={styles.cardParty}>Speler: {nameOf(booking.player_id)}</Text>
-                  <Text style={styles.cardParty}>Trainer: {nameOf(booking.coach_id)}</Text>
-                </View>
-                {isCoach ? <ChevronRight size={18} color={tennisColors.textMuted} /> : null}
+                {isCoach ? (
+                  <Pressable
+                    onPress={() => router.push(`/players/${booking.player_id}`)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open dossier van ${playerName}`}
+                    style={[styles.partyLine, webCursor]}
+                  >
+                    <Text style={styles.cardPartyLink}>Speler: {playerName}</Text>
+                    <ChevronRight size={16} color={tennisColors.textMuted} />
+                  </Pressable>
+                ) : (
+                  <Text style={styles.cardParty}>Speler: {playerName}</Text>
+                )}
+                <Pressable
+                  onPress={() => router.push(`/coaches/${booking.coach_id}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open dossier van trainer ${coachName}`}
+                  style={[styles.partyLine, webCursor]}
+                >
+                  <Text style={styles.cardPartyLink}>Trainer: {coachName}</Text>
+                  <ChevronRight size={16} color={tennisColors.textMuted} />
+                </Pressable>
               </View>
+
               <View style={styles.badgeRow}>
                 <Badge label={status.label} color={status.color} subtle={status.subtle} />
                 <Badge label={payment.label} color={payment.color} subtle={payment.subtle} />
               </View>
-            </>
-          );
-          return (
-            <Card key={booking.id}>
-              {isCoach ? (
-                <Pressable
-                  onPress={() => router.push(`/player/${booking.player_id}`)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open dossier van ${nameOf(booking.player_id)}`}
-                  style={webCursor}
-                >
-                  {info}
-                </Pressable>
-              ) : (
-                info
-              )}
 
               {canCancel(booking.status) ? (
                 <View style={styles.cancelRow}>
@@ -168,22 +171,11 @@ export default function BookingsScreen(): React.JSX.Element {
           );
         })
       )}
-
-      {isCoach ? (
-        <PaymentStatusModal
-          visible={paymentModalVisible}
-          onClose={() => setPaymentModalVisible(false)}
-        />
-      ) : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: {
-    ...typography.h1,
-    color: tennisColors.text,
-  },
   emptyState: {
     paddingVertical: spacing.xxxl,
     alignItems: 'center',
@@ -205,13 +197,22 @@ const styles = StyleSheet.create({
     color: tennisColors.textMuted,
   },
   partyRow: {
+    marginTop: spacing.xs,
+  },
+  partyLine: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 28,
   },
   cardParty: {
     ...typography.body,
     color: tennisColors.text,
+  },
+  cardPartyLink: {
+    ...typography.body,
+    color: tennisColors.primary,
+    fontWeight: '600',
   },
   badgeRow: {
     flexDirection: 'row',
