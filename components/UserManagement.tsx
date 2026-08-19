@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Modal,
   View,
@@ -10,6 +10,10 @@ import {
 } from 'react-native';
 import { UserPlus, X } from 'lucide-react-native';
 import { tennisColors } from '../constants/tennis-colors';
+import { spacing, typography, radius } from '../constants/theme';
+import { appConfig } from '../constants/app-config';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
 import type { Role } from '../lib/types';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 
@@ -17,11 +21,6 @@ interface UserManagementProps {
   visible: boolean;
   onClose: () => void;
 }
-
-const ROLE_OPTIONS: ReadonlyArray<{ value: Role; label: string }> = [
-  { value: 'player', label: 'Speler' },
-  { value: 'parent', label: 'Ouder' },
-];
 
 const ROLE_LABELS: Record<Role, string> = {
   player: 'Speler',
@@ -31,28 +30,53 @@ const ROLE_LABELS: Record<Role, string> = {
 
 const ROLE_BADGE_COLORS: Record<Role, string> = {
   player: tennisColors.primary,
-  coach: tennisColors.court,
-  parent: tennisColors.clay,
+  coach: tennisColors.primary,
+  parent: tennisColors.court,
 };
+
+/** Coach uses primary badge, parent uses court, player is subtle. */
+function isSubtleRole(role: Role): boolean {
+  return role === 'player';
+}
+
+/**
+ * Turn a display name into an email local-part:
+ * lowercase, strip diacritics, spaces → dots, keep only [a-z0-9.].
+ * "Jan De Vries" → "jan.de.vries".
+ */
+function slugify(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '.')
+    .replace(/[^a-z0-9.]/g, '')
+    .replace(/\.+/g, '.')
+    .replace(/^\.|\.$/g, '');
+}
 
 export function UserManagement(props: UserManagementProps): JSX.Element {
   const { visible, onClose } = props;
   const { users, addUser, error } = useSimpleData();
 
   const [name, setName] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [role, setRole] = useState<Role>('player');
 
-  const canSubmit = name.trim().length > 0 && email.trim().length > 0;
+  const trimmedName = name.trim();
+  const canSubmit = trimmedName.length > 0;
+
+  const generatedEmail = useMemo<string>(() => {
+    const slug = slugify(name);
+    const local = slug.length > 0 ? slug : `speler${Date.now().toString(36)}`;
+    return `${local}@${appConfig.emailDomain}`;
+  }, [name]);
 
   const handleAdd = async (): Promise<void> => {
     if (!canSubmit) {
       return;
     }
-    await addUser({ name: name.trim(), email: email.trim(), role });
+    await addUser({ name: trimmedName, email: generatedEmail, role: 'player' });
     setName('');
-    setEmail('');
-    setRole('player');
   };
 
   return (
@@ -65,7 +89,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <View style={styles.header}>
-            <Text style={styles.title}>Spelers beheren</Text>
+            <Text style={styles.title}>Speler toevoegen</Text>
             <Pressable
               onPress={onClose}
               style={styles.closeButton}
@@ -85,55 +109,17 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
               placeholderTextColor={tennisColors.textMuted}
               style={styles.input}
             />
-
-            <Text style={styles.label}>E-mail</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="E-mail"
-              placeholderTextColor={tennisColors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-            />
-
-            <Text style={styles.label}>Rol</Text>
-            <View style={styles.chipRow}>
-              {ROLE_OPTIONS.map((option) => {
-                const selected = role === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    onPress={() => setRole(option.value)}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        selected && styles.chipTextSelected,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <Text style={styles.helper}>E-mailadres: {generatedEmail}</Text>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
-            <Pressable
+            <Button
+              label="Toevoegen"
               onPress={handleAdd}
               disabled={!canSubmit}
-              style={[styles.addButton, !canSubmit && styles.addButtonDisabled]}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !canSubmit }}
-            >
-              <UserPlus size={18} color={tennisColors.white} />
-              <Text style={styles.addButtonText}>Toevoegen</Text>
-            </Pressable>
+              icon={<UserPlus size={18} color={tennisColors.white} />}
+              style={styles.addButton}
+            />
           </View>
 
           <View style={styles.divider} />
@@ -150,16 +136,11 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
                   <Text style={styles.userName} numberOfLines={1}>
                     {user.name}
                   </Text>
-                  <View
-                    style={[
-                      styles.badge,
-                      { backgroundColor: ROLE_BADGE_COLORS[user.role] },
-                    ]}
-                  >
-                    <Text style={styles.badgeText}>
-                      {ROLE_LABELS[user.role]}
-                    </Text>
-                  </View>
+                  <Badge
+                    label={ROLE_LABELS[user.role]}
+                    color={ROLE_BADGE_COLORS[user.role]}
+                    subtle={isSubtleRole(user.role)}
+                  />
                 </View>
               ))
             )}
@@ -178,116 +159,78 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: tennisColors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
     maxHeight: '85%',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...typography.h2,
     color: tennisColors.text,
   },
   closeButton: {
-    padding: 6,
-    borderRadius: 8,
+    padding: spacing.xs,
+    borderRadius: radius.sm,
   },
   form: {
     backgroundColor: tennisColors.surface,
-    borderRadius: 14,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: tennisColors.border,
-    padding: 16,
+    padding: spacing.lg,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.label,
     color: tennisColors.textMuted,
-    marginBottom: 6,
-    marginTop: 12,
+    marginBottom: spacing.sm,
   },
   input: {
     backgroundColor: tennisColors.background,
     borderWidth: 1,
     borderColor: tennisColors.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     fontSize: 15,
     color: tennisColors.text,
   },
-  chipRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    backgroundColor: tennisColors.background,
-  },
-  chipSelected: {
-    backgroundColor: tennisColors.primary,
-    borderColor: tennisColors.primaryDark,
-  },
-  chipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: tennisColors.text,
-  },
-  chipTextSelected: {
-    color: tennisColors.white,
+  helper: {
+    ...typography.caption,
+    color: tennisColors.textMuted,
+    marginTop: spacing.sm,
   },
   error: {
     color: tennisColors.danger,
     fontSize: 13,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: tennisColors.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    marginTop: 18,
-  },
-  addButtonDisabled: {
-    backgroundColor: tennisColors.textMuted,
-    opacity: 0.6,
-  },
-  addButtonText: {
-    color: tennisColors.white,
-    fontSize: 15,
-    fontWeight: '700',
+    marginTop: spacing.lg,
   },
   divider: {
     height: 1,
     backgroundColor: tennisColors.border,
-    marginVertical: 18,
+    marginVertical: spacing.lg,
   },
   list: {
     flexGrow: 0,
   },
   listContent: {
-    paddingBottom: 8,
+    paddingBottom: spacing.sm,
   },
   empty: {
     color: tennisColors.textMuted,
     fontSize: 14,
     textAlign: 'center',
-    paddingVertical: 16,
+    paddingVertical: spacing.lg,
   },
   userRow: {
     flexDirection: 'row',
@@ -296,26 +239,16 @@ const styles = StyleSheet.create({
     backgroundColor: tennisColors.surface,
     borderWidth: 1,
     borderColor: tennisColors.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 10,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
   },
   userName: {
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
     color: tennisColors.text,
-    marginRight: 12,
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  badgeText: {
-    color: tennisColors.white,
-    fontSize: 12,
-    fontWeight: '700',
+    marginRight: spacing.md,
   },
 });

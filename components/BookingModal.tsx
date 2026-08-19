@@ -4,11 +4,13 @@ import {
   View,
   Text,
   TextInput,
-  Pressable,
   StyleSheet,
   ScrollView,
 } from 'react-native';
 import { tennisColors } from '../constants/tennis-colors';
+import { spacing, radius, typography, shadow } from '../constants/theme';
+import { Button } from './ui/Button';
+import { Chip } from './ui/Chip';
 import type { Court } from '../lib/types';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 
@@ -64,6 +66,9 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
     if (!currentUser) {
       return;
     }
+    if (submitting) {
+      return;
+    }
     setSubmitting(true);
     try {
       await addBooking({
@@ -107,25 +112,14 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
           >
             <Text style={styles.label}>Terrein</Text>
             <View style={styles.chipRow}>
-              {courts.map((court) => {
-                const active = court.id === selectedCourtId;
-                return (
-                  <Pressable
-                    key={court.id}
-                    onPress={() => setSelectedCourtId(court.id)}
-                    style={[styles.chip, active && styles.chipActive]}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        active && styles.chipTextActive,
-                      ]}
-                    >
-                      {court.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+              {courts.map((court) => (
+                <Chip
+                  key={court.id}
+                  label={court.name}
+                  selected={court.id === selectedCourtId}
+                  onPress={() => setSelectedCourtId(court.id)}
+                />
+              ))}
             </View>
 
             <Text style={styles.label}>Notities (optioneel)</Text>
@@ -142,24 +136,20 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
           </ScrollView>
 
           <View style={styles.actions}>
-            <Pressable
+            <Button
+              label="Annuleren"
+              variant="secondary"
               onPress={onClose}
-              style={[styles.button, styles.cancelButton]}
               disabled={submitting}
-            >
-              <Text style={styles.cancelButtonText}>Annuleren</Text>
-            </Pressable>
-            <Pressable
+              fullWidth
+            />
+            <Button
+              label="Bevestigen"
+              variant="primary"
               onPress={handleConfirm}
-              style={[
-                styles.button,
-                styles.confirmButton,
-                submitting && styles.buttonDisabled,
-              ]}
               disabled={submitting}
-            >
-              <Text style={styles.confirmButtonText}>Bevestigen</Text>
-            </Pressable>
+              fullWidth
+            />
           </View>
         </View>
       </View>
@@ -175,77 +165,56 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: tennisColors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 28,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
     maxHeight: '85%',
+    ...shadow('lg'),
   },
   handle: {
     alignSelf: 'center',
     width: 40,
     height: 4,
-    borderRadius: 2,
+    borderRadius: radius.sm,
     backgroundColor: tennisColors.border,
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...typography.h2,
     color: tennisColors.text,
   },
   subtitle: {
+    ...typography.body,
     fontSize: 14,
     color: tennisColors.textMuted,
-    marginTop: 4,
-    marginBottom: 12,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
   },
   body: {
     flexGrow: 0,
   },
   bodyContent: {
-    paddingBottom: 8,
+    paddingBottom: spacing.sm,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.label,
     color: tennisColors.text,
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-  },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    backgroundColor: tennisColors.background,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  chipActive: {
-    backgroundColor: tennisColors.primary,
-    borderColor: tennisColors.primary,
-  },
-  chipText: {
-    fontSize: 14,
-    color: tennisColors.text,
-  },
-  chipTextActive: {
-    color: tennisColors.white,
-    fontWeight: '600',
+    gap: spacing.sm,
   },
   input: {
     borderWidth: 1,
     borderColor: tennisColors.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     minHeight: 72,
     color: tennisColors.text,
     backgroundColor: tennisColors.background,
@@ -254,40 +223,11 @@ const styles = StyleSheet.create({
   error: {
     color: tennisColors.danger,
     fontSize: 14,
-    marginTop: 12,
+    marginTop: spacing.md,
   },
   actions: {
     flexDirection: 'row',
-    marginTop: 20,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  cancelButton: {
-    backgroundColor: tennisColors.background,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    marginRight: 8,
-  },
-  cancelButtonText: {
-    color: tennisColors.text,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  confirmButton: {
-    backgroundColor: tennisColors.primary,
-    marginLeft: 8,
-  },
-  confirmButtonText: {
-    color: tennisColors.white,
-    fontSize: 15,
-    fontWeight: '700',
+    gap: spacing.md,
+    marginTop: spacing.xl,
   },
 });

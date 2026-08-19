@@ -2,13 +2,17 @@ import React, { useState } from 'react';
 import {
   Linking,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { BookOpen, ExternalLink, Plus } from 'lucide-react-native';
+import { Screen } from '../../components/ui/Screen';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Chip } from '../../components/ui/Chip';
+import { spacing, typography, radius } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 
@@ -67,10 +71,7 @@ export default function LessonsScreen(): React.JSX.Element {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
+    <Screen>
       <Text style={styles.heading}>Lessen</Text>
 
       {error !== undefined && error !== null && error.length > 0 ? (
@@ -78,7 +79,7 @@ export default function LessonsScreen(): React.JSX.Element {
       ) : null}
 
       {isCoach ? (
-        <View style={styles.form}>
+        <Card>
           <Text style={styles.formTitle}>Nieuw lesmateriaal</Text>
 
           <Text style={styles.label}>Titel</Text>
@@ -112,57 +113,32 @@ export default function LessonsScreen(): React.JSX.Element {
 
           <Text style={styles.label}>Voor</Text>
           <View style={styles.chips}>
-            <Pressable
+            <Chip
+              label="Iedereen"
+              selected={selectedStudent === IEDEREEN}
               onPress={() => setSelectedStudent(IEDEREEN)}
-              style={[
-                styles.chip,
-                selectedStudent === IEDEREEN ? styles.chipActive : null,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  selectedStudent === IEDEREEN ? styles.chipTextActive : null,
-                ]}
-              >
-                Iedereen
-              </Text>
-            </Pressable>
-            {students.map((s) => {
-              const active = selectedStudent === s.id;
-              return (
-                <Pressable
-                  key={s.id}
-                  onPress={() => setSelectedStudent(s.id)}
-                  style={[styles.chip, active ? styles.chipActive : null]}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      active ? styles.chipTextActive : null,
-                    ]}
-                  >
-                    {s.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            />
+            {students.map((s) => (
+              <Chip
+                key={s.id}
+                label={s.name}
+                selected={selectedStudent === s.id}
+                onPress={() => setSelectedStudent(s.id)}
+              />
+            ))}
           </View>
 
-          <Pressable
+          <Button
+            label="Toevoegen"
+            variant="primary"
+            icon={<Plus size={18} color={tennisColors.white} />}
+            disabled={title.trim().length === 0}
             onPress={() => {
               void handleAdd();
             }}
-            style={[
-              styles.addButton,
-              title.trim().length === 0 ? styles.addButtonDisabled : null,
-            ]}
-            disabled={title.trim().length === 0}
-          >
-            <Plus size={18} color={tennisColors.white} />
-            <Text style={styles.addButtonText}>Toevoegen</Text>
-          </Pressable>
-        </View>
+            style={styles.addButton}
+          />
+        </Card>
       ) : null}
 
       {visibleLessons.length === 0 ? (
@@ -170,7 +146,7 @@ export default function LessonsScreen(): React.JSX.Element {
       ) : (
         <View style={styles.list}>
           {visibleLessons.map((lesson) => (
-            <View key={lesson.id} style={styles.row}>
+            <Card key={lesson.id} style={styles.row}>
               <View style={styles.rowIcon}>
                 <BookOpen size={22} color={tennisColors.primary} />
               </View>
@@ -188,67 +164,48 @@ export default function LessonsScreen(): React.JSX.Element {
                     onPress={() => handleOpenUrl(lesson.url as string)}
                     style={styles.openButton}
                   >
-                    <ExternalLink size={16} color={tennisColors.accent} />
+                    <ExternalLink size={16} color={tennisColors.primary} />
                     <Text style={styles.openButtonText}>Openen</Text>
                   </Pressable>
                 ) : null}
               </View>
-            </View>
+            </Card>
           ))}
         </View>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: tennisColors.background,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 48,
-  },
   heading: {
-    fontSize: 26,
-    fontWeight: '700',
+    ...typography.h1,
     color: tennisColors.text,
-    marginBottom: 16,
   },
   error: {
     color: tennisColors.danger,
     fontSize: 14,
-    marginBottom: 12,
-  },
-  form: {
-    backgroundColor: tennisColors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    padding: 16,
-    marginBottom: 24,
   },
   formTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: tennisColors.text,
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
     color: tennisColors.textMuted,
-    marginBottom: 6,
-    marginTop: 8,
+    marginBottom: spacing.xs,
+    marginTop: spacing.sm,
   },
   input: {
     backgroundColor: tennisColors.background,
     borderWidth: 1,
     borderColor: tennisColors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     fontSize: 15,
     color: tennisColors.text,
   },
@@ -259,65 +216,25 @@ const styles = StyleSheet.create({
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    backgroundColor: tennisColors.background,
-  },
-  chipActive: {
-    backgroundColor: tennisColors.primary,
-    borderColor: tennisColors.primary,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: tennisColors.text,
-  },
-  chipTextActive: {
-    color: tennisColors.white,
+    gap: spacing.sm,
   },
   addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: tennisColors.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
-    marginTop: 16,
-  },
-  addButtonDisabled: {
-    opacity: 0.5,
-  },
-  addButtonText: {
-    color: tennisColors.white,
-    fontSize: 15,
-    fontWeight: '700',
+    marginTop: spacing.lg,
   },
   empty: {
     fontSize: 15,
     color: tennisColors.textMuted,
     textAlign: 'center',
-    marginTop: 32,
+    marginTop: spacing.xxl,
   },
   list: {
-    gap: 12,
+    gap: spacing.md,
   },
   row: {
     flexDirection: 'row',
-    backgroundColor: tennisColors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    padding: 14,
   },
   rowIcon: {
-    marginRight: 12,
+    marginRight: spacing.md,
     marginTop: 2,
   },
   rowBody: {
@@ -331,18 +248,18 @@ const styles = StyleSheet.create({
   rowDescription: {
     fontSize: 14,
     color: tennisColors.textMuted,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   openButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
+    gap: spacing.xs,
+    marginTop: spacing.sm,
     alignSelf: 'flex-start',
   },
   openButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: tennisColors.accent,
+    color: tennisColors.primary,
   },
 });

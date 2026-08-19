@@ -12,38 +12,12 @@ import {
   usePendingPaymentBookings,
   useSimpleData,
 } from '../providers/SimpleDataProvider';
+import type { PaymentStatus } from '../lib/types';
+import { Button } from './ui/Button';
+import { spacing, radius, typography, shadow } from '../constants/theme';
 
-type PaymentStatus = 'paid' | 'invoice' | 'unpaid';
-
-interface ActionButtonProps {
-  label: string;
-  color: string;
-  onPress: () => void;
-  disabled: boolean;
-}
-
-function ActionButton({
-  label,
-  color,
-  onPress,
-  disabled,
-}: ActionButtonProps): JSX.Element {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        styles.actionButton,
-        { backgroundColor: color },
-        pressed && styles.actionButtonPressed,
-        disabled && styles.actionButtonDisabled,
-      ]}
-    >
-      <Text style={styles.actionButtonText}>{label}</Text>
-    </Pressable>
-  );
-}
+// The three concrete statuses this modal can set (excludes null).
+type SettablePaymentStatus = Exclude<PaymentStatus, null>;
 
 export function PaymentStatusModal(props: {
   visible: boolean;
@@ -81,7 +55,7 @@ export function PaymentStatusModal(props: {
     startLabel = b.start_time;
   }
 
-  const runUpdate = (paymentStatus: PaymentStatus): void => {
+  const runUpdate = (paymentStatus: SettablePaymentStatus): void => {
     if (busy) {
       return;
     }
@@ -130,27 +104,27 @@ export function PaymentStatusModal(props: {
           </View>
 
           <View style={styles.actions}>
-            <ActionButton
+            <Button
               label="Cash betaald"
-              color={tennisColors.success}
+              variant="primary"
               disabled={busy}
               onPress={() => runUpdate('paid')}
             />
-            <ActionButton
+            <Button
               label="Op factuur"
-              color={tennisColors.court}
+              variant="secondary"
               disabled={busy}
               onPress={() => runUpdate('invoice')}
             />
-            <ActionButton
+            <Button
               label="Onbetaald"
-              color={tennisColors.warning}
+              variant="secondary"
               disabled={busy}
               onPress={() => runUpdate('unpaid')}
             />
-            <ActionButton
+            <Button
               label="Verwijderen"
-              color={tennisColors.danger}
+              variant="danger"
               disabled={busy}
               onPress={runDelete}
             />
@@ -183,50 +157,50 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: spacing.xl,
   },
   card: {
     width: '100%',
     maxWidth: 420,
     backgroundColor: tennisColors.surface,
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
     borderWidth: 1,
     borderColor: tennisColors.border,
+    ...shadow('lg'),
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...typography.h2,
     color: tennisColors.text,
     textAlign: 'center',
   },
   counter: {
-    fontSize: 13,
+    ...typography.label,
     color: tennisColors.textMuted,
     textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 20,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xl,
   },
   details: {
     backgroundColor: tennisColors.background,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
   },
   playerName: {
     fontSize: 18,
     fontWeight: '600',
     color: tennisColors.text,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: spacing.xs,
   },
   detailLabel: {
-    fontSize: 14,
+    ...typography.body,
     color: tennisColors.textMuted,
   },
   detailValue: {
@@ -235,39 +209,21 @@ const styles = StyleSheet.create({
     color: tennisColors.text,
     flexShrink: 1,
     textAlign: 'right',
-    marginLeft: 12,
+    marginLeft: spacing.md,
   },
   actions: {
-    gap: 12,
-  },
-  actionButton: {
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionButtonPressed: {
-    opacity: 0.85,
-  },
-  actionButtonDisabled: {
-    opacity: 0.5,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: tennisColors.white,
+    gap: spacing.sm,
   },
   spinner: {
-    marginTop: 16,
+    marginTop: spacing.lg,
   },
   laterButton: {
-    marginTop: 16,
+    marginTop: spacing.lg,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
   },
   laterText: {
-    fontSize: 14,
+    ...typography.body,
     color: tennisColors.textMuted,
     textDecorationLine: 'underline',
   },

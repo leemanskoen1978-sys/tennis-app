@@ -5,17 +5,14 @@
 // via confirmDanger() en gebeurt NOOIT automatisch.
 
 import React from 'react';
-import {
-  Platform,
-  Alert,
-  ScrollView,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
+import { Platform, Alert, View, Text, StyleSheet } from 'react-native';
 import { LogOut, Trash2, Clock, Globe, Moon } from 'lucide-react-native';
 
+import { Screen } from '../../components/ui/Screen';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Chip } from '../../components/ui/Chip';
+import { spacing, typography } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import type { Settings } from '../../lib/types';
@@ -55,27 +52,6 @@ const ROLE_LABELS: Record<string, string> = {
   parent: 'Ouder',
 };
 
-interface ChipProps {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}
-
-function Chip({ label, selected, onPress }: ChipProps): React.JSX.Element {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.chip, selected ? styles.chipSelected : null]}
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-    >
-      <Text style={[styles.chipText, selected ? styles.chipTextSelected : null]}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 interface SectionHeaderProps {
   icon: React.ReactNode;
   title: string;
@@ -104,15 +80,11 @@ export default function ProfileScreen(): React.JSX.Element {
     : '';
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
+    <Screen>
       <Text style={styles.title}>Profiel</Text>
 
       {/* Gebruikersinformatie */}
-      <View style={styles.card}>
+      <Card>
         {currentUser ? (
           <>
             <Text style={styles.userName}>{currentUser.name}</Text>
@@ -124,12 +96,12 @@ export default function ProfileScreen(): React.JSX.Element {
         ) : (
           <Text style={styles.userEmail}>Niet ingelogd</Text>
         )}
-      </View>
+      </Card>
 
       {/* Instellingen */}
       <Text style={styles.sectionTitle}>Instellingen</Text>
 
-      <View style={styles.card}>
+      <Card>
         <SectionHeader
           icon={<Clock size={18} color={tennisColors.primary} />}
           title="Eindtijd reserveringen"
@@ -147,9 +119,9 @@ export default function ProfileScreen(): React.JSX.Element {
             />
           ))}
         </View>
-      </View>
+      </Card>
 
-      <View style={styles.card}>
+      <Card>
         <SectionHeader
           icon={<Moon size={18} color={tennisColors.primary} />}
           title="Thema"
@@ -164,9 +136,9 @@ export default function ProfileScreen(): React.JSX.Element {
             />
           ))}
         </View>
-      </View>
+      </Card>
 
-      <View style={styles.card}>
+      <Card>
         <SectionHeader
           icon={<Globe size={18} color={tennisColors.primary} />}
           title="Taal"
@@ -181,77 +153,55 @@ export default function ProfileScreen(): React.JSX.Element {
             />
           ))}
         </View>
-      </View>
+      </Card>
 
       {/* Uitloggen */}
-      <Pressable
-        style={styles.logoutButton}
+      <Button
+        label="Uitloggen"
+        variant="secondary"
+        icon={<LogOut size={18} color={tennisColors.text} />}
         onPress={() => {
           void logout();
         }}
-        accessibilityRole="button"
-      >
-        <LogOut size={18} color={tennisColors.white} />
-        <Text style={styles.logoutButtonText}>Uitloggen</Text>
-      </Pressable>
+      />
 
       {/* Gevarenzone */}
       <Text style={styles.dangerTitle}>Gevarenzone</Text>
-      <View style={styles.dangerCard}>
+      <Card>
         <Text style={styles.dangerHelp}>
-          Verwijdert onherstelbaar corrupte data. Gebruik dit alleen als de app
-          niet meer normaal werkt.
+          Zet alle gegevens terug naar de begininstellingen en logt je uit.
+          Gebruik dit alleen als de app niet meer normaal werkt.
         </Text>
-        <Pressable
-          style={styles.dangerButton}
+        <Button
+          label="Noodopruiming"
+          variant="danger"
+          icon={<Trash2 size={18} color={tennisColors.white} />}
           onPress={() =>
             confirmDanger(
-              'Weet je het zeker? Dit verwijdert onherstelbaar corrupte data.',
+              'Weet je het zeker? Dit zet alle gegevens terug naar de begininstellingen en je wordt uitgelogd.',
               () => {
                 void emergencyCleanup();
               },
             )
           }
-          accessibilityRole="button"
-        >
-          <Trash2 size={18} color={tennisColors.white} />
-          <Text style={styles.dangerButtonText}>Noodopruiming</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+        />
+      </Card>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: tennisColors.background,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 48,
-    gap: 12,
-  },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...typography.h1,
     color: tennisColors.text,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: tennisColors.text,
-    marginTop: 12,
-    marginBottom: 2,
-  },
-  card: {
-    backgroundColor: tennisColors.surface,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    gap: 8,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
   userName: {
     fontSize: 20,
@@ -264,9 +214,9 @@ const styles = StyleSheet.create({
   },
   roleBadge: {
     alignSelf: 'flex-start',
-    marginTop: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
     borderRadius: 999,
     backgroundColor: tennisColors.accent,
   },
@@ -278,7 +228,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   sectionHeaderText: {
     fontSize: 16,
@@ -292,75 +242,18 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    backgroundColor: tennisColors.background,
-  },
-  chipSelected: {
-    backgroundColor: tennisColors.primary,
-    borderColor: tennisColors.primary,
-  },
-  chipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: tennisColors.text,
-  },
-  chipTextSelected: {
-    color: tennisColors.white,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 12,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: tennisColors.court,
-  },
-  logoutButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: tennisColors.white,
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   dangerTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: tennisColors.danger,
-    marginTop: 20,
-    marginBottom: 2,
-  },
-  dangerCard: {
-    backgroundColor: tennisColors.surface,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: tennisColors.danger,
-    gap: 12,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xs,
   },
   dangerHelp: {
     fontSize: 13,
     color: tennisColors.textMuted,
-  },
-  dangerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: tennisColors.danger,
-  },
-  dangerButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: tennisColors.white,
   },
 });

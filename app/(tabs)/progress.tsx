@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Star } from 'lucide-react-native';
+import { Screen } from '../../components/ui/Screen';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Chip } from '../../components/ui/Chip';
+import { spacing, typography } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { VoiceRecorder } from '../../components/VoiceRecorder';
@@ -86,17 +85,13 @@ export default function ProgressScreen(): React.JSX.Element {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
+    <Screen>
       <Text style={styles.pageTitle}>Voortgang</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {isCoach && currentUser ? (
-        <View style={styles.card}>
+        <Card style={styles.formCard}>
           <Text style={styles.cardTitle}>Nieuwe voortgang</Text>
 
           <Text style={styles.label}>Speler</Text>
@@ -104,43 +99,31 @@ export default function ProgressScreen(): React.JSX.Element {
             {students.length === 0 ? (
               <Text style={styles.muted}>Geen spelers beschikbaar.</Text>
             ) : (
-              students.map((s) => {
-                const active = s.id === selectedStudentId;
-                return (
-                  <Pressable
-                    key={s.id}
-                    onPress={() => setSelectedStudentId(s.id)}
-                    style={[styles.chip, active && styles.chipActive]}
-                  >
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                      {s.name}
-                    </Text>
-                  </Pressable>
-                );
-              })
+              students.map((s) => (
+                <Chip
+                  key={s.id}
+                  label={s.name}
+                  selected={s.id === selectedStudentId}
+                  onPress={() => setSelectedStudentId(s.id)}
+                />
+              ))
             )}
           </View>
 
           <Text style={styles.label}>Type training</Text>
           <View style={styles.chipRow}>
-            {TRAINING_TYPES.map((t) => {
-              const active = t === selectedType;
-              return (
-                <Pressable
-                  key={t}
-                  onPress={() => setSelectedType(t)}
-                  style={[styles.chip, active && styles.chipActive]}
-                >
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                    {TRAINING_LABELS[t]}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            {TRAINING_TYPES.map((t) => (
+              <Chip
+                key={t}
+                label={TRAINING_LABELS[t]}
+                selected={t === selectedType}
+                onPress={() => setSelectedType(t)}
+              />
+            ))}
           </View>
 
           <Text style={styles.label}>Beoordeling</Text>
-          <View style={styles.chipRow}>
+          <View style={styles.starRow}>
             {RATINGS.map((r) => {
               const active = r <= rating;
               return (
@@ -148,10 +131,14 @@ export default function ProgressScreen(): React.JSX.Element {
                   key={r}
                   onPress={() => setRating(r === rating ? 0 : r)}
                   style={styles.star}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${r} sterren`}
                 >
-                  <Text style={[styles.starText, active && styles.starTextActive]}>
-                    {active ? '★' : '☆'}
-                  </Text>
+                  <Star
+                    size={28}
+                    fill={active ? tennisColors.warning : 'transparent'}
+                    color={active ? tennisColors.warning : tennisColors.border}
+                  />
                 </Pressable>
               );
             })}
@@ -182,14 +169,14 @@ export default function ProgressScreen(): React.JSX.Element {
           <Text style={styles.label}>Spraakmemo</Text>
           <VoiceRecorder />
 
-          <Pressable
+          <Button
+            label="Opslaan"
+            variant="primary"
             onPress={handleSave}
             disabled={!selectedStudentId}
-            style={[styles.saveBtn, !selectedStudentId && styles.saveBtnDisabled]}
-          >
-            <Text style={styles.saveBtnText}>Opslaan</Text>
-          </Pressable>
-        </View>
+            style={styles.saveBtn}
+          />
+        </Card>
       ) : null}
 
       <Text style={styles.sectionTitle}>Overzicht</Text>
@@ -198,15 +185,26 @@ export default function ProgressScreen(): React.JSX.Element {
         <Text style={styles.muted}>Nog geen voortgang.</Text>
       ) : (
         visibleProgress.map((p) => (
-          <View key={p.id} style={styles.entryCard}>
+          <Card key={p.id} style={styles.entryCard}>
             <View style={styles.entryHeader}>
               <Text style={styles.entryType}>
                 {TRAINING_LABELS[p.training_type]}
               </Text>
               {typeof p.rating === 'number' && p.rating > 0 ? (
-                <Text style={styles.entryStars}>
-                  {'★'.repeat(p.rating)}
-                </Text>
+                <View
+                  style={styles.entryStars}
+                  accessibilityRole="image"
+                  accessibilityLabel={`${p.rating} sterren`}
+                >
+                  {Array.from({ length: p.rating }).map((_, i) => (
+                    <Star
+                      key={i}
+                      size={16}
+                      fill={tennisColors.warning}
+                      color={tennisColors.warning}
+                    />
+                  ))}
+                </View>
               ) : null}
             </View>
             <Text style={styles.entryStudent}>{studentName(p.student_id)}</Text>
@@ -214,94 +212,59 @@ export default function ProgressScreen(): React.JSX.Element {
             {p.homework ? (
               <Text style={styles.entryHomework}>Huiswerk: {p.homework}</Text>
             ) : null}
-          </View>
+          </Card>
         ))
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: tennisColors.background,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 48,
-  },
   pageTitle: {
-    fontSize: 26,
-    fontWeight: '700',
+    ...typography.h1,
     color: tennisColors.text,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   error: {
     color: tennisColors.danger,
-    marginBottom: 12,
+    marginBottom: spacing.md,
     fontSize: 14,
   },
-  card: {
-    backgroundColor: tennisColors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    padding: 16,
-    marginBottom: 20,
+  formCard: {
+    marginBottom: spacing.lg,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: tennisColors.text,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
     color: tennisColors.textMuted,
-    marginTop: 12,
-    marginBottom: 6,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    backgroundColor: tennisColors.background,
-  },
-  chipActive: {
-    backgroundColor: tennisColors.primary,
-    borderColor: tennisColors.primaryDark,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: tennisColors.text,
-  },
-  chipTextActive: {
-    color: tennisColors.white,
+  starRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   star: {
-    paddingHorizontal: 2,
-    paddingVertical: 2,
-  },
-  starText: {
-    fontSize: 28,
-    color: tennisColors.border,
-  },
-  starTextActive: {
-    color: tennisColors.warning,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   notesRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: spacing.sm,
   },
   notesInput: {
     flex: 1,
@@ -321,37 +284,20 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   saveBtn: {
-    marginTop: 20,
-    backgroundColor: tennisColors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  saveBtnDisabled: {
-    backgroundColor: tennisColors.border,
-  },
-  saveBtnText: {
-    color: tennisColors.white,
-    fontSize: 16,
-    fontWeight: '700',
+    marginTop: spacing.lg,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: tennisColors.text,
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   muted: {
     color: tennisColors.textMuted,
     fontSize: 14,
   },
   entryCard: {
-    backgroundColor: tennisColors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    padding: 14,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   entryHeader: {
     flexDirection: 'row',
@@ -364,15 +310,15 @@ const styles = StyleSheet.create({
     color: tennisColors.primaryDark,
   },
   entryStars: {
-    fontSize: 15,
-    color: tennisColors.warning,
+    flexDirection: 'row',
+    gap: 2,
   },
   entryStudent: {
     fontSize: 13,
     fontWeight: '600',
     color: tennisColors.textMuted,
     marginTop: 2,
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
   entryText: {
     fontSize: 14,

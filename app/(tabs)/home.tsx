@@ -1,15 +1,18 @@
 import React, { useMemo, useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
+import { ScrollView, View, Text, Pressable, StyleSheet } from 'react-native';
 import { RefreshCw } from 'lucide-react-native';
 import { tennisColors } from '../../constants/tennis-colors';
+import {
+  spacing,
+  radius,
+  typography,
+  minTapTarget,
+} from '../../constants/theme';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { generateSlots, isDateBookable } from '../../lib/slots';
+import { Screen } from '../../components/ui/Screen';
+import { Button } from '../../components/ui/Button';
+import { Chip } from '../../components/ui/Chip';
 import { BookingModal } from '../../components/BookingModal';
 import type { User } from '../../lib/types';
 
@@ -60,7 +63,9 @@ export default function HomeScreen(): JSX.Element {
     [users],
   );
 
-  const effectiveCoachId: string = selectedCoachId ?? coaches[0]?.id ?? '';
+  // A booking is only possible when a specific coach is selected.
+  // "Alle coaches" (selectedCoachId === null) is a browse-only state.
+  const hasCoach: boolean = selectedCoachId !== null;
 
   const days: Date[] = useMemo(() => next14Days(), []);
 
@@ -69,12 +74,14 @@ export default function HomeScreen(): JSX.Element {
     [settings.booking_end_time],
   );
 
+  // Taken slots are computed for the coach being booked (selectedCoachId).
+  // No coaches[0] fallback: without a specific coach nothing is bookable anyway.
   const takenSlots: Set<string> = useMemo(() => {
     const taken = new Set<string>();
-    if (selectedDate === null) return taken;
+    if (selectedDate === null || selectedCoachId === null) return taken;
     for (const b of bookings) {
       if (!sameDay(b.start_time, selectedDate)) continue;
-      if (selectedCoachId !== null && b.coach_id !== selectedCoachId) continue;
+      if (b.coach_id !== selectedCoachId) continue;
       taken.add(timeOf(b.start_time));
     }
     return taken;
@@ -91,57 +98,36 @@ export default function HomeScreen(): JSX.Element {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
+    <Screen>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Reserveren</Text>
-        <Pressable
-          style={styles.refreshBtn}
+        <Button
+          label="Vernieuwen"
+          variant="secondary"
+          fullWidth={false}
+          icon={<RefreshCw size={16} color={tennisColors.text} />}
           onPress={() => {
             void refresh();
           }}
-          accessibilityRole="button"
-          accessibilityLabel="Vernieuwen"
-        >
-          <RefreshCw size={16} color={tennisColors.primary} />
-          <Text style={styles.refreshText}>Vernieuwen</Text>
-        </Pressable>
+        />
       </View>
 
       {/* Coach filter */}
       <Text style={styles.sectionLabel}>Coach</Text>
       <View style={styles.chipRow}>
-        <Pressable
-          style={[styles.chip, selectedCoachId === null && styles.chipActive]}
+        <Chip
+          label="Alle coaches"
+          selected={selectedCoachId === null}
           onPress={() => setSelectedCoachId(null)}
-          accessibilityRole="button"
-        >
-          <Text
-            style={[
-              styles.chipText,
-              selectedCoachId === null && styles.chipTextActive,
-            ]}
-          >
-            Alle coaches
-          </Text>
-        </Pressable>
-        {coaches.map((coach) => {
-          const active = selectedCoachId === coach.id;
-          return (
-            <Pressable
-              key={coach.id}
-              style={[styles.chip, active && styles.chipActive]}
-              onPress={() => setSelectedCoachId(coach.id)}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {coach.name}
-              </Text>
-            </Pressable>
-          );
-        })}
+        />
+        {coaches.map((coach) => (
+          <Chip
+            key={coach.id}
+            label={coach.name}
+            selected={selectedCoachId === coach.id}
+            onPress={() => setSelectedCoachId(coach.id)}
+          />
+        ))}
       </View>
 
       {/* Date strip */}
@@ -158,6 +144,7 @@ export default function HomeScreen(): JSX.Element {
             selectedDate.getFullYear() === day.getFullYear() &&
             selectedDate.getMonth() === day.getMonth() &&
             selectedDate.getDate() === day.getDate();
+          const dayLabel = `${DAY_NAMES[day.getDay()]} ${day.getDate()} ${MONTH_NAMES[day.getMonth()]}`;
           return (
             <Pressable
               key={day.toISOString()}
@@ -169,6 +156,8 @@ export default function HomeScreen(): JSX.Element {
               ]}
               onPress={() => setSelectedDate(day)}
               accessibilityRole="button"
+              accessibilityLabel={dayLabel}
+              accessibilityState={{ selected: active, disabled: !bookable }}
             >
               <Text
                 style={[
@@ -207,20 +196,39 @@ export default function HomeScreen(): JSX.Element {
       {selectedDate === null && (
         <Text style={styles.hint}>Kies eerst een datum.</Text>
       )}
+      {!hasCoach && (
+        <Text style={styles.hint}>Kies eerst een coach om te boeken.</Text>
+      )}
       <View style={styles.slotGrid}>
         {slots.map((slot) => {
           const isTaken = takenSlots.has(slot);
-          const disabled = selectedDate === null || isTaken;
+          // Bookable only with a date AND a specific coach, and not already taken.
+          const disabled = selectedDate === null || !hasCoach || isTaken;
+          const stateLabel = isTaken
+            ? 'bezet'
+            : disabled
+              ? 'niet beschikbaar'
+              : 'beschikbaar';
           return (
             <Pressable
               key={slot}
               disabled={disabled}
-              style={[styles.slot, disabled && styles.slotDisabled]}
+              style={[
+                styles.slot,
+                !disabled && styles.slotActive,
+                disabled && styles.slotDisabled,
+              ]}
               onPress={() => openSlot(slot)}
               accessibilityRole="button"
+              accessibilityLabel={`Tijdslot ${slot}, ${stateLabel}`}
+              accessibilityState={{ disabled }}
             >
               <Text
-                style={[styles.slotText, disabled && styles.slotTextDisabled]}
+                style={[
+                  styles.slotText,
+                  !disabled && styles.slotTextActive,
+                  disabled && styles.slotTextDisabled,
+                ]}
               >
                 {slot}
               </Text>
@@ -233,97 +241,51 @@ export default function HomeScreen(): JSX.Element {
       <BookingModal
         visible={modalOpen}
         onClose={closeModal}
-        coachId={effectiveCoachId}
+        coachId={selectedCoachId ?? ''}
         date={selectedDate}
         slot={selectedSlot}
         courts={courts}
       />
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: tennisColors.background,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 48,
-  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    gap: spacing.md,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...typography.h1,
     color: tennisColors.text,
   },
-  refreshBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    backgroundColor: tennisColors.surface,
-  },
-  refreshText: {
-    color: tennisColors.primary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
   sectionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...typography.label,
     color: tennisColors.textMuted,
-    marginTop: 16,
-    marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    backgroundColor: tennisColors.surface,
-  },
-  chipActive: {
-    backgroundColor: tennisColors.primary,
-    borderColor: tennisColors.primary,
-  },
-  chipText: {
-    color: tennisColors.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  chipTextActive: {
-    color: tennisColors.white,
+    gap: spacing.sm,
   },
   dateStrip: {
-    gap: 8,
-    paddingVertical: 4,
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   dayCell: {
     width: 60,
-    paddingVertical: 10,
-    borderRadius: 12,
+    minHeight: minTapTarget,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: tennisColors.border,
     backgroundColor: tennisColors.surface,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   dayCellActive: {
     backgroundColor: tennisColors.primary,
@@ -358,30 +320,39 @@ const styles = StyleSheet.create({
   hint: {
     color: tennisColors.textMuted,
     fontStyle: 'italic',
-    marginBottom: 8,
   },
   slotGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   slot: {
     width: 88,
-    paddingVertical: 12,
-    borderRadius: 10,
+    minHeight: minTapTarget,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: tennisColors.border,
     backgroundColor: tennisColors.surface,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slotActive: {
+    backgroundColor: tennisColors.primary,
+    borderColor: tennisColors.primary,
   },
   slotDisabled: {
     backgroundColor: tennisColors.background,
+    borderColor: tennisColors.border,
     opacity: 0.6,
   },
   slotText: {
     fontSize: 16,
     fontWeight: '700',
     color: tennisColors.text,
+  },
+  slotTextActive: {
+    color: tennisColors.white,
   },
   slotTextDisabled: {
     color: tennisColors.textMuted,

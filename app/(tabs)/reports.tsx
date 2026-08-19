@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { tennisColors } from '../../constants/tennis-colors';
+import { spacing, typography } from '../../constants/theme';
+import { Screen } from '../../components/ui/Screen';
+import { Card } from '../../components/ui/Card';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { CoachDashboard } from '../../components/CoachDashboard';
 import { PaymentStatusModal } from '../../components/PaymentStatusModal';
@@ -59,20 +62,17 @@ export default function ReportsScreen(): React.ReactElement {
 
   if (!currentUser) {
     return (
-      <View style={styles.emptyContainer}>
+      <Screen scroll={false} contentStyle={styles.emptyInner}>
         <Text style={styles.emptyTitle}>Rapport</Text>
         <Text style={styles.emptyText}>Log in om je rapport te bekijken.</Text>
-      </View>
+      </Screen>
     );
   }
 
   if (isCoach) {
     return (
       <>
-        <ScrollView
-          style={styles.screen}
-          contentContainerStyle={styles.content}
-        >
+        <Screen>
           <Text style={styles.pageTitle}>Rapport</Text>
 
           <CoachDashboard
@@ -80,7 +80,7 @@ export default function ReportsScreen(): React.ReactElement {
             onOpenUsers={() => setUsersOpen(true)}
           />
 
-          <View style={styles.card}>
+          <Card>
             <Text style={styles.cardTitle}>Inkomstenoverzicht</Text>
 
             <View style={styles.revenueBlock}>
@@ -105,15 +105,15 @@ export default function ReportsScreen(): React.ReactElement {
             <StatRow
               label="Onbetaald"
               value={coachBreakdown.unpaid}
-              color={tennisColors.danger}
+              color={tennisColors.warning}
             />
             <StatRow
               label="Openstaand"
               value={coachBreakdown.open}
-              color={tennisColors.warning}
+              color={tennisColors.textMuted}
             />
-          </View>
-        </ScrollView>
+          </Card>
+        </Screen>
 
         <PaymentStatusModal
           visible={paymentsOpen}
@@ -128,13 +128,14 @@ export default function ReportsScreen(): React.ReactElement {
   }
 
   const playerBreakdown = buildBreakdown(playerBookings);
-  const playerUnpaidOpen = playerBreakdown.unpaid + playerBreakdown.open + playerBreakdown.invoice;
+  const playerUnpaidOpen =
+    playerBreakdown.unpaid + playerBreakdown.open + playerBreakdown.invoice;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <Screen>
       <Text style={styles.pageTitle}>Rapport</Text>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardTitle}>Mijn boekingen</Text>
 
         <StatRow
@@ -153,8 +154,8 @@ export default function ReportsScreen(): React.ReactElement {
           value={playerUnpaidOpen}
           color={tennisColors.warning}
         />
-      </View>
-    </ScrollView>
+      </Card>
+    </Screen>
   );
 }
 
@@ -177,56 +178,36 @@ function StatRow({ label, value, color }: StatRowProps): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: tennisColors.background,
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  emptyContainer: {
+  emptyInner: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    backgroundColor: tennisColors.background,
   },
   emptyTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    ...typography.h1,
     color: tennisColors.text,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   emptyText: {
-    fontSize: 15,
+    ...typography.body,
     color: tennisColors.textMuted,
     textAlign: 'center',
   },
   pageTitle: {
-    fontSize: 26,
-    fontWeight: '700',
+    ...typography.h1,
     color: tennisColors.text,
-    marginBottom: 4,
-  },
-  card: {
-    backgroundColor: tennisColors.surface,
-    borderRadius: 14,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
+    marginBottom: spacing.xs,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...typography.h2,
     color: tennisColors.text,
-    marginBottom: 14,
+    marginBottom: spacing.md,
   },
   revenueBlock: {
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   revenueLabel: {
-    fontSize: 14,
+    ...typography.body,
     color: tennisColors.textMuted,
     marginBottom: 2,
   },
@@ -238,26 +219,25 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: tennisColors.border,
-    marginVertical: 14,
+    marginVertical: spacing.md,
   },
   sectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.label,
     color: tennisColors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
   },
   statLabelWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.sm,
   },
   dot: {
     width: 10,
@@ -265,7 +245,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   statLabel: {
-    fontSize: 15,
+    ...typography.body,
     color: tennisColors.text,
   },
   statValue: {

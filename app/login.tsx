@@ -1,17 +1,35 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect } from 'expo-router';
-import { User as UserIcon, Award } from 'lucide-react-native';
+import { User as UserIcon } from 'lucide-react-native';
 import { tennisColors } from '../constants/tennis-colors';
 import { appConfig } from '../constants/app-config';
+import { spacing, typography, minTapTarget } from '../constants/theme';
+import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
 import { useSimpleData } from '../providers/SimpleDataProvider';
+
+type Role = 'player' | 'coach' | 'parent';
+
+const ROLE_LABELS: Record<Role, string> = {
+  coach: 'Coach',
+  player: 'Speler',
+  parent: 'Ouder',
+};
+
+/** Role badge props: coach = primary, player = subtle, parent = court. */
+function roleBadgeProps(role: string): { label: string; color?: string; subtle?: boolean } {
+  switch (role) {
+    case 'coach':
+      return { label: ROLE_LABELS.coach, color: tennisColors.primary };
+    case 'parent':
+      return { label: ROLE_LABELS.parent, color: tennisColors.court };
+    case 'player':
+    default:
+      return { label: ROLE_LABELS.player ?? role, subtle: true };
+  }
+}
 
 export default function Login(): React.JSX.Element {
   const { users, login, error, currentUser } = useSimpleData();
@@ -33,7 +51,7 @@ export default function Login(): React.JSX.Element {
         style={styles.header}
       >
         <Text style={styles.title}>{appConfig.name}</Text>
-        <Text style={styles.subtitle}>Kies je profiel</Text>
+        <Text style={styles.subtitle}>Kies je profiel om te starten</Text>
       </LinearGradient>
 
       {error ? (
@@ -47,38 +65,35 @@ export default function Login(): React.JSX.Element {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       >
-        {users.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Geen gebruikers gevonden.</Text>
-          </View>
-        ) : (
-          users.map((u) => (
-            <Pressable
-              key={u.id}
-              onPress={() => handleLogin(u.id)}
-              style={({ pressed }) => [
-                styles.row,
-                pressed ? styles.rowPressed : null,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={`Log in als ${u.name}`}
-            >
-              <View style={styles.avatar}>
-                <UserIcon size={22} color={tennisColors.primary} />
-              </View>
-
-              <View style={styles.rowInfo}>
-                <Text style={styles.rowName} numberOfLines={1}>
-                  {u.name}
-                </Text>
-                <View style={styles.badge}>
-                  <Award size={12} color={tennisColors.primaryDark} />
-                  <Text style={styles.badgeText}>{u.role}</Text>
-                </View>
-              </View>
-            </Pressable>
-          ))
-        )}
+        <View style={styles.listInner}>
+          {users.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>Geen gebruikers gevonden.</Text>
+            </View>
+          ) : (
+            users.map((u) => {
+              const badge = roleBadgeProps(u.role);
+              return (
+                <Card
+                  key={u.id}
+                  onPress={() => handleLogin(u.id)}
+                  accessibilityLabel={`Log in als ${u.name}`}
+                  style={styles.row}
+                >
+                  <View style={styles.rowContent}>
+                    <View style={styles.avatar}>
+                      <UserIcon size={22} color={tennisColors.primary} />
+                    </View>
+                    <Text style={styles.rowName} numberOfLines={1}>
+                      {u.name}
+                    </Text>
+                    <Badge label={badge.label} color={badge.color} subtle={badge.subtle} />
+                  </View>
+                </Card>
+              );
+            })
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -126,31 +141,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    padding: 20,
-    gap: 12,
+    padding: spacing.xl,
   },
-  emptyState: {
-    marginTop: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyText: {
-    fontSize: 15,
-    color: tennisColors.textMuted,
+  // Center the list below the full-width gradient without capping the header.
+  listInner: {
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+    gap: spacing.md,
   },
   row: {
+    minHeight: minTapTarget,
+  },
+  rowContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: tennisColors.surface,
-    borderWidth: 1,
-    borderColor: tennisColors.border,
-    gap: 14,
-  },
-  rowPressed: {
-    backgroundColor: tennisColors.background,
-    borderColor: tennisColors.primary,
+    gap: spacing.lg,
   },
   avatar: {
     width: 46,
@@ -162,29 +168,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tennisColors.border,
   },
-  rowInfo: {
-    flex: 1,
-    gap: 6,
-  },
   rowName: {
-    fontSize: 17,
-    fontWeight: '700',
+    ...typography.h3,
+    flex: 1,
     color: tennisColors.text,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
+  emptyState: {
+    marginTop: 48,
     alignItems: 'center',
-    gap: 5,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: tennisColors.accent,
+    justifyContent: 'center',
   },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: tennisColors.primaryDark,
-    textTransform: 'capitalize',
+  emptyText: {
+    fontSize: 15,
+    color: tennisColors.textMuted,
   },
 });
