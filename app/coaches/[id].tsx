@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight, Pencil } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
+import { CoachDetailsModal } from '../../components/CoachDetailsModal';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { playersForCoach } from '../../lib/relations';
+import { formatWorkingDays } from '../../lib/slots';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 
@@ -19,7 +23,8 @@ function fmtTime(iso: string): string {
 export default function CoachDossier() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { users, bookings, courts, lessons, progress } = useSimpleData();
+  const { users, bookings, courts, lessons, progress, currentUser } = useSimpleData();
+  const [editOpen, setEditOpen] = useState(false);
 
   const coach = users.find((u) => u.id === id && u.role === 'coach') ?? null;
 
@@ -57,11 +62,40 @@ export default function CoachDossier() {
         <Badge label="Trainer" color={tennisColors.primary} />
         {coach.email ? <Text style={styles.contact}>{coach.email}</Text> : null}
         {coach.phone ? <Text style={styles.contact}>{coach.phone}</Text> : null}
+
+        <Text style={styles.fieldLabel}>Geeft les</Text>
+        <Text style={styles.fieldValue}>{formatWorkingDays(coach)}</Text>
+        <Text style={styles.fieldValue}>
+          {coach.working_hours
+            ? `${coach.working_hours.start} – ${coach.working_hours.end}`
+            : 'De hele dag'}
+        </Text>
+
         {/* Display only: the revenue sums run on the court rate, never on this. */}
         {coach.hourly_rate ? (
           <Text style={styles.rate}>Uurtarief: €{coach.hourly_rate} per uur</Text>
         ) : null}
+
+        {/* Only your own details. A colleague's card has no button at all — a control
+            you may never use should not be sitting there greyed out. */}
+        {currentUser?.id === coach.id ? (
+          <Button
+            label="Bewerken"
+            variant="secondary"
+            icon={<Pencil size={16} color={tennisColors.text} />}
+            onPress={() => setEditOpen(true)}
+            style={styles.editButton}
+          />
+        ) : null}
       </Card>
+
+      {currentUser?.id === coach.id ? (
+        <CoachDetailsModal
+          coach={coach}
+          visible={editOpen}
+          onClose={() => setEditOpen(false)}
+        />
+      ) : null}
 
       <Text style={styles.section}>Agenda</Text>
       {upcoming.length === 0 && past.length === 0 ? (
@@ -117,6 +151,12 @@ const styles = StyleSheet.create({
   name: { ...typography.h1, color: tennisColors.text },
   contact: { fontSize: 14, color: tennisColors.textMuted, marginTop: 2 },
   rate: { fontSize: 14, color: tennisColors.text, marginTop: spacing.sm },
+  fieldLabel: {
+    fontSize: 12, fontWeight: '700', color: tennisColors.textMuted,
+    textTransform: 'uppercase', marginTop: spacing.md,
+  },
+  fieldValue: { fontSize: 14, color: tennisColors.text, marginTop: 2 },
+  editButton: { marginTop: spacing.lg },
   section: { ...typography.h2, color: tennisColors.text, marginTop: spacing.lg, marginBottom: spacing.sm },
   subLabel: { fontSize: 12, fontWeight: '700', color: tennisColors.textMuted, textTransform: 'uppercase', marginTop: spacing.sm, marginBottom: spacing.xs },
   muted: { fontSize: 14, color: tennisColors.textMuted },
