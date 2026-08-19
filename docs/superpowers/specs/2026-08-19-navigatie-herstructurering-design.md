@@ -237,23 +237,28 @@ wordt getoetst aan de echte spelerslijst voordat hij wordt vertrouwd — anders 
 `?playerId=<een trainer>` een trainer als speler. Onbekende of niet-toegestane ids vallen
 terug op "geen speler gekozen", en dan is boeken geblokkeerd.
 
-## Tekening bewaren bij een voortgangsnotitie
+## Tekening bewaren als lesmateriaal
+
+**Een veldsituatie is lesmateriaal, geen opmerking over één speler.** Een kruisoefening
+met kegels teken je één keer en gebruik je opnieuw, bij Mathis en bij de volgende. Daarom
+landt de tekening in de lesbibliotheek naast de video's en de PDF's, niet in het dossier
+van een speler. Toewijzen aan een speler gaat daarna via het gewone lesplan.
 
 **De tekening wordt opgeslagen als de situatie zelf, niet als plaatje.** `CourtDrawing`
 bewaart de streken (SVG-paden), de geplaatste objecten met hun positie, de oriëntatie en
 de maat waarin getekend is. Dat blijft klein, blijft scherp op elk formaat, en laat een
-oefening later heropenen — een PNG zou geen van drieën doen.
+oefening later heropenen — een PNG zou geen van drieën doen. Het veld hangt aan `Lesson`,
+niet aan `StudentProgress`.
 
-**De richting is Tekenen → notitie.** Op het tekenveld staat "Bewaren bij voortgang"
-(uitgeschakeld zolang er niets getekend is). Je kiest de speler en landt in het
-notitieformulier met de tekening er al aan, waar je zelf type, beoordeling en notitie
-invult. De notitie blijft de enige plek waar een oordeel ontstaat; het tekenveld levert
-alleen de bijlage.
+**Bewaren gebeurt op het tekenveld zelf.** "Bewaren als lesmateriaal" staat uitgeschakeld
+zolang er niets getekend is. In het paneel geef je een titel, optioneel een beschrijving,
+en optioneel meteen een speler — die laatste maakt er in één keer een geplande les van.
+Daarna sta je in de bibliotheek, waar de rij "veldsituatie" vermeldt en het detailvenster
+de tekening toont.
 
-**De tekening leeft in een eigen provider, niet in de opslag.** `PendingDrawingProvider`
-houdt de tekening vast voor precies één sprong. Hij wordt niet bewaard: een halfaf
-schetsje moet niet een week later terugkomen. Pas bij het opslaan van de notitie wordt
-hij duurzaam.
+**Er is geen tussenopslag meer.** De vorige opzet gaf de tekening via een
+`PendingDrawingProvider` door aan het notitieformulier; dat is vervallen samen met de
+route. Het tekenveld schrijft nu rechtstreeks een les weg.
 
 Wat er nog niet is: een bewaarde tekening heropenen om hem aan te passen. Hij is
-zichtbaar bij de notitie, maar niet bewerkbaar.
+zichtbaar bij de les, maar niet bewerkbaar.

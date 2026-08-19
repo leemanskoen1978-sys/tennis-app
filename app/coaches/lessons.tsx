@@ -162,6 +162,7 @@ export default function LessonsScreen(): React.JSX.Element {
                   {lesson.attachments !== undefined && lesson.attachments.length > 0
                     ? ` • ${lesson.attachments.length} PDF`
                     : ''}
+                  {lesson.drawing ? ' • veldsituatie' : ''}
                 </Text>
               </View>
               <View style={styles.rowChevron}>

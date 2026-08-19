@@ -5,6 +5,7 @@ import { useSimpleData } from '../providers/SimpleDataProvider';
 import { StudentCombobox } from './ui/StudentCombobox';
 import { Button } from './ui/Button';
 import { AttachmentList, LessonAttachments } from './LessonAttachments';
+import { CourtScene } from './court/CourtScene';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow, webCursor } from '../constants/theme';
 import type { Lesson, LessonAttachment } from '../lib/types';
@@ -110,6 +111,13 @@ export function LessonDetailModal({
                 ) : (
                   <Text style={styles.descMuted}>Geen video-link.</Text>
                 )}
+
+                {lesson.drawing ? (
+                  <>
+                    <Text style={styles.label}>Veldsituatie</Text>
+                    <CourtScene drawing={lesson.drawing} width={240} />
+                  </>
+                ) : null}
 
                 <Text style={styles.label}>PDF-bijlagen</Text>
                 <AttachmentList attachments={lesson.attachments} />

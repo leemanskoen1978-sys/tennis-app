@@ -1,7 +1,6 @@
 import { Stack, Redirect, useSegments } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
 import { SimpleDataProvider, useSimpleData } from '../providers/SimpleDataProvider';
-import { PendingDrawingProvider } from '../providers/PendingDrawing';
 import { ProfileAvatar } from '../components/ui/ProfileAvatar';
 import { tennisColors } from '../constants/tennis-colors';
 
@@ -79,9 +78,7 @@ function Root() {
 export default function RootLayout() {
   return (
     <SimpleDataProvider>
-      <PendingDrawingProvider>
-        <Root />
-      </PendingDrawingProvider>
+      <Root />
     </SimpleDataProvider>
   );
 }

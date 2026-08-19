@@ -47,33 +47,6 @@ export interface Booking {
   actual_end_time?: string;
 }
 
-export type LessonStatus = 'gepland' | 'gegeven';
-
-/** Where the file physically lives. 'local' = data URL in the store, 'drive' = Google Drive file. */
-export type AttachmentSource = 'local' | 'drive';
-
-export interface LessonAttachment {
-  id: string;
-  name: string;
-  mime: string; // 'application/pdf' for now
-  size: number; // bytes
-  source: AttachmentSource;
-  uri: string; // data URL ('local') or Drive webViewLink ('drive')
-  drive_file_id?: string; // set once the file lives in Google Drive
-}
-
-export interface Lesson {
-  id: string;
-  title: string;
-  url?: string;
-  description?: string;
-  uploaded_by: string;
-  student_id?: string;
-  coach_id?: string;
-  status?: LessonStatus; // part of a player's plan: planned vs given
-  attachments?: LessonAttachment[]; // PDFs etc. — see docs/lesson-attachments.md
-}
-
 export type CourtOrientation = 'vertical' | 'horizontal';
 export type CourtObjectType = 'cone' | 'player' | 'racket';
 
@@ -103,6 +76,34 @@ export interface CourtDrawing {
   objects: CourtObject[];
 }
 
+export type LessonStatus = 'gepland' | 'gegeven';
+
+/** Where the file physically lives. 'local' = data URL in the store, 'drive' = Google Drive file. */
+export type AttachmentSource = 'local' | 'drive';
+
+export interface LessonAttachment {
+  id: string;
+  name: string;
+  mime: string; // 'application/pdf' for now
+  size: number; // bytes
+  source: AttachmentSource;
+  uri: string; // data URL ('local') or Drive webViewLink ('drive')
+  drive_file_id?: string; // set once the file lives in Google Drive
+}
+
+export interface Lesson {
+  id: string;
+  title: string;
+  url?: string;
+  description?: string;
+  uploaded_by: string;
+  student_id?: string;
+  coach_id?: string;
+  status?: LessonStatus; // part of a player's plan: planned vs given
+  attachments?: LessonAttachment[]; // PDFs etc. — see docs/lesson-attachments.md
+  drawing?: CourtDrawing; // a court situation drawn on the Tekenveld
+}
+
 export interface StudentProgress {
   id: string;
   student_id: string;
@@ -113,7 +114,6 @@ export interface StudentProgress {
   skills?: Record<string, number>;
   homework?: string;
   voice_memo_uri?: string;
-  drawing?: CourtDrawing; // court situation saved with the note
   lesson_id?: string; // optional link to a lesson in the player's plan
   created_at?: string; // ISO — set when the entry is created (for timelines/reports)
 }

@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import {
-  View, PanResponder, Pressable, Text, StyleSheet, ScrollView, Modal,
+  View, PanResponder, Pressable, Text, StyleSheet, ScrollView, Modal, TextInput,
   type LayoutChangeEvent, type GestureResponderEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -11,7 +11,6 @@ import { CourtObjectGlyph } from '../../components/court/CourtIcons';
 import { StudentCombobox } from '../../components/ui/StudentCombobox';
 import { Button } from '../../components/ui/Button';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { usePendingDrawing } from '../../providers/PendingDrawing';
 import { isEmptyDrawing } from '../../lib/drawing';
 import type {
   CourtDrawing, CourtObject, CourtObjectType, CourtOrientation, CourtStroke,
@@ -32,9 +31,10 @@ const PEN_COLORS = [tennisColors.danger, tennisColors.court, tennisColors.white,
 
 export default function Drawing() {
   const router = useRouter();
-  const { currentUser, users } = useSimpleData();
-  const { setPendingDrawing } = usePendingDrawing();
+  const { currentUser, users, addLesson } = useSimpleData();
   const [saveOpen, setSaveOpen] = useState(false);
+  const [saveTitle, setSaveTitle] = useState('');
+  const [saveDescription, setSaveDescription] = useState('');
   const [savePlayerId, setSavePlayerId] = useState<string | null>(null);
 
   const [tool, setTool] = useState<Tool>('pen');
@@ -120,13 +120,26 @@ export default function Drawing() {
   });
   const nothingDrawn = isEmptyDrawing(scene());
 
-  /** Hand the situation to the note form; the note is where it becomes durable. */
-  const saveToProgress = () => {
-    if (!savePlayerId || nothingDrawn) return;
-    setPendingDrawing(scene());
+  /**
+   * A court situation is teaching material: an exercise you draw once and use again, not
+   * a remark about one player. So it becomes a lesson in the library. Assigning it to a
+   * player runs through the normal lesson plan, same as a video or a PDF.
+   */
+  const saveAsLesson = async () => {
+    if (!currentUser || nothingDrawn || !saveTitle.trim()) return;
+    await addLesson({
+      title: saveTitle.trim(),
+      description: saveDescription.trim() || undefined,
+      uploaded_by: currentUser.id,
+      coach_id: currentUser.id,
+      drawing: scene(),
+      ...(savePlayerId ? { student_id: savePlayerId, status: 'gepland' as const } : {}),
+    });
     setSaveOpen(false);
+    setSaveTitle('');
+    setSaveDescription('');
     setSavePlayerId(null);
-    router.push(`/players/progress?playerId=${savePlayerId}`);
+    router.push('/coaches/lessons');
   };
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -151,7 +164,7 @@ export default function Drawing() {
         <ToolButton label="Wissen" active={false} onPress={clearAll} danger icon={<Trash2 size={18} color={tennisColors.danger} />} />
         {isCoach ? (
           <ToolButton
-            label="Bewaren bij voortgang"
+            label="Bewaren als lesmateriaal"
             active={false}
             disabled={nothingDrawn}
             onPress={() => setSaveOpen(true)}
@@ -207,7 +220,7 @@ export default function Drawing() {
         <View style={styles.backdrop}>
           <View style={styles.sheet}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Bewaren bij voortgang</Text>
+              <Text style={styles.sheetTitle}>Bewaren als lesmateriaal</Text>
               <Pressable
                 onPress={() => setSaveOpen(false)}
                 accessibilityRole="button"
@@ -218,19 +231,41 @@ export default function Drawing() {
               </Pressable>
             </View>
             <Text style={styles.sheetHint}>
-              Kies de speler. Je gaat door naar het notitieformulier met deze tekening eraan.
+              De oefening komt in de bibliotheek. Je kunt hem later aan een speler toewijzen.
             </Text>
+
+            <Text style={styles.sheetLabel}>Titel</Text>
+            <TextInput
+              style={styles.input}
+              value={saveTitle}
+              onChangeText={setSaveTitle}
+              placeholder="bv. Kruisoefening met kegels"
+              placeholderTextColor={tennisColors.textMuted}
+            />
+
+            <Text style={styles.sheetLabel}>Beschrijving (optioneel)</Text>
+            <TextInput
+              style={[styles.input, styles.multiline]}
+              value={saveDescription}
+              onChangeText={setSaveDescription}
+              placeholder="Wat oefen je hiermee?"
+              placeholderTextColor={tennisColors.textMuted}
+              multiline
+            />
+
+            <Text style={styles.sheetLabel}>Meteen toewijzen (optioneel)</Text>
             <StudentCombobox
               students={students}
               value={savePlayerId}
               onChange={setSavePlayerId}
               placeholder="Typ de naam van de speler…"
             />
+
             <Button
-              label="Doorgaan"
+              label="Bewaren"
               variant="primary"
-              disabled={!savePlayerId}
-              onPress={saveToProgress}
+              disabled={!saveTitle.trim()}
+              onPress={() => { void saveAsLesson(); }}
             />
           </View>
         </View>
@@ -330,4 +365,11 @@ const styles = StyleSheet.create({
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sheetTitle: { ...typography.h2, color: tennisColors.text },
   sheetHint: { fontSize: 13, color: tennisColors.textMuted },
+  sheetLabel: { fontSize: 13, fontWeight: '700', color: tennisColors.text },
+  input: {
+    borderWidth: 1, borderColor: tennisColors.border, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    color: tennisColors.text, backgroundColor: tennisColors.background,
+  },
+  multiline: { minHeight: 64, textAlignVertical: 'top' },
 });

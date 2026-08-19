@@ -1,8 +1,8 @@
-// Helpers for court drawings saved with a progress note.
+// Helpers for court drawings saved as lesson material.
 
 import type { CourtDrawing } from './types';
 
-/** Nothing drawn and nothing placed — not worth attaching to a note. */
+/** Nothing drawn and nothing placed — not worth saving as an exercise. */
 export function isEmptyDrawing(d: CourtDrawing | undefined | null): boolean {
   if (!d) return true;
   return d.strokes.length === 0 && d.objects.length === 0;
