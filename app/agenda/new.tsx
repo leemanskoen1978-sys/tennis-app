@@ -10,7 +10,9 @@ import {
   minTapTarget,
 } from '../../constants/theme';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { generateSlots, isDateBookable } from '../../lib/slots';
+import {
+  generateSlots, isDateBookable, slotsForCoach, worksOnDay, formatWorkingDays, DAY_LABELS,
+} from '../../lib/slots';
 import { Screen } from '../../components/ui/Screen';
 import { Button } from '../../components/ui/Button';
 import { Chip } from '../../components/ui/Chip';
@@ -18,7 +20,6 @@ import { BookingModal } from '../../components/BookingModal';
 import { StudentCombobox } from '../../components/ui/StudentCombobox';
 import type { User } from '../../lib/types';
 
-const DAY_NAMES = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
 const MONTH_NAMES = [
   'jan', 'feb', 'mrt', 'apr', 'mei', 'jun',
   'jul', 'aug', 'sep', 'okt', 'nov', 'dec',
@@ -91,10 +92,23 @@ export default function HomeScreen(): JSX.Element {
 
   const days: Date[] = useMemo(() => next14Days(), []);
 
-  const slots: string[] = useMemo(
-    () => generateSlots(settings.booking_end_time),
-    [settings.booking_end_time],
+  // The coach whose agenda is being filled — their own days and hours bound what is
+  // bookable. Without a specific coach ("Alle coaches") the club window stands; that is
+  // a browse-only state anyway.
+  const bookingCoach: User | null = useMemo(
+    () => coaches.find((c) => c.id === bookingCoachId) ?? null,
+    [coaches, bookingCoachId],
   );
+
+  const slots: string[] = useMemo(
+    () => (bookingCoach
+      ? slotsForCoach(bookingCoach, settings.booking_end_time)
+      : generateSlots(settings.booking_end_time)),
+    [bookingCoach, settings.booking_end_time],
+  );
+
+  const dayIsWorked: boolean =
+    selectedDate === null || bookingCoach === null || worksOnDay(bookingCoach, selectedDate);
 
   // Taken slots are computed for the coach being booked (selectedCoachId).
   // No coaches[0] fallback: without a specific coach nothing is bookable anyway.
@@ -174,13 +188,14 @@ export default function HomeScreen(): JSX.Element {
         contentContainerStyle={styles.dateStrip}
       >
         {days.map((day) => {
-          const bookable = isDateBookable(day);
+          const worked = bookingCoach === null || worksOnDay(bookingCoach, day);
+          const bookable = isDateBookable(day) && worked;
           const active =
             selectedDate !== null &&
             selectedDate.getFullYear() === day.getFullYear() &&
             selectedDate.getMonth() === day.getMonth() &&
             selectedDate.getDate() === day.getDate();
-          const dayLabel = `${DAY_NAMES[day.getDay()]} ${day.getDate()} ${MONTH_NAMES[day.getMonth()]}`;
+          const dayLabel = `${DAY_LABELS[day.getDay()]} ${day.getDate()} ${MONTH_NAMES[day.getMonth()]}`;
           return (
             <Pressable
               key={day.toISOString()}
@@ -192,7 +207,9 @@ export default function HomeScreen(): JSX.Element {
               ]}
               onPress={() => setSelectedDate(day)}
               accessibilityRole="button"
-              accessibilityLabel={dayLabel}
+              accessibilityLabel={
+                worked ? dayLabel : `${dayLabel}, ${bookingCoach?.name ?? ''} geeft dan geen les`
+              }
               accessibilityState={{ selected: active, disabled: !bookable }}
             >
               <Text
@@ -202,7 +219,7 @@ export default function HomeScreen(): JSX.Element {
                   !bookable && styles.dayTextDisabled,
                 ]}
               >
-                {DAY_NAMES[day.getDay()]}
+                {DAY_LABELS[day.getDay()]}
               </Text>
               <Text
                 style={[
@@ -227,6 +244,16 @@ export default function HomeScreen(): JSX.Element {
         })}
       </ScrollView>
 
+      {bookingCoach ? (
+        <Text style={styles.hint}>
+          {bookingCoach.name} geeft les op {formatWorkingDays(bookingCoach)}
+          {bookingCoach.working_hours
+            ? `, ${bookingCoach.working_hours.start}–${bookingCoach.working_hours.end}`
+            : ''}
+          .
+        </Text>
+      ) : null}
+
       {/* Slot grid */}
       <Text style={styles.sectionLabel}>Tijdslot</Text>
       {selectedDate === null && (
@@ -237,11 +264,16 @@ export default function HomeScreen(): JSX.Element {
           {isCoach ? 'Kies eerst een speler om te boeken.' : 'Kies eerst een coach om te boeken.'}
         </Text>
       )}
+      {!dayIsWorked && (
+        <Text style={styles.hint}>
+          {bookingCoach?.name} geeft geen les op deze dag.
+        </Text>
+      )}
       <View style={styles.slotGrid}>
         {slots.map((slot) => {
           const isTaken = takenSlots.has(slot);
           // Bookable only with a date AND a specific coach, and not already taken.
-          const disabled = selectedDate === null || !canBook || isTaken;
+          const disabled = selectedDate === null || !canBook || isTaken || !dayIsWorked;
           const stateLabel = isTaken
             ? 'bezet'
             : disabled
