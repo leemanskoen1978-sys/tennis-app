@@ -26,6 +26,9 @@ interface DataShape {
   updateBooking: (id: string, patch: Partial<Booking>) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   addUser: (u: Omit<User, 'id'>) => Promise<void>;
+  /** `role` blijft erbuiten: van een trainer een speler maken raakt boekingen,
+   *  lessen en voortgang, en is geen formulierdetail. */
+  updateUser: (id: string, patch: Partial<Omit<User, 'id' | 'role'>>) => Promise<void>;
   addLesson: (l: Omit<Lesson, 'id'>) => Promise<void>;
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
@@ -131,6 +134,17 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     await commit({ ...store, users: [...store.users, { ...u, id: newId('u') }] });
   }, [store, commit]);
 
+  const updateUser = useCallback(
+    async (id: string, patch: Partial<Omit<User, 'id' | 'role'>>) => {
+      if (!store) return;
+      await commit({
+        ...store,
+        users: store.users.map((u) => (u.id === id ? { ...u, ...patch } : u)),
+      });
+    },
+    [store, commit],
+  );
+
   const addLesson = useCallback(async (l: Omit<Lesson, 'id'>) => {
     if (!store) return;
     await commit({ ...store, lessons: [...store.lessons, { ...l, id: newId('l') }] });
@@ -194,6 +208,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     updateBooking,
     deleteBooking,
     addUser,
+    updateUser,
     addLesson,
     updateLesson,
     deleteLesson,
@@ -202,7 +217,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     emergencyCleanup,
   }), [
     store, currentUser, loading, error, clearError, login, logout, refresh,
-    addBooking, updateBooking, deleteBooking, addUser, addLesson,
+    addBooking, updateBooking, deleteBooking, addUser, updateUser, addLesson,
     updateLesson, deleteLesson, addProgress, saveSettings, emergencyCleanup,
   ]);
 
