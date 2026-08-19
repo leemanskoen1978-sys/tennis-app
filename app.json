@@ -1,13 +1,18 @@
 {
   "expo": {
-    "name": "Tennisclub Racso",
-    "slug": "tennis-racso",
+    "name": "Tennis App",
+    "slug": "tennis-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "tennisracso",
+    "scheme": "tennisapp",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "web": { "bundler": "metro", "output": "single" },
-    "plugins": ["expo-router"]
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router"
+    ]
   }
 }

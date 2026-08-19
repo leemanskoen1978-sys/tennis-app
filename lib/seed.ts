@@ -2,9 +2,9 @@ import type { User, Court, Settings, Booking, Lesson, StudentProgress } from './
 
 // Fixed ids so the mock store has stable relations across reloads.
 export const seedUsers: User[] = [
-  { id: 'u-koen', name: 'Koen', email: 'koen@racso.be', role: 'coach' },
-  { id: 'u-mathis', name: 'Mathis', email: 'mathis@racso.be', role: 'player' },
-  { id: 'u-test', name: 'Test', email: 'test@racso.be', role: 'player' },
+  { id: 'u-koen', name: 'Koen', email: 'koen@example.com', role: 'coach' },
+  { id: 'u-mathis', name: 'Mathis', email: 'mathis@example.com', role: 'player' },
+  { id: 'u-test', name: 'Test', email: 'test@example.com', role: 'player' },
 ];
 
 export const seedCourts: Court[] = [

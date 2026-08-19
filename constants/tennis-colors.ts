@@ -1,18 +1,20 @@
 // Central color palette — tennisgroen as primary.
 export const tennisColors = {
-  primary: '#3E8E41', // tennisgroen
-  primaryDark: '#2E6B30',
-  accent: '#C8E063', // ball yellow-green
-  court: '#2C5F8A', // court blue
+  primary: '#2F7D34', // tennisgroen (deeper, richer)
+  primaryDark: '#245C29',
+  primaryTint: '#E8F1E6', // subtle fills, hover, selected rows
+  accent: '#C8E063', // fills / badges ONLY — never text on white
+  court: '#2C5F8A', // info / invoice — reserve for one meaning
   clay: '#C56B3E',
-  background: '#F5F7F2',
+  background: '#F6F8F4',
   surface: '#FFFFFF',
-  text: '#1C2B1E',
-  textMuted: '#6B7B6E',
-  border: '#DCE5D8',
+  surfaceAlt: '#FBFCFA', // nested panels inside cards/modals
+  text: '#16221A',
+  textMuted: '#55655A', // darkened for WCAG AA on background
+  border: '#E2E9DD',
   danger: '#C0392B',
-  warning: '#E08E0B',
-  success: '#3E8E41',
+  warning: '#B5730A', // darkened so white text passes AA
+  success: '#2F7D34',
   white: '#FFFFFF',
 } as const;
 

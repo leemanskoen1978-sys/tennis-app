@@ -14,10 +14,10 @@ export function filterPendingPayment(bookings: Booking[]): Booking[] {
   return bookings.filter(needsPayment);
 }
 
-/** Realized cash income: sums court hourly_rate for bookings marked 'paid'. */
+/** Realized cash income: sums court hourly_rate for paid, non-cancelled bookings. */
 export function totalRevenue(bookings: Booking[], courts: Court[]): number {
-  const rate = (id: string) => courts.find((c) => c.id === id)?.hourly_rate ?? 0;
+  const rateById = new Map(courts.map((c) => [c.id, c.hourly_rate]));
   return bookings
-    .filter((b) => b.payment_status === 'paid')
-    .reduce((sum, b) => sum + rate(b.court_id), 0);
+    .filter((b) => b.payment_status === 'paid' && b.status !== 'cancelled')
+    .reduce((sum, b) => sum + (rateById.get(b.court_id) ?? 0), 0);
 }

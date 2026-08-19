@@ -10,13 +10,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect } from 'expo-router';
 import { User as UserIcon, Award } from 'lucide-react-native';
 import { tennisColors } from '../constants/tennis-colors';
+import { appConfig } from '../constants/app-config';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 
 export default function Login(): React.JSX.Element {
   const { users, login, error, currentUser } = useSimpleData();
 
-  // Once logged in, leave the login screen for the tabs.
-  if (currentUser) return <Redirect href="/(tabs)/home" />;
+  // Once logged in, leave the login screen for the hub.
+  if (currentUser) return <Redirect href="/(tabs)" />;
 
   const handleLogin = (userId: string): void => {
     // Root layout auto-redirects na succesvolle login — geen handmatige navigatie.
@@ -31,7 +32,7 @@ export default function Login(): React.JSX.Element {
         end={{ x: 1, y: 1 }}
         style={styles.header}
       >
-        <Text style={styles.title}>Tennisclub Racso</Text>
+        <Text style={styles.title}>{appConfig.name}</Text>
         <Text style={styles.subtitle}>Kies je profiel</Text>
       </LinearGradient>
 

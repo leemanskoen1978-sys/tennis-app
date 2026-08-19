@@ -43,4 +43,11 @@ describe('totalRevenue', () => {
     ];
     expect(totalRevenue(list, courts)).toBe(30);
   });
+  it('excludes cancelled bookings even if marked paid', () => {
+    const list: Booking[] = [
+      { ...base, id: '1', payment_status: 'paid' },
+      { ...base, id: '2', payment_status: 'paid', status: 'cancelled' },
+    ];
+    expect(totalRevenue(list, courts)).toBe(30);
+  });
 });

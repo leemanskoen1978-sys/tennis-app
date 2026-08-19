@@ -3,7 +3,7 @@ import React, {
 } from 'react';
 import { filterPendingPayment } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
-import { loadStore, saveStore, newId, type StoreData } from './mockStore';
+import { loadStore, saveStore, resetStore, newId, type StoreData } from './mockStore';
 import type {
   User, Court, Booking, Lesson, StudentProgress, Settings,
 } from '../lib/types';
@@ -18,10 +18,11 @@ interface DataShape {
   currentUser: User | null;
   loading: boolean;
   error: string | null;
+  clearError: () => void;
   login: (userId: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
-  addBooking: (b: Omit<Booking, 'id'>) => Promise<void>;
+  addBooking: (b: Omit<Booking, 'id'>) => Promise<Booking | null>;
   updateBooking: (id: string, patch: Partial<Booking>) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   addUser: (u: Omit<User, 'id'>) => Promise<void>;
@@ -33,16 +34,33 @@ interface DataShape {
 
 const Ctx = createContext<DataShape | null>(null);
 
+/** Two bookings clash when same coach + overlapping time window (and not cancelled). */
+function overlaps(a: Pick<Booking, 'coach_id' | 'start_time' | 'end_time' | 'status'>, list: Booking[]): boolean {
+  const aStart = new Date(a.start_time).getTime();
+  const aEnd = new Date(a.end_time).getTime();
+  return list.some((b) => {
+    if (b.status === 'cancelled' || b.coach_id !== a.coach_id) return false;
+    const bStart = new Date(b.start_time).getTime();
+    const bEnd = new Date(b.end_time).getTime();
+    return aStart < bEnd && bStart < aEnd;
+  });
+}
+
 export function SimpleDataProvider({ children }: { children: React.ReactNode }) {
   const [store, setStore] = useState<StoreData | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Persist and update React state in one place.
+  // Persist then update state; surface any failure instead of swallowing it.
   const commit = useCallback(async (next: StoreData) => {
-    setStore(next);
-    await saveStore(next);
+    try {
+      await saveStore(next);
+      setStore(next);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Opslaan mislukt');
+      throw e;
+    }
   }, []);
 
   const refresh = useCallback(async () => {
@@ -51,8 +69,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     try {
       const data = await loadStore();
       setStore(data);
-    } catch (e: any) {
-      setError(e?.message ?? 'Kon data niet laden');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Kon data niet laden');
     } finally {
       setLoading(false);
     }
@@ -64,29 +82,31 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       setStore(data);
       setLoading(false);
       const savedId = await loadCurrentUserId();
-      if (savedId) {
-        const u = data.users.find((x) => x.id === savedId) ?? null;
-        setCurrentUser(u);
+      if (savedId && data.users.some((u) => u.id === savedId)) {
+        setCurrentUserId(savedId);
       }
     })();
   }, []);
 
   const login = useCallback(async (userId: string) => {
-    const u = store?.users.find((x) => x.id === userId) ?? null;
-    if (u) {
-      setCurrentUser(u);
-      await saveCurrentUserId(userId);
-    }
-  }, [store]);
+    setCurrentUserId(userId);
+    await saveCurrentUserId(userId);
+  }, []);
 
   const logout = useCallback(async () => {
-    setCurrentUser(null);
+    setCurrentUserId(null);
     await clearCurrentUserId();
   }, []);
 
-  const addBooking = useCallback(async (b: Omit<Booking, 'id'>) => {
-    if (!store) return;
-    await commit({ ...store, bookings: [...store.bookings, { ...b, id: newId('b') }] });
+  const addBooking = useCallback(async (b: Omit<Booking, 'id'>): Promise<Booking | null> => {
+    if (!store) return null;
+    if (overlaps(b, store.bookings)) {
+      setError('Dit tijdslot is al geboekt bij deze coach.');
+      return null;
+    }
+    const created: Booking = { ...b, id: newId('b') };
+    await commit({ ...store, bookings: [...store.bookings, created] });
+    return created;
   }, [store, commit]);
 
   const updateBooking = useCallback(async (id: string, patch: Partial<Booking>) => {
@@ -122,15 +142,21 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     await commit({ ...store, settings: s });
   }, [store, commit]);
 
-  // Explicit, confirmed-only cleanup. Removes bookings with an invalid/missing status.
+  // Emergency recovery: resets everything to the seed. Destructive by design and
+  // ONLY reachable behind an explicit confirmation — never automatic.
   const emergencyCleanup = useCallback(async () => {
-    if (!store) return;
-    const valid = new Set(['pending', 'confirmed', 'cancelled', 'completed', 'synchronized']);
-    await commit({
-      ...store,
-      bookings: store.bookings.filter((b) => valid.has(b.status as string)),
-    });
-  }, [store, commit]);
+    const seeded = await resetStore();
+    setStore(seeded);
+    setCurrentUserId(null);
+    await clearCurrentUserId();
+  }, []);
+
+  const clearError = useCallback(() => setError(null), []);
+
+  const currentUser = useMemo(
+    () => store?.users.find((u) => u.id === currentUserId) ?? null,
+    [store, currentUserId],
+  );
 
   const value = useMemo<DataShape>(() => ({
     users: store?.users ?? [],
@@ -142,6 +168,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     currentUser,
     loading,
     error,
+    clearError,
     login,
     logout,
     refresh,
@@ -154,7 +181,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     saveSettings,
     emergencyCleanup,
   }), [
-    store, currentUser, loading, error, login, logout, refresh,
+    store, currentUser, loading, error, clearError, login, logout, refresh,
     addBooking, updateBooking, deleteBooking, addUser, addLesson,
     addProgress, saveSettings, emergencyCleanup,
   ]);
@@ -170,5 +197,5 @@ export function useSimpleData(): DataShape {
 
 export function usePendingPaymentBookings(): Booking[] {
   const { bookings } = useSimpleData();
-  return filterPendingPayment(bookings);
+  return useMemo(() => filterPendingPayment(bookings), [bookings]);
 }

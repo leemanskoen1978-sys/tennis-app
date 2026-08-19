@@ -1,4 +1,4 @@
-// Shared data model for Tennisclub Racso (spec §4).
+// Shared data model (spec §4).
 
 export type Role = 'player' | 'coach' | 'parent';
 export type BookingStatus =

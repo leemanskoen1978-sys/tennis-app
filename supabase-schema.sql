@@ -1,4 +1,4 @@
--- Tennisclub Racso — Supabase schema (voor later).
+-- Tennis App — Supabase schema (voor later).
 -- Voer dit uit in de SQL-editor van je Supabase-project, kopieer daarna de
 -- project-URL + anon key naar .env (zie .env.example). De app draait nu nog op
 -- de in-memory mock en heeft dit niet nodig.
@@ -77,9 +77,9 @@ create table if not exists settings (
 -- Seed alleen als de tabellen leeg zijn (idempotent).
 insert into users (name, email, role)
 select * from (values
-  ('Koen','koen@racso.be','coach'),
-  ('Mathis','mathis@racso.be','player'),
-  ('Test','test@racso.be','player')
+  ('Koen','koen@example.com','coach'),
+  ('Mathis','mathis@example.com','player'),
+  ('Test','test@example.com','player')
 ) as v(name,email,role)
 where not exists (select 1 from users);
 
