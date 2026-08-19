@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, ScrollView, StyleSheet, type ViewStyle } from 'react-native';
-import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, contentMaxWidth } from '../../constants/theme';
 
 /**
@@ -28,7 +27,8 @@ export function Screen({
 }
 
 const styles = StyleSheet.create({
-  outer: { flex: 1, backgroundColor: tennisColors.background },
+  // Transparent: the app-wide background lives behind the stack (see AppBackground).
+  outer: { flex: 1 },
   scrollContent: { alignItems: 'center', paddingBottom: spacing.xxxl },
   inner: {
     width: '100%',

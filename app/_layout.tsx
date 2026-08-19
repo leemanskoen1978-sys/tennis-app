@@ -1,7 +1,9 @@
 import { Stack, Redirect, useSegments } from 'expo-router';
+import { ThemeProvider, DefaultTheme, type Theme } from '@react-navigation/native';
 import { View, ActivityIndicator } from 'react-native';
 import { SimpleDataProvider, useSimpleData } from '../providers/SimpleDataProvider';
 import { MenuBar } from '../components/ui/MenuBar';
+import { AppBackground } from '../components/ui/AppBackground';
 import { tennisColors } from '../constants/tennis-colors';
 
 // One plain stack, no tab bar. A MenuBar sits above the stack on every screen, so the
@@ -13,7 +15,8 @@ import { tennisColors } from '../constants/tennis-colors';
 const headerBase = {
   headerShown: true,
   headerTintColor: tennisColors.primary,
-  headerStyle: { backgroundColor: tennisColors.background },
+  headerStyle: { backgroundColor: 'transparent' },
+  contentStyle: { backgroundColor: 'transparent' },
   headerTitleStyle: { color: tennisColors.text },
   headerBackVisible: false,
   headerLeft: () => null,
@@ -39,6 +42,22 @@ const SCREENS: ReadonlyArray<{ name: string; title: string }> = [
   { name: 'admin/settings', title: 'Instellingen' },
 ];
 
+/**
+ * React Navigation paints its own theme background (#f2f2f2) over everything, which both
+ * hid the app background and was the wrong grey. Transparent hands the surface back.
+ */
+const transparentTheme: Theme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: 'transparent',
+    card: 'transparent',
+    text: tennisColors.text,
+    primary: tennisColors.primary,
+    border: tennisColors.border,
+  },
+};
+
 function Root() {
   const { loading, currentUser } = useSimpleData();
   const segments = useSegments();
@@ -62,14 +81,17 @@ function Root() {
 
   return (
     <View style={{ flex: 1, backgroundColor: tennisColors.background }}>
+      <AppBackground />
       {showMenu ? <MenuBar /> : null}
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="login" />
-        {SCREENS.map((s) => (
-          <Stack.Screen key={s.name} name={s.name} options={{ ...headerBase, title: s.title }} />
-        ))}
-      </Stack>
+      <ThemeProvider value={transparentTheme}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="login" />
+          {SCREENS.map((s) => (
+            <Stack.Screen key={s.name} name={s.name} options={{ ...headerBase, title: s.title }} />
+          ))}
+        </Stack>
+      </ThemeProvider>
     </View>
   );
 }
