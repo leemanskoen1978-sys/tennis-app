@@ -17,7 +17,7 @@ import type { PaymentMethod } from '../../lib/types';
 export default function Payments() {
   const router = useRouter();
   const pending = usePendingPaymentBookings();
-  const { updateBooking, deleteBooking, users, courts } = useSimpleData();
+  const { setPaymentMethod, deleteBooking, users, courts, error } = useSimpleData();
   const [busy, setBusy] = React.useState<boolean>(false);
 
   const b = pending[0];
@@ -47,8 +47,9 @@ export default function Payments() {
     fn().catch(() => undefined).finally(() => setBusy(false));
   };
 
-  const setMethod = (method: PaymentMethod) =>
-    run(() => updateBooking(b.id, { payment_method: method }));
+  // Via `setPaymentMethod`, want alleen die weg boekt de beurt af of geeft hem terug.
+  // Een geweigerde keuze laat de provider-foutregel hieronder staan.
+  const setMethod = (method: PaymentMethod) => run(() => setPaymentMethod(b.id, method));
 
   return (
     <Screen>
@@ -77,6 +78,8 @@ export default function Payments() {
         </View>
       </Card>
 
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
       <View style={styles.actions}>
         {/* 'open' staat er niet bij: dat is de toestand waarin de les hier al staat. */}
         {PAYMENT_METHODS.filter((m) => m !== 'open').map((method) => (
@@ -104,5 +107,6 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm },
   detailLabel: { fontSize: 14, color: tennisColors.textMuted },
   detailValue: { fontSize: 14, color: tennisColors.text, fontWeight: '600' },
+  error: { color: tennisColors.danger, fontSize: 14 },
   actions: { gap: spacing.sm },
 });

@@ -1,6 +1,6 @@
 // Rekenwerk rond de 10-beurtenkaart. Puur: elke functie geeft een nieuwe kaart terug.
 
-import type { Beurtenkaart } from './types';
+import type { Beurtenkaart, Booking, PaymentMethod } from './types';
 
 export const SESSIONS_PER_CARD = 10;
 
@@ -44,6 +44,60 @@ export function useSession(card: Beurtenkaart, bookingId: string, date: string):
 export function releaseSession(card: Beurtenkaart, bookingId: string): Beurtenkaart {
   if (!bookingId) return card;
   return { ...card, uses: card.uses.filter((u) => u.booking_id !== bookingId) };
+}
+
+/** De boekinggegevens die een betaalwijzewissel nodig heeft. */
+export type MethodChangeBooking = Pick<
+  Booking, 'id' | 'player_id' | 'start_time' | 'status' | 'beurtenkaart_id'
+>;
+
+export interface MethodChangePlan {
+  cards: Beurtenkaart[];
+  cardId: string | undefined;
+  /** Gezet als de wissel niet doorgaat; `cards` en `cardId` blijven dan zoals ze waren. */
+  error: string | null;
+}
+
+/**
+ * De hele beslissing achter een betaalwijzewissel op één plek, zonder store of state:
+ * zo is elke overgang te testen in plaats van met de hand na te spelen in de app.
+ * De aanroeper commit het resultaat alleen als `error` leeg is.
+ */
+export function planMethodChange(
+  cards: Beurtenkaart[],
+  booking: MethodChangeBooking,
+  method: PaymentMethod,
+): MethodChangePlan {
+  const unchanged = { cards, cardId: booking.beurtenkaart_id };
+
+  // Een geannuleerde les mag geen beurt opeten en hoort geen betaalwijze te krijgen.
+  if (booking.status === 'cancelled') {
+    return { ...unchanged, error: 'Een geannuleerde les krijgt geen betaalwijze.' };
+  }
+
+  let next = cards;
+  let cardId = booking.beurtenkaart_id;
+
+  // Weg van de beurtenkaart: de beurt komt terug voor hij ergens anders heen kan.
+  if (cardId && method !== 'beurtenkaart') {
+    const previous = cardId;
+    next = next.map((c) => (c.id === previous ? releaseSession(c, booking.id) : c));
+    cardId = undefined;
+  }
+
+  // Dezelfde kaart nog eens kiezen kost geen tweede beurt: `cardId` staat er al.
+  // Staat de les wél op 'beurtenkaart' zonder kaart (bv. via de standaard betaalwijze
+  // van een speler), dan wordt de beurt hier alsnog afgeboekt.
+  if (method === 'beurtenkaart' && !cardId) {
+    const card = usableCardFor(next, booking.player_id);
+    if (!card) {
+      return { ...unchanged, error: 'Geen beurtenkaart met beurten over voor deze speler.' };
+    }
+    next = next.map((c) => (c.id === card.id ? useSession(c, booking.id, booking.start_time) : c));
+    cardId = card.id;
+  }
+
+  return { cards: next, cardId, error: null };
 }
 
 /** De min-knop op het kaartscherm: haalt alleen een handmatig gezette beurt weg. */

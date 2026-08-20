@@ -1,12 +1,12 @@
 import React, {
-  createContext, useContext, useEffect, useState, useCallback, useMemo,
+  createContext, useContext, useEffect, useState, useCallback, useMemo, useRef,
 } from 'react';
 import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
 import { loadStore, saveStore, resetStore, newId, type StoreData } from './mockStore';
 import { upsertGoal, removeGoal } from '../lib/goals';
 import {
-  SESSIONS_PER_CARD, usableCardFor, useSession, releaseSession, removeManualSession,
+  SESSIONS_PER_CARD, useSession, releaseSession, removeManualSession, planMethodChange,
 } from '../lib/beurtenkaart';
 import type {
   User, Court, Booking, Lesson, StudentProgress, PlayerGoal, Settings,
@@ -30,7 +30,9 @@ interface DataShape {
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   addBooking: (b: Omit<Booking, 'id'>) => Promise<Booking | null>;
-  updateBooking: (id: string, patch: Partial<Booking>) => Promise<void>;
+  /** `payment_method` en `beurtenkaart_id` blijven erbuiten: die lopen uitsluitend
+   *  via `setPaymentMethod`, de enige plek die de beurtenkaart in de pas houdt. */
+  updateBooking: (id: string, patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id'>>) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   /** Zet de betaalwijze en houdt de beurtenkaart in de pas. */
   /** `false` bij een geweigerde keuze: onbekende boeking, geannuleerde les, of geen kaart met beurten over. */
@@ -87,12 +89,22 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Elke actie leest hieruit in plaats van uit de snapshot van zijn render: twee snelle
+  // klikken achter elkaar schrijven anders allebei dezelfde oude store terug en wist de
+  // laatste de eerste — met een verdwenen beurt tot gevolg.
+  const storeRef = useRef<StoreData | null>(null);
+
   // Persist then update state; surface any failure instead of swallowing it.
   const commit = useCallback(async (next: StoreData) => {
+    const previous = storeRef.current;
+    // De ref loopt vooruit op de state: het wegschrijven is async, en een volgende actie
+    // moet meteen op deze wijziging verder kunnen bouwen.
+    storeRef.current = next;
     try {
       await saveStore(next);
       setStore(next);
     } catch (e: unknown) {
+      storeRef.current = previous;
       setError(e instanceof Error ? e.message : 'Opslaan mislukt');
       throw e;
     }
@@ -103,6 +115,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setError(null);
     try {
       const data = await loadStore();
+      storeRef.current = data;
       setStore(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Kon data niet laden');
@@ -114,6 +127,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     (async () => {
       const data = await loadStore();
+      storeRef.current = data;
       setStore(data);
       setLoading(false);
       const savedId = await loadCurrentUserId();
@@ -134,6 +148,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const addBooking = useCallback(async (b: Omit<Booking, 'id'>): Promise<Booking | null> => {
+    const store = storeRef.current;
     if (!store) return null;
     if (overlaps(b, store.bookings)) {
       setError('Dit tijdslot is al geboekt bij deze coach.');
@@ -142,12 +157,19 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     const created: Booking = { ...b, id: newId('b') };
     await commit({ ...store, bookings: [...store.bookings, created] });
     return created;
-  }, [store, commit]);
+  }, [commit]);
 
-  const updateBooking = useCallback(async (id: string, patch: Partial<Booking>) => {
+  const updateBooking = useCallback(async (
+    id: string,
+    patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id'>>,
+  ) => {
+    const store = storeRef.current;
     if (!store) return;
     const booking = store.bookings.find((b) => b.id === id);
     const cancelling = patch.status === 'cancelled' && booking?.status !== 'cancelled';
+    // Alleen een teruggegeven beurt dwingt een nieuwe keuze af. Cash, factuur of sponsor
+    // zijn al betaald en horen bij annulering gewoon te blijven staan.
+    const releasing = cancelling && !!booking?.beurtenkaart_id;
     const cards = cancelling ? releaseCardFor(store, booking) : store.beurtenkaarten;
     await commit({
       ...store,
@@ -157,16 +179,17 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
           ? {
             ...b,
             ...patch,
-            ...(cancelling
+            ...(releasing
               ? { payment_method: 'open' as PaymentMethod, beurtenkaart_id: undefined }
               : {}),
           }
           : b,
       ),
     });
-  }, [store, commit]);
+  }, [commit]);
 
   const deleteBooking = useCallback(async (id: string) => {
+    const store = storeRef.current;
     if (!store) return;
     const booking = store.bookings.find((b) => b.id === id);
     await commit({
@@ -174,51 +197,34 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       beurtenkaarten: releaseCardFor(store, booking),
       bookings: store.bookings.filter((b) => b.id !== id),
     });
-  }, [store, commit]);
+  }, [commit]);
 
   const setPaymentMethod = useCallback(async (bookingId: string, method: PaymentMethod): Promise<boolean> => {
+    const store = storeRef.current;
     if (!store) return false;
     const booking = store.bookings.find((b) => b.id === bookingId);
     if (!booking) return false;
 
-    // Een geannuleerde les mag geen beurt opeten en hoort geen betaalwijze te krijgen.
-    if (booking.status === 'cancelled') {
-      setError('Een geannuleerde les krijgt geen betaalwijze.');
+    // De beslissing zelf zit in `planMethodChange`; hier wordt hij alleen gecommit.
+    const plan = planMethodChange(store.beurtenkaarten, booking, method);
+    if (plan.error) {
+      setError(plan.error);
       return false;
-    }
-
-    let cards = store.beurtenkaarten;
-    let cardId = booking.beurtenkaart_id;
-
-    // Weg van de beurtenkaart: de beurt komt terug voor hij ergens anders heen kan.
-    if (cardId && method !== 'beurtenkaart') {
-      cards = cards.map((c) => (c.id === cardId ? releaseSession(c, bookingId) : c));
-      cardId = undefined;
-    }
-
-    // Dezelfde kaart nog eens kiezen kost geen tweede beurt: `cardId` staat er al.
-    if (method === 'beurtenkaart' && !cardId) {
-      const card = usableCardFor(cards, booking.player_id);
-      if (!card) {
-        setError('Geen beurtenkaart met beurten over voor deze speler.');
-        return false;
-      }
-      cards = cards.map((c) => (c.id === card.id ? useSession(c, bookingId, booking.start_time) : c));
-      cardId = card.id;
     }
 
     setError(null);
     await commit({
       ...store,
-      beurtenkaarten: cards,
+      beurtenkaarten: plan.cards,
       bookings: store.bookings.map((b) =>
-        b.id === bookingId ? { ...b, payment_method: method, beurtenkaart_id: cardId } : b,
+        b.id === bookingId ? { ...b, payment_method: method, beurtenkaart_id: plan.cardId } : b,
       ),
     });
     return true;
-  }, [store, commit]);
+  }, [commit]);
 
   const addBeurtenkaart = useCallback(async (playerId: string) => {
+    const store = storeRef.current;
     if (!store) return;
     const card: Beurtenkaart = {
       id: newId('k'),
@@ -228,17 +234,19 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       uses: [],
     };
     await commit({ ...store, beurtenkaarten: [...store.beurtenkaarten, card] });
-  }, [store, commit]);
+  }, [commit]);
 
   const updateBeurtenkaart = useCallback(async (id: string, patch: Pick<Beurtenkaart, 'remarks'>) => {
+    const store = storeRef.current;
     if (!store) return;
     await commit({
       ...store,
       beurtenkaarten: store.beurtenkaarten.map((c) => (c.id === id ? { ...c, ...patch } : c)),
     });
-  }, [store, commit]);
+  }, [commit]);
 
   const addCardSession = useCallback(async (id: string) => {
+    const store = storeRef.current;
     if (!store) return;
     await commit({
       ...store,
@@ -246,17 +254,19 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
         c.id === id ? useSession(c, '', nowISO()) : c,
       ),
     });
-  }, [store, commit]);
+  }, [commit]);
 
   const removeCardSession = useCallback(async (id: string) => {
+    const store = storeRef.current;
     if (!store) return;
     await commit({
       ...store,
       beurtenkaarten: store.beurtenkaarten.map((c) => (c.id === id ? removeManualSession(c) : c)),
     });
-  }, [store, commit]);
+  }, [commit]);
 
   const deleteBeurtenkaart = useCallback(async (id: string) => {
+    const store = storeRef.current;
     if (!store) return;
     await commit({
       ...store,
@@ -268,67 +278,77 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
           : b,
       ),
     });
-  }, [store, commit]);
+  }, [commit]);
 
   const addUser = useCallback(async (u: Omit<User, 'id'>) => {
+    const store = storeRef.current;
     if (!store) return;
     await commit({ ...store, users: [...store.users, { ...u, id: newId('u') }] });
-  }, [store, commit]);
+  }, [commit]);
 
   const updateUser = useCallback(
     async (id: string, patch: Partial<Omit<User, 'id' | 'role'>>) => {
+      const store = storeRef.current;
       if (!store) return;
       await commit({
         ...store,
         users: store.users.map((u) => (u.id === id ? { ...u, ...patch } : u)),
       });
     },
-    [store, commit],
+    [commit],
   );
 
   const addLesson = useCallback(async (l: Omit<Lesson, 'id'>) => {
+    const store = storeRef.current;
     if (!store) return;
     await commit({ ...store, lessons: [...store.lessons, { ...l, id: newId('l') }] });
-  }, [store, commit]);
+  }, [commit]);
 
   const updateLesson = useCallback(async (id: string, patch: Partial<Lesson>) => {
+    const store = storeRef.current;
     if (!store) return;
     await commit({
       ...store,
       lessons: store.lessons.map((l) => (l.id === id ? { ...l, ...patch } : l)),
     });
-  }, [store, commit]);
+  }, [commit]);
 
   const deleteLesson = useCallback(async (id: string) => {
+    const store = storeRef.current;
     if (!store) return;
     await commit({ ...store, lessons: store.lessons.filter((l) => l.id !== id) });
-  }, [store, commit]);
+  }, [commit]);
 
   const addProgress = useCallback(async (p: Omit<StudentProgress, 'id'>) => {
+    const store = storeRef.current;
     if (!store) return;
     const entry: StudentProgress = { ...p, id: newId('p'), created_at: p.created_at ?? nowISO() };
     await commit({ ...store, progress: [...store.progress, entry] });
-  }, [store, commit]);
+  }, [commit]);
 
   const saveGoal = useCallback(async (goal: PlayerGoal) => {
+    const store = storeRef.current;
     if (!store) return;
     await commit({ ...store, goals: upsertGoal(store.goals, goal) });
-  }, [store, commit]);
+  }, [commit]);
 
   const deleteGoal = useCallback(async (id: string) => {
+    const store = storeRef.current;
     if (!store) return;
     await commit({ ...store, goals: removeGoal(store.goals, id) });
-  }, [store, commit]);
+  }, [commit]);
 
   const saveSettings = useCallback(async (s: Settings) => {
+    const store = storeRef.current;
     if (!store) return;
     await commit({ ...store, settings: s });
-  }, [store, commit]);
+  }, [commit]);
 
   // Emergency recovery: resets everything to the seed. Destructive by design and
   // ONLY reachable behind an explicit confirmation — never automatic.
   const emergencyCleanup = useCallback(async () => {
     const seeded = await resetStore();
+    storeRef.current = seeded;
     setStore(seeded);
     setCurrentUserId(null);
     await clearCurrentUserId();

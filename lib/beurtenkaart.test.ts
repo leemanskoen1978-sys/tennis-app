@@ -1,7 +1,8 @@
 import type { Beurtenkaart } from './types';
 import {
   SESSIONS_PER_CARD, remaining, cardsFor, usableCardFor,
-  useSession, releaseSession, removeManualSession,
+  useSession, releaseSession, removeManualSession, planMethodChange,
+  type MethodChangeBooking,
 } from './beurtenkaart';
 
 function card(over: Partial<Beurtenkaart> = {}): Beurtenkaart {
@@ -115,5 +116,93 @@ describe('removeManualSession', () => {
       { booking_id: '', date: iso },
       { booking_id: 'b1', date: iso },
     ]);
+  });
+});
+
+describe('planMethodChange', () => {
+  function booking(over: Partial<MethodChangeBooking> = {}): MethodChangeBooking {
+    return {
+      id: 'b1', player_id: 'p1', start_time: iso, status: 'confirmed', ...over,
+    };
+  }
+
+  /** Hoe vaak een les in de hele kaartenstapel een beurt kost. */
+  const usesOf = (cards: Beurtenkaart[], bookingId: string): number =>
+    cards.reduce((n, c) => n + c.uses.filter((u) => u.booking_id === bookingId).length, 0);
+
+  it('takes one session when the lesson moves onto a card', () => {
+    const plan = planMethodChange([card()], booking(), 'beurtenkaart');
+    expect(plan.error).toBeNull();
+    expect(plan.cardId).toBe('k1');
+    expect(usesOf(plan.cards, 'b1')).toBe(1);
+  });
+
+  it('does not take a second session when beurtenkaart is chosen again', () => {
+    const used = card({ uses: [{ booking_id: 'b1', date: iso }] });
+    const plan = planMethodChange([used], booking({ beurtenkaart_id: 'k1' }), 'beurtenkaart');
+    expect(plan.error).toBeNull();
+    expect(plan.cardId).toBe('k1');
+    expect(usesOf(plan.cards, 'b1')).toBe(1);
+  });
+
+  it('books a session anyway when the lesson says beurtenkaart without a card', () => {
+    // Ontstaat via de standaard betaalwijze van een speler: 'beurtenkaart' zonder kaart.
+    const plan = planMethodChange([card()], booking({ beurtenkaart_id: undefined }), 'beurtenkaart');
+    expect(plan.error).toBeNull();
+    expect(plan.cardId).toBe('k1');
+    expect(usesOf(plan.cards, 'b1')).toBe(1);
+  });
+
+  it('gives the session back and clears the card when moving away from beurtenkaart', () => {
+    const used = card({ uses: [{ booking_id: 'b1', date: iso }] });
+    const plan = planMethodChange([used], booking({ beurtenkaart_id: 'k1' }), 'cash');
+    expect(plan.error).toBeNull();
+    expect(plan.cardId).toBeUndefined();
+    expect(usesOf(plan.cards, 'b1')).toBe(0);
+  });
+
+  it('via cash and back costs exactly one session again, possibly on another card', () => {
+    const k1 = card({ id: 'k1', uses: [{ booking_id: 'b1', date: iso }] });
+    const k2 = card({
+      id: 'k2',
+      created_at: '2026-02-01T00:00:00.000Z',
+      uses: ['x1', 'x2', 'x3'].map((id) => ({ booking_id: id, date: iso })),
+    });
+
+    const toCash = planMethodChange([k1, k2], booking({ beurtenkaart_id: 'k1' }), 'cash');
+    expect(usesOf(toCash.cards, 'b1')).toBe(0);
+
+    const back = planMethodChange(
+      toCash.cards,
+      booking({ beurtenkaart_id: toCash.cardId }),
+      'beurtenkaart',
+    );
+    expect(back.error).toBeNull();
+    // De volste kaart raakt eerst op, dus de beurt landt nu op de andere kaart.
+    expect(back.cardId).toBe('k2');
+    expect(usesOf(back.cards, 'b1')).toBe(1);
+  });
+
+  it('refuses when the player has no card at all and leaves the cards untouched', () => {
+    const other = card({ id: 'k9', player_id: 'p2' });
+    const plan = planMethodChange([other], booking(), 'beurtenkaart');
+    expect(plan.error).toBe('Geen beurtenkaart met beurten over voor deze speler.');
+    expect(plan.cards).toEqual([other]);
+    expect(plan.cardId).toBeUndefined();
+  });
+
+  it('refuses when every card of the player is full', () => {
+    const full = card({
+      uses: Array.from({ length: SESSIONS_PER_CARD }, (_, i) => ({ booking_id: `x${i}`, date: iso })),
+    });
+    const plan = planMethodChange([full], booking(), 'beurtenkaart');
+    expect(plan.error).toBe('Geen beurtenkaart met beurten over voor deze speler.');
+    expect(plan.cards).toEqual([full]);
+  });
+
+  it('refuses a payment method on a cancelled lesson', () => {
+    const plan = planMethodChange([card()], booking({ status: 'cancelled' }), 'beurtenkaart');
+    expect(plan.error).toBe('Een geannuleerde les krijgt geen betaalwijze.');
+    expect(usesOf(plan.cards, 'b1')).toBe(0);
   });
 });
