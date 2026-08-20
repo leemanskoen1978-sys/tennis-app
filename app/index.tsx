@@ -11,8 +11,7 @@ import {
   BookOpen, TrendingUp, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
+import { ActionTile, TileGrid } from '../components/ui/ActionTile';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
 import { filterPendingPayment } from '../lib/payments';
@@ -72,28 +71,19 @@ export default function Hub() {
         </View>
       </View>
 
-      <View style={styles.grid}>
-        {tiles.map((t) => {
-          const Icon = t.icon;
-          return (
-            <Card
-              key={t.key}
-              onPress={t.onPress}
-              accessibilityLabel={t.title}
-              style={{ ...styles.tile, ...(t.primary ? styles.tilePrimary : {}) }}
-            >
-              <View style={styles.tileTop}>
-                <View style={[styles.iconWrap, t.primary && styles.iconWrapPrimary]}>
-                  <Icon color={t.primary ? tennisColors.white : tennisColors.primary} size={24} />
-                </View>
-                {t.badge && t.badge > 0 ? <Badge label={String(t.badge)} color={tennisColors.warning} /> : null}
-              </View>
-              <Text style={[styles.tileTitle, t.primary && styles.textOnPrimary]}>{t.title}</Text>
-              <Text style={[styles.tileSub, t.primary && styles.subOnPrimary]}>{t.subtitle}</Text>
-            </Card>
-          );
-        })}
-      </View>
+      <TileGrid>
+        {tiles.map((t) => (
+          <ActionTile
+            key={t.key}
+            title={t.title}
+            subtitle={t.subtitle}
+            icon={t.icon}
+            onPress={t.onPress}
+            primary={t.primary}
+            badge={t.badge}
+          />
+        ))}
+      </TileGrid>
     </Screen>
   );
 }
@@ -103,17 +93,4 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, gap: spacing.xs },
   hi: { ...typography.h1, color: tennisColors.text },
   q: { fontSize: 16, color: tennisColors.textMuted },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  tile: { flexGrow: 1, flexBasis: 150, minHeight: 132, justifyContent: 'flex-start' },
-  tilePrimary: { flexBasis: '100%', backgroundColor: tennisColors.primary },
-  tileTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  iconWrap: {
-    width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: tennisColors.primaryTint,
-  },
-  iconWrapPrimary: { backgroundColor: 'rgba(255,255,255,0.2)' },
-  tileTitle: { ...typography.h3, color: tennisColors.text, marginTop: spacing.sm },
-  tileSub: { fontSize: 13, color: tennisColors.textMuted },
-  textOnPrimary: { color: tennisColors.white },
-  subOnPrimary: { color: 'rgba(255,255,255,0.85)' },
 });
