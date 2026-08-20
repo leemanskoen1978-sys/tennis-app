@@ -101,6 +101,18 @@ export function fitsInSponsorBudget(state: SponsorState, price: number): boolean
   return cents(price) <= cents(state.left);
 }
 
+/**
+ * Wat de trainer in het veld typt, als bedrag. Leeg — of onzin, of een negatief bedrag —
+ * betekent: geen sponsorcontract. Een komma mag: zo schrijft men hier een bedrag.
+ */
+export function parseSponsorBudget(text: string): number | undefined {
+  const cleaned = text.replace(/[€\s]/g, '').replace(',', '.');
+  if (cleaned === '') return undefined;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value) || value <= 0) return undefined;
+  return euro(value);
+}
+
 /** Alles wat één beslissing over het sponsorbudget nodig heeft. */
 export interface SponsorContext {
   player: SponsorPlayer | null | undefined;
@@ -124,9 +136,10 @@ export function sponsorRefusal(booking: PricedBooking, ctx: SponsorContext): str
 
 /**
  * De regel onder de betaalwijzen: wat deze speler nog te besteden heeft. Zelfde vorm als
- * "Nog 4 beurten over." bij de beurtenkaart, want het is dezelfde vraag in euro's.
+ * "Nog 4 beurten over." bij de beurtenkaart, want het is dezelfde vraag in euro's. Hij
+ * noemt het budget bij naam: naast de beurtenregel moet een bedrag zichzelf verklaren.
  */
 export function sponsorHint(state: SponsorState): string {
   if (!state.hasBudget) return 'Deze speler heeft geen sponsorbudget.';
-  return `Nog € ${formatEuro(state.left)} van € ${formatEuro(state.budget)} over.`;
+  return `Sponsorbudget: nog € ${formatEuro(state.left)} van € ${formatEuro(state.budget)} over.`;
 }

@@ -15,6 +15,7 @@ import { useSimpleData } from '../providers/SimpleDataProvider';
 import { cardsFor, remaining } from '../lib/beurtenkaart';
 import { formatDayTimeRange } from '../lib/datetime';
 import { paymentMeta, type PaymentMeta } from '../lib/payments';
+import { sponsorHint, sponsorState } from '../lib/sponsor';
 import { BOOKING_STATUS_LABELS } from '../lib/status';
 import type { Beurtenkaart, Booking, BookingStatus, PaymentMethod } from '../lib/types';
 import { tennisColors } from '../constants/tennis-colors';
@@ -92,6 +93,19 @@ export function LessonDetailSheet({
     const left = cards.reduce((sum, c) => sum + remaining(c), 0);
     return left === 1 ? 'Nog 1 beurt over.' : `Nog ${left} beurten over.`;
   };
+
+  /**
+   * Wat er van het sponsorbudget over is. De les zelf telt niet mee in het verbruik: staat
+   * hij al op sponsor, dan zou hij anders zijn eigen bedrag van het saldo aftrekken en zou
+   * er "nog € 0,00" staan terwijl er niets veranderd is.
+   */
+  const sponsorTekst = (): string =>
+    sponsorHint(sponsorState(
+      users.find((u) => u.id === booking.player_id),
+      bookings,
+      courts,
+      booking.id,
+    ));
 
   const goTo = (path: string): void => {
     onClose();
@@ -207,6 +221,7 @@ export function LessonDetailSheet({
         visible={visible && choosing}
         current={booking.payment_method}
         cardHint={cardHint()}
+        sponsorHint={sponsorTekst()}
         error={error}
         onPick={(m) => {
           void pickMethod(m);

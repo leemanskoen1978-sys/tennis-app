@@ -13,6 +13,8 @@ interface Props {
   current: PaymentMethod;
   /** Getoond bij '10-beurtenkaart', bijvoorbeeld "nog 4 beurten". */
   cardHint?: string;
+  /** Hetzelfde voor 'Sponsor', in euro's: wat er van het sponsorbudget over is. */
+  sponsorHint?: string;
   error?: string | null;
   onPick: (method: PaymentMethod) => void;
   onClose: () => void;
@@ -23,6 +25,7 @@ export function PaymentMethodSheet({
   visible,
   current,
   cardHint,
+  sponsorHint,
   error,
   onPick,
   onClose,
@@ -46,6 +49,9 @@ export function PaymentMethodSheet({
           </View>
 
           {cardHint ? <Text style={styles.hint}>{cardHint}</Text> : null}
+          {/* Twee saldo's onder elkaar: beurten voor de kaart, euro's voor de sponsor.
+              Allebei het antwoord op dezelfde vraag — kan deze les hier nog bij? */}
+          {sponsorHint ? <Text style={styles.hint}>{sponsorHint}</Text> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Button label="Sluiten" variant="secondary" onPress={onClose} />

@@ -15,6 +15,7 @@ import type { Court, PaymentMethod } from '../lib/types';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { defaultMethodFor, PAYMENT_LABELS, PAYMENT_METHODS } from '../lib/payments';
 import { cardsFor, remaining } from '../lib/beurtenkaart';
+import { sponsorHint, sponsorState } from '../lib/sponsor';
 import { formatDay } from '../lib/datetime';
 
 interface BookingModalProps {
@@ -38,17 +39,22 @@ function parseHour(slot: string): number {
 
 export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const { visible, onClose, coachId, date, slot, courts, playerId } = props;
-  const { currentUser, users, beurtenkaarten, addBooking, setPaymentMethod, error } =
-    useSimpleData();
+  // `courts` is een prop (de terreinen waaruit je hier kiest); voor de prijs van een les
+  // is de hele lijst nodig, dus die komt uit de opslag onder een eigen naam.
+  const {
+    currentUser, users, bookings, courts: allCourts, beurtenkaarten,
+    addBooking, setPaymentMethod, error,
+  } = useSimpleData();
 
   const [selectedCourtId, setSelectedCourtId] = useState<string>(
     courts[0]?.id ?? '',
   );
   const [notes, setNotes] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
-  // De les is aangemaakt, maar de beurt kon er niet af. Het venster blijft dan open met de
-  // melding erbij; deze id zorgt dat een tweede klik de beurt opnieuw probeert af te boeken
-  // in plaats van een tweede les aan te maken.
+  // De les is aangemaakt, maar de betaalwijze kon er niet op: geen beurt over, of het
+  // sponsorbudget draagt hem niet meer. Het venster blijft dan open met de melding erbij;
+  // deze id zorgt dat een tweede klik het opnieuw probeert in plaats van een tweede les
+  // aan te maken.
   const [bookedWithoutBeurt, setBookedWithoutBeurt] = useState<string | null>(null);
   // Bewust alleen de eigen keuze van de gebruiker, en `null` zolang hij niets aanklikte.
   // Zo blijft de standaard van de speler leidend — wisselt de trainer van speler, dan
@@ -84,6 +90,11 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   // De betaalwijze waarmee geboekt wordt: de eigen keuze, anders de standaard.
   const method: PaymentMethod = chosenMethod ?? defaultMethod;
 
+  // Beurtenkaart en sponsor hebben allebei een bodem. Ze lopen daarom niet rechtstreeks
+  // mee in de nieuwe les, maar via `setPaymentMethod`: dat is de enige plek die de beurt
+  // afboekt en het sponsorbudget bewaakt.
+  const bewaakt = method === 'beurtenkaart' || method === 'sponsor';
+
   /** Zelfde formulering als het exportscherm: hoeveel beurten heeft deze speler nog. */
   const beurtenHint = (): string => {
     const cards = forPlayerId ? cardsFor(beurtenkaarten, forPlayerId) : [];
@@ -91,6 +102,10 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
     const left = cards.reduce((sum, c) => sum + remaining(c), 0);
     return left === 1 ? 'Nog 1 beurt over.' : `Nog ${left} beurten over.`;
   };
+
+  /** Hetzelfde in euro's: wat heeft deze speler nog van zijn sponsorcontract over. */
+  const sponsorTekst = (): string =>
+    sponsorHint(sponsorState(users.find((u) => u.id === forPlayerId), bookings, allCourts));
 
   const handleClose = (): void => {
     setBookedWithoutBeurt(null);
@@ -110,17 +125,17 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
     }
     setSubmitting(true);
     try {
-      // De les staat er al en wacht alleen nog op zijn beurt: niets opnieuw aanmaken.
+      // De les staat er al en wacht alleen nog op zijn betaalwijze: niets opnieuw aanmaken.
       if (bookedWithoutBeurt) {
-        const retried = await setPaymentMethod(bookedWithoutBeurt, 'beurtenkaart');
+        const retried = await setPaymentMethod(bookedWithoutBeurt, method);
         if (!retried) {
           return;
         }
         handleClose();
         return;
       }
-      // Is de beurtenkaart gekozen, boek dan open en laat setPaymentMethod de beurt
-      // afboeken — dat is de enige plek die dat bewaakt.
+      // Bij een bewaakte betaalwijze: boek op open en laat setPaymentMethod de beurt
+      // afboeken of het sponsorbudget nakijken — dat is de enige plek die dat bewaakt.
       const created = await addBooking({
         player_id: playerId ?? currentUser.id,
         coach_id: coachId,
@@ -128,17 +143,18 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         start_time,
         end_time,
         status: 'confirmed',
-        payment_method: method === 'beurtenkaart' ? 'open' : method,
+        payment_method: bewaakt ? 'open' : method,
         notes: notes.trim() ? notes.trim() : undefined,
       });
       if (!created) {
         return;
       }
-      if (method === 'beurtenkaart') {
-        const paid = await setPaymentMethod(created.id, 'beurtenkaart');
+      if (bewaakt) {
+        const paid = await setPaymentMethod(created.id, method);
         if (!paid) {
-          // Geen kaart met beurten over. De les bestaat wel, op Open: het venster blijft
-          // open zodat de trainer de melding van de provider hieronder te zien krijgt.
+          // Geen kaart met beurten over, of het sponsorbudget draagt deze les niet meer.
+          // De les bestaat wel, op Open: het venster blijft open zodat de trainer de
+          // melding van de provider hieronder te zien krijgt.
           setBookedWithoutBeurt(created.id);
           return;
         }
@@ -181,10 +197,10 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
               // De les staat er al. De velden zijn niet meer van toepassing: wat hier nog
               // ontbreekt is de beurt, niet de boeking.
               <Text style={styles.notice}>
-                De les is geboekt, maar er ging geen beurt af: de betaalwijze staat nog op
-                “{PAYMENT_LABELS.open}”. Bevestigen probeert de beurt alsnog af te boeken —
-                er komt geen tweede les bij. Sluiten mag ook; je kunt de betaalwijze later
-                bij de les zelf zetten.
+                De les is geboekt, maar “{PAYMENT_LABELS[method]}” ging er niet op: de
+                betaalwijze staat nog op “{PAYMENT_LABELS.open}”. Bevestigen probeert het
+                alsnog — er komt geen tweede les bij. Sluiten mag ook; je kunt de betaalwijze
+                later bij de les zelf zetten.
               </Text>
             ) : (
               <>
@@ -216,6 +232,11 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                     Er gaat een beurt af. {beurtenHint()}
                   </Text>
                 ) : null}
+                {method === 'sponsor' ? (
+                  <Text style={styles.hint}>
+                    De les gaat van het sponsorcontract af. {sponsorTekst()}
+                  </Text>
+                ) : null}
 
                 <Text style={styles.label}>Notities (optioneel)</Text>
                 <TextInput
@@ -241,7 +262,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
               fullWidth
             />
             <Button
-              label={bookedWithoutBeurt ? 'Beurt opnieuw proberen' : 'Bevestigen'}
+              label={bookedWithoutBeurt ? 'Betaalwijze opnieuw proberen' : 'Bevestigen'}
               variant="primary"
               onPress={handleConfirm}
               disabled={submitting}

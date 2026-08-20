@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Plus, CheckCircle2, Circle, BookOpen, CalendarPlus, CalendarDays, Target,
@@ -23,8 +23,9 @@ import {
 } from '../../lib/relations';
 import { filledGoalCount, goalCountLabel } from '../../lib/goals';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
+import { parseSponsorBudget, sponsorHint, sponsorState } from '../../lib/sponsor';
 import { tennisColors } from '../../constants/tennis-colors';
-import { spacing, typography, webCursor, minTapTarget } from '../../constants/theme';
+import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
 import type { GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
 
@@ -69,6 +70,9 @@ export default function PlayerDossier() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [detailLesson, setDetailLesson] = useState<Lesson | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  // Wat er in het budgetveld staat terwijl de trainer typt; null = nog niets aangeraakt,
+  // dan komt de waarde uit de speler zelf.
+  const [budgetTyped, setBudgetTyped] = useState<string | null>(null);
 
   if (!player) {
     return (
@@ -109,6 +113,17 @@ export default function PlayerDossier() {
   const goalCount = filledGoalCount(goals.filter((g) => g.student_id === player.id));
   const doelenSummary = goalCount === 0 ? 'nog geen doel' : goalCountLabel(goalCount);
   const betaalwijze = PAYMENT_LABELS[player.default_payment_method ?? 'open'];
+
+  // Het sponsorbudget: wat er in het contract staat en wat er nog van over is. De rest
+  // rekent lib/sponsor uit de gesponsorde lessen — er is geen tweede saldo dat kan gaan
+  // afwijken, net zoals bij de beurtenkaart.
+  const budget = sponsorState(player, bookings, courts);
+  const budgetVeld = budgetTyped ?? (player.sponsor_budget === undefined ? '' : String(player.sponsor_budget));
+  const saveBudget = () => {
+    if (budgetTyped === null) return;
+    void updateUser(player.id, { sponsor_budget: parseSponsorBudget(budgetTyped) });
+    setBudgetTyped(null);
+  };
 
   const openLesson = (l: Lesson) => { setDetailLesson(l); setDetailOpen(true); };
   const toggleGiven = (l: Lesson) =>
@@ -333,6 +348,28 @@ export default function PlayerDossier() {
               />
             ))}
           </View>
+
+          <Text style={[styles.cardTitle, styles.blockTop]}>Sponsorbudget</Text>
+          <Text style={styles.muted}>
+            Het bedrag uit het sponsorcontract van {player.name}. Elke gesponsorde les gaat
+            hier vanaf; is het budget op, dan kan een les niet meer op “Sponsor”. Laat het
+            veld leeg als er geen sponsorcontract is.
+          </Text>
+          <TextInput
+            style={styles.input}
+            value={budgetVeld}
+            onChangeText={setBudgetTyped}
+            // Pas wegschrijven als de trainer klaar is met typen: bij elke toets opslaan
+            // maakt van "500" onderweg een budget van 5 en daarna van 50.
+            onBlur={saveBudget}
+            onSubmitEditing={saveBudget}
+            placeholder="Bijvoorbeeld 500"
+            placeholderTextColor={tennisColors.textMuted}
+            keyboardType="decimal-pad"
+            inputMode="decimal"
+            accessibilityLabel={`Sponsorbudget van ${player.name} in euro`}
+          />
+          <Text style={styles.muted}>{sponsorHint(budget)}</Text>
         </DetailSheet>
       ) : null}
 
@@ -419,6 +456,18 @@ const styles = StyleSheet.create({
   addLinkText: { fontSize: 13, fontWeight: '700', color: tennisColors.primary },
   cardTitle: { fontSize: 18, fontWeight: '700', color: tennisColors.text, marginBottom: spacing.sm },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  // Het tweede blok in hetzelfde blad krijgt lucht, anders plakt het aan de chips erboven.
+  blockTop: { marginTop: spacing.lg },
+  input: {
+    borderWidth: 1,
+    borderColor: tennisColors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginVertical: spacing.sm,
+    color: tennisColors.text,
+    backgroundColor: tennisColors.surface,
+  },
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.lg },
   lessonBlock: { gap: spacing.xs, marginTop: spacing.xs },
   // Ingesprongen achter een streep: zo zie je dat deze notities bij de les erboven horen.

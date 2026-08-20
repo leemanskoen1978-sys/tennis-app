@@ -36,7 +36,8 @@ interface DataShape {
   updateBooking: (id: string, patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id'>>) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   /** Zet de betaalwijze en houdt de beurtenkaart in de pas. */
-  /** `false` bij een geweigerde keuze: onbekende boeking, geannuleerde les, of geen kaart met beurten over. */
+  /** `false` bij een geweigerde keuze: onbekende boeking, geannuleerde les, geen kaart met
+   *  beurten over, of een sponsorbudget dat deze les niet meer draagt. */
   setPaymentMethod: (bookingId: string, method: PaymentMethod) => Promise<boolean>;
   addBeurtenkaart: (playerId: string) => Promise<void>;
   updateBeurtenkaart: (id: string, patch: Pick<Beurtenkaart, 'remarks'>) => Promise<void>;
@@ -207,8 +208,14 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     const booking = store.bookings.find((b) => b.id === bookingId);
     if (!booking) return false;
 
-    // De beslissing zelf zit in `planMethodChange`; hier wordt hij alleen gecommit.
-    const plan = planMethodChange(store.beurtenkaarten, booking, method);
+    // De beslissing zelf zit in `planMethodChange`; hier wordt hij alleen gecommit. Het
+    // sponsorbudget hoort erbij: de speler met zijn contractbedrag, alle lessen (om te zien
+    // wat er al verlest is) en de tarieven.
+    const plan = planMethodChange(store.beurtenkaarten, booking, method, {
+      player: store.users.find((u) => u.id === booking.player_id),
+      bookings: store.bookings,
+      courts: store.courts,
+    });
     if (plan.error) {
       setError(plan.error);
       return false;

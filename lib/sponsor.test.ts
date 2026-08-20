@@ -1,5 +1,6 @@
 import {
   sponsorUsed, sponsorState, fitsInSponsorBudget, sponsorRefusal, sponsorHint, sponsorPriceOf,
+  parseSponsorBudget,
   type SponsorBooking, type SponsorPlayer,
 } from './sponsor';
 import type { Court } from './types';
@@ -168,6 +169,23 @@ describe('sponsorRefusal', () => {
   });
 });
 
+describe('parseSponsorBudget', () => {
+  it('leest een bedrag met punt of komma', () => {
+    expect(parseSponsorBudget('500')).toBe(500);
+    expect(parseSponsorBudget('500,50')).toBe(500.5);
+    expect(parseSponsorBudget('500.50')).toBe(500.5);
+    expect(parseSponsorBudget('€ 500')).toBe(500);
+  });
+
+  it('leest een leeg of onbruikbaar veld als "geen sponsorcontract"', () => {
+    expect(parseSponsorBudget('')).toBeUndefined();
+    expect(parseSponsorBudget('   ')).toBeUndefined();
+    expect(parseSponsorBudget('abc')).toBeUndefined();
+    expect(parseSponsorBudget('0')).toBeUndefined();
+    expect(parseSponsorBudget('-100')).toBeUndefined();
+  });
+});
+
 describe('sponsorHint', () => {
   it('zegt het als er geen contract is', () => {
     expect(sponsorHint(sponsorState(zonderContract, [], courts)))
@@ -176,6 +194,6 @@ describe('sponsorHint', () => {
 
   it('zegt wat er nog van het budget over is', () => {
     expect(sponsorHint(sponsorState(anna, [les({ id: 'b1' })], courts)))
-      .toBe('Nog € 60,00 van € 100,00 over.');
+      .toBe('Sponsorbudget: nog € 60,00 van € 100,00 over.');
   });
 });
