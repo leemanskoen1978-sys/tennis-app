@@ -22,8 +22,6 @@
 --    tabel. Ze worden nooit los opgevraagd of los gewijzigd — altijd samen met hun les of
 --    kaart — dus een aparte tabel zou alleen maar een join per scherm opleveren.
 
-create extension if not exists "pgcrypto";
-
 -- ---------------------------------------------------------------------------
 -- Tabellen
 -- ---------------------------------------------------------------------------
@@ -171,6 +169,13 @@ create table if not exists installed_catalogues (
   installed_at timestamptz not null default now()
 );
 
+-- Kolommen die later bijkwamen. `create table if not exists` slaat een bestaande tabel
+-- over, dus een nieuw veld bereikt een project dat het script al eens draaide alleen langs
+-- deze weg. Ze staan hier apart zodat ze niet nog eens over het hoofd gezien worden.
+alter table lessons add column if not exists tags jsonb;
+alter table bookings add column if not exists created_by text references users(id) on delete set null;
+alter table courts add column if not exists group_rates jsonb;
+
 -- ---------------------------------------------------------------------------
 -- Wie ben ik — één keer uitgerekend, door elke policy hieronder gebruikt
 -- ---------------------------------------------------------------------------
@@ -196,17 +201,6 @@ security definer
 set search_path = public
 as $$
   select exists (select 1 from users where auth_id = auth.uid() and role = 'coach');
-$$;
-
--- Speelt de ingelogde gebruiker mee in deze les? De betaler staat apart van de medespelers,
--- dus beide kanten tellen — dezelfde regel als `playsIn` in lib/groups.
-create or replace function plays_in(b bookings)
-returns boolean
-language sql
-stable
-as $$
-  select b.player_id = app_user_id()
-      or coalesce(b.participant_ids, '[]'::jsonb) ? app_user_id();
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -309,9 +303,17 @@ create policy catalogues_write on installed_catalogues for all
 
 -- bookings: een trainer ziet en beheert zijn eigen agenda; een speler ziet de lessen waarin
 -- hij meespeelt.
+-- De betaler staat apart van de medespelers, dus beide kanten tellen mee — dezelfde regel
+-- als `playsIn` in lib/groups. Bewust uitgeschreven en niet in een hulpfunctie op het
+-- rij-type: dat laatste leest korter, maar hangt af van een vorm van verwijzen die je pas
+-- ziet mislukken op het moment dat je de policy aanmaakt.
 drop policy if exists bookings_select on bookings;
 create policy bookings_select on bookings for select
-  to authenticated using (coach_id = app_user_id() or plays_in(bookings));
+  to authenticated using (
+    coach_id = app_user_id()
+    or player_id = app_user_id()
+    or coalesce(participant_ids, '[]'::jsonb) ? app_user_id()
+  );
 
 -- Een speler mag alleen een les voor zichzelf aanvragen, en alleen als aanvraag: 'pending'
 -- staat hier met zoveel woorden, zodat hij zichzelf niet kan goedkeuren door de app voorbij
