@@ -23,7 +23,7 @@ import { spacing, radius, typography, webCursor, minTapTarget } from '../constan
 import { tennisColors } from '../constants/tennis-colors';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday } from '../lib/hub';
-import { bookingsFor, totalCoachPayout } from '../lib/payments';
+import { bookingsFor, openBalanceFor, totalCoachPayout } from '../lib/payments';
 import { bookingsInPeriod, currentPeriod } from '../lib/period';
 import { formatEuro } from '../lib/csv';
 
@@ -96,7 +96,7 @@ function InfoRow({ row, first }: { row: Row; first: boolean }) {
 
 export default function ProfileScreen(): React.JSX.Element {
   const router = useRouter();
-  const { currentUser, logout, bookings } = useSimpleData();
+  const { currentUser, logout, bookings, courts } = useSimpleData();
   const pending = usePendingPaymentBookings();
   const isWide = useIsWide();
 
@@ -123,6 +123,9 @@ export default function ProfileScreen(): React.JSX.Element {
   // Wat een trainer deze maand verdiende: zijn eigen uurtarief over zijn eigen lessen. Dus
   // niet de omzet — die loopt op het uurtarief van de baan en is wat de spelers betalen.
   // Zonder ingevuld tarief is dat 0, en dat zeggen we er hieronder met zoveel woorden bij.
+  // Wat een speler nog moet afrekenen — hetzelfde bedrag als op zijn hoofdscherm.
+  const balance = openBalanceFor(currentUser, bookings, courts);
+
   const rateMissing = currentUser.hourly_rate === undefined;
   const myLessons = bookings.filter((b) => b.coach_id === currentUser.id);
   const earnedThisMonth = totalCoachPayout(
@@ -209,12 +212,23 @@ export default function ProfileScreen(): React.JSX.Element {
       <View style={styles.statsWrap}>
         <StatCardRow>
           <StatCard icon={CalendarDays} value={today} label="Lessen vandaag" />
-          <StatCard
-            icon={CreditCard}
-            value={pending.length}
-            label="Openstaande betalingen"
-            tone={pending.length > 0 ? 'warning' : 'primary'}
-          />
+          {/* Een trainer telt lessen die hij nog moet afhandelen; een speler wil weten
+              hoeveel hij nog moet betalen. Zelfde plek, ander getal. */}
+          {isCoach ? (
+            <StatCard
+              icon={CreditCard}
+              value={pending.length}
+              label="Openstaande betalingen"
+              tone={pending.length > 0 ? 'warning' : 'primary'}
+            />
+          ) : (
+            <StatCard
+              icon={CreditCard}
+              value={`€${formatEuro(balance.amount)}`}
+              label="Openstaand saldo"
+              tone={balance.amount > 0 ? 'warning' : 'primary'}
+            />
+          )}
           {isCoach ? (
             <StatCard
               icon={Wallet}

@@ -5,7 +5,7 @@ import {
   bookingMinutes, bookingPrice, rateForGroup, bookingsBilledTo,
   splitEvenly, splitOf, lessonShares, bookingPaymentMeta, lessonPriceLine, groupRateSteps,
   coachPayout, totalCoachPayout, clubMargin,
-  defaultMethodFor, paymentMeta, PAYMENT_METHODS, PAYMENT_LABELS,
+  defaultMethodFor, paymentMeta, openBalanceFor, PAYMENT_METHODS, PAYMENT_LABELS,
 } from './payments';
 
 const base: Booking = {
@@ -558,5 +558,46 @@ describe('groupRateSteps', () => {
       { max_players: 2, rate: 30 },
       { max_players: 4, rate: 45 },
     ]);
+  });
+});
+
+describe('openBalanceFor', () => {
+  const speler: User = { id: 'p1', email: 'p1@x.be', name: 'Mathis', role: 'player' };
+  const ander: User = { id: 'p2', email: 'p2@x.be', name: 'Lotte', role: 'player' };
+
+  it('telt de eigen lessen op die nog op open staan', () => {
+    const saldo = openBalanceFor(speler, [base, { ...base, id: '2' }], courts);
+    expect(saldo).toEqual({ amount: 60, lessons: 2 });
+  });
+
+  it('laat een afgesproken betaalwijze buiten het saldo', () => {
+    const afgesproken = [
+      { ...base, payment_method: 'cash' as const },
+      { ...base, id: '2', payment_method: 'invoice' as const },
+      { ...base, id: '3', payment_method: 'sponsor' as const },
+    ];
+    expect(openBalanceFor(speler, afgesproken, courts)).toEqual({ amount: 0, lessons: 0 });
+  });
+
+  it('telt een geannuleerde les niet mee', () => {
+    expect(openBalanceFor(speler, [{ ...base, status: 'cancelled' }], courts))
+      .toEqual({ amount: 0, lessons: 0 });
+  });
+
+  it('rekent bij een groepsles alleen het eigen deel', () => {
+    // Samen factureren: de betaler heeft alles openstaan, de meespeler niets.
+    const samen: Booking = { ...base, participant_ids: ['p2'], payment_method: 'invoice' };
+    const open: Booking = { ...samen, payment_method: 'open' };
+    expect(openBalanceFor(speler, [open], courts).amount).toBe(30);
+    expect(openBalanceFor(ander, [open], courts)).toEqual({ amount: 0, lessons: 0 });
+
+    // Apart factureren: ieder zijn helft.
+    const apart: Booking = { ...open, payment_split: 'separate' };
+    expect(openBalanceFor(speler, [apart], courts)).toEqual({ amount: 15, lessons: 1 });
+    expect(openBalanceFor(ander, [apart], courts)).toEqual({ amount: 15, lessons: 1 });
+  });
+
+  it('is leeg zonder gebruiker', () => {
+    expect(openBalanceFor(null, [base], courts)).toEqual({ amount: 0, lessons: 0 });
   });
 });

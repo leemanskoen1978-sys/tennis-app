@@ -8,13 +8,15 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import {
   CalendarDays, CalendarPlus, Users, GraduationCap, SlidersHorizontal,
-  BookOpen, TrendingUp, type LucideIcon,
+  BookOpen, TrendingUp, Wallet, ChevronRight, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
+import { Card } from '../components/ui/Card';
 import { ActionTile, TileGrid } from '../components/ui/ActionTile';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
-import { bookingsFor, filterPendingPayment } from '../lib/payments';
+import { bookingsFor, filterPendingPayment, openBalanceFor } from '../lib/payments';
+import { formatEuro } from '../lib/money';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
 
@@ -30,7 +32,7 @@ interface Tile {
 
 export default function Hub() {
   const router = useRouter();
-  const { currentUser, users, bookings } = useSimpleData();
+  const { currentUser, users, bookings, courts } = useSimpleData();
   const pending = usePendingPaymentBookings();
 
   if (!currentUser) return <Redirect href="/login" />;
@@ -43,6 +45,9 @@ export default function Hub() {
   // Dezelfde definitie van "staat nog open" als Beheer: een geannuleerde of nog niet
   // bevestigde les hoort niet op de badge, anders loopt die juist óp bij een annulering.
   const myOpen = filterPendingPayment(myBookings).length;
+  // Wat er in euro's nog openstaat. Een teller zegt "2 lessen"; wat een speler wil weten is
+  // hoeveel dat is, en dat staat daarom voluit op zijn hoofdscherm in plaats van als badge.
+  const balance = openBalanceFor(currentUser, bookings, courts);
 
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -73,6 +78,32 @@ export default function Hub() {
         </View>
       </View>
 
+      {/* Een speler die nog moet afrekenen, ziet dat vóór de tegels — met het bedrag erbij.
+          Staat er niets open, dan staat er ook niets: een kaart met "€ 0,00" is ruis. */}
+      {!isCoach && balance.amount > 0 ? (
+        <Card
+          onPress={() => router.push('/agenda/overzicht')}
+          accessibilityLabel={`Openstaand saldo € ${formatEuro(balance.amount)}`}
+          style={styles.balance}
+        >
+          <View style={styles.balanceRow}>
+            <View style={styles.balanceIcon}>
+              <Wallet size={22} color={tennisColors.warning} />
+            </View>
+            <View style={styles.balanceText}>
+              <Text style={styles.balanceLabel}>Openstaand saldo</Text>
+              <Text style={styles.balanceAmount}>€ {formatEuro(balance.amount)}</Text>
+              <Text style={styles.balanceSub}>
+                {balance.lessons === 1
+                  ? '1 les nog niet afgerekend'
+                  : `${balance.lessons} lessen nog niet afgerekend`}
+              </Text>
+            </View>
+            <ChevronRight size={20} color={tennisColors.textMuted} />
+          </View>
+        </Card>
+      ) : null}
+
       <TileGrid>
         {tiles.map((t) => (
           <ActionTile
@@ -95,4 +126,21 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, gap: spacing.xs },
   hi: { ...typography.h1, color: tennisColors.text },
   q: { fontSize: 16, color: tennisColors.textMuted },
+  // Een randje in de waarschuwingskleur in plaats van een volvlak: het vraagt aandacht,
+  // maar een openstaand bedrag is geen fout en hoort de tegels eronder niet te overschreeuwen.
+  balance: { borderWidth: 1, borderColor: tennisColors.warning },
+  balanceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  balanceIcon: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: tennisColors.warningTint,
+  },
+  balanceText: { flex: 1 },
+  balanceLabel: {
+    ...typography.label,
+    color: tennisColors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  balanceAmount: { ...typography.h1, color: tennisColors.text },
+  balanceSub: { fontSize: 13, color: tennisColors.textMuted },
 });

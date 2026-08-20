@@ -408,6 +408,47 @@ export function clubMargin(bookings: Booking[], users: User[], courts: Court[]):
   return Math.round((totalRevenue(bookings, courts) - totalCoachPayout(bookings, users)) * 100) / 100;
 }
 
+/** Wat er voor iemand nog openstaat: het bedrag én over hoeveel lessen dat gaat. */
+export interface OpenBalance {
+  /** De som van de eigen delen die nog op 'Open' staan, in euro's. */
+  amount: number;
+  /** Het aantal lessen waar dat over gaat. */
+  lessons: number;
+}
+
+/**
+ * Het openstaande saldo van een speler: wat hij nog moet afrekenen.
+ *
+ * Alleen zijn eigen deel telt. Speelt hij mee in een groepsles die een ander betaalt, dan
+ * staat er voor hem niets open — dezelfde grens als `bookingsBilledTo` en `pendingPaymentsFor`,
+ * waarop dit voortbouwt zodat "welke lessen staan open" op één plek beslist blijft.
+ *
+ * Alleen 'open' telt. Een les op factuur of sponsor is afgesproken geld en verschijnt dus
+ * niet als saldo — daarover gaat de club met hem in gesprek, niet dit scherm.
+ *
+ * Voor een trainer levert dit vrijwel altijd 0 op: hij betaalt zijn eigen lessen niet.
+ */
+export function openBalanceFor(
+  user: User | null | undefined,
+  bookings: Booking[],
+  courts: Court[],
+): OpenBalance {
+  if (!user) return { amount: 0, lessons: 0 };
+  const byId = new Map(courts.map((c) => [c.id, c]));
+  let cents = 0;
+  let lessons = 0;
+  for (const b of pendingPaymentsFor(user, bookings)) {
+    const mine = lessonShares(b, byId.get(b.court_id))
+      .filter((s) => s.player_id === user.id && s.method === 'open');
+    if (mine.length === 0) continue;
+    // In centen optellen: euro's bij elkaar optellen laat kommagetallen driften, en een
+    // saldo dat op € 89,99999 uitkomt is precies het getal waar iemand over valt.
+    cents += mine.reduce((sum, s) => sum + Math.round(s.amount * 100), 0);
+    lessons += 1;
+  }
+  return { amount: cents / 100, lessons };
+}
+
 /** De betaalwijze die een nieuwe les van deze speler krijgt. */
 export function defaultMethodFor(player: User | null | undefined): PaymentMethod {
   return player?.default_payment_method ?? 'open';

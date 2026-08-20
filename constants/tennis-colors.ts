@@ -14,6 +14,7 @@ export const tennisColors = {
   border: '#E2E9DD',
   danger: '#C0392B',
   warning: '#B5730A', // darkened so white text passes AA
+  warningTint: '#FAF0DE', // zachte vulling achter een waarschuwingsicoon, zoals primaryTint
   success: '#2F7D34',
   white: '#FFFFFF',
 } as const;
