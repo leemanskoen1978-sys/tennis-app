@@ -18,9 +18,31 @@ export interface CsvRow {
   payment: string;
 }
 
-export const CSV_HEADER = [
-  'Datum', 'Uur', 'Trainer', 'Speler', 'Terrein', 'Duur (min)', 'Prijs (EUR)', 'Status', 'Betaalwijze',
-] as const;
+/** Eén bedrag-opmaak voor de hele export: twee decimalen en een komma. */
+export function formatEuro(n: number): string {
+  return n.toFixed(2).replace('.', ',');
+}
+
+export interface CsvColumn {
+  label: string;
+  value: (row: CsvRow) => string;
+}
+
+// De enige bron van waarheid voor kolommen: kop én cel staan hier naast elkaar, zodat het
+// scherm en het bestand niet uit elkaar kunnen schuiven als de volgorde verandert.
+export const CSV_COLUMNS: readonly CsvColumn[] = [
+  { label: 'Datum', value: (r) => r.date },
+  { label: 'Uur', value: (r) => r.time },
+  { label: 'Trainer', value: (r) => r.coach },
+  { label: 'Speler', value: (r) => r.player },
+  { label: 'Terrein', value: (r) => r.court },
+  { label: 'Duur (min)', value: (r) => String(r.minutes) },
+  { label: 'Prijs (EUR)', value: (r) => formatEuro(r.price) },
+  { label: 'Status', value: (r) => r.status },
+  { label: 'Betaalwijze', value: (r) => r.payment },
+];
+
+export const CSV_HEADER: readonly string[] = CSV_COLUMNS.map((c) => c.label);
 
 function two(n: number): string {
   return String(n).padStart(2, '0');
@@ -69,12 +91,9 @@ function cell(value: string): string {
 }
 
 export function toCsv(rows: CsvRow[]): string {
-  const lines = [CSV_HEADER.join(';')];
+  const lines = [CSV_COLUMNS.map((c) => c.label).map(cell).join(';')];
   for (const r of rows) {
-    lines.push([
-      r.date, r.time, r.coach, r.player, r.court,
-      String(r.minutes), r.price.toFixed(2).replace('.', ','), r.status, r.payment,
-    ].map(cell).join(';'));
+    lines.push(CSV_COLUMNS.map((c) => cell(c.value(r))).join(';'));
   }
   return lines.join('\n');
 }

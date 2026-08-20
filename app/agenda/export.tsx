@@ -8,7 +8,7 @@ import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { monthRows, toCsv, CSV_HEADER } from '../../lib/csv';
+import { monthRows, toCsv, formatEuro, CSV_COLUMNS } from '../../lib/csv';
 import { shareCsv } from '../../lib/share';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
@@ -29,6 +29,9 @@ function shift(month: Date, delta: number): Date {
 export default function ExportScreen(): React.JSX.Element {
   const { currentUser, bookings, users, courts } = useSimpleData();
   const [month, setMonth] = useState<Date>(() => startOfMonth(new Date()));
+  // Eigen state: een mislukte download is geen opslagfout, dus hij hoort niet in de
+  // globale error van de provider thuis.
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const isCoach = currentUser?.role === 'coach';
 
@@ -49,6 +52,16 @@ export default function ExportScreen(): React.JSX.Element {
   const total = rows.reduce((sum, r) => sum + r.price, 0);
   const label = `${MONTH_NAMES[month.getMonth()]} ${month.getFullYear()}`;
   const filename = `lessen-${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}.csv`;
+  const isCurrentMonth = month.getTime() === startOfMonth(new Date()).getTime();
+
+  async function onExport(): Promise<void> {
+    try {
+      await shareCsv(filename, toCsv(rows));
+      setExportError(null);
+    } catch {
+      setExportError('Exporteren is niet gelukt. Probeer het opnieuw.');
+    }
+  }
 
   return (
     <Screen>
@@ -70,9 +83,20 @@ export default function ExportScreen(): React.JSX.Element {
         />
       </View>
 
+      {isCurrentMonth ? null : (
+        <View style={styles.todayRow}>
+          <Button
+            label="Deze maand"
+            variant="secondary"
+            fullWidth={false}
+            onPress={() => setMonth(startOfMonth(new Date()))}
+          />
+        </View>
+      )}
+
       <Card>
         <Text style={styles.summary}>
-          {rows.length === 1 ? '1 les' : `${rows.length} lessen`} · € {total.toFixed(2).replace('.', ',')}
+          {rows.length === 1 ? '1 les' : `${rows.length} lessen`} · € {formatEuro(total)}
         </Text>
       </Card>
 
@@ -83,33 +107,29 @@ export default function ExportScreen(): React.JSX.Element {
         <ScrollView horizontal showsHorizontalScrollIndicator>
           <View>
             <View style={[styles.tr, styles.thead]}>
-              {CSV_HEADER.map((h) => (
-                <Text key={h} style={[styles.td, styles.th]}>{h}</Text>
+              {CSV_COLUMNS.map((c) => (
+                <Text key={c.label} style={[styles.td, styles.th]}>{c.label}</Text>
               ))}
             </View>
             {rows.map((r) => (
               <View key={r.id} style={styles.tr}>
-                <Text style={styles.td}>{r.date}</Text>
-                <Text style={styles.td}>{r.time}</Text>
-                <Text style={styles.td}>{r.coach}</Text>
-                <Text style={styles.td}>{r.player}</Text>
-                <Text style={styles.td}>{r.court}</Text>
-                <Text style={styles.td}>{r.minutes}</Text>
-                <Text style={styles.td}>{r.price.toFixed(2).replace('.', ',')}</Text>
-                <Text style={styles.td}>{r.status}</Text>
-                <Text style={styles.td}>{r.payment}</Text>
+                {CSV_COLUMNS.map((c) => (
+                  <Text key={c.label} style={styles.td}>{c.value(r)}</Text>
+                ))}
               </View>
             ))}
           </View>
         </ScrollView>
       )}
 
+      {exportError ? <Text style={styles.error}>{exportError}</Text> : null}
+
       <Button
         label="Exporteren"
         variant="primary"
         disabled={rows.length === 0}
         icon={<Download size={16} color={tennisColors.white} />}
-        onPress={() => { void shareCsv(filename, toCsv(rows)); }}
+        onPress={() => { void onExport(); }}
       />
     </Screen>
   );
@@ -120,6 +140,8 @@ const styles = StyleSheet.create({
   month: { ...typography.h3, color: tennisColors.text },
   summary: { ...typography.body, color: tennisColors.text, fontWeight: '600' },
   muted: { ...typography.body, color: tennisColors.textMuted },
+  todayRow: { alignItems: 'center' },
+  error: { color: tennisColors.danger, fontSize: 14 },
   tr: { flexDirection: 'row' },
   thead: { borderBottomWidth: 1, borderBottomColor: tennisColors.border, marginBottom: spacing.xs },
   td: { width: 110, paddingVertical: spacing.xs, paddingRight: spacing.sm, fontSize: 13, color: tennisColors.text },

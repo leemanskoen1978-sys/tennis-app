@@ -18,8 +18,13 @@ export async function shareCsv(filename: string, text: string): Promise<void> {
     link.download = filename;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Wachten is nodig: de browser start de download pas ná deze taak. Trekken we de URL
+    // meteen in, dan is de blob in Firefox en Safari al weg voor het downloaden begint en
+    // gebeurt er niets. Een seconde later is de download onderweg en mag alles opgeruimd.
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 1000);
     return;
   }
   await Share.share({ message: text, title: filename });

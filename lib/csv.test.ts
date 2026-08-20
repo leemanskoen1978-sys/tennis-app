@@ -1,5 +1,5 @@
 import type { Booking, Court, User } from './types';
-import { monthRows, toCsv, CSV_HEADER } from './csv';
+import { monthRows, toCsv, formatEuro, CSV_HEADER, CSV_COLUMNS } from './csv';
 
 const users: User[] = [
   { id: 'koen', name: 'Koen', email: 'k@x.be', role: 'coach' },
@@ -107,6 +107,35 @@ describe('monthRows', () => {
       users, courts, new Date(2026, 8, 1),
     );
     expect(nextMonthRows).toHaveLength(1);
+  });
+});
+
+describe('formatEuro', () => {
+  it('writes two decimals with a comma', () => {
+    expect(formatEuro(15)).toBe('15,00');
+    expect(formatEuro(7.5)).toBe('7,50');
+  });
+
+  it('writes zero as 0,00', () => {
+    expect(formatEuro(0)).toBe('0,00');
+  });
+
+  it('rounds to two decimals', () => {
+    expect(formatEuro(12.345)).toBe('12,35');
+    expect(formatEuro(0.005)).toBe('0,01');
+  });
+});
+
+describe('CSV_COLUMNS', () => {
+  it('is the single source for the header, in the same order', () => {
+    expect(CSV_COLUMNS.map((c) => c.label)).toEqual([...CSV_HEADER]);
+  });
+
+  it('gives the screen the same cells, in the same order, as the file', () => {
+    const [row] = monthRows([booking()], users, courts, new Date(2026, 7, 1));
+    const cells = CSV_COLUMNS.map((c) => c.value(row));
+    expect(cells).toHaveLength(CSV_HEADER.length);
+    expect(toCsv([row]).split('\n')[1].split(';')).toEqual(cells);
   });
 });
 
