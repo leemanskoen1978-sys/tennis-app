@@ -130,6 +130,14 @@ export interface Booking {
    * elke les zich voordat groepslessen bestonden, en zo blijft een oude opslag zich gedragen.
    */
   payment_split?: PaymentSplit;
+  /**
+   * Alle lessen uit dezelfde herhaalreeks delen dit nummer. Leeg bij een losse les.
+   *
+   * Meer is een reeks niet: elke les blijft een gewone boeking die je los kunt verzetten of
+   * schrappen zonder de rest te raken. Zie `seriesFrom` in lib/series — de enige plek die
+   * uitrekent welke lessen "vanaf deze les" bij elkaar horen.
+   */
+  series_id?: string;
   notes?: string;
   actual_start_time?: string;
   actual_end_time?: string;

@@ -11,6 +11,8 @@ import {
   GROEPSLES_METHOD,
 } from '../lib/beurtenkaart';
 import { isGroupLesson } from '../lib/groups';
+import { seriesFrom } from '../lib/series';
+import { planSeries, type RecurrenceRule, type SeriesSlot } from '../lib/recurrence';
 import type {
   User, Court, Booking, Lesson, StudentProgress, PlayerGoal, Settings,
   Beurtenkaart, PaymentMethod, PaymentSplit,
@@ -35,6 +37,12 @@ interface DataShape {
   /** Het tarief en de groepstaffel van een baan bijstellen; `id`, naam en nummer blijven. */
   updateCourt: (id: string, patch: Partial<Omit<Court, 'id'>>) => Promise<void>;
   addBooking: (b: Omit<Booking, 'id'>) => Promise<Booking | null>;
+  /** Maakt de hele reeks aan. Geeft terug wat er gemaakt is en wat er is overgeslagen wegens een botsing. */
+  addBookingSeries: (base: Omit<Booking, 'id'>, rule: RecurrenceRule) => Promise<{ created: Booking[]; skipped: SeriesSlot[] }>;
+  /** Annuleert deze les en alle latere uit dezelfde reeks. */
+  cancelSeriesFrom: (bookingId: string) => Promise<void>;
+  /** Verwijdert deze les en alle latere uit dezelfde reeks. */
+  deleteSeriesFrom: (bookingId: string) => Promise<void>;
   /** `payment_method`, `beurtenkaart_id`, `participant_ids` en `payment_split` blijven
    *  erbuiten: die lopen uitsluitend via `setPaymentMethod`, `setParticipants` en
    *  `setPaymentSplit` — de plekken die de beurtenkaart en de factuurregel in de pas houden. */
@@ -109,6 +117,19 @@ function releaseCardFor(data: StoreData, booking: Booking | undefined): Beurtenk
   return data.beurtenkaarten.map((c) =>
     c.id === booking.beurtenkaart_id ? releaseSession(c, booking.id) : c,
   );
+}
+
+/**
+ * Wat de trainer te lezen krijgt als de bodem van een beurtenkaart of een sponsorcontract
+ * niet tot het eind van de reeks reikt. De lessen bestaan wel — ze staan op 'Open' — dus dit
+ * is geen foutmelding maar de mededeling dat er nog een rekening open staat.
+ */
+function refusedSeriesNotice(refused: number, total: number, method: PaymentMethod): string {
+  const pot = method === 'beurtenkaart' ? 'de beurtenkaart' : 'het sponsorbudget';
+  const paste = refused === 1 ? 'paste' : 'pasten';
+  const staat = refused === 1 ? 'staat' : 'staan';
+  return `${refused} van de ${total} lessen ${paste} niet meer op ${pot} en ${staat} op “Open”. `
+    + 'Je vindt ze in Beheer → Betalingen.';
 }
 
 export function SimpleDataProvider({ children }: { children: React.ReactNode }) {
@@ -201,6 +222,126 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     };
     await commit({ ...store, bookings: [...store.bookings, created] });
     return created;
+  }, [commit]);
+
+  /**
+   * Een hele herhaalreeks aanmaken.
+   *
+   * Alle lessen gaan in één `commit` de opslag in. Een lus met een commit per les zou ze één
+   * voor één laten verschijnen en kunnen stranden op les zeven, met een halve reeks als
+   * resultaat; hier bestaat de reeks straks helemaal of helemaal niet.
+   *
+   * De betaalwijze loopt langs dezelfde bewaakte weg als in `BookingModal`: beurtenkaart en
+   * sponsor hebben een bodem, dus de les wordt niet met die betaalwijze aangemaakt maar via
+   * `planMethodChange` per les afgeboekt — met de al aangemaakte lessen van deze reeks
+   * meegeteld, zodat beurt elf en de euro's van les twaalf tegen dezelfde bodem lopen als in
+   * de app. Past een les er niet meer in (tien beurten, twaalf lessen), dan wordt hij niet
+   * overgeslagen maar aangemaakt op 'Open': de les gaat gewoon door, komt in de werklijst van
+   * Beheer → Betalingen, en de trainer krijgt te lezen om hoeveel lessen het gaat. Stilzwijgend
+   * gratis lesgeven of stilzwijgend lessen laten verdwijnen zijn allebei erger.
+   */
+  const addBookingSeries = useCallback(async (
+    base: Omit<Booking, 'id'>,
+    rule: RecurrenceRule,
+  ): Promise<{ created: Booking[]; skipped: SeriesSlot[] }> => {
+    const store = storeRef.current;
+    if (!store) return { created: [], skipped: [] };
+
+    const plan = planSeries(base.start_time, base.end_time, rule, base.coach_id, store.bookings);
+    if (plan.usable.length === 0) {
+      setError('Elk moment van deze reeks is al geboekt bij deze coach.');
+      return { created: [], skipped: plan.skipped };
+    }
+
+    const seriesId = newId('r');
+    const group = isGroupLesson(base);
+    // Dezelfde afweging als in het boekingsvenster; bij een groepsles komt hij niet voor,
+    // want die gaat altijd op factuur.
+    const guarded = !group
+      && (base.payment_method === 'beurtenkaart' || base.payment_method === 'sponsor');
+    const player = store.users.find((u) => u.id === base.player_id);
+
+    let cards = store.beurtenkaarten;
+    let bookings = store.bookings;
+    const created: Booking[] = [];
+    let refused = 0;
+
+    for (const slot of plan.usable) {
+      const fresh: Booking = {
+        ...base,
+        id: newId('b'),
+        series_id: seriesId,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+        payment_method: group ? GROEPSLES_METHOD : (guarded ? 'open' : base.payment_method),
+        // Een kaart wordt per les gekozen door `planMethodChange`; een meegegeven id zou
+        // twaalf lessen aan dezelfde ene beurt hangen.
+        beurtenkaart_id: undefined,
+      };
+      let final = fresh;
+      if (guarded) {
+        const paid = planMethodChange(cards, fresh, base.payment_method, {
+          player,
+          bookings,
+          courts: store.courts,
+        });
+        if (paid.error) {
+          refused += 1;
+        } else {
+          cards = paid.cards;
+          final = { ...fresh, payment_method: base.payment_method, beurtenkaart_id: paid.cardId };
+        }
+      }
+      bookings = [...bookings, final];
+      created.push(final);
+    }
+
+    setError(refused === 0 ? null : refusedSeriesNotice(refused, created.length, base.payment_method));
+    await commit({ ...store, beurtenkaarten: cards, bookings });
+    return { created, skipped: plan.skipped };
+  }, [commit]);
+
+  /**
+   * Deze les en alle latere uit de reeks annuleren, in één keer. Per les precies wat
+   * `updateBooking` met status 'cancelled' doet — `planCancel` beslist over de beurt — maar
+   * met de kaarten die onderweg meegroeien, zodat twaalf teruggegeven beurten ook echt
+   * twaalf beurten zijn en niet twaalf keer dezelfde kaart uit de beginstand.
+   */
+  const cancelSeriesFrom = useCallback(async (bookingId: string) => {
+    const store = storeRef.current;
+    if (!store) return;
+    let cards = store.beurtenkaarten;
+    const patches = new Map<string, Partial<Booking>>();
+    for (const booking of seriesFrom(store.bookings, bookingId)) {
+      const plan = planCancel(cards, booking);
+      cards = plan.cards;
+      patches.set(booking.id, { status: 'cancelled', ...(plan.patch ?? {}) });
+    }
+    await commit({
+      ...store,
+      beurtenkaarten: cards,
+      bookings: store.bookings.map((b) => {
+        const patch = patches.get(b.id);
+        return patch ? { ...b, ...patch } : b;
+      }),
+    });
+  }, [commit]);
+
+  /** Idem, maar weg is weg — dezelfde teruggave als `deleteBooking`, over de hele staart. */
+  const deleteSeriesFrom = useCallback(async (bookingId: string) => {
+    const store = storeRef.current;
+    if (!store) return;
+    const doomed = seriesFrom(store.bookings, bookingId);
+    let cards = store.beurtenkaarten;
+    for (const booking of doomed) {
+      cards = releaseCardFor({ ...store, beurtenkaarten: cards }, booking);
+    }
+    const gone = new Set(doomed.map((b) => b.id));
+    await commit({
+      ...store,
+      beurtenkaarten: cards,
+      bookings: store.bookings.filter((b) => !gone.has(b.id)),
+    });
   }, [commit]);
 
   const updateBooking = useCallback(async (
@@ -463,6 +604,9 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     refresh,
     updateCourt,
     addBooking,
+    addBookingSeries,
+    cancelSeriesFrom,
+    deleteSeriesFrom,
     updateBooking,
     deleteBooking,
     setParticipants,
@@ -487,7 +631,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     emergencyCleanup,
   }), [
     store, currentUser, loading, error, clearError, login, logout, refresh,
-    updateCourt, addBooking, updateBooking, deleteBooking, setParticipants, setPaymentSplit,
+    updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
+    updateBooking, deleteBooking, setParticipants, setPaymentSplit,
     setPaymentMethod, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, addLesson,
