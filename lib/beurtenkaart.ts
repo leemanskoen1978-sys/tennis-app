@@ -1,7 +1,21 @@
 // Rekenwerk rond de 10-beurtenkaart. Puur: elke functie geeft een nieuwe kaart terug.
 
+import { isGroupLesson } from './groups';
 import { sponsorRefusal, type SponsorContext } from './sponsor';
 import type { Beurtenkaart, Booking, PaymentMethod } from './types';
+
+/**
+ * Een groepsles gaat altijd op factuur. Een beurt op een 10-beurtenkaart staat voor één
+ * PRIVÉles, en het sponsorbudget net zo; bij een groep geldt de tariefstaffel van de baan, en
+ * die kost een ander bedrag dan één beurt. Cash of QR laat zich evenmin over vier spelers
+ * verdelen. Wat er bij een groepsles nog te kiezen valt, is alleen wie de factuur krijgt:
+ * de betaler alleen, of ieder zijn deel (`Booking.payment_split`).
+ *
+ * De weigering staat hier, in de enige weg waarlangs een betaalwijze wordt vastgesteld, en
+ * niet op een scherm: een scherm kun je omzeilen.
+ */
+export const GROEPSLES_METHOD: PaymentMethod = 'invoice';
+export const GROEPSLES_ALLEEN_FACTUUR = 'Een groepsles gaat altijd op factuur.';
 
 export const SESSIONS_PER_CARD = 10;
 
@@ -51,7 +65,7 @@ export function releaseSession(card: Beurtenkaart, bookingId: string): Beurtenka
 export type MethodChangeBooking = Pick<
   Booking,
   | 'id' | 'player_id' | 'participant_ids' | 'court_id' | 'start_time' | 'end_time'
-  | 'status' | 'beurtenkaart_id'
+  | 'status' | 'payment_method' | 'beurtenkaart_id' | 'payment_split'
 >;
 
 export interface MethodChangePlan {
@@ -82,6 +96,12 @@ export function planMethodChange(
   // Een geannuleerde les mag geen beurt opeten en hoort geen betaalwijze te krijgen.
   if (booking.status === 'cancelled') {
     return { ...unchanged, error: 'Een geannuleerde les krijgt geen betaalwijze.' };
+  }
+
+  // Een groepsles kent maar één betaalwijze. Dit vangt de beurtenkaart én het sponsorbudget
+  // af: allebei zijn ze er voor een privéles.
+  if (isGroupLesson(booking) && method !== GROEPSLES_METHOD) {
+    return { ...unchanged, error: GROEPSLES_ALLEEN_FACTUUR };
   }
 
   // Sponsor is de beurtenkaart in euro's: het contract heeft een bodem. Past de les er niet
@@ -118,6 +138,94 @@ export function planMethodChange(
   }
 
   return { cards: next, cardId, error: null };
+}
+
+// ---------------------------------------------------------------------------
+// Wijzigingen aan de les zelf die het geld raken: er komt een deelnemer bij, er gaat er een
+// af, of de trainer wisselt tussen samen en apart betalen. Steeds dezelfde afhandeling als bij
+// een betaalwijzewissel: een beurt die niet meer mag blijven staan komt terug op de kaart, de
+// betaalwijze valt terug op 'Open', en de trainer krijgt te lezen dát dat gebeurd is.
+// ---------------------------------------------------------------------------
+
+/** Het resultaat van zo'n wijziging: nieuwe kaarten, wat er op de les moet, en de uitleg. */
+export interface BookingChangePlan {
+  cards: Beurtenkaart[];
+  patch: Partial<Booking>;
+  /** Wat er ongevraagd meeveranderde; `null` als er niets te melden valt. */
+  notice: string | null;
+}
+
+/**
+ * De deelnemers van een les wijzigen.
+ *
+ * Het gevaarlijke geval staat hier: een privéles staat op een beurtenkaart (de beurt is
+ * afgeboekt) of op het sponsorbudget, en de trainer zet er een tweede speler bij. Dan is het
+ * een groepsles, en die gaat op factuur. De beurt komt terug op de kaart, het sponsorbudget
+ * komt vanzelf vrij — dat wordt uit de lessen berekend en niet apart bijgehouden — en de
+ * trainer krijgt te lezen dát dat gebeurd is. Een betaalwijze die stilletjes verandert is een
+ * verdwenen afspraak.
+ *
+ * Andersom net zo: gaat de laatste deelnemer eraf, dan is het weer een privéles. De
+ * betaalwijze valt dan terug op 'Open' en niet op de factuur die er stond, want die factuur
+ * was een gevolg van de groep en geen keuze van de trainer. Zo komt de les weer in de
+ * werklijst van Beheer → Betalingen en kiest er alsnog iemand bewust.
+ */
+export function planParticipantsChange(
+  cards: Beurtenkaart[],
+  booking: MethodChangeBooking,
+  participantIds: string[],
+): BookingChangePlan {
+  const wasGroup = isGroupLesson(booking);
+  const isGroup = isGroupLesson({ ...booking, participant_ids: participantIds });
+  const patch: Partial<Booking> = { participant_ids: participantIds };
+
+  if (isGroup && !wasGroup) {
+    const previous = booking.payment_method;
+    const cardId = booking.beurtenkaart_id;
+    patch.payment_method = GROEPSLES_METHOD;
+    patch.beurtenkaart_id = undefined;
+    const extra = previous === 'beurtenkaart'
+      ? ' De beurt is teruggegeven op de kaart.'
+      : previous === 'sponsor'
+        ? ' Het sponsorbudget komt weer vrij.'
+        : '';
+    return {
+      cards: cardId ? cards.map((c) => (c.id === cardId ? releaseSession(c, booking.id) : c)) : cards,
+      patch,
+      notice: previous === GROEPSLES_METHOD
+        ? null
+        : `${GROEPSLES_ALLEEN_FACTUUR}${extra} De betaalwijze staat nu op “Factuur”.`,
+    };
+  }
+
+  if (wasGroup && !isGroup) {
+    patch.payment_method = 'open';
+    patch.beurtenkaart_id = undefined;
+    patch.payment_split = undefined;
+    return {
+      cards,
+      patch,
+      notice: 'Dit is weer een privéles. De betaalwijze staat op “Open”, zodat er opnieuw '
+        + 'gekozen kan worden — beurtenkaart en sponsor kunnen nu weer.',
+    };
+  }
+
+  // Groep blijft groep, of privé blijft privé: aan het geld verandert niets.
+  return { cards, patch, notice: null };
+}
+
+/**
+ * Wisselen tussen samen en apart factureren. Aan de betaalwijze verandert dat niets — een
+ * groepsles staat toch al op factuur — en er komt geen beurt of sponsorbudget bij kijken.
+ * Alleen wie de rekening krijgt verandert, en dat is precies wat `payment_split` zegt.
+ *
+ * Bij een privéles is er niets te verdelen: dan blijft de les staan zoals hij staat.
+ */
+export function planSplitChange(
+  booking: MethodChangeBooking,
+  split: NonNullable<Booking['payment_split']>,
+): Partial<Booking> {
+  return isGroupLesson(booking) ? { payment_split: split } : {};
 }
 
 /** De boekinggegevens die een annulering nodig heeft. */

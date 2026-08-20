@@ -1,6 +1,8 @@
 import { tennisColors } from '../constants/tennis-colors';
-import { groupSize, playsIn } from './groups';
-import type { Booking, Court, CourtGroupRate, PaymentMethod, User } from './types';
+import { groupSize, isGroupLesson, lessonPlayerIds, playsIn } from './groups';
+import type {
+  Booking, Court, CourtGroupRate, PaymentMethod, PaymentSplit, User,
+} from './types';
 
 export const PAYMENT_METHODS: readonly PaymentMethod[] = [
   'open', 'cash', 'invoice', 'qr', 'beurtenkaart', 'sponsor',
@@ -42,9 +44,111 @@ export function paymentMeta(method: PaymentMethod): PaymentMeta {
 
 const PAYABLE_STATUSES: Booking['status'][] = ['confirmed', 'completed', 'synchronized'];
 
-/** Een les vraagt nog om afhandeling zolang de betaalwijze op 'open' staat. */
+// ---------------------------------------------------------------------------
+// Wie betaalt wat aan deze les.
+//
+// Een les wordt samen of apart afgerekend. Samen is één rekening voor de betaler — zoals de
+// app altijd werkte. Apart is bij een groepsles: ieder krijgt zijn eigen deel gefactureerd.
+// De betaalwijze zelf is daarbij niet in het geding: een groepsles gaat altijd op factuur, dus
+// alleen het BEDRAG wordt verdeeld, niet de keuze.
+//
+// Elke plek die over geld gaat (omzet, rapport, export, badges) leest hier uit wie wat betaalt,
+// en telt nergens meer zelf een les bij één speler op. Anders boekt de ene helft van de app het
+// hele bedrag bij de betaler terwijl de andere helft het over vier spelers verdeelt.
+// ---------------------------------------------------------------------------
+
+/** De velden die "wie betaalt wat" nodig heeft. */
+export type SplitBooking = Pick<
+  Booking, 'player_id' | 'participant_ids' | 'payment_method' | 'beurtenkaart_id' | 'payment_split'
+>;
+
+/**
+ * Samen of apart. Apart heeft alleen betekenis bij een groepsles: bij één speler valt er
+ * niets te verdelen, en dan is 'separate' een restant van een deelnemer die eraf gehaald is.
+ */
+export function splitOf(b: SplitBooking): PaymentSplit {
+  return b.payment_split === 'separate' && isGroupLesson(b) ? 'separate' : 'together';
+}
+
+/** Eén betalende partij van een les: wie, met welke betaalwijze, op welke kaart. */
+export interface PaymentEntry {
+  player_id: string;
+  method: PaymentMethod;
+  beurtenkaart_id?: string;
+}
+
+/**
+ * Wie er voor deze les betaalt. Bij samen is dat één regel — de betaler. Bij apart één regel
+ * per speler op de baan, in dezelfde volgorde als de les ze kent (betaler eerst).
+ *
+ * De betaalwijze is voor iedereen dezelfde: die van de les. Bij een groepsles is dat per
+ * definitie 'invoice'. De kaart hoort alleen bij de betaler thuis, en een groepsles heeft er
+ * toch geen — beurten gelden alleen voor een privéles.
+ */
+export function paymentEntriesOf(b: SplitBooking): PaymentEntry[] {
+  if (splitOf(b) === 'together') {
+    return [{
+      player_id: b.player_id,
+      method: b.payment_method,
+      beurtenkaart_id: b.beurtenkaart_id,
+    }];
+  }
+  return lessonPlayerIds(b).map((id) => ({ player_id: id, method: b.payment_method }));
+}
+
+/** De betaalregel van één speler bij deze les, of `null` als hij niets betaalt. */
+export function paymentEntryFor(b: SplitBooking, playerId: string): PaymentEntry | null {
+  return paymentEntriesOf(b).find((e) => e.player_id === playerId) ?? null;
+}
+
+/**
+ * Een bedrag in gelijke delen, zó dat de delen samen exact het totaal zijn. Rekenen gebeurt
+ * in centen: € 45 door 7 is anders zeven keer € 6,43 en dat is een cent te veel. De centen
+ * die overblijven gaan naar de eerste delen — één iemand betaalt dus een cent meer dan de
+ * ander, en dat is de enige verdeling waarbij er geen cent verdwijnt of dubbel geteld wordt.
+ */
+export function splitEvenly(total: number, parts: number): number[] {
+  if (parts <= 0) return [];
+  const cents = Math.round(total * 100);
+  const base = Math.trunc(cents / parts);
+  const rest = cents - base * parts;
+  return Array.from({ length: parts }, (_, i) => (base + (i < rest ? 1 : 0)) / 100);
+}
+
+/** Eén betalende partij mét het bedrag dat zij voor deze les betaalt. */
+export interface LessonShare extends PaymentEntry {
+  /** Wat deze persoon voor deze les betaalt: bij samen de hele les, bij apart zijn deel. */
+  amount: number;
+}
+
+/**
+ * Wie betaalt wat, in euro's. De som van de delen is altijd exact `bookingPrice` van de les:
+ * apart betalen verdeelt het bedrag, het verandert het niet. Daar staat of valt de omzet mee.
+ */
+export function lessonShares(
+  b: SplitBooking & TimedBooking,
+  court: PricedCourt | undefined,
+): LessonShare[] {
+  const entries = paymentEntriesOf(b);
+  const total = bookingPrice(b, court);
+  const parts = splitEvenly(total, entries.length);
+  return entries.map((e, i) => ({ ...e, amount: parts[i] ?? 0 }));
+}
+
+/**
+ * De badge van een les: de betaalwijze, en bij apart factureren dat erbij. "Factuur" alleen
+ * zou namelijk niet verraden dat er vier facturen uitgaan in plaats van één.
+ */
+export function bookingPaymentMeta(b: SplitBooking): PaymentMeta {
+  const meta = paymentMeta(b.payment_method);
+  if (splitOf(b) === 'together') return meta;
+  return { ...meta, label: `${meta.label} · apart` };
+}
+
+/** Een les vraagt nog om afhandeling zolang er iemand op 'open' staat. */
 export function needsPayment(b: Booking): boolean {
-  return PAYABLE_STATUSES.includes(b.status) && b.payment_method === 'open';
+  return PAYABLE_STATUSES.includes(b.status)
+    && paymentEntriesOf(b).some((e) => e.method === 'open');
 }
 
 export function filterPendingPayment(bookings: Booking[]): Booking[] {
@@ -75,9 +179,9 @@ export function bookingsFor(user: User | null, bookings: Booking[]): Booking[] {
  */
 export function bookingsBilledTo(user: User | null, bookings: Booking[]): Booking[] {
   if (!user) return [];
-  return bookings.filter((b) =>
-    user.role === 'coach' ? b.coach_id === user.id : b.player_id === user.id,
-  );
+  return bookings.filter((b) => (user.role === 'coach'
+    ? b.coach_id === user.id
+    : paymentEntriesOf(b).some((e) => e.player_id === user.id)));
 }
 
 /**
@@ -106,8 +210,16 @@ export function bookingsByCoach(bookings: Booking[], coachId: string | null): Bo
  * handelt zijn eigen lessen af, een speler ziet alleen die van hemzelf.
  */
 export function pendingPaymentsFor(user: User | null, bookings: Booking[]): Booking[] {
-  // Bewust `bookingsBilledTo` en niet `bookingsFor`: afhandelen doet wie betaalt.
-  return filterPendingPayment(bookingsBilledTo(user, bookings));
+  if (!user) return [];
+  // Bewust niet `bookingsFor`: afhandelen doet wie betaalt. Een trainer ziet elke les van
+  // hemzelf waar nog iemand op 'Open' staat; een speler alleen de lessen waar zijn EIGEN
+  // deel nog open staat — het deel van een ander is niet zijn rekening.
+  if (user.role === 'coach') {
+    return bookings.filter((b) => b.coach_id === user.id && needsPayment(b));
+  }
+  return bookings.filter((b) =>
+    PAYABLE_STATUSES.includes(b.status)
+    && paymentEntriesOf(b).some((e) => e.player_id === user.id && e.method === 'open'));
 }
 
 const REVENUE_METHODS: PaymentMethod[] = ['cash', 'invoice', 'qr', 'beurtenkaart', 'sponsor'];
@@ -226,8 +338,12 @@ export function totalRevenue(bookings: Booking[], courts: Court[]): number {
   const courtById = new Map(courts.map((c) => [c.id, c]));
   const sum = bookings
     // Een les die nog niet bevestigd is (bv. 'pending'), is nog geen geld.
-    .filter((b) => PAYABLE_STATUSES.includes(b.status) && countsAsRevenue(b.payment_method))
-    .reduce((total, b) => total + bookingPrice(b, courtById.get(b.court_id)), 0);
+    .filter((b) => PAYABLE_STATUSES.includes(b.status))
+    // Per betalende partij: bij apart betalen kan het ene deel betaald zijn en het andere
+    // nog open staan. Samen opgeteld is dat nooit meer dan de prijs van de les.
+    .reduce((total, b) => total + lessonShares(b, courtById.get(b.court_id))
+      .filter((s) => countsAsRevenue(s.method))
+      .reduce((sub, s) => sub + s.amount, 0), 0);
   // Centen bij elkaar optellen laat kommagetallen driften; het totaal blijft een bedrag.
   return Math.round(sum * 100) / 100;
 }

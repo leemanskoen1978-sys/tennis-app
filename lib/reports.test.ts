@@ -392,6 +392,22 @@ describe('groepslessen in het rapport', () => {
     expect(payoutsByCoach([groepsles], koen)[0]).toMatchObject({ lessons: 1, amount: 25 });
   });
 
+  it('geeft bij apart factureren ieder zijn eigen deel, bij zichzelf', () => {
+    const apart = { ...groepsles, payment_split: 'separate' as const, payment_method: 'invoice' as const };
+    const rows = totalsByPlayer([apart], users, staffel);
+    expect(rows.map((r) => [r.name, r.lessons, r.paid, r.open]))
+      .toEqual([['Anna', 1, 20, 0], ['Bram', 1, 20, 0], ['Cato', 1, 20, 0]]);
+    // De som over de spelers blijft exact het bedrag van de les.
+    expect(rows.reduce((t, r) => t + r.paid, 0)).toBe(60);
+    expect(totalRevenue([apart], staffel)).toBe(60);
+  });
+
+  it('zet ieders deel in de kolom openstaand zolang er niets is afgesproken', () => {
+    const apart = { ...groepsles, payment_split: 'separate' as const, payment_method: 'open' as const };
+    const rows = totalsByPlayer([apart], users, staffel);
+    expect(rows.every((r) => r.paid === 0 && r.open === 20)).toBe(true);
+  });
+
   it('telt de groepsles één keer in de maandreeks', () => {
     const series = monthlySeries([groepsles], staffel, new Date(2026, 7, 15), 1);
     expect(series[0]).toMatchObject({ lessons: 1, amount: 60 });

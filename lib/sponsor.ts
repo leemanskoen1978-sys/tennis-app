@@ -7,12 +7,13 @@
 // tarief van het terrein naar rato van de duur. Een half uur eet zo een half uurtarief
 // van het contract op, precies zoals het in de omzet terechtkomt.
 //
-// Bij een groepsles is dat het GROEPSbedrag, één keer. Het contract hangt aan de betaler, en
-// die betaalt bij een groepsles nu eenmaal de hele les — dus dat is ook wat er van zijn
-// budget af gaat. De meespelers raken zijn budget niet.
+// Een groepsles komt hier nooit voorbij: sponsorbudget geldt alleen voor een privéles, net
+// als de beurtenkaart. Een groepsles gaat altijd op factuur. Dat wordt afgedwongen in
+// `planMethodChange` (lib/beurtenkaart); hier is het alleen de reden dat het verbruik nooit
+// een groepsbedrag kan bevatten.
 
 import { formatEuro } from './csv';
-import { bookingPrice } from './payments';
+import { bookingPrice, lessonShares } from './payments';
 import type { Booking, Court, User } from './types';
 
 /** De spelersvelden die het budget nodig heeft; meer weet dit bestand niet van een speler. */
@@ -22,7 +23,7 @@ export type SponsorPlayer = Pick<User, 'id' | 'sponsor_budget'>;
 export type SponsorBooking = Pick<
   Booking,
   | 'id' | 'player_id' | 'participant_ids' | 'court_id' | 'status' | 'payment_method'
-  | 'start_time' | 'end_time'
+  | 'beurtenkaart_id' | 'payment_split' | 'start_time' | 'end_time'
 >;
 
 /** De lessenvelden die nodig zijn om te weten wat één les kost. */
@@ -72,12 +73,13 @@ export function sponsorUsed(
   ignoreBookingId?: string,
 ): number {
   const sum = bookings
-    .filter((b) =>
-      b.player_id === playerId
-      && b.payment_method === 'sponsor'
-      && b.status !== 'cancelled'
-      && b.id !== ignoreBookingId)
-    .reduce((total, b) => total + sponsorPriceOf(b, courts), 0);
+    .filter((b) => b.status !== 'cancelled' && b.id !== ignoreBookingId)
+    // Per betalend deel, niet per les: bij apart betalen spreekt deze speler alleen zijn
+    // eigen deel van de groepsles aan, en bij samen betalen de hele les. Dat de kolom
+    // "verlest" en de omzet uit dezelfde bron komen is precies de bedoeling.
+    .reduce((total, b) => total + lessonShares(b, courts.find((c) => c.id === b.court_id))
+      .filter((s) => s.player_id === playerId && s.method === 'sponsor')
+      .reduce((sub, s) => sub + s.amount, 0), 0);
   return euro(sum);
 }
 

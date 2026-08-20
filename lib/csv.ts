@@ -1,7 +1,8 @@
 // Het overzicht als gegevens (csvRows) en als tekst (toCsv), los van elkaar zodat het
 // scherm dezelfde rijen kan tonen die het uitvoert.
 
-import { bookingMinutes, bookingPrice, coachPayout, PAYMENT_LABELS } from './payments';
+import { groupSize, shortGroupLabel } from './groups';
+import { bookingMinutes, bookingPrice, coachPayout, PAYMENT_LABELS, splitOf } from './payments';
 import { BOOKING_STATUS_LABELS } from './status';
 import type { Booking, Court, User } from './types';
 
@@ -10,10 +11,15 @@ export interface CsvRow {
   date: string;    // dd/mm/jjjj
   time: string;    // HH:MM
   coach: string;
+  /** De betaler, en bij een groepsles hoeveel spelers er nog bij stonden: "Mathis +2". */
   player: string;
+  /** Hoeveel spelers er op de baan stonden; 1 bij een privéles. */
+  players: number;
+  /** Wie de factuur krijgt: "Samen" (de betaler) of "Apart" (ieder zijn deel). */
+  billing: string;
   court: string;
   minutes: number;
-  price: number;    // euro — wat de speler betaalt, op het uurtarief van het terrein
+  price: number;    // euro — de prijs van de HELE les, op het tarief van het terrein
   coachPay: number; // euro — wat de trainer krijgt, op zijn eigen uurtarief
   status: string;
   payment: string;
@@ -36,11 +42,17 @@ export const CSV_COLUMNS: readonly CsvColumn[] = [
   { label: 'Uur', value: (r) => r.time },
   { label: 'Trainer', value: (r) => r.coach },
   { label: 'Speler', value: (r) => r.player },
+  // Eén regel per LES, ook bij een groepsles die apart gefactureerd wordt. Een export is een
+  // lijst lessen — zo telt een trainer zijn maand, en zo sluit hij aan op de omzetkaart. Wie
+  // welk deel krijgt, is een zaak van de facturatie en staat in de app bij de les zelf; hier
+  // zeggen deze twee kolommen wat er te verdelen valt en of dat gebeurt.
+  { label: 'Spelers', value: (r) => String(r.players) },
+  { label: 'Facturatie', value: (r) => r.billing },
   { label: 'Terrein', value: (r) => r.court },
   { label: 'Duur (min)', value: (r) => String(r.minutes) },
-  // Twee bedragen naast elkaar, en de kop zegt van wie ze zijn: de speler betaalt de baan,
-  // de trainer krijgt zijn eigen uurtarief. Wat de club overhoudt is het verschil.
-  { label: 'Prijs speler (EUR)', value: (r) => formatEuro(r.price) },
+  // Twee bedragen naast elkaar, en de kop zegt van wie ze zijn: de spelers betalen samen de
+  // baan, de trainer krijgt zijn eigen uurtarief. Wat de club overhoudt is het verschil.
+  { label: 'Prijs les (EUR)', value: (r) => formatEuro(r.price) },
   { label: 'Loon trainer (EUR)', value: (r) => formatEuro(r.coachPay) },
   { label: 'Status', value: (r) => r.status },
   { label: 'Betaalwijze', value: (r) => r.payment },
@@ -73,12 +85,15 @@ export function csvRows(bookings: Booking[], users: User[], courts: Court[]): Cs
       // 0: de les blijft zichtbaar staan, maar met duur en prijs op nul.
       const minutes = bookingMinutes(b);
       const court = courtById.get(b.court_id);
+      const size = groupSize(b);
       return {
         id: b.id,
         date: `${two(start.getDate())}/${two(start.getMonth() + 1)}/${start.getFullYear()}`,
         time: `${two(start.getHours())}:${two(start.getMinutes())}`,
         coach: nameById.get(b.coach_id) ?? 'Onbekend',
-        player: nameById.get(b.player_id) ?? 'Onbekend',
+        player: shortGroupLabel(nameById.get(b.player_id) ?? 'Onbekend', size),
+        players: size,
+        billing: splitOf(b) === 'separate' ? 'Apart' : 'Samen',
         court: court?.name ?? 'Onbekend terrein',
         minutes,
         price: bookingPrice(b, court),

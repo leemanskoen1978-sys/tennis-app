@@ -20,6 +20,17 @@ export type PaymentMethod =
   | 'sponsor';
 export type TrainingType = 'techniek' | 'tactiek' | 'fysiek' | 'mentaal' | 'match';
 
+/**
+ * Wie de factuur van een groepsles krijgt. Een groepsles gaat altijd op factuur — beurtenkaart
+ * en sponsorbudget zijn er voor privélessen — dus dit is het enige dat er nog te kiezen valt:
+ *  - 'together': één factuur voor het hele bedrag, naar de betaler (`Booking.player_id`).
+ *  - 'separate': elke speler krijgt zijn eigen deel gefactureerd.
+ *
+ * Bij een les met één speler heeft dit geen betekenis — dan is er niets te verdelen — en
+ * gedraagt de app zich altijd als 'together'.
+ */
+export type PaymentSplit = 'together' | 'separate';
+
 export interface User {
   id: string;
   email: string;
@@ -82,11 +93,13 @@ export interface Court {
  *
  * `player_id` is die betaler, en dat blijft het hart van de les: aan hem hangen de
  * betaalwijze, de beurtenkaart, het sponsorbudget en de regel "per speler" in het rapport.
- * De extra deelnemers in `participant_ids` doen mee op de baan maar raken het geld niet —
- * daarom staan ze apart en niet in één lijst met de betaler. Was het één lijst, dan zou elke
- * plek die vandaag "de speler van deze les" vraagt (beurt afboeken, sponsorbudget, omzet per
- * speler) opnieuw moeten kiezen wíe daarvan bedoeld wordt, en dat is precies het soort keuze
- * dat op vijf schermen vijf antwoorden krijgt.
+ * De extra deelnemers in `participant_ids` staan daarom apart en niet in één lijst met de
+ * betaler. Was het één lijst, dan zou elke plek die vandaag "de speler van deze les" vraagt
+ * (beurt afboeken, sponsorbudget, omzet per speler) opnieuw moeten kiezen wíe daarvan bedoeld
+ * wordt, en dat is precies het soort keuze dat op vijf schermen vijf antwoorden krijgt.
+ *
+ * Kiest de trainer voor apart factureren (`payment_split`), dan krijgt elke speler zijn eigen
+ * deel van dezelfde ene les — nog steeds één boeking, alleen verdeeld over meer facturen.
  */
 export interface Booking {
   id: string;
@@ -103,9 +116,20 @@ export interface Booking {
   start_time: string; // ISO
   end_time: string; // ISO
   status: BookingStatus;
+  /**
+   * De betaalwijze van de les. Bij een groepsles is dat altijd 'invoice': beurtenkaart en
+   * sponsorbudget gelden alleen voor een privéles, en cash of QR laat zich niet over vier
+   * spelers verdelen. Die regel wordt afgedwongen in `planMethodChange` (lib/beurtenkaart) —
+   * de enige weg waarlangs een betaalwijze wordt vastgesteld.
+   */
   payment_method: PaymentMethod;
   /** De kaart die de beurt voor deze les droeg — alleen gezet bij 'beurtenkaart'. */
   beurtenkaart_id?: string;
+  /**
+   * Eén factuur voor de hele les, of ieder zijn deel. Leeg betekent 'together': zo gedroeg
+   * elke les zich voordat groepslessen bestonden, en zo blijft een oude opslag zich gedragen.
+   */
+  payment_split?: PaymentSplit;
   notes?: string;
   actual_start_time?: string;
   actual_end_time?: string;

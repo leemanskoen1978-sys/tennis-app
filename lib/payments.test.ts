@@ -3,6 +3,7 @@ import {
   needsPayment, filterPendingPayment, bookingsFor, bookingsByCoach, visibleBookings,
   pendingPaymentsFor, totalRevenue,
   bookingMinutes, bookingPrice, rateForGroup, bookingsBilledTo,
+  splitEvenly, splitOf, lessonShares, bookingPaymentMeta,
   coachPayout, totalCoachPayout, clubMargin,
   defaultMethodFor, paymentMeta, PAYMENT_METHODS, PAYMENT_LABELS,
 } from './payments';
@@ -443,5 +444,74 @@ describe('defaultMethodFor', () => {
     const p: User = { id: 'p1', name: 'M', email: 'm@x.be', role: 'player' };
     expect(defaultMethodFor(p)).toBe('open');
     expect(defaultMethodFor(null)).toBe('open');
+  });
+});
+
+describe('splitEvenly', () => {
+  it('divides an amount that splits neatly', () => {
+    expect(splitEvenly(45, 3)).toEqual([15, 15, 15]);
+    expect(splitEvenly(45, 4)).toEqual([11.25, 11.25, 11.25, 11.25]);
+  });
+
+  it('never loses or invents a cent on an amount that does not split neatly', () => {
+    const zeven = splitEvenly(45, 7);
+    expect(zeven).toEqual([6.43, 6.43, 6.43, 6.43, 6.43, 6.43, 6.42]);
+    expect(Math.round(zeven.reduce((a, b) => a + b, 0) * 100)).toBe(4500);
+
+    const halveLes = splitEvenly(22.5, 4);
+    expect(halveLes).toEqual([5.63, 5.63, 5.62, 5.62]);
+    expect(Math.round(halveLes.reduce((a, b) => a + b, 0) * 100)).toBe(2250);
+  });
+
+  it('gives the whole amount to one payer and nothing at all to nobody', () => {
+    expect(splitEvenly(45, 1)).toEqual([45]);
+    expect(splitEvenly(45, 0)).toEqual([]);
+  });
+});
+
+describe('samen of apart factureren', () => {
+  const groep: Booking = {
+    ...base, payment_method: 'invoice', participant_ids: ['p2', 'p3'],
+  };
+
+  it('is together unless the lesson says otherwise', () => {
+    expect(splitOf(base)).toBe('together');
+    expect(splitOf(groep)).toBe('together');
+    expect(splitOf({ ...groep, payment_split: 'separate' })).toBe('separate');
+  });
+
+  it('cannot be separate on a private lesson — there is nothing to divide', () => {
+    expect(splitOf({ ...base, payment_split: 'separate' })).toBe('together');
+  });
+
+  it('bills the whole lesson to the payer when they pay together', () => {
+    expect(lessonShares(groep, staffelBaan)).toEqual([
+      { player_id: 'p1', method: 'invoice', beurtenkaart_id: undefined, amount: 45 },
+    ]);
+  });
+
+  it('bills every player their own share when they pay separately', () => {
+    const shares = lessonShares({ ...groep, payment_split: 'separate' }, staffelBaan);
+    expect(shares.map((s) => s.player_id)).toEqual(['p1', 'p2', 'p3']);
+    expect(shares.every((s) => s.method === 'invoice')).toBe(true);
+    expect(shares.map((s) => s.amount)).toEqual([15, 15, 15]);
+  });
+
+  it('keeps the sum of the shares exactly the price of the lesson', () => {
+    const les: Booking = { ...groep, participant_ids: ['p2', 'p3', 'p4'], payment_split: 'separate' };
+    const shares = lessonShares(les, staffelBaan);
+    const sum = shares.reduce((total, s) => total + s.amount, 0);
+    expect(Math.round(sum * 100) / 100).toBe(bookingPrice(les, staffelBaan));
+  });
+
+  it('shows on the badge that there is more than one invoice', () => {
+    expect(bookingPaymentMeta(groep).label).toBe('Factuur');
+    expect(bookingPaymentMeta({ ...groep, payment_split: 'separate' }).label).toBe('Factuur · apart');
+  });
+
+  it('counts the revenue of a separately billed lesson exactly once', () => {
+    const apart: Booking = { ...groep, payment_split: 'separate' };
+    expect(totalRevenue([apart], [staffelBaan])).toBe(45);
+    expect(totalRevenue([groep], [staffelBaan])).toBe(45);
   });
 });

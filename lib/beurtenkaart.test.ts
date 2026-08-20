@@ -3,7 +3,8 @@ import type { SponsorBooking, SponsorContext } from './sponsor';
 import {
   SESSIONS_PER_CARD, remaining, cardsFor, usableCardFor,
   useSession, releaseSession, removeManualSession, planMethodChange,
-  planCancel, planCardDeletion,
+  planCancel, planCardDeletion, planParticipantsChange, planSplitChange,
+  GROEPSLES_ALLEEN_FACTUUR,
   type MethodChangeBooking,
 } from './beurtenkaart';
 
@@ -125,7 +126,8 @@ describe('planMethodChange', () => {
   function booking(over: Partial<MethodChangeBooking> = {}): MethodChangeBooking {
     return {
       id: 'b1', player_id: 'p1', court_id: 'court-1', start_time: iso,
-      end_time: '2026-08-20T11:00:00.000Z', status: 'confirmed', ...over,
+      end_time: '2026-08-20T11:00:00.000Z', status: 'confirmed',
+      payment_method: 'open', ...over,
     };
   }
 
@@ -355,5 +357,116 @@ describe('planCardDeletion', () => {
     const plan = planCardDeletion([card(), card({ id: 'k2' })], [cash], 'k2');
     expect(plan.cards.map((c) => c.id)).toEqual(['k1']);
     expect(plan.bookings).toEqual([cash]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Groepslessen: altijd op factuur, nooit op een beurt of op het sponsorbudget.
+// ---------------------------------------------------------------------------
+
+function les(over: Partial<MethodChangeBooking> = {}): MethodChangeBooking {
+  return {
+    id: 'b1', player_id: 'p1', court_id: 'court-1', start_time: iso,
+    end_time: '2026-08-20T11:00:00.000Z', status: 'confirmed',
+    payment_method: 'open', ...over,
+  };
+}
+
+const usesFor = (cards: Beurtenkaart[], bookingId: string): number =>
+  cards.reduce((n, c) => n + c.uses.filter((u) => u.booking_id === bookingId).length, 0);
+
+describe('een groepsles gaat altijd op factuur', () => {
+  const groep = les({ participant_ids: ['p2'] });
+
+  it('refuses a beurtenkaart on a group lesson, and does not touch the card', () => {
+    const cards = [card()];
+    const plan = planMethodChange(cards, groep, 'beurtenkaart');
+    expect(plan.error).toBe(GROEPSLES_ALLEEN_FACTUUR);
+    expect(usesFor(plan.cards, 'b1')).toBe(0);
+    expect(plan.cards).toBe(cards);
+  });
+
+  it('refuses sponsor, cash and qr on a group lesson too', () => {
+    for (const method of ['sponsor', 'cash', 'qr', 'open'] as const) {
+      expect(planMethodChange([card()], groep, method).error).toBe(GROEPSLES_ALLEEN_FACTUUR);
+    }
+  });
+
+  it('accepts invoice on a group lesson', () => {
+    const plan = planMethodChange([card()], groep, 'invoice');
+    expect(plan.error).toBeNull();
+    expect(plan.cardId).toBeUndefined();
+  });
+
+  it('leaves a private lesson free to choose, as before', () => {
+    expect(planMethodChange([card()], les(), 'beurtenkaart').error).toBeNull();
+    expect(planMethodChange([card()], les(), 'cash').error).toBeNull();
+  });
+});
+
+describe('planParticipantsChange', () => {
+  it('gives the session back when a private lesson on a card becomes a group lesson', () => {
+    const booked = planMethodChange([card()], les(), 'beurtenkaart');
+    const onCard = les({ payment_method: 'beurtenkaart', beurtenkaart_id: booked.cardId });
+    expect(usesFor(booked.cards, 'b1')).toBe(1);
+
+    const plan = planParticipantsChange(booked.cards, onCard, ['p2']);
+    expect(usesFor(plan.cards, 'b1')).toBe(0);
+    expect(remaining(plan.cards[0])).toBe(SESSIONS_PER_CARD);
+    expect(plan.patch).toMatchObject({
+      participant_ids: ['p2'], payment_method: 'invoice', beurtenkaart_id: undefined,
+    });
+    expect(plan.notice).toContain('beurt is teruggegeven');
+  });
+
+  it('frees the sponsor budget when a sponsored lesson becomes a group lesson', () => {
+    const plan = planParticipantsChange([], les({ payment_method: 'sponsor' }), ['p2']);
+    expect(plan.patch.payment_method).toBe('invoice');
+    expect(plan.notice).toContain('sponsorbudget');
+  });
+
+  it('says nothing when the lesson was already on invoice', () => {
+    const plan = planParticipantsChange([], les({ payment_method: 'invoice' }), ['p2']);
+    expect(plan.patch.payment_method).toBe('invoice');
+    expect(plan.notice).toBeNull();
+  });
+
+  it('makes it a private lesson again when the last participant leaves', () => {
+    const groep = les({ participant_ids: ['p2'], payment_method: 'invoice', payment_split: 'separate' });
+    const plan = planParticipantsChange([], groep, []);
+    expect(plan.patch).toMatchObject({
+      participant_ids: [], payment_method: 'open', payment_split: undefined,
+    });
+    expect(plan.notice).toContain('privéles');
+    // En daarna mag er weer van alles op: de beurtenkaart is terug in beeld.
+    const weerPrive = les({ ...groep, ...plan.patch });
+    expect(planMethodChange([card()], weerPrive, 'beurtenkaart').error).toBeNull();
+  });
+
+  it('leaves the money alone when a group stays a group', () => {
+    const groep = les({ participant_ids: ['p2'], payment_method: 'invoice' });
+    const plan = planParticipantsChange([], groep, ['p2', 'p3']);
+    expect(plan.patch).toEqual({ participant_ids: ['p2', 'p3'] });
+    expect(plan.notice).toBeNull();
+  });
+
+  it('leaves the money alone when a private lesson stays private', () => {
+    const plan = planParticipantsChange([card()], les({ payment_method: 'cash' }), []);
+    expect(plan.patch).toEqual({ participant_ids: [] });
+    expect(plan.notice).toBeNull();
+  });
+});
+
+describe('planSplitChange', () => {
+  const groep = les({ participant_ids: ['p2'], payment_method: 'invoice' });
+
+  it('switches who gets the invoice, both ways', () => {
+    expect(planSplitChange(groep, 'separate')).toEqual({ payment_split: 'separate' });
+    expect(planSplitChange({ ...groep, payment_split: 'separate' }, 'together'))
+      .toEqual({ payment_split: 'together' });
+  });
+
+  it('changes nothing on a private lesson: there is nothing to divide', () => {
+    expect(planSplitChange(les(), 'separate')).toEqual({});
   });
 });

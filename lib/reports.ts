@@ -13,7 +13,7 @@
 //     van de baan (wat de speler betaalt), het trainersloon op het uurtarief van de trainer
 //     (wat hij krijgt). Ze mogen nooit in elkaar geschoven worden.
 
-import { bookingPrice, coachPayout, countsAsRevenue } from './payments';
+import { bookingPrice, coachPayout, countsAsRevenue, lessonShares } from './payments';
 import { shortMonthName } from './period';
 import type { Booking, Court, PaymentMethod, User } from './types';
 
@@ -41,17 +41,22 @@ function revenueOf(b: Booking, rates: Map<string, Court>): number {
 }
 
 /**
- * Wat er van één les nog openstaat: de volle prijs zolang de betaalwijze 'open' is, anders 0.
- * Dezelfde prijsregel als `revenueOf`, zodat betaald en openstaand optelbaar zijn.
- *
- * Sponsor staat hier bewust niet bij, maar niet omdat er geen geld is: een gesponsorde les
- * zit in het sponsorcontract en dat is betaald geld (zie `lib/sponsor.ts` en
- * `countsAsRevenue`). Hij telt dus mee als omzet — in de kolom "betaald" — en juist daarom
- * nooit als openstaand: er komt niets meer bij.
+ * Wat één les per betalende partij opbrengt en openlaat. Bij samen factureren is dat één
+ * regel voor de betaler — het hele bedrag — en bij apart één regel per speler met zijn deel.
+ * De som over de regels is altijd precies de prijs van de les, dus de omzetkaart en deze
+ * uitsplitsing kunnen niet uit elkaar lopen.
  */
-function openAmountOf(b: Booking, rates: Map<string, Court>): number {
-  if (!PAYABLE_STATUSES.includes(b.status) || b.payment_method !== 'open') return 0;
-  return bookingPrice(b, rates.get(b.court_id));
+function sharesOf(b: Booking, rates: Map<string, Court>): { playerId: string; paid: number; open: number }[] {
+  const payable = PAYABLE_STATUSES.includes(b.status);
+  return lessonShares(b, rates.get(b.court_id)).map((s) => ({
+    playerId: s.player_id,
+    paid: payable && countsAsRevenue(s.method) ? s.amount : 0,
+    // Openstaand is alleen wat op 'open' staat. Sponsor hoort daar bewust niet bij, en niet
+    // omdat er geen geld is: een gesponsorde les zit in het sponsorcontract en dat is betaald
+    // geld (zie `lib/sponsor.ts` en `countsAsRevenue`). Hij telt dus mee als betaald, en juist
+    // daarom nooit als openstaand: er komt niets meer bij.
+    open: payable && s.method === 'open' ? s.amount : 0,
+  }));
 }
 
 /** Centen bij elkaar optellen laat kommagetallen driften; een bedrag blijft een bedrag. */
@@ -79,7 +84,12 @@ export interface PlayerTotal {
  * anders wisselen twee spelers met hetzelfde totaal bij elke hertekening van plaats.
  *
  * Een gesponsorde les staat bij het betaalde bedrag en niet bij het openstaande — zie
- * `openAmountOf`. Een geannuleerde les telt nergens mee, ook niet als les.
+ * `sharesOf`. Een geannuleerde les telt nergens mee, ook niet als les.
+ *
+ * Een groepsles staat bij wie hem betaalt. Bij samen factureren is dat de betaler, met het
+ * hele bedrag en één les op zijn naam; de meespelers komen er niet in voor, want zij betalen
+ * niets. Bij apart factureren krijgt elke speler zijn eigen deel én zijn eigen les geteld: hij
+ * kreeg er een rekening voor, dus het is zijn les.
  *
  * Een speler die niet meer bestaat verdwijnt niet uit het overzicht: zijn lessen zijn wél
  * gegeven en zijn geld is wél binnengekomen, dus hij blijft staan als "Onbekend".
@@ -94,17 +104,19 @@ export function totalsByPlayer(
   const totals = new Map<string, PlayerTotal>();
 
   for (const b of countedBookings(bookings)) {
-    const row = totals.get(b.player_id) ?? {
-      playerId: b.player_id,
-      name: nameById.get(b.player_id) ?? 'Onbekend',
-      lessons: 0,
-      paid: 0,
-      open: 0,
-    };
-    row.lessons += 1;
-    row.paid += revenueOf(b, rates);
-    row.open += openAmountOf(b, rates);
-    totals.set(b.player_id, row);
+    for (const share of sharesOf(b, rates)) {
+      const row = totals.get(share.playerId) ?? {
+        playerId: share.playerId,
+        name: nameById.get(share.playerId) ?? 'Onbekend',
+        lessons: 0,
+        paid: 0,
+        open: 0,
+      };
+      row.lessons += 1;
+      row.paid += share.paid;
+      row.open += share.open;
+      totals.set(share.playerId, row);
+    }
   }
 
   return [...totals.values()]

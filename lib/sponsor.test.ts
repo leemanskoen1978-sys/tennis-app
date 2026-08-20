@@ -3,7 +3,7 @@ import {
   parseSponsorBudget,
   type SponsorBooking, type SponsorPlayer,
 } from './sponsor';
-import type { Court } from './types';
+import type { Booking, Court, User } from './types';
 
 const courts: Court[] = [
   { id: 'court-1', name: 'Terrein 1', number: 1, indoor: false, hourly_rate: 40 },
@@ -195,5 +195,24 @@ describe('sponsorHint', () => {
   it('zegt wat er nog van het budget over is', () => {
     expect(sponsorHint(sponsorState(anna, [les({ id: 'b1' })], courts)))
       .toBe('Sponsorbudget: nog € 60,00 van € 100,00 over.');
+  });
+});
+
+describe('sponsorbudget en groepslessen', () => {
+  it('never counts a group lesson as sponsor spending', () => {
+    // Een groepsles kán niet op sponsor staan (planMethodChange weigert dat), maar mocht er
+    // ooit toch zo'n les in de opslag belanden, dan hoort hij het budget niet leeg te eten.
+    const speler: User = { id: 'p1', name: 'Mathis', email: 'm@x.be', role: 'player', sponsor_budget: 100 };
+    const banen: Court[] = [
+      { id: 'c1', name: 'Baan 1', number: 1, indoor: false, hourly_rate: 30,
+        group_rates: [{ max_players: 2, rate: 30 }, { max_players: 4, rate: 45 }] },
+    ];
+    const prive: Booking = {
+      id: 'b1', player_id: 'p1', coach_id: 'koen', court_id: 'c1',
+      start_time: '2026-08-20T10:00:00.000Z', end_time: '2026-08-20T11:00:00.000Z',
+      status: 'confirmed', payment_method: 'sponsor',
+    };
+    const groep: Booking = { ...prive, id: 'b2', participant_ids: ['p2', 'p3'], payment_method: 'invoice' };
+    expect(sponsorState(speler, [prive, groep], banen).used).toBe(30);
   });
 });

@@ -139,17 +139,17 @@ describe('formatEuro', () => {
 describe('CSV_COLUMNS', () => {
   it('are the agreed columns, in the agreed order', () => {
     expect(CSV_COLUMNS.map((c) => c.label)).toEqual([
-      'Datum', 'Uur', 'Trainer', 'Speler', 'Terrein', 'Duur (min)',
-      'Prijs speler (EUR)', 'Loon trainer (EUR)', 'Status', 'Betaalwijze',
+      'Datum', 'Uur', 'Trainer', 'Speler', 'Spelers', 'Facturatie', 'Terrein', 'Duur (min)',
+      'Prijs les (EUR)', 'Loon trainer (EUR)', 'Status', 'Betaalwijze',
     ]);
-    expect(CSV_COLUMNS).toHaveLength(10);
+    expect(CSV_COLUMNS).toHaveLength(12);
   });
 
   it('writes the two amounts next to each other, the player first', () => {
     const [row] = csvRows([booking()], users, courts);
     const cells = CSV_COLUMNS.map((c) => c.value(row));
-    expect(cells[6]).toBe('30,00');
-    expect(cells[7]).toBe('24,00');
+    expect(cells[8]).toBe('30,00');
+    expect(cells[9]).toBe('24,00');
   });
 
   it('is the single source for the header, in the same order', () => {
@@ -203,5 +203,41 @@ describe('toCsv', () => {
       users[1],
     ], courts);
     expect(toCsv(rows)).toContain('"Koen\rde trainer"');
+  });
+});
+
+describe('csvRows bij een groepsles', () => {
+  const staffel: Court[] = [
+    {
+      ...courts[0],
+      group_rates: [{ max_players: 2, rate: 30 }, { max_players: 4, rate: 45 }],
+    },
+  ];
+  const groep = booking({ participant_ids: ['p2', 'p3'], payment_method: 'invoice' });
+
+  it('is one line per lesson, with the total of the whole lesson', () => {
+    // Een export is een lijst lessen: één regel, ook als er apart gefactureerd wordt.
+    const rows = csvRows([groep, { ...groep, payment_split: 'separate' as const }], users, staffel);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.price)).toEqual([45, 45]);
+  });
+
+  it('names the payer with how many joined him, and how many players there were', () => {
+    const [row] = csvRows([groep], users, staffel);
+    expect(row.player).toBe('Mathis +2');
+    expect(row.players).toBe(3);
+  });
+
+  it('says whether the lesson is invoiced together or separately', () => {
+    expect(csvRows([groep], users, staffel)[0].billing).toBe('Samen');
+    expect(csvRows([{ ...groep, payment_split: 'separate' as const }], users, staffel)[0].billing)
+      .toBe('Apart');
+  });
+
+  it('leaves a private lesson exactly as it was', () => {
+    const [row] = csvRows([booking()], users, courts);
+    expect(row.player).toBe('Mathis');
+    expect(row.players).toBe(1);
+    expect(row.billing).toBe('Samen');
   });
 });
