@@ -69,6 +69,45 @@ describe('monthRows', () => {
   it('returns nothing for an empty month', () => {
     expect(monthRows([booking()], users, courts, new Date(2026, 0, 1))).toEqual([]);
   });
+
+  it('gives zero duration and price when end_time lies before start_time', () => {
+    const [row] = monthRows(
+      [booking({ start_time: '2026-08-20T09:00:00.000Z', end_time: '2026-08-20T08:00:00.000Z' })],
+      users, courts, new Date(2026, 7, 1),
+    );
+    expect(row.minutes).toBe(0);
+    expect(row.price).toBe(0);
+  });
+
+  it('gives zero duration and price when end_time cannot be parsed', () => {
+    const [row] = monthRows(
+      [booking({ end_time: 'niet-een-datum' })],
+      users, courts, new Date(2026, 7, 1),
+    );
+    expect(row.minutes).toBe(0);
+    expect(row.price).toBe(0);
+  });
+
+  it('keeps a booking that starts at 23:30 local time and crosses midnight in the month of its start', () => {
+    const rows = monthRows(
+      [booking({ start_time: '2026-08-31T21:30:00.000Z', end_time: '2026-08-31T22:30:00.000Z' })],
+      users, courts, new Date(2026, 7, 1),
+    );
+    expect(rows).toHaveLength(1);
+  });
+
+  it('puts a booking on the first day of the next month in that month, not the previous one', () => {
+    const rows = monthRows(
+      [booking({ start_time: '2026-09-01T08:00:00.000Z', end_time: '2026-09-01T09:00:00.000Z' })],
+      users, courts, new Date(2026, 7, 1),
+    );
+    expect(rows).toHaveLength(0);
+    const nextMonthRows = monthRows(
+      [booking({ start_time: '2026-09-01T08:00:00.000Z', end_time: '2026-09-01T09:00:00.000Z' })],
+      users, courts, new Date(2026, 8, 1),
+    );
+    expect(nextMonthRows).toHaveLength(1);
+  });
 });
 
 describe('toCsv', () => {
@@ -94,5 +133,21 @@ describe('toCsv', () => {
       users[1],
     ], courts, new Date(2026, 7, 1));
     expect(toCsv(rows)).toContain('"Koen; de trainer"');
+  });
+
+  it('quotes and doubles a double quote in a field that also contains a semicolon', () => {
+    const rows = monthRows([booking()], [
+      { id: 'koen', name: 'Koen; "de trainer"', email: 'k@x.be', role: 'coach' },
+      users[1],
+    ], courts, new Date(2026, 7, 1));
+    expect(toCsv(rows)).toContain('"Koen; ""de trainer"""');
+  });
+
+  it('quotes a field that contains a bare carriage return', () => {
+    const rows = monthRows([booking()], [
+      { id: 'koen', name: 'Koen\rde trainer', email: 'k@x.be', role: 'coach' },
+      users[1],
+    ], courts, new Date(2026, 7, 1));
+    expect(toCsv(rows)).toContain('"Koen\rde trainer"');
   });
 });

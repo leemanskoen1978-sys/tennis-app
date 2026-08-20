@@ -43,7 +43,10 @@ export function monthRows(
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
     .map((b) => {
       const start = new Date(b.start_time);
-      const minutes = Math.round((new Date(b.end_time).getTime() - start.getTime()) / 60000);
+      const rawMinutes = Math.round((new Date(b.end_time).getTime() - start.getTime()) / 60000);
+      // Een kapotte of omgekeerde eindtijd mag geen NaN of negatief bedrag in de export zetten:
+      // de les blijft zichtbaar staan, maar met duur en prijs op 0.
+      const minutes = Number.isFinite(rawMinutes) && rawMinutes > 0 ? rawMinutes : 0;
       const court = courtById.get(b.court_id);
       return {
         id: b.id,
@@ -53,7 +56,7 @@ export function monthRows(
         player: nameById.get(b.player_id) ?? 'Onbekend',
         court: court?.name ?? 'Onbekend terrein',
         minutes,
-        price: Math.round(((court?.hourly_rate ?? 0) * minutes) / 60 * 100) / 100,
+        price: minutes === 0 ? 0 : Math.round(((court?.hourly_rate ?? 0) * minutes) / 60 * 100) / 100,
         status: BOOKING_STATUS_LABELS[b.status],
         payment: PAYMENT_LABELS[b.payment_method],
       };
@@ -62,7 +65,7 @@ export function monthRows(
 
 /** Excel hier leest puntkomma's en een komma als decimaalteken. */
 function cell(value: string): string {
-  return /[;"\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  return /[;"\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
 export function toCsv(rows: CsvRow[]): string {
