@@ -4,7 +4,7 @@
 import type { BookingStatus } from './types';
 
 export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
-  pending: 'In afwachting',
+  pending: 'Wacht op goedkeuring',
   confirmed: 'Bevestigd',
   cancelled: 'Geannuleerd',
   completed: 'Voltooid',

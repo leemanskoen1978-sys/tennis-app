@@ -139,6 +139,12 @@ export interface Booking {
    */
   series_id?: string;
   notes?: string;
+  /**
+   * Wie deze les aanmaakte. Bepaalt bij het boeken of de les meteen vaststaat of eerst op
+   * goedkeuring wacht — zie `initialStatusFor` in lib/inbox. Leeg bij lessen van vóór dit
+   * veld; die stonden er al en veranderen dus nergens door.
+   */
+  created_by?: string;
   actual_start_time?: string;
   actual_end_time?: string;
 }

@@ -11,11 +11,12 @@ import {
   GROEPSLES_METHOD,
 } from '../lib/beurtenkaart';
 import { isGroupLesson } from '../lib/groups';
+import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
 import { planSeries, type RecurrenceRule, type SeriesSlot } from '../lib/recurrence';
 import type {
   User, Court, Booking, Lesson, StudentProgress, PlayerGoal, Settings,
-  Beurtenkaart, PaymentMethod, PaymentSplit,
+  Beurtenkaart, BookingStatus, PaymentMethod, PaymentSplit,
 } from '../lib/types';
 
 interface DataShape {
@@ -59,6 +60,13 @@ interface DataShape {
   /** Bij een groepsles: één factuur voor de betaler of ieder zijn deel. */
   setPaymentSplit: (bookingId: string, split: PaymentSplit) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
+  /**
+   * De trainer keurt een aangevraagde les goed; pas daarna gaat hij door. Alleen de trainer
+   * van die les kan dat, en alleen zolang de les nog op goedkeuring wacht.
+   */
+  approveBooking: (id: string) => Promise<void>;
+  /** De trainer wijst de aanvraag af: de les wordt geannuleerd en het uur komt weer vrij. */
+  rejectBooking: (id: string) => Promise<void>;
   /** Zet de betaalwijze en houdt de beurtenkaart in de pas. */
   /** `false` bij een geweigerde keuze: onbekende boeking, geannuleerde les, geen kaart met
    *  beurten over, of een sponsorbudget dat deze les niet meer draagt. */
@@ -375,6 +383,32 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [commit]);
 
+  /**
+   * Goedkeuren of weigeren. Beide lopen via `updateBooking`, zodat een geweigerde les langs
+   * dezelfde annuleerweg gaat als elke andere: de beurt van een beurtenkaart komt daar terug
+   * en hoeft hier niet nog een keer geregeld te worden.
+   *
+   * De bewaking staat hier en niet in het scherm: alleen de trainer van die les beslist, en
+   * alleen zolang er nog niets beslist is. Zo kan een tweede tik of een oud scherm geen
+   * geannuleerde les alsnog bevestigen.
+   */
+  const decideBooking = useCallback(async (id: string, status: BookingStatus) => {
+    const store = storeRef.current;
+    if (!store || !currentUserId) return;
+    const booking = store.bookings.find((b) => b.id === id);
+    if (!booking || !needsApproval(booking, currentUserId)) return;
+    await updateBooking(id, { status });
+  }, [currentUserId, updateBooking]);
+
+  const approveBooking = useCallback(
+    (id: string) => decideBooking(id, 'confirmed'),
+    [decideBooking],
+  );
+  const rejectBooking = useCallback(
+    (id: string) => decideBooking(id, 'cancelled'),
+    [decideBooking],
+  );
+
   const setParticipants = useCallback(async (
     bookingId: string,
     participantIds: string[],
@@ -609,6 +643,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     deleteSeriesFrom,
     updateBooking,
     deleteBooking,
+    approveBooking,
+    rejectBooking,
     setParticipants,
     setPaymentSplit,
     setPaymentMethod,
@@ -632,7 +668,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   }), [
     store, currentUser, loading, error, clearError, login, logout, refresh,
     updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
-    updateBooking, deleteBooking, setParticipants, setPaymentSplit,
+    updateBooking, deleteBooking, approveBooking, rejectBooking,
+    setParticipants, setPaymentSplit,
     setPaymentMethod, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, addLesson,

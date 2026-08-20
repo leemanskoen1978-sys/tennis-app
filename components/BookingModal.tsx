@@ -22,6 +22,7 @@ import {
   cardsFor, remaining, GROEPSLES_ALLEEN_FACTUUR, GROEPSLES_METHOD,
 } from '../lib/beurtenkaart';
 import { sponsorHint, sponsorState } from '../lib/sponsor';
+import { initialStatusFor } from '../lib/inbox';
 import { formatDay } from '../lib/datetime';
 import { formatDayInput, parseDayInput } from '../lib/period';
 import {
@@ -137,6 +138,10 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   // mee in de nieuwe les, maar via `setPaymentMethod`: dat is de enige plek die de beurt
   // afboekt en het sponsorbudget bewaakt. Bij een groepsles komen ze niet voor.
   const bewaakt = method === 'beurtenkaart' || method === 'sponsor';
+  // Boekt iemand anders dan de trainer van dit uur, dan is dit een aanvraag en geen les die
+  // al vaststaat. Dezelfde regel als `initialStatusFor`, hier alleen om het zo te noemen.
+  const isAanvraag = currentUser !== null && currentUser !== undefined
+    && initialStatusFor(currentUser.id, coachId) === 'pending';
 
   const players = users.filter((u) => u.role !== 'coach');
   // Wat de les gaat kosten, met de gekozen namen erin verwerkt: zo ziet de trainer meteen
@@ -228,7 +233,12 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         court_id: selectedCourtId || courts[0]?.id || '',
         start_time,
         end_time,
-        status: 'confirmed' as const,
+        // Zet de trainer de les zelf in, dan staat hij vast; boekt een speler, dan wacht hij
+        // op goedkeuring. Die ene regel staat in lib/inbox en nergens anders.
+        status: initialStatusFor(currentUser.id, coachId),
+        // Wie er boekt, blijft aan de les hangen: daaraan ziet de trainer straks dat deze
+        // afspraak van een speler kwam en niet van hemzelf.
+        created_by: currentUser.id,
         participant_ids: participants.length > 0 ? participants : undefined,
         payment_split: isGroup ? split : undefined,
         notes: notes.trim() ? notes.trim() : undefined,
@@ -493,6 +503,13 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
 
               {/* Bij een afgeronde reeks zegt de melding hierboven al wat er misging; de
                   foutregel van de provider zou dat woord voor woord herhalen. */}
+              {isAanvraag && !seriesNotice ? (
+                <Text style={styles.hint}>
+                  Je trainer moet deze les nog goedkeuren. Het uur blijft zolang voor je
+                  vrijgehouden.
+                </Text>
+              ) : null}
+
               {error && !seriesNotice ? <Text style={styles.error}>{error}</Text> : null}
             </ScrollView>
 
@@ -510,7 +527,9 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                     fullWidth
                   />
                   <Button
-                    label={bookedWithoutBeurt ? 'Betaalwijze opnieuw proberen' : 'Bevestigen'}
+                    label={bookedWithoutBeurt
+                      ? 'Betaalwijze opnieuw proberen'
+                      : isAanvraag ? 'Aanvragen' : 'Bevestigen'}
                     variant="primary"
                     onPress={handleConfirm}
                     disabled={submitting || blockedSeries}

@@ -24,6 +24,7 @@ import { formatEuro } from '../lib/money';
 import { seriesFrom } from '../lib/series';
 import { sponsorHint, sponsorState } from '../lib/sponsor';
 import { BOOKING_STATUS_LABELS } from '../lib/status';
+import { isAwaitingApproval } from '../lib/inbox';
 import type { Beurtenkaart, Booking, BookingStatus, PaymentMethod } from '../lib/types';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow, minTapTarget, webCursor, contentMaxWidth } from '../constants/theme';
@@ -93,6 +94,7 @@ export function LessonDetailSheet({
   const {
     bookings, users, courts, beurtenkaarten,
     updateBooking, deleteBooking, cancelSeriesFrom, deleteSeriesFrom,
+    approveBooking, rejectBooking,
     setPaymentMethod, setParticipants, setPaymentSplit, error, clearError,
   } = useSimpleData();
   // Twee bladen over elkaar heen wordt op web en telefoon rommelig: de tweede backdrop
@@ -367,6 +369,30 @@ export function LessonDetailSheet({
               ) : null}
 
               {error ? <Text style={styles.error}>{error}</Text> : null}
+
+              {/* Een aangevraagde les gaat pas door als de trainer ja zegt. Dat kan ook hier
+                  en niet alleen op het agendascherm: wie de les opent, wil hem hier kunnen
+                  afhandelen in plaats van eerst terug te moeten. */}
+              {canManage && isAwaitingApproval(booking) ? (
+                <View style={styles.actions}>
+                  <Button
+                    label="Goedkeuren"
+                    variant="primary"
+                    fullWidth={false}
+                    onPress={() => {
+                      void approveBooking(booking.id);
+                    }}
+                  />
+                  <Button
+                    label="Weigeren"
+                    variant="secondary"
+                    fullWidth={false}
+                    onPress={() => {
+                      void rejectBooking(booking.id);
+                    }}
+                  />
+                </View>
+              ) : null}
 
               {/* Een losse les gaat rechtstreeks: één les annuleren is geen vraag waard, en
                   verwijderen bestond hier niet. Bij een reeks wél, want daar kan één druk

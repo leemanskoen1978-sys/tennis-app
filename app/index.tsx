@@ -15,6 +15,7 @@ import { Card } from '../components/ui/Card';
 import { ActionTile, TileGrid } from '../components/ui/ActionTile';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
+import { awaitingApprovalFor, awaitingApprovalOf } from '../lib/inbox';
 import { bookingsFor, filterPendingPayment, openBalanceFor } from '../lib/payments';
 import { formatEuro } from '../lib/money';
 import { tennisColors } from '../constants/tennis-colors';
@@ -48,11 +49,26 @@ export default function Hub() {
   // Wat er in euro's nog openstaat. Een teller zegt "2 lessen"; wat een speler wil weten is
   // hoeveel dat is, en dat staat daarom voluit op zijn hoofdscherm in plaats van als badge.
   const balance = openBalanceFor(currentUser, bookings, courts);
+  // Wat op een beslissing van deze trainer wacht. De badge staat op Agenda, want daar staat
+  // de lijst zelf ook — een melding die naar een ander scherm wijst dan waar je hem
+  // afhandelt, laat je zoeken.
+  const teKeuren = isCoach ? awaitingApprovalFor(bookings, currentUser.id).length : 0;
+  // En andersom: waar de speler zelf nog op wacht.
+  const gevraagd = isCoach ? 0 : awaitingApprovalOf(bookings, currentUser.id).length;
 
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
   const coachTiles: Tile[] = [
-    { key: 'agenda', title: 'Agenda', subtitle: plural(today, 'vandaag', 'vandaag'), icon: CalendarDays, onPress: () => router.push('/agenda') },
+    {
+      key: 'agenda',
+      title: 'Agenda',
+      subtitle: teKeuren > 0
+        ? plural(teKeuren, 'les goed te keuren', 'lessen goed te keuren')
+        : plural(today, 'vandaag', 'vandaag'),
+      icon: CalendarDays,
+      onPress: () => router.push('/agenda'),
+      badge: teKeuren,
+    },
     { key: 'spelers', title: 'Spelers', subtitle: plural(countPlayers(users), 'actief', 'actief'), icon: Users, onPress: () => router.push('/players') },
     { key: 'trainers', title: 'Trainers', subtitle: plural(countCoaches(users), 'trainer', 'trainers'), icon: GraduationCap, onPress: () => router.push('/coaches') },
     { key: 'beheer', title: 'Beheer', subtitle: plural(pending.length, 'openstaand', 'openstaand'), icon: SlidersHorizontal, onPress: () => router.push('/admin'), badge: pending.length },
@@ -60,7 +76,18 @@ export default function Hub() {
 
   const playerTiles: Tile[] = [
     { key: 'book', title: 'Reserveren', subtitle: 'Boek je volgende les', icon: CalendarPlus, onPress: () => router.push('/agenda/new'), primary: true },
-    { key: 'mine', title: 'Mijn agenda', subtitle: plural(today, 'vandaag', 'vandaag'), icon: CalendarDays, onPress: () => router.push('/agenda'), badge: myOpen },
+    {
+      key: 'mine',
+      title: 'Mijn agenda',
+      // Wacht er nog een aanvraag op zijn trainer, dan is dát wat hij wil weten — niet
+      // hoeveel lessen hij vandaag heeft.
+      subtitle: gevraagd > 0
+        ? plural(gevraagd, 'wacht op goedkeuring', 'wachten op goedkeuring')
+        : plural(today, 'vandaag', 'vandaag'),
+      icon: CalendarDays,
+      onPress: () => router.push('/agenda'),
+      badge: myOpen,
+    },
     { key: 'les', title: 'Mijn lessen', subtitle: 'Lesmateriaal van je trainers', icon: BookOpen, onPress: () => router.push('/coaches/lessons') },
     // "Voortgang" en niet "Mijn voortgang": de tab onderaan heet zo, want daar past de
     // langere tekst niet op een telefoon. Tegel en tab moeten hetzelfde heten.

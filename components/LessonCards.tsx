@@ -13,6 +13,8 @@ import { useSimpleData } from '../providers/SimpleDataProvider';
 import { formatDay, formatTimeRange } from '../lib/datetime';
 import { groupSize, shortGroupLabel } from '../lib/groups';
 import { bookingPaymentMeta, type PaymentMeta } from '../lib/payments';
+import { isAwaitingApproval } from '../lib/inbox';
+import { BOOKING_STATUS_LABELS } from '../lib/status';
 import type { Booking } from '../lib/types';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
@@ -73,6 +75,14 @@ export function LessonCards({
                   {formatDay(booking.start_time)} · {courtName(booking.court_id)}
                 </Text>
                 <View style={styles.badgeRow}>
+                  {/* Zolang de trainer niet beslist heeft, is dát het enige wat er over deze
+                      les te zeggen valt — vandaar vóór de betaalwijze. */}
+                  {isAwaitingApproval(booking) ? (
+                    <Badge
+                      label={BOOKING_STATUS_LABELS.pending}
+                      color={tennisColors.warning}
+                    />
+                  ) : null}
                   <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
                 </View>
               </Card>
