@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  Plus, CheckCircle2, Circle, BookOpen, CalendarPlus, CalendarDays, TrendingUp, Target,
+  Plus, CheckCircle2, Circle, BookOpen, CalendarPlus, CalendarDays, Target,
   SlidersHorizontal, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
@@ -16,9 +16,11 @@ import { LessonDetailModal } from '../../components/LessonDetailModal';
 import { AssignLessonModal } from '../../components/AssignLessonModal';
 import { GoalHorizonRows, PlayerGoalSheet } from '../../components/PlayerGoals';
 import { ProgressForm } from '../../components/progress/ProgressForm';
-import { byDateDesc, ProgressEntryCard } from '../../components/progress/ProgressViews';
+import { ProgressEntryCard } from '../../components/progress/ProgressViews';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { coachesForPlayer } from '../../lib/relations';
+import {
+  buildLesplan, coachesForPlayer, lesplanSummary, type LessonWithProgress,
+} from '../../lib/relations';
 import { filledGoalCount, goalCountLabel } from '../../lib/goals';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
 import { tennisColors } from '../../constants/tennis-colors';
@@ -37,10 +39,14 @@ import { formatDay, formatTimeRange } from '../../lib/datetime';
  * scherm en laat het dossier eronder onaangeroerd staan.
  *
  * De kop-kaart klapt nooit weg: dat is de identiteit van het scherm, geen onderdeel.
+ *
+ * Lesplan en voortgang zijn één onderdeel. Als twee lijsten naast elkaar moest je zelf
+ * uitzoeken welke notitie bij welke les hoorde, terwijl de notitie dat zelf al weet
+ * (`lesson_id`). Nu staat elke notitie onder zijn les, en wat nergens bij hoort onderaan.
  */
 
 /** De onderdelen van het dossier; elk krijgt een tegel en een blad. */
-type SectionKey = 'lesdagen' | 'voortgang' | 'doelen' | 'lesplan' | 'administratie';
+type SectionKey = 'lesdagen' | 'lesplan' | 'doelen' | 'administratie';
 
 export default function PlayerDossier() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -88,30 +94,50 @@ export default function PlayerDossier() {
   const past = playerBookings.filter((b) => new Date(b.end_time).getTime() < now)
     .sort((a, b) => b.start_time.localeCompare(a.start_time));
 
-  const playerLessons = lessons.filter((l) => l.student_id === player.id);
-  const planned = playerLessons.filter((l) => l.status !== 'gegeven');
-  const given = playerLessons.filter((l) => l.status === 'gegeven');
+  // Lesplan en voortgang zijn één lijst: elke notitie hangt onder de les waar hij bij hoort
+  // (lib/relations legt die koppeling), en wat nergens bij hoort staat onderaan los.
+  const plan = buildLesplan(player.id, lessons, progress);
   const lessonTitle = (lid?: string) => (lid ? lessons.find((l) => l.id === lid)?.title : undefined);
-
-  const entries = progress.filter((p) => p.student_id === player.id).sort(byDateDesc);
+  const nothingYet = plan.planned.length === 0 && plan.given.length === 0 && plan.loose.length === 0;
 
   // Wat er op de tegel staat. De tellingen komen uit precies dezelfde lijsten als de inhoud
   // van het blad, zodat een tegel nooit iets anders belooft dan wat je erachter vindt.
   const lesdagenSummary = upcoming.length > 0
     ? `${upcoming.length} aankomend`
     : past.length > 0 ? 'niets aankomend' : 'geen afspraken';
-  const voortgangSummary = entries.length === 0
-    ? 'nog geen'
-    : entries.length === 1 ? '1 notitie' : `${entries.length} notities`;
   // Zelfde telling als de badges bij de horizonnen zelf: een leeg doel telt niet mee.
   const goalCount = filledGoalCount(goals.filter((g) => g.student_id === player.id));
   const doelenSummary = goalCount === 0 ? 'nog geen doel' : goalCountLabel(goalCount);
-  const lesplanSummary = planned.length > 0 ? `${planned.length} te doen` : 'niets te doen';
   const betaalwijze = PAYMENT_LABELS[player.default_payment_method ?? 'open'];
 
   const openLesson = (l: Lesson) => { setDetailLesson(l); setDetailOpen(true); };
   const toggleGiven = (l: Lesson) =>
     updateLesson(l.id, { status: l.status === 'gegeven' ? 'gepland' : 'gegeven' });
+
+  /** Eén les met de notities die eronder horen; die staan ingesprongen achter een streep. */
+  const lessonBlock = (item: LessonWithProgress, given: boolean) => (
+    <View key={item.lesson.id} style={styles.lessonBlock}>
+      <Card style={styles.listCard}>
+        <PlanRow
+          lesson={item.lesson}
+          onOpen={() => openLesson(item.lesson)}
+          onToggle={() => toggleGiven(item.lesson)}
+          canEdit={!!isCoach}
+          given={given}
+          ownerName={nameOf(item.lesson.coach_id)}
+          divided={false}
+        />
+      </Card>
+      {item.entries.length > 0 ? (
+        <View style={styles.lessonNotes}>
+          {item.entries.map((p) => (
+            // De lestitel staat hierboven al; hem per notitie herhalen zegt niets nieuws.
+            <ProgressEntryCard key={p.id} p={p} studentName={player.name} showStudent={false} coachName={nameOf(p.coach_id)} onPress={() => setOpenEntry(p)} />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
 
   // Vanuit een blad open je soms nog iets: een notitie, een horizon, een les, het toewijzen.
   // Twee bladen over elkaar heen is rommelig — de tweede backdrop verduistert de eerste en op
@@ -127,14 +153,13 @@ export default function PlayerDossier() {
   const goTo = (path: string) => { closeSheet(); router.push(path); };
 
   const tiles: Array<{ key: SectionKey; title: string; subtitle: string; icon: LucideIcon }> = [
-    // Dezelfde iconen als elders in de app: de agenda-kalender, de stijgende lijn van
-    // Voortgang, de roos van Doelen (ook op de tegel in Beheer), het boek van lesmateriaal
-    // en de schuifjes van Beheer. Geen badges: een badge vraagt aandacht voor iets wat af
-    // moet (openstaande betalingen in Beheer), en in een dossier is niets dringend.
+    // Dezelfde iconen als elders in de app: de agenda-kalender, het boek van lesmateriaal,
+    // de roos van Doelen (ook op de tegel in Beheer) en de schuifjes van Beheer. Geen
+    // badges: een badge vraagt aandacht voor iets wat af moet (openstaande betalingen in
+    // Beheer), en in een dossier is niets dringend.
     { key: 'lesdagen', title: 'Lesdagen', subtitle: lesdagenSummary, icon: CalendarDays },
-    { key: 'voortgang', title: 'Voortgang', subtitle: voortgangSummary, icon: TrendingUp },
+    { key: 'lesplan', title: 'Lesplan & voortgang', subtitle: lesplanSummary(plan), icon: BookOpen },
     { key: 'doelen', title: 'Doelen', subtitle: doelenSummary, icon: Target },
-    { key: 'lesplan', title: 'Lesplan', subtitle: lesplanSummary, icon: BookOpen },
   ];
   if (isCoach) {
     tiles.push({ key: 'administratie', title: 'Administratie', subtitle: betaalwijze, icon: SlidersHorizontal });
@@ -233,56 +258,58 @@ export default function PlayerDossier() {
         )}
       </DetailSheet>
 
-      {/* Het werk: wat er gebeurd is */}
-      <DetailSheet title="Voortgang" visible={sheetOpen('voortgang')} onClose={closeSheet}>
-        {isCoach && currentUser ? (
-          <Button
-            label="Voortgang toevoegen"
-            variant="secondary"
-            icon={<Plus size={16} color={tennisColors.text} />}
-            onPress={() => setProgressOpen(true)}
-          />
-        ) : null}
-        {entries.length === 0 ? (
-          <Text style={styles.muted}>Nog geen voortgang.</Text>
-        ) : (
-          entries.map((p) => (
-            <ProgressEntryCard key={p.id} p={p} studentName={player.name} showStudent={false} lessonTitle={lessonTitle(p.lesson_id)} coachName={nameOf(p.coach_id)} onPress={() => setOpenEntry(p)} />
-          ))
-        )}
-      </DetailSheet>
-
       {/* Het werk: waar het naartoe gaat */}
       <DetailSheet title="Doelen" visible={sheetOpen('doelen')} onClose={closeSheet}>
         <GoalHorizonRows studentId={player.id} onOpen={setOpenHorizon} />
       </DetailSheet>
 
-      {/* Het materiaal */}
-      <DetailSheet title="Lesplan" visible={sheetOpen('lesplan')} onClose={closeSheet}>
-        {isCoach ? (
-          <SheetAction
-            icon={<Plus size={16} color={tennisColors.primary} />}
-            label="Les toewijzen"
-            accessibilityLabel="Les toewijzen"
-            onPress={() => setAssignOpen(true)}
-          />
+      {/* Het materiaal en wat het opleverde: één lijst, notities onder hun les */}
+      <DetailSheet title="Lesplan & voortgang" visible={sheetOpen('lesplan')} onClose={closeSheet}>
+        {isCoach && currentUser ? (
+          <View style={styles.actionRow}>
+            <SheetAction
+              icon={<Plus size={16} color={tennisColors.primary} />}
+              label="Les toewijzen"
+              accessibilityLabel="Les toewijzen"
+              onPress={() => setAssignOpen(true)}
+            />
+            <SheetAction
+              icon={<Plus size={16} color={tennisColors.primary} />}
+              label="Voortgang toevoegen"
+              accessibilityLabel={`Voortgang toevoegen voor ${player.name}`}
+              onPress={() => setProgressOpen(true)}
+            />
+          </View>
         ) : null}
-        <Text style={styles.subLabel}>Te doen</Text>
-        {planned.length === 0 ? <Text style={styles.muted}>Geen geplande lessen.</Text> : (
-          <Card style={styles.listCard}>
-            {planned.map((l, i) => (
-              <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given={false} ownerName={nameOf(l.coach_id)} divided={i > 0} />
+
+        {/* Eén rustige regel als er in het geheel nog niets is. Per les geen "geen
+            notities"-regel: dat maakt de lijst alleen maar langer. */}
+        {nothingYet ? <Text style={styles.muted}>Nog geen lessen of notities.</Text> : null}
+
+        {plan.planned.length > 0 ? (
+          <>
+            <Text style={styles.subLabel}>Te doen</Text>
+            {plan.planned.map((item) => lessonBlock(item, false))}
+          </>
+        ) : null}
+
+        {plan.given.length > 0 ? (
+          <>
+            <Text style={styles.subLabel}>Gegeven</Text>
+            {plan.given.map((item) => lessonBlock(item, true))}
+          </>
+        ) : null}
+
+        {/* Een notitie zonder les — of eentje die naar een les buiten dit plan wijst —
+            hoort nergens onder, maar mag ook niet van het scherm vallen. */}
+        {plan.loose.length > 0 ? (
+          <>
+            <Text style={styles.subLabel}>Losse notities</Text>
+            {plan.loose.map((p) => (
+              <ProgressEntryCard key={p.id} p={p} studentName={player.name} showStudent={false} lessonTitle={lessonTitle(p.lesson_id)} coachName={nameOf(p.coach_id)} onPress={() => setOpenEntry(p)} />
             ))}
-          </Card>
-        )}
-        <Text style={styles.subLabel}>Gegeven</Text>
-        {given.length === 0 ? <Text style={styles.muted}>Nog niets gegeven.</Text> : (
-          <Card style={styles.listCard}>
-            {given.map((l, i) => (
-              <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given ownerName={nameOf(l.coach_id)} divided={i > 0} />
-            ))}
-          </Card>
-        )}
+          </>
+        ) : null}
       </DetailSheet>
 
       {/* De administratie: één keer instellen, daarna vergeten */}
@@ -392,4 +419,11 @@ const styles = StyleSheet.create({
   addLinkText: { fontSize: 13, fontWeight: '700', color: tennisColors.primary },
   cardTitle: { fontSize: 18, fontWeight: '700', color: tennisColors.text, marginBottom: spacing.sm },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.lg },
+  lessonBlock: { gap: spacing.xs, marginTop: spacing.xs },
+  // Ingesprongen achter een streep: zo zie je dat deze notities bij de les erboven horen.
+  lessonNotes: {
+    marginLeft: spacing.sm, paddingLeft: spacing.sm, gap: spacing.xs,
+    borderLeftWidth: 2, borderLeftColor: tennisColors.border,
+  },
 });
