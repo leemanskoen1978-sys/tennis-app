@@ -259,11 +259,20 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
               </ScrollView>
 
               {/* De twee knoppen staan vast onderaan het blad en scrollen niet mee: bij een
-                  lange notitie zocht je anders eerst de knop Opslaan terug. Annuleren sluit
-                  zonder te bewaren — dat is iets anders dan de kruisknop, die een lopende
-                  correctie juist vasthoudt. */}
+                  lange notitie zocht je anders eerst de knop Opslaan terug. De linkerknop
+                  moet hetzelfde doen als de kruisknop, anders staan er twee wegen naast
+                  elkaar die het tegenovergestelde beloven. Bij bewerken bewaart de
+                  kruisknop dus heet de knop "Sluiten", niet "Annuleren" — er valt niets te
+                  annuleren. Bij een nieuwe notitie bewaart de kruisknop juist niets (zie
+                  closeAndSave), dus daar klopt "Annuleren" wél en doet hij hetzelfde. */}
               <View style={styles.footer}>
-                <Button label="Annuleren" variant="secondary" fullWidth={false} onPress={onClose} style={styles.footerBtn} />
+                <Button
+                  label={entry ? 'Sluiten' : 'Annuleren'}
+                  variant="secondary"
+                  fullWidth={false}
+                  onPress={closeAndSave}
+                  style={styles.footerBtn}
+                />
                 <Button
                   label="Opslaan"
                   variant="primary"
