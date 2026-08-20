@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-  CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target,
+  CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
   type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
@@ -44,6 +44,7 @@ export default function Admin() {
       label: 'Geld',
       tiles: [
         { key: 'pay', title: 'Betalingen', subtitle: 'Openstaande lessen afhandelen', icon: CreditCard, onPress: () => router.push('/admin/payments'), badge: pending.length },
+        { key: 'cards', title: 'Beurtenkaarten', subtitle: 'Kaarten en resterende beurten', icon: Ticket, onPress: () => router.push('/admin/beurtenkaarten') },
         { key: 'rep', title: 'Rapport', subtitle: 'Omzet en aantallen', icon: BarChart3, onPress: () => router.push('/admin/reports') },
       ],
     },

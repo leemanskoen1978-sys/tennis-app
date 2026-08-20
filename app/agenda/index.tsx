@@ -6,7 +6,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-  CalendarPlus, CreditCard, Ticket, CalendarDays, type LucideIcon,
+  CalendarPlus, CreditCard, CalendarDays, type LucideIcon,
 } from 'lucide-react-native';
 
 import { Badge } from '../../components/ui/Badge';
@@ -56,7 +56,6 @@ export default function BookingsScreen(): React.JSX.Element {
     tiles.push(
       { key: 'new', title: 'Nieuwe afspraak', subtitle: 'Les inplannen voor een speler', icon: CalendarPlus, onPress: () => router.push('/agenda/new') },
       { key: 'pay', title: 'Betalingen', subtitle: 'Openstaande lessen afhandelen', icon: CreditCard, onPress: () => router.push('/admin/payments'), badge: pending.length },
-      { key: 'cards', title: 'Beurtenkaarten', subtitle: 'Kaarten en resterende beurten', icon: Ticket, onPress: () => router.push('/agenda/beurtenkaarten') },
     );
   }
   // Voor iedereen, want dit is sinds de verhuizing de enige plek waar een speler zijn
