@@ -220,6 +220,11 @@ export interface Lesson {
   drawing?: CourtDrawing; // a court situation drawn on the Tekenveld
   explanation?: ExplanationPoint[]; // notes about that situation, added one at a time
   // A full session plan: one page of the club's training booklet.
+  /**
+   * Eigen tags van de trainer. De rest van de tags leidt `lib/tags` af uit de tekst, dus
+   * dit veld is alleen voor wat er niet in de tekst staat — leeg is de normale toestand.
+   */
+  tags?: string[];
   training_number?: number;      // its place in the series
   duration_minutes?: number;     // 90 for a KDT session
   focus_points?: string[];       // Aandachtspunten training
