@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { X, Check, Plus } from 'lucide-react-native';
 import { tennisColors } from '../../constants/tennis-colors';
@@ -32,6 +32,19 @@ export function StudentCombobox({
   const selected = students.find((s) => s.id === value) ?? null;
   const [query, setQuery] = useState(selected ? selected.name : '');
   const [open, setOpen] = useState(false);
+  // Onthoudt welke value het invoerveld nu weergeeft, zodat we alleen bijwerken als het
+  // scherm eromheen naar een ándere speler wisselt (bv. na aanmaken + hernoemen) — anders
+  // zou elke render, ook tijdens het typen, de getypte tekst overschrijven.
+  const shownValueRef = useRef(value);
+  useEffect(() => {
+    if (value !== shownValueRef.current) {
+      shownValueRef.current = value;
+      if (value) {
+        const s = students.find((u) => u.id === value);
+        if (s) setQuery(s.name);
+      }
+    }
+  }, [value, students]);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
