@@ -11,6 +11,7 @@ import { Screen } from '../../components/ui/Screen';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { paymentMeta, type PaymentMeta } from '../../lib/payments';
+import { BOOKING_STATUS_LABELS } from '../../lib/status';
 import type { Booking, BookingStatus } from '../../lib/types';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 
@@ -21,11 +22,11 @@ interface BadgeMeta {
 }
 
 const STATUS_META: Record<BookingStatus, BadgeMeta> = {
-  pending: { color: tennisColors.warning, label: 'In afwachting', subtle: false },
-  confirmed: { color: tennisColors.primary, label: 'Bevestigd', subtle: false },
-  cancelled: { color: tennisColors.textMuted, label: 'Geannuleerd', subtle: false },
-  completed: { color: tennisColors.court, label: 'Voltooid', subtle: false },
-  synchronized: { color: tennisColors.court, label: 'Gesynchroniseerd', subtle: false },
+  pending: { color: tennisColors.warning, label: BOOKING_STATUS_LABELS.pending, subtle: false },
+  confirmed: { color: tennisColors.primary, label: BOOKING_STATUS_LABELS.confirmed, subtle: false },
+  cancelled: { color: tennisColors.textMuted, label: BOOKING_STATUS_LABELS.cancelled, subtle: false },
+  completed: { color: tennisColors.court, label: BOOKING_STATUS_LABELS.completed, subtle: false },
+  synchronized: { color: tennisColors.court, label: BOOKING_STATUS_LABELS.synchronized, subtle: false },
 };
 
 function statusMeta(status: BookingStatus): BadgeMeta {
