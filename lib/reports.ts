@@ -9,8 +9,11 @@
 //     alle spelers en de som van alle maanden exact het getal op de omzetkaart is. Naast dat
 //     bedrag staat per speler wat er nog openstaat; dat is een apart getal en telt nooit bij
 //     de omzet op.
+//  3. Omzet en trainersloon zijn twee verschillende bedragen. Omzet loopt op het uurtarief
+//     van de baan (wat de speler betaalt), het trainersloon op het uurtarief van de trainer
+//     (wat hij krijgt). Ze mogen nooit in elkaar geschoven worden.
 
-import { bookingPrice, countsAsRevenue } from './payments';
+import { bookingPrice, coachPayout, countsAsRevenue } from './payments';
 import { shortMonthName } from './period';
 import type { Booking, Court, PaymentMethod, User } from './types';
 
@@ -37,10 +40,10 @@ function revenueOf(b: Booking, rates: Map<string, number>): number {
  * Wat er van één les nog openstaat: de volle prijs zolang de betaalwijze 'open' is, anders 0.
  * Dezelfde prijsregel als `revenueOf`, zodat betaald en openstaand optelbaar zijn.
  *
- * Sponsor staat hier bewust niet bij. Een gesponsorde les is een gemaakte keuze, geen
- * uitstel: er komt nooit nog geld van. Hij telt dus niet als omzet (zie `countsAsRevenue`)
- * én niet als openstaand — hij valt in geen van beide kolommen en is alleen te zien aan het
- * aantal lessen en aan de kaart "Per betaalwijze".
+ * Sponsor staat hier bewust niet bij, maar niet omdat er geen geld is: een gesponsorde les
+ * zit in het sponsorcontract en dat is betaald geld (zie `lib/sponsor.ts` en
+ * `countsAsRevenue`). Hij telt dus mee als omzet — in de kolom "betaald" — en juist daarom
+ * nooit als openstaand: er komt niets meer bij.
  */
 function openAmountOf(b: Booking, rates: Map<string, number>): number {
   if (!PAYABLE_STATUSES.includes(b.status) || b.payment_method !== 'open') return 0;
@@ -71,8 +74,8 @@ export interface PlayerTotal {
  * in plaats van onderaan bij de spelers zonder lessen. Bij een gelijk totaal beslist de naam,
  * anders wisselen twee spelers met hetzelfde totaal bij elke hertekening van plaats.
  *
- * Een gesponsorde les komt in geen van beide bedragen voor — zie `openAmountOf`. Een
- * geannuleerde les telt nergens mee, ook niet als les.
+ * Een gesponsorde les staat bij het betaalde bedrag en niet bij het openstaande — zie
+ * `openAmountOf`. Een geannuleerde les telt nergens mee, ook niet als les.
  *
  * Een speler die niet meer bestaat verdwijnt niet uit het overzicht: zijn lessen zijn wél
  * gegeven en zijn geld is wél binnengekomen, dus hij blijft staan als "Onbekend".
@@ -103,6 +106,61 @@ export function totalsByPlayer(
   return [...totals.values()]
     .map((r) => ({ ...r, paid: euro(r.paid), open: euro(r.open) }))
     .sort((a, b) => ((b.paid + b.open) - (a.paid + a.open)) || a.name.localeCompare(b.name, 'nl'));
+}
+
+export interface CoachTotal {
+  coachId: string;
+  name: string;
+  /** Aantal lessen van deze trainer in de selectie, geannuleerde niet meegerekend. */
+  lessons: number;
+  /** Wat hij daarvoor krijgt: zijn eigen uurtarief naar rato van de duur. */
+  amount: number;
+  /**
+   * Waar zijn `amount` bewust 0 is omdat er nog geen uurtarief is ingevuld. Het scherm zet
+   * daar een waarschuwing bij: een vergeten tarief moet opvallen, niet stilzwijgend uit het
+   * overzicht verdwijnen.
+   */
+  missingRate: boolean;
+}
+
+/**
+ * Wie hoeveel lessen gaf en wat daarvoor uitbetaald wordt. Zelfde opbouw als
+ * `totalsByPlayer`: aflopend op bedrag, bij een gelijk bedrag beslist de naam, zodat twee
+ * trainers met hetzelfde bedrag niet bij elke hertekening van plaats wisselen.
+ *
+ * Let op het verschil met de omzet: die loopt op het uurtarief van de BAAN en is wat de
+ * speler betaalt. Dit loopt op het uurtarief van de TRAINER. Het verschil tussen beide is
+ * wat de club overhoudt (`clubMargin` in lib/payments).
+ *
+ * Een trainer die niet meer bestaat blijft staan als "Onbekend": zijn lessen zijn gegeven.
+ * Hij heeft dan ook geen tarief meer, dus hij krijgt dezelfde melding als een trainer die
+ * er nooit een invulde.
+ */
+export function payoutsByCoach(bookings: Booking[], users: User[]): CoachTotal[] {
+  const byId = new Map(users.map((u) => [u.id, u]));
+  const totals = new Map<string, CoachTotal>();
+
+  for (const b of countedBookings(bookings)) {
+    const coach = byId.get(b.coach_id);
+    const row = totals.get(b.coach_id) ?? {
+      coachId: b.coach_id,
+      name: coach?.name ?? 'Onbekend',
+      lessons: 0,
+      amount: 0,
+      // Een tarief van 0 is een ingevuld tarief; alleen "niets ingevuld" is de melding waard.
+      missingRate: coach?.hourly_rate === undefined,
+    };
+    row.lessons += 1;
+    // Alleen een les die doorgaat levert werk op — dezelfde statussen als bij de omzet.
+    if (PAYABLE_STATUSES.includes(b.status)) {
+      row.amount += coachPayout(b, coach?.hourly_rate);
+    }
+    totals.set(b.coach_id, row);
+  }
+
+  return [...totals.values()]
+    .map((r) => ({ ...r, amount: euro(r.amount) }))
+    .sort((a, b) => (b.amount - a.amount) || a.name.localeCompare(b.name, 'nl'));
 }
 
 export type PaymentBreakdown = Record<PaymentMethod, number>;

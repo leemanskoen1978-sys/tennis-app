@@ -2,7 +2,7 @@ import type { Booking, Court, User } from './types';
 import {
   needsPayment, filterPendingPayment, bookingsFor, bookingsByCoach, visibleBookings,
   pendingPaymentsFor, totalRevenue,
-  bookingMinutes, bookingPrice,
+  bookingMinutes, bookingPrice, coachPayout, totalCoachPayout, clubMargin,
   defaultMethodFor, paymentMeta, PAYMENT_METHODS, PAYMENT_LABELS,
 } from './payments';
 
@@ -220,6 +220,101 @@ describe('totalRevenue', () => {
   it('skips a pending booking, even with a revenue-generating payment method', () => {
     const list: Booking[] = [{ ...base, payment_method: 'cash', status: 'pending' }];
     expect(totalRevenue(list, courts)).toBe(0);
+  });
+});
+
+describe('coachPayout en totalCoachPayout', () => {
+  // De trainers: Koen met een tarief, Nele zonder, Sam met een tarief van nul.
+  const coaches: User[] = [
+    { id: 'koen', name: 'Koen', email: 'k@x.be', role: 'coach', hourly_rate: 24 },
+    { id: 'nele', name: 'Nele', email: 'n@x.be', role: 'coach' },
+    { id: 'sam', name: 'Sam', email: 's@x.be', role: 'coach', hourly_rate: 0 },
+  ];
+
+  it('pays a full hour at the whole coach rate', () => {
+    expect(coachPayout(base, 24)).toBe(24);
+    expect(totalCoachPayout([{ ...base }], coaches)).toBe(24);
+  });
+
+  it('pays half an hour at half the coach rate, like bookingPrice does for the player', () => {
+    const half: Booking = { ...base, end_time: '2026-08-20T10:30:00.000Z' };
+    expect(coachPayout(half, 24)).toBe(12);
+    expect(totalCoachPayout([half], coaches)).toBe(12);
+  });
+
+  it('pays nothing when the coach has no rate set', () => {
+    expect(coachPayout(base, undefined)).toBe(0);
+    expect(totalCoachPayout([{ ...base, coach_id: 'nele' }], coaches)).toBe(0);
+  });
+
+  it('pays nothing at a rate of zero', () => {
+    expect(coachPayout(base, 0)).toBe(0);
+    expect(totalCoachPayout([{ ...base, coach_id: 'sam' }], coaches)).toBe(0);
+  });
+
+  it('pays nothing for a coach who no longer exists', () => {
+    expect(totalCoachPayout([{ ...base, coach_id: 'weg' }], coaches)).toBe(0);
+  });
+
+  it('skips a cancelled lesson, just like the revenue does', () => {
+    expect(totalCoachPayout([{ ...base, status: 'cancelled' }], coaches)).toBe(0);
+  });
+
+  it('skips a lesson that is not confirmed yet', () => {
+    expect(totalCoachPayout([{ ...base, status: 'pending' }], coaches)).toBe(0);
+  });
+
+  it('pays the coach whatever the payment method is — his hour was given', () => {
+    const list: Booking[] = [
+      { ...base, id: '1', payment_method: 'open' },
+      { ...base, id: '2', payment_method: 'sponsor' },
+    ];
+    expect(totalCoachPayout(list, coaches)).toBe(48);
+  });
+
+  it('gives zero for a reversed or unusable time, instead of a negative amount or NaN', () => {
+    expect(coachPayout({ ...base, end_time: '2026-08-20T09:00:00.000Z' }, 24)).toBe(0);
+    expect(coachPayout({ ...base, end_time: 'geen datum' }, 24)).toBe(0);
+    expect(totalCoachPayout([{ ...base, end_time: 'geen datum' }], coaches)).toBe(0);
+  });
+
+  it('adds up several lessons as amounts, without cent drift', () => {
+    // 25 euro per uur is voor twintig minuten 8,33 — drie keer precies dat, en niet 24,99…97.
+    const iris: User[] = [...coaches, { id: 'iris', name: 'Iris', email: 'i@x.be', role: 'coach', hourly_rate: 25 }];
+    const list: Booking[] = ['1', '2', '3'].map((id) => ({
+      ...base, id, coach_id: 'iris', end_time: '2026-08-20T10:20:00.000Z',
+    }));
+    expect(totalCoachPayout(list, iris)).toBe(24.99);
+  });
+
+  it('is nothing at all without lessons', () => {
+    expect(totalCoachPayout([], coaches)).toBe(0);
+  });
+});
+
+describe('clubMargin', () => {
+  const coaches: User[] = [
+    { id: 'koen', name: 'Koen', email: 'k@x.be', role: 'coach', hourly_rate: 24 },
+    { id: 'nele', name: 'Nele', email: 'n@x.be', role: 'coach' },
+  ];
+
+  it('is what is left of the court revenue after the coach is paid', () => {
+    // Baan 30 per uur, Koen 24 per uur: de club houdt 6 over.
+    expect(clubMargin([{ ...base, payment_method: 'cash' }], coaches, courts)).toBe(6);
+  });
+
+  it('keeps the whole revenue when the coach has no rate set', () => {
+    const list: Booking[] = [{ ...base, coach_id: 'nele', payment_method: 'cash' }];
+    expect(clubMargin(list, coaches, courts)).toBe(30);
+  });
+
+  it('goes negative when the coach costs more than the lesson brings in', () => {
+    // Een openstaande les is nog geen omzet, maar de trainer gaf zijn uur wel.
+    expect(clubMargin([{ ...base, payment_method: 'open' }], coaches, courts)).toBe(-24);
+  });
+
+  it('is zero without lessons', () => {
+    expect(clubMargin([], coaches, courts)).toBe(0);
   });
 });
 

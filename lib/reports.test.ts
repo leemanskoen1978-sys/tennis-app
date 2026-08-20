@@ -1,5 +1,5 @@
-import { totalRevenue } from './payments';
-import { countByPaymentMethod, monthlySeries, totalsByPlayer } from './reports';
+import { totalCoachPayout, totalRevenue } from './payments';
+import { countByPaymentMethod, monthlySeries, payoutsByCoach, totalsByPlayer } from './reports';
 import type { Booking, Court, User } from './types';
 
 const courts: Court[] = [
@@ -176,6 +176,90 @@ describe('uitsplitsing per speler', () => {
     ];
     const sum = totalsByPlayer(bookings, users, courts).reduce((t, r) => t + r.paid, 0);
     expect(sum).toBe(totalRevenue(bookings, courts));
+  });
+});
+
+describe('uitsplitsing per trainer', () => {
+  // Koen verdient 24 per uur, Nele vulde nog niets in, Sam werkt aan nul.
+  const coaches: User[] = [
+    { id: 'koen', email: 'koen@x.be', name: 'Koen', role: 'coach', hourly_rate: 24 },
+    { id: 'nele', email: 'nele@x.be', name: 'Nele', role: 'coach' },
+    { id: 'sam', email: 'sam@x.be', name: 'Sam', role: 'coach', hourly_rate: 0 },
+  ];
+  const everyone = [...users, ...coaches];
+
+  it('geeft een lege lijst als er in de periode niets is', () => {
+    expect(payoutsByCoach([], everyone)).toEqual([]);
+  });
+
+  it('rekent met het uurtarief van de trainer, niet met dat van het terrein', () => {
+    // Het terrein kost 40 per uur; de trainer krijgt zijn eigen 24.
+    expect(payoutsByCoach([onDay('b1', 2026, 7, 1)], everyone)).toEqual([
+      { coachId: 'koen', name: 'Koen', lessons: 1, amount: 24, missingRate: false },
+    ]);
+  });
+
+  it('rekent een half uur naar rato af', () => {
+    const half = onDay('b1', 2026, 7, 1, {
+      end_time: new Date(2026, 7, 1, 10, 30).toISOString(),
+    });
+    expect(payoutsByCoach([half], everyone)[0].amount).toBe(12);
+  });
+
+  it('zet een trainer zonder ingesteld tarief op nul, met een melding', () => {
+    expect(payoutsByCoach([onDay('b1', 2026, 7, 1, { coach_id: 'nele' })], everyone)).toEqual([
+      { coachId: 'nele', name: 'Nele', lessons: 1, amount: 0, missingRate: true },
+    ]);
+  });
+
+  it('meldt niets bij een tarief dat wél ingevuld is, ook al is het nul', () => {
+    expect(payoutsByCoach([onDay('b1', 2026, 7, 1, { coach_id: 'sam' })], everyone)).toEqual([
+      { coachId: 'sam', name: 'Sam', lessons: 1, amount: 0, missingRate: false },
+    ]);
+  });
+
+  it('houdt een trainer die niet meer bestaat in het overzicht, als Onbekend', () => {
+    expect(payoutsByCoach([onDay('b1', 2026, 7, 1, { coach_id: 'weg' })], everyone)).toEqual([
+      { coachId: 'weg', name: 'Onbekend', lessons: 1, amount: 0, missingRate: true },
+    ]);
+  });
+
+  it('laat een geannuleerde les nergens meetellen, ook niet als les', () => {
+    expect(payoutsByCoach([onDay('b1', 2026, 7, 1, { status: 'cancelled' })], everyone)).toEqual([]);
+  });
+
+  it('betaalt een gesponsorde of nog openstaande les gewoon uit: het uur is gegeven', () => {
+    const rows = payoutsByCoach(
+      [
+        onDay('b1', 2026, 7, 1, { payment_method: 'sponsor' }),
+        onDay('b2', 2026, 7, 2, { payment_method: 'open' }),
+      ],
+      everyone,
+    );
+    expect(rows[0].amount).toBe(48);
+  });
+
+  it('zet de trainer met het hoogste bedrag bovenaan', () => {
+    const rows = payoutsByCoach(
+      [
+        onDay('b1', 2026, 7, 1, { coach_id: 'nele' }),
+        onDay('b2', 2026, 7, 2, { coach_id: 'koen' }),
+      ],
+      everyone,
+    );
+    expect(rows.map((r) => r.coachId)).toEqual(['koen', 'nele']);
+  });
+
+  it('telt samen op tot precies wat er in totaal uitbetaald wordt', () => {
+    const bookings = [
+      onDay('b1', 2026, 7, 1, { coach_id: 'koen' }),
+      onDay('b2', 2026, 7, 2, { coach_id: 'nele' }),
+      onDay('b3', 2026, 7, 3, { coach_id: 'koen', payment_method: 'open' }),
+      onDay('b4', 2026, 7, 4, { coach_id: 'koen', status: 'cancelled' }),
+    ];
+    const sum = payoutsByCoach(bookings, everyone).reduce((t, r) => t + r.amount, 0);
+    expect(sum).toBe(totalCoachPayout(bookings, everyone));
+    expect(sum).toBe(48);
   });
 });
 
