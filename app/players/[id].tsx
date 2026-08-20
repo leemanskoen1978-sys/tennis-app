@@ -11,7 +11,7 @@ import { LessonDetailModal } from '../../components/LessonDetailModal';
 import { AssignLessonModal } from '../../components/AssignLessonModal';
 import { PlayerGoals } from '../../components/PlayerGoals';
 import { ProgressForm } from '../../components/progress/ProgressForm';
-import { byDateDesc, ProgressEntryCard, ReportSummary } from '../../components/progress/ProgressViews';
+import { byDateDesc, ProgressEntryCard } from '../../components/progress/ProgressViews';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { coachesForPlayer } from '../../lib/relations';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
@@ -170,7 +170,6 @@ export default function PlayerDossier() {
         <Text style={styles.muted}>Nog geen voortgang.</Text>
       ) : (
         <>
-          <ReportSummary entries={entries} />
           {entries.map((p) => (
             <ProgressEntryCard key={p.id} p={p} studentName={player.name} showStudent={false} lessonTitle={lessonTitle(p.lesson_id)} coachName={nameOf(p.coach_id)} onPress={() => setOpenEntry(p)} />
           ))}
