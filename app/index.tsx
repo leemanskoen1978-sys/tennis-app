@@ -56,7 +56,9 @@ export default function Hub() {
     { key: 'book', title: 'Reserveren', subtitle: 'Boek je volgende les', icon: CalendarPlus, onPress: () => router.push('/agenda/new'), primary: true },
     { key: 'mine', title: 'Mijn agenda', subtitle: plural(today, 'vandaag', 'vandaag'), icon: CalendarDays, onPress: () => router.push('/agenda'), badge: myOpen },
     { key: 'les', title: 'Mijn lessen', subtitle: 'Lesmateriaal van je trainers', icon: BookOpen, onPress: () => router.push('/coaches/lessons') },
-    { key: 'prog', title: 'Mijn voortgang', subtitle: 'Jouw beoordelingen', icon: TrendingUp, onPress: () => router.push('/players/progress') },
+    // "Voortgang" en niet "Mijn voortgang": de tab onderaan heet zo, want daar past de
+    // langere tekst niet op een telefoon. Tegel en tab moeten hetzelfde heten.
+    { key: 'prog', title: 'Voortgang', subtitle: 'Jouw beoordelingen', icon: TrendingUp, onPress: () => router.push('/players/progress') },
   ];
 
   const tiles = isCoach ? coachTiles : playerTiles;
