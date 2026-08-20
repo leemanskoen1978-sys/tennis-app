@@ -3,7 +3,10 @@ import React, {
 } from 'react';
 import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
-import { loadStore, saveStore, resetStore, newId, type StoreData } from './mockStore';
+import { newId, type StoreData } from './mockStore';
+import { backend, type AuthMode } from './backend';
+import { installCatalogue } from '../lib/catalogue';
+import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { upsertGoal, removeGoal } from '../lib/goals';
 import {
   SESSIONS_PER_CARD, useSession, releaseSession, removeManualSession,
@@ -32,7 +35,17 @@ interface DataShape {
   loading: boolean;
   error: string | null;
   clearError: () => void;
+  /**
+   * Hoe je binnenkomt: met een wachtwoord (Supabase) of door een profiel te kiezen (lokale
+   * opslag). Het inlogscherm leest dit; de rest van de app heeft er niets mee te maken.
+   */
+  authMode: AuthMode;
+  /** Profielkeuze — alleen bij de lokale opslag. */
   login: (userId: string) => Promise<void>;
+  /** Inloggen met e-mailadres en wachtwoord. Gooit een leesbare fout bij een misser. */
+  signIn: (email: string, password: string) => Promise<void>;
+  /** Een account aanmaken. Bestond het e-mailadres al bij de club, dan wordt het gekoppeld. */
+  signUp: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   /** Het tarief en de groepstaffel van een baan bijstellen; `id`, naam en nummer blijven. */
@@ -158,7 +171,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     // moet meteen op deze wijziging verder kunnen bouwen.
     storeRef.current = next;
     try {
-      await saveStore(next);
+      await backend.save(previous, next);
       setStore(next);
     } catch (e: unknown) {
       storeRef.current = previous;
@@ -167,41 +180,128 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     }
   }, []);
 
+  /**
+   * Het lessenboekje van de club toevoegen aan een opslag die het nog niet heeft.
+   *
+   * De trainer die als eerste inlogt, brengt het mee. `uploaded_by` en `coach_id` wijzen
+   * daarbij naar hém: in de databank moet een les naar een bestaande gebruiker verwijzen, en
+   * de vaste naam uit het bestand hoort bij niemand.
+   */
+  const withCatalogue = useCallback((data: StoreData, coachId: string): StoreData => (
+    installCatalogue(
+      data,
+      U9_CATALOGUE_ID,
+      u9Trainings.map((l) => ({ ...l, uploaded_by: coachId, coach_id: coachId })),
+    )
+  ), []);
+
+  /**
+   * Ophalen wat deze gebruiker mag zien, en het boekje aanvullen als hij trainer is.
+   *
+   * Bij de databank valt er zonder login niets op te halen: RLS geeft dan lege lijsten
+   * terug. Daarom blijft de opslag leeg tot er iemand ingelogd is — het inlogscherm heeft
+   * geen gegevens nodig.
+   */
+  const loadFor = useCallback(async (userId: string | null): Promise<StoreData> => {
+    const data = await backend.load();
+    const me = userId === null ? null : data.users.find((u) => u.id === userId) ?? null;
+    if (me?.role !== 'coach') return data;
+    const merged = withCatalogue(data, me.id);
+    if (merged !== data) {
+      // Het boekje is nu ook van deze club: meteen bewaren, anders staat het er de volgende
+      // keer weer niet en probeert de app het opnieuw.
+      await backend.save(data, merged);
+    }
+    return merged;
+  }, [withCatalogue]);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await loadStore();
+      const id = backend.authMode === 'wachtwoord'
+        ? await backend.currentUserId()
+        : currentUserId;
+      const data = await loadFor(id);
       storeRef.current = data;
       setStore(data);
+      setCurrentUserId(id);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Kon data niet laden');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUserId, loadFor]);
 
+  // Opstarten, en daarna bij elke wisseling van login opnieuw. Die twee zijn hetzelfde werk:
+  // uitzoeken wie er is en dan ophalen wat hij mag zien. Bij de lokale opslag verandert de
+  // login nooit vanzelf, dus daar gebeurt dit één keer.
   useEffect(() => {
-    (async () => {
-      const data = await loadStore();
-      storeRef.current = data;
-      setStore(data);
-      setLoading(false);
-      const savedId = await loadCurrentUserId();
-      if (savedId && data.users.some((u) => u.id === savedId)) {
-        setCurrentUserId(savedId);
+    let stopped = false;
+
+    const start = async (): Promise<void> => {
+      try {
+        const id = backend.authMode === 'wachtwoord'
+          ? await backend.currentUserId()
+          : await loadCurrentUserId();
+        // Zonder login is er niets op te halen bij de databank; lokaal wél, want daar kiest
+        // de gebruiker zijn profiel uit de lijst die in die opslag staat.
+        const data = backend.authMode === 'wachtwoord' && id === null
+          ? null
+          : await loadFor(id);
+        if (stopped) return;
+        if (data) {
+          storeRef.current = data;
+          setStore(data);
+        }
+        // Een profiel dat niet (meer) bestaat, is geen geldige login.
+        const known = id !== null && (data?.users.some((u) => u.id === id) ?? false);
+        setCurrentUserId(known ? id : null);
+      } catch (e: unknown) {
+        if (!stopped) setError(e instanceof Error ? e.message : 'Kon data niet laden');
+      } finally {
+        if (!stopped) setLoading(false);
       }
-    })();
-  }, []);
+    };
+
+    void start();
+    const unsubscribe = backend.onAuthChange(() => {
+      void start();
+    });
+
+    return () => {
+      stopped = true;
+      unsubscribe();
+    };
+  }, [loadFor]);
 
   const login = useCallback(async (userId: string) => {
     setCurrentUserId(userId);
     await saveCurrentUserId(userId);
   }, []);
 
+  const signIn = useCallback(async (email: string, password: string) => {
+    setError(null);
+    // Het ophalen gebeurt niet hier: `onAuthChange` hierboven merkt de nieuwe login en haalt
+    // op wat erbij hoort. Zou dit het ook doen, dan stonden er twee ladingen door elkaar.
+    await backend.signIn(email, password);
+  }, []);
+
+  const signUp = useCallback(async (email: string, password: string, name: string) => {
+    setError(null);
+    await backend.signUp(email, password, name);
+  }, []);
+
   const logout = useCallback(async () => {
     setCurrentUserId(null);
     await clearCurrentUserId();
+    if (backend.authMode === 'wachtwoord') {
+      await backend.signOut();
+      // Wat er in het geheugen stond, was van de vorige gebruiker: weg ermee, anders ziet de
+      // volgende op hetzelfde toestel diens lessen nog even staan.
+      storeRef.current = null;
+      setStore(null);
+    }
   }, []);
 
   const updateCourt = useCallback(async (id: string, patch: Partial<Omit<Court, 'id'>>) => {
@@ -606,7 +706,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   // Emergency recovery: resets everything to the seed. Destructive by design and
   // ONLY reachable behind an explicit confirmation — never automatic.
   const emergencyCleanup = useCallback(async () => {
-    const seeded = await resetStore();
+    const seeded = await backend.reset();
     storeRef.current = seeded;
     setStore(seeded);
     setCurrentUserId(null);
@@ -633,7 +733,10 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     loading,
     error,
     clearError,
+    authMode: backend.authMode,
     login,
+    signIn,
+    signUp,
     logout,
     refresh,
     updateCourt,
@@ -666,7 +769,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     saveSettings,
     emergencyCleanup,
   }), [
-    store, currentUser, loading, error, clearError, login, logout, refresh,
+    store, currentUser, loading, error, clearError, login, signIn, signUp, logout, refresh,
     updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
     updateBooking, deleteBooking, approveBooking, rejectBooking,
     setParticipants, setPaymentSplit,

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect } from 'expo-router';
 import { User as UserIcon } from 'lucide-react-native';
@@ -8,6 +8,7 @@ import { appConfig } from '../constants/app-config';
 import { spacing, typography, minTapTarget } from '../constants/theme';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 
 type Role = 'player' | 'coach' | 'parent';
@@ -31,8 +32,118 @@ function roleBadgeProps(role: string): { label: string; color?: string; subtle?:
   }
 }
 
+/**
+ * Inloggen met e-mailadres en wachtwoord — de weg zodra de club een databank heeft.
+ *
+ * Aanmelden staat op hetzelfde scherm en niet achter een aparte pagina: een speler die de
+ * trainer al heeft ingevoerd, moet zijn account nog één keer zelf aanmaken, en dat is geen
+ * tweede reis waard. Wie zich aanmeldt met een e-mailadres dat de trainer al kende, krijgt
+ * diens bestaande lessen en dossier mee — dat koppelen gebeurt in de databank.
+ */
+function WachtwoordLogin(): React.JSX.Element {
+  const { signIn, signUp } = useSimpleData();
+  const [aanmelden, setAanmelden] = useState<boolean>(false);
+  const [email, setEmail] = useState<string>('');
+  const [wachtwoord, setWachtwoord] = useState<string>('');
+  const [naam, setNaam] = useState<string>('');
+  const [melding, setMelding] = useState<string | null>(null);
+  const [bezig, setBezig] = useState<boolean>(false);
+
+  const klaar = email.trim().length > 0 && wachtwoord.length > 0
+    && (!aanmelden || naam.trim().length > 0);
+
+  const verstuur = async (): Promise<void> => {
+    if (!klaar || bezig) return;
+    setBezig(true);
+    setMelding(null);
+    try {
+      if (aanmelden) {
+        await signUp(email, wachtwoord, naam);
+        // Staat "bevestig je e-mailadres" aan in Supabase, dan gebeurt er nu nog niets
+        // zichtbaars; zonder dit bericht lijkt de knop kapot.
+        setMelding('Account aangemaakt. Kijk in je mailbox als er om bevestiging gevraagd wordt.');
+      } else {
+        await signIn(email, wachtwoord);
+      }
+    } catch (e: unknown) {
+      setMelding(e instanceof Error ? e.message : 'Inloggen mislukt.');
+    } finally {
+      setBezig(false);
+    }
+  };
+
+  return (
+    <View style={styles.listInner}>
+      <Card>
+        {aanmelden ? (
+          <>
+            <Text style={styles.label}>Naam</Text>
+            <TextInput
+              style={styles.input}
+              value={naam}
+              onChangeText={setNaam}
+              placeholder="Voor- en achternaam"
+              placeholderTextColor={tennisColors.textMuted}
+              autoComplete="name"
+            />
+          </>
+        ) : null}
+
+        <Text style={styles.label}>E-mailadres</Text>
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="jij@voorbeeld.be"
+          placeholderTextColor={tennisColors.textMuted}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoComplete="email"
+        />
+
+        <Text style={styles.label}>Wachtwoord</Text>
+        <TextInput
+          style={styles.input}
+          value={wachtwoord}
+          onChangeText={setWachtwoord}
+          placeholder="Minstens zes tekens"
+          placeholderTextColor={tennisColors.textMuted}
+          secureTextEntry
+          autoComplete={aanmelden ? 'new-password' : 'current-password'}
+          onSubmitEditing={() => {
+            void verstuur();
+          }}
+        />
+
+        {melding ? <Text style={styles.melding}>{melding}</Text> : null}
+
+        <Button
+          label={aanmelden ? 'Account aanmaken' : 'Inloggen'}
+          variant="primary"
+          disabled={!klaar || bezig}
+          onPress={() => {
+            void verstuur();
+          }}
+          style={styles.knop}
+        />
+        <Text
+          style={styles.wissel}
+          accessibilityRole="button"
+          accessibilityLabel={aanmelden ? 'Ik heb al een account' : 'Ik heb nog geen account'}
+          onPress={() => {
+            setAanmelden((aan) => !aan);
+            setMelding(null);
+          }}
+        >
+          {aanmelden ? 'Ik heb al een account' : 'Nog geen account? Meld je aan'}
+        </Text>
+      </Card>
+    </View>
+  );
+}
+
 export default function Login(): React.JSX.Element {
-  const { users, login, error, currentUser } = useSimpleData();
+  const { users, login, error, currentUser, authMode } = useSimpleData();
 
   // Once logged in, leave the login screen for the hub.
   if (currentUser) return <Redirect href="/" />;
@@ -51,7 +162,9 @@ export default function Login(): React.JSX.Element {
         style={styles.header}
       >
         <Text style={styles.title}>{appConfig.name}</Text>
-        <Text style={styles.subtitle}>Kies je profiel om te starten</Text>
+        <Text style={styles.subtitle}>
+          {authMode === 'wachtwoord' ? 'Log in om verder te gaan' : 'Kies je profiel om te starten'}
+        </Text>
       </LinearGradient>
 
       {error ? (
@@ -65,6 +178,7 @@ export default function Login(): React.JSX.Element {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       >
+        {authMode === 'wachtwoord' ? <WachtwoordLogin /> : (
         <View style={styles.listInner}>
           {users.length === 0 ? (
             <View style={styles.emptyState}>
@@ -94,6 +208,7 @@ export default function Login(): React.JSX.Element {
             })
           )}
         </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -181,5 +296,35 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 15,
     color: tennisColors.textMuted,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: tennisColors.textMuted,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  input: {
+    backgroundColor: tennisColors.background,
+    borderWidth: 1,
+    borderColor: tennisColors.border,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    fontSize: 15,
+    color: tennisColors.text,
+  },
+  melding: {
+    marginTop: spacing.md,
+    fontSize: 14,
+    color: tennisColors.danger,
+  },
+  knop: { marginTop: spacing.lg },
+  wissel: {
+    marginTop: spacing.md,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+    color: tennisColors.primary,
   },
 });
