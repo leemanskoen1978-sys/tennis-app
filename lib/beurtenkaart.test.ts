@@ -49,6 +49,13 @@ describe('usableCardFor', () => {
   it('skips cards of another player', () => {
     expect(usableCardFor([card({ player_id: 'p2' })], 'p1')).toBeNull();
   });
+
+  it('picks the oldest card when the remaining sessions are tied, regardless of order', () => {
+    const old = card({ id: 'k1', created_at: '2026-01-01T00:00:00.000Z' });
+    const fresh = card({ id: 'k2', created_at: '2026-06-01T00:00:00.000Z' });
+    expect(usableCardFor([old, fresh], 'p1')?.id).toBe('k1');
+    expect(usableCardFor([fresh, old], 'p1')?.id).toBe('k1');
+  });
 });
 
 describe('useSession', () => {
@@ -99,5 +106,14 @@ describe('removeManualSession', () => {
   it('never removes a session that belongs to a lesson', () => {
     const booked = useSession(card(), 'b1', iso);
     expect(removeManualSession(booked).uses).toHaveLength(1);
+  });
+
+  it('with several manual sessions, removes only the last one', () => {
+    const stacked = useSession(useSession(useSession(card(), '', iso), 'b1', iso), '', iso);
+    const out = removeManualSession(stacked);
+    expect(out.uses).toEqual([
+      { booking_id: '', date: iso },
+      { booking_id: 'b1', date: iso },
+    ]);
   });
 });

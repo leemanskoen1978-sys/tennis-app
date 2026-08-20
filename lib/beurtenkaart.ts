@@ -18,11 +18,16 @@ export function cardsFor(cards: Beurtenkaart[], playerId: string): Beurtenkaart[
 /**
  * De kaart waarop een beurt geboekt wordt: die met de minste beurten over, zodat een
  * begonnen kaart eerst leeg raakt in plaats van dat er drie halfvolle blijven liggen.
+ * Bij gelijkspel wint de oudste kaart: die is al langer in gebruik en hoort eerst op te raken.
  */
 export function usableCardFor(cards: Beurtenkaart[], playerId: string): Beurtenkaart | null {
   const usable = cards.filter((c) => c.player_id === playerId && remaining(c) > 0);
   if (usable.length === 0) return null;
-  return usable.reduce((best, c) => (remaining(c) < remaining(best) ? c : best));
+  return usable.reduce((best, c) => {
+    if (remaining(c) < remaining(best)) return c;
+    if (remaining(c) > remaining(best)) return best;
+    return c.created_at.localeCompare(best.created_at) < 0 ? c : best;
+  });
 }
 
 /**
@@ -43,8 +48,7 @@ export function releaseSession(card: Beurtenkaart, bookingId: string): Beurtenka
 
 /** De min-knop op het kaartscherm: haalt alleen een handmatig gezette beurt weg. */
 export function removeManualSession(card: Beurtenkaart): Beurtenkaart {
-  const lastManual = [...card.uses].reverse().find((u) => u.booking_id === '');
-  if (!lastManual) return card;
-  const index = card.uses.lastIndexOf(lastManual);
+  const index = card.uses.map((u) => u.booking_id).lastIndexOf('');
+  if (index === -1) return card;
   return { ...card, uses: [...card.uses.slice(0, index), ...card.uses.slice(index + 1)] };
 }
