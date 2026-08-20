@@ -11,9 +11,8 @@ import { Button } from '../../components/ui/Button';
 import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
-import type { PaymentStatus } from '../../lib/types';
-
-type SettablePaymentStatus = Exclude<PaymentStatus, null>;
+import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
+import type { PaymentMethod } from '../../lib/types';
 
 export default function Payments() {
   const router = useRouter();
@@ -48,8 +47,8 @@ export default function Payments() {
     fn().catch(() => undefined).finally(() => setBusy(false));
   };
 
-  const setStatus = (paymentStatus: SettablePaymentStatus) =>
-    run(() => updateBooking(b.id, { payment_status: paymentStatus }));
+  const setMethod = (method: PaymentMethod) =>
+    run(() => updateBooking(b.id, { payment_method: method }));
 
   return (
     <Screen>
@@ -79,9 +78,16 @@ export default function Payments() {
       </Card>
 
       <View style={styles.actions}>
-        <Button label="Cash betaald" variant="primary" disabled={busy} onPress={() => setStatus('paid')} />
-        <Button label="Op factuur" variant="secondary" disabled={busy} onPress={() => setStatus('invoice')} />
-        <Button label="Onbetaald" variant="secondary" disabled={busy} onPress={() => setStatus('unpaid')} />
+        {/* 'open' staat er niet bij: dat is de toestand waarin de les hier al staat. */}
+        {PAYMENT_METHODS.filter((m) => m !== 'open').map((method) => (
+          <Button
+            key={method}
+            label={PAYMENT_LABELS[method]}
+            variant={method === 'cash' ? 'primary' : 'secondary'}
+            disabled={busy}
+            onPress={() => setMethod(method)}
+          />
+        ))}
         <Button label="Verwijderen" variant="danger" disabled={busy} onPress={() => run(() => deleteBooking(b.id))} />
       </View>
 

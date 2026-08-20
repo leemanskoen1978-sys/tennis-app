@@ -10,7 +10,8 @@ import { Chip } from '../../components/ui/Chip';
 import { Screen } from '../../components/ui/Screen';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
-import type { Booking, BookingStatus, PaymentStatus } from '../../lib/types';
+import { paymentMeta, type PaymentMeta } from '../../lib/payments';
+import type { Booking, BookingStatus } from '../../lib/types';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 
 interface BadgeMeta {
@@ -29,20 +30,6 @@ const STATUS_META: Record<BookingStatus, BadgeMeta> = {
 
 function statusMeta(status: BookingStatus): BadgeMeta {
   return STATUS_META[status];
-}
-
-function paymentMeta(payment: PaymentStatus): BadgeMeta {
-  switch (payment) {
-    case 'paid':
-      return { color: tennisColors.success, label: 'Betaald', subtle: false };
-    case 'invoice':
-      return { color: tennisColors.court, label: 'Factuur', subtle: false };
-    case 'unpaid':
-      return { color: tennisColors.warning, label: 'Onbetaald', subtle: false };
-    case null:
-    default:
-      return { color: tennisColors.textMuted, label: 'Open', subtle: true };
-  }
 }
 
 export default function BookingsScreen(): React.JSX.Element {
@@ -120,7 +107,7 @@ export default function BookingsScreen(): React.JSX.Element {
       ) : (
         visibleBookings.map((booking) => {
           const status = statusMeta(booking.status);
-          const payment = paymentMeta(booking.payment_status);
+          const payment: PaymentMeta = paymentMeta(booking.payment_method);
           const playerName = nameOf(booking.player_id);
           const coachName = nameOf(booking.coach_id);
           return (

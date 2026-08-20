@@ -83,7 +83,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         start_time,
         end_time,
         status: 'confirmed',
-        payment_status: null,
+        payment_method: 'open',
         notes: notes.trim() ? notes.trim() : undefined,
       });
       setNotes('');

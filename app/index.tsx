@@ -38,9 +38,7 @@ export default function Hub() {
 
   const myBookings = bookings.filter((b) => b.player_id === currentUser.id);
   const today = bookingsToday(isCoach ? bookings : myBookings, new Date());
-  const myOpen = myBookings.filter(
-    (b) => b.payment_status === null || b.payment_status === 'unpaid',
-  ).length;
+  const myOpen = myBookings.filter((b) => b.payment_method === 'open').length;
 
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 

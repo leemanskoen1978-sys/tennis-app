@@ -6,28 +6,25 @@ import { spacing, typography } from '../../constants/theme';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { totalRevenue } from '../../lib/payments';
-import type { Booking, PaymentStatus } from '../../lib/types';
+import {
+  PAYMENT_METHODS,
+  PAYMENT_LABELS,
+  paymentMeta,
+  totalRevenue,
+} from '../../lib/payments';
+import type { Booking, PaymentMethod } from '../../lib/types';
 
-interface PaymentBreakdown {
-  paid: number;
-  invoice: number;
-  unpaid: number;
-  open: number;
+type PaymentBreakdown = Record<PaymentMethod, number>;
+
+function emptyBreakdown(): PaymentBreakdown {
+  return { open: 0, cash: 0, invoice: 0, qr: 0, beurtenkaart: 0, sponsor: 0 };
 }
 
 function buildBreakdown(bookings: Booking[]): PaymentBreakdown {
-  return bookings.reduce<PaymentBreakdown>(
-    (acc, b) => {
-      const status: PaymentStatus = b.payment_status;
-      if (status === 'paid') acc.paid += 1;
-      else if (status === 'invoice') acc.invoice += 1;
-      else if (status === 'unpaid') acc.unpaid += 1;
-      else acc.open += 1;
-      return acc;
-    },
-    { paid: 0, invoice: 0, unpaid: 0, open: 0 },
-  );
+  return bookings.reduce<PaymentBreakdown>((acc, b) => {
+    acc[b.payment_method] += 1;
+    return acc;
+  }, emptyBreakdown());
 }
 
 export default function ReportsScreen(): React.ReactElement {
@@ -79,36 +76,24 @@ export default function ReportsScreen(): React.ReactElement {
 
             <View style={styles.divider} />
 
-            <Text style={styles.sectionLabel}>Mijn boekingen per status</Text>
+            <Text style={styles.sectionLabel}>Mijn boekingen per betaalwijze</Text>
 
-            <StatRow
-              label="Betaald"
-              value={coachBreakdown.paid}
-              color={tennisColors.success}
-            />
-            <StatRow
-              label="Op factuur"
-              value={coachBreakdown.invoice}
-              color={tennisColors.court}
-            />
-            <StatRow
-              label="Onbetaald"
-              value={coachBreakdown.unpaid}
-              color={tennisColors.warning}
-            />
-            <StatRow
-              label="Openstaand"
-              value={coachBreakdown.open}
-              color={tennisColors.textMuted}
-            />
+            {PAYMENT_METHODS.map((method) => (
+              <StatRow
+                key={method}
+                label={PAYMENT_LABELS[method]}
+                value={coachBreakdown[method]}
+                color={paymentMeta(method).color}
+              />
+            ))}
           </Card>
         </Screen>
     );
   }
 
   const playerBreakdown = buildBreakdown(playerBookings);
-  const playerUnpaidOpen =
-    playerBreakdown.unpaid + playerBreakdown.open + playerBreakdown.invoice;
+  // Voor de speler telt maar één ding: is er een betaalwijze afgesproken of niet.
+  const playerSettled = playerBookings.length - playerBreakdown.open;
 
   return (
     <Screen>
@@ -122,13 +107,13 @@ export default function ReportsScreen(): React.ReactElement {
         />
         <View style={styles.divider} />
         <StatRow
-          label="Betaald"
-          value={playerBreakdown.paid}
+          label="Afgesproken"
+          value={playerSettled}
           color={tennisColors.success}
         />
         <StatRow
-          label="Onbetaald / openstaand"
-          value={playerUnpaidOpen}
+          label="Openstaand"
+          value={playerBreakdown.open}
           color={tennisColors.warning}
         />
       </Card>

@@ -9,7 +9,7 @@ const booking = (player: string, coach: string): Booking => ({
   start_time: '2026-08-20T09:00:00Z',
   end_time: '2026-08-20T10:00:00Z',
   status: 'confirmed',
-  payment_status: null,
+  payment_method: 'open',
 });
 
 const lesson = (student: string | undefined, coach: string | undefined): Lesson => ({

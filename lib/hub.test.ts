@@ -3,7 +3,7 @@ import type { Booking, User } from './types';
 
 const at = (iso: string, status: Booking['status'] = 'confirmed'): Booking => ({
   id: iso, player_id: 'p', coach_id: 'c', court_id: 'court1',
-  start_time: iso, end_time: iso, status, payment_status: null,
+  start_time: iso, end_time: iso, status, payment_method: 'open',
 });
 
 describe('bookingsToday', () => {
