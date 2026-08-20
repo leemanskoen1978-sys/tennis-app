@@ -60,7 +60,7 @@ export default function BookingsScreen(): React.JSX.Element {
     title: 'Overzicht',
     subtitle: 'Historiek en wat er nog komt',
     icon: CalendarDays,
-    onPress: () => router.push('/agenda/export'),
+    onPress: () => router.push('/agenda/overzicht'),
   });
 
   return (

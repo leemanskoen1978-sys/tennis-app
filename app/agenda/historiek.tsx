@@ -106,6 +106,12 @@ export default function HistoriekScreen(): React.JSX.Element {
             <Text style={styles.summaryNote}>
               Geannuleerde lessen tellen in geen van beide bedragen mee. “Afgehandeld” is
               hetzelfde bedrag als de omzet in Beheer → Rapport.
+              {/* Bij "Alle trainers" gaat het bedrag niet meer over de trainer zelf maar over de
+                  hele club; dat mag niet stilzwijgend gebeuren. */}
+              {' '}
+              {coachId === null
+                ? 'Dit zijn de bedragen van de hele club.'
+                : `Dit zijn de bedragen van ${coaches.find((c) => c.id === coachId)?.name ?? 'deze trainer'}.`}
             </Text>
           ) : null}
         </Card>
