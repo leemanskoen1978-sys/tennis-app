@@ -53,6 +53,17 @@ function inMonth(iso: string, month: Date): boolean {
   return d.getFullYear() === month.getFullYear() && d.getMonth() === month.getMonth();
 }
 
+/**
+ * De boekingen van één kalendermaand, op tijd oplopend. Het scherm toont de lessen zelf
+ * (met status en betaalwijze) en exporteert dezelfde maand als tekst; door beide hierlangs
+ * te laten lopen kan "welke lessen vallen in deze maand" niet op twee plekken uiteenlopen.
+ */
+export function bookingsInMonth(bookings: Booking[], month: Date): Booking[] {
+  return bookings
+    .filter((b) => inMonth(b.start_time, month))
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+}
+
 /** De lessen van één kalendermaand, op tijd gesorteerd, met de namen al opgezocht. */
 export function monthRows(
   bookings: Booking[], users: User[], courts: Court[], month: Date,
@@ -60,9 +71,7 @@ export function monthRows(
   const nameById = new Map(users.map((u) => [u.id, u.name]));
   const courtById = new Map(courts.map((c) => [c.id, c]));
 
-  return bookings
-    .filter((b) => inMonth(b.start_time, month))
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+  return bookingsInMonth(bookings, month)
     .map((b) => {
       const start = new Date(b.start_time);
       // Duur en prijs komen uit `payments`, zodat het maandoverzicht en de omzet op het

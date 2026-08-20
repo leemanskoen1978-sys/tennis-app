@@ -1,5 +1,5 @@
 import type { Booking, Court, User } from './types';
-import { monthRows, toCsv, formatEuro, CSV_HEADER, CSV_COLUMNS } from './csv';
+import { bookingsInMonth, monthRows, toCsv, formatEuro, CSV_HEADER, CSV_COLUMNS } from './csv';
 
 const users: User[] = [
   { id: 'koen', name: 'Koen', email: 'k@x.be', role: 'coach' },
@@ -17,6 +17,68 @@ function booking(over: Partial<Booking> = {}): Booking {
     status: 'confirmed', payment_method: 'cash', ...over,
   };
 }
+
+describe('bookingsInMonth', () => {
+  it('keeps only bookings in the chosen month', () => {
+    const kept = bookingsInMonth(
+      [booking(), booking({ id: 'b2', start_time: '2026-09-02T08:00:00.000Z', end_time: '2026-09-02T09:00:00.000Z' })],
+      new Date(2026, 7, 1),
+    );
+    expect(kept.map((b) => b.id)).toEqual(['b1']);
+  });
+
+  it('keeps a lesson on the first day of the month', () => {
+    const kept = bookingsInMonth(
+      [booking({ start_time: '2026-08-01T08:00:00.000Z', end_time: '2026-08-01T09:00:00.000Z' })],
+      new Date(2026, 7, 1),
+    );
+    expect(kept).toHaveLength(1);
+  });
+
+  it('keeps a lesson on the last day of the month', () => {
+    const kept = bookingsInMonth(
+      [booking({ start_time: '2026-08-31T18:00:00.000Z', end_time: '2026-08-31T19:00:00.000Z' })],
+      new Date(2026, 7, 1),
+    );
+    expect(kept).toHaveLength(1);
+  });
+
+  it('sorts by start time', () => {
+    const kept = bookingsInMonth(
+      [
+        booking({ id: 'b2', start_time: '2026-08-25T08:00:00.000Z', end_time: '2026-08-25T09:00:00.000Z' }),
+        booking({ id: 'b1' }),
+      ],
+      new Date(2026, 7, 1),
+    );
+    expect(kept.map((b) => b.id)).toEqual(['b1', 'b2']);
+  });
+
+  it('leaves the given list untouched', () => {
+    const given = [
+      booking({ id: 'b2', start_time: '2026-08-25T08:00:00.000Z', end_time: '2026-08-25T09:00:00.000Z' }),
+      booking({ id: 'b1' }),
+    ];
+    bookingsInMonth(given, new Date(2026, 7, 1));
+    expect(given.map((b) => b.id)).toEqual(['b2', 'b1']);
+  });
+
+  it('returns nothing for an empty month', () => {
+    expect(bookingsInMonth([booking()], new Date(2026, 0, 1))).toEqual([]);
+  });
+
+  it('gives the rows of the export the same lessons, in the same order', () => {
+    const given = [
+      booking({ id: 'b2', start_time: '2026-08-25T08:00:00.000Z', end_time: '2026-08-25T09:00:00.000Z' }),
+      booking({ id: 'b1' }),
+      booking({ id: 'b3', start_time: '2026-09-02T08:00:00.000Z', end_time: '2026-09-02T09:00:00.000Z' }),
+    ];
+    const month = new Date(2026, 7, 1);
+    expect(bookingsInMonth(given, month).map((b) => b.id)).toEqual(
+      monthRows(given, users, courts, month).map((r) => r.id),
+    );
+  });
+});
 
 describe('monthRows', () => {
   it('keeps only bookings in the chosen month', () => {
