@@ -83,12 +83,16 @@ export default function HomeScreen(): JSX.Element {
     [users],
   );
 
-  // A coach only ever books on their own agenda. Filling a colleague's agenda is an
-  // action, not a view, so it is not something you do on their behalf.
-  const bookingCoachId: string | null = isCoach ? (currentUser?.id ?? null) : selectedCoachId;
+  // Ook een trainer kiest bij wie de les komt: meestal bij zichzelf, maar hij mag een les
+  // op de agenda van een collega zetten (invallen, doorverwijzen). Zolang hij niets kiest
+  // staat hij op zichzelf, zodat de gewone gang van zaken één klik minder blijft.
+  // Een speler kan wél "Alle coaches" kiezen; dat is bij hem een bladermodus (null).
+  const bookingCoachId: string | null = isCoach
+    ? (selectedCoachId ?? currentUser?.id ?? null)
+    : selectedCoachId;
 
   // A booking needs a specific coach, and — when a coach is booking — a player.
-  // "Alle coaches" (selectedCoachId === null) is a browse-only state.
+  // "Alle coaches" (selectedCoachId === null bij een speler) is a browse-only state.
   const hasCoach: boolean = bookingCoachId !== null;
   const validPlayerId: string | null =
     players.find((u) => u.id === selectedPlayerId)?.id ?? null;
@@ -161,28 +165,36 @@ export default function HomeScreen(): JSX.Element {
             placeholder="Typ de naam van de speler…"
             onRequestCreate={setNewPlayerName}
           />
-          <Text style={styles.hint}>De les komt op jouw agenda.</Text>
         </>
-      ) : (
-        <>
-          {/* Coach filter */}
-          <Text style={styles.sectionLabel}>Coach</Text>
-          <View style={styles.chipRow}>
-            <Chip
-              label="Alle coaches"
-              selected={selectedCoachId === null}
-              onPress={() => setSelectedCoachId(null)}
-            />
-            {coaches.map((coach) => (
-              <Chip
-                key={coach.id}
-                label={coach.name}
-                selected={selectedCoachId === coach.id}
-                onPress={() => setSelectedCoachId(coach.id)}
-              />
-            ))}
-          </View>
-        </>
+      ) : null}
+
+      {/* Dezelfde rij coaches voor iedereen. Alleen een speler kan hem op "Alle coaches"
+          zetten om te bladeren; een trainer boekt altijd bij een concrete collega. */}
+      <Text style={styles.sectionLabel}>Coach</Text>
+      <View style={styles.chipRow}>
+        {!isCoach && (
+          <Chip
+            label="Alle coaches"
+            selected={selectedCoachId === null}
+            onPress={() => setSelectedCoachId(null)}
+          />
+        )}
+        {coaches.map((coach) => (
+          <Chip
+            key={coach.id}
+            label={coach.name}
+            selected={bookingCoachId === coach.id}
+            onPress={() => setSelectedCoachId(coach.id)}
+          />
+        ))}
+      </View>
+
+      {isCoach && (
+        <Text style={styles.hint}>
+          {bookingCoachId === currentUser?.id
+            ? 'De les komt op jouw agenda.'
+            : `De les komt op de agenda van ${bookingCoach?.name ?? 'je collega'}.`}
+        </Text>
       )}
 
       {/* Date strip */}
