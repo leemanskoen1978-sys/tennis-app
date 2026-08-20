@@ -12,8 +12,13 @@ Twee rollen:
 - **Coach** — beheert agenda, betalingen, spelers, lessen en voortgang.
 - **Speler** — boekt lessen, ziet eigen afspraken, lessen en voortgang.
 
-De app draait **nu volledig op een lokale mock-databank** (localStorage). Er is nog
-**geen echte online databank** aangesloten — dat is een expliciete volgende stap (Supabase).
+De app draait op **twee mogelijke opslagen** en kiest zelf: staan de Supabase-sleutels in
+`.env`, dan gaat alles naar de databank en log je in met e-mailadres en wachtwoord; staan ze
+er niet, dan draait alles lokaal (AsyncStorage → localStorage op web) en kies je een profiel
+uit een lijst. Die keuze valt op één plek: `providers/backend.ts`.
+
+De webversie staat online op <https://leemanskoen1978-sys.github.io/tennis-app/>; elke push
+naar `main` bouwt hem opnieuw (`.github/workflows/deploy.yml`).
 
 ---
 
@@ -46,15 +51,16 @@ npx tsc --noEmit         # typecheck (moet 0 errors geven)
 | Framework | Expo SDK 53 + React Native + TypeScript |
 | Routing | expo-router (file-based, map `app/`) |
 | Web | React Native Web (`expo start --web`) |
-| Opslag nu | **In-memory mock** in `providers/mockStore.ts`, gepersisteerd naar AsyncStorage → localStorage op web |
-| Opslag later | **Supabase** (client + schema staan klaar, nog niet gebruikt) |
+| Opslag | **Supabase** met sleutels in `.env`, anders lokaal (`providers/mockStore.ts` → AsyncStorage). Keuze in `providers/backend.ts` |
+| Inloggen | Supabase Auth (e-mail + wachtwoord), of profielkeuze zonder sleutels |
+| Website | GitHub Pages, gebouwd door GitHub Actions bij elke push naar `main` |
 | State | `SimpleDataProvider` (React Context) + hooks `useSimpleData`, `usePendingPaymentBookings` |
 | Icons | `lucide-react-native` |
 | Design | `constants/tennis-colors.ts` + `constants/theme.ts` (tokens) + gedeelde UI in `components/ui/` |
 
 **Belangrijk:** schermen praten NOOIT rechtstreeks met de opslag. Ze gebruiken enkel
-`useSimpleData()`. Zo kunnen we de mock later vervangen door Supabase zonder de schermen
-te herschrijven.
+`useSimpleData()`. Precies daardoor kon de databank erbij komen zonder één scherm te
+herschrijven.
 
 ---
 
@@ -108,7 +114,7 @@ docs/                    # deze handover-info + specs/plans + voice-memo-native.
 
 ---
 
-## 6. Datalaag (mock → Supabase-klaar)
+## 6. Datalaag (lokaal of Supabase)
 
 **`providers/SimpleDataProvider.tsx`** stelt beschikbaar via `useSimpleData()`:
 - data: `users, courts, bookings, lessons, progress, settings, currentUser, loading, error`
@@ -120,9 +126,16 @@ docs/                    # deze handover-info + specs/plans + voice-memo-native.
 **`providers/mockStore.ts`** = de opslag: seedt bij eerste start, bewaart in localStorage,
 verwijdert nooit automatisch corrupte data (alleen `resetStore` via noodopruiming).
 
-**Supabase later:** `lib/supabase.ts` (client) en `supabase-schema.sql` (tabellen + seed +
-permissieve RLS) staan klaar. Aankoppelen = de acties in de provider laten praten met
-Supabase i.p.v. de mock. Let op de aandachtspunten in §9.
+**`providers/backend.ts`** kiest tussen die lokale opslag en Supabase, en is het enige
+bestand dat het verschil kent. **`providers/supabaseStore.ts`** doet het werk aan de
+databankkant: in één keer inlezen wat deze gebruiker mag zien, en bij het opslaan uitrekenen
+wélke rijen er veranderd zijn. Dat rekenwerk staat in **`lib/sync.ts`** en is getest zonder
+databank — elke actie blijft dus gewoon de hele nieuwe toestand doorgeven, en dat is de reden
+dat een beurt afboeken en de les op factuur zetten niet half kunnen slagen.
+
+**`supabase-schema.sql`** bevat de tabellen, de koppeling login ↔ gebruiker en de RLS-regels.
+Die regels zijn strikt: ze staan in de databank en niet alleen in de schermen. Zie README
+voor het aankoppelen stap voor stap.
 
 ---
 
@@ -165,8 +178,11 @@ Supabase i.p.v. de mock. Let op de aandachtspunten in §9.
 
 ## 9. Bekende aandachtspunten / gotchas
 
-- **Geen echte auth**: inloggen = user aantikken; `currentUserId` lokaal bewaard.
-  RLS in het Supabase-schema staat **permissief** (open) — verstrengen bij echte auth.
+- **Twee manieren van inloggen**: met sleutels is het Supabase Auth (e-mail + wachtwoord,
+  strikte RLS); zonder sleutels blijft het profielkeuze zonder wachtwoord, en dan is er dus
+  geen enkele grens — die opzet is voor demo's en voor het werken aan een scherm.
+- **De eerste die zich aanmeldt is een speler.** De rol van trainer geef je bewust, met een
+  `update users set role = 'coach'` in Supabase. Zie README.
 - **localStorage-limieten**: spraakmemo's en PDF-bijlagen worden als base64 data-URL
   opgeslagen. Limiet ~5 MB totaal; PDF's zijn gecapt op **2 MB/bestand**. Voor echt
   gebruik → uploaden naar Supabase Storage / Google Drive en enkel de URL bewaren.
@@ -190,12 +206,10 @@ Supabase i.p.v. de mock. Let op de aandachtspunten in §9.
 - Design-systeem + toegankelijkheid-basis; tsc schoon; 14 unit-tests groen
 
 **Nog te doen (bewuste keuzes):**
-1. **Supabase aankoppelen** — mock vervangen door echte online databank (schema klaar).
-2. **Echte auth + strikte RLS**.
-3. **Agenda-import** (expo-calendar), **native spraakopname** (expo-av), **native PDF-picker**.
-4. **Bestanden echt online** bewaren (Supabase Storage / Drive) i.p.v. base64 in localStorage.
-5. **Ouder-toegang**: kind↔ouder koppelen, eindrapport voor ouder.
-6. **Lesplan uitbreiden**: volgorde/doelen met streefdatum, voortgang per doel.
+1. **Agenda-import** (expo-calendar), **native spraakopname** (expo-av), **native PDF-picker**.
+2. **Bestanden echt online** bewaren (Supabase Storage / Drive) i.p.v. base64 in de opslag.
+3. **Ouder-toegang**: kind↔ouder koppelen, eindrapport voor ouder.
+4. **Lesplan uitbreiden**: volgorde/doelen met streefdatum, voortgang per doel.
 
 ---
 

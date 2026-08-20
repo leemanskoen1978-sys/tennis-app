@@ -61,10 +61,10 @@ beurtenkaart toelaat (de laatste lessen horen op "Open" te blijven, met melding)
 
 Op volgorde van wat ik als eerste zou doen:
 
-1. **Echte opslag.** Alles staat nu in de opslag van één toestel. `lib/supabase.ts` en
-   `supabase-schema.sql` liggen klaar maar worden nergens gebruikt. Telefoon kwijt = alles kwijt.
-2. **Inloggen met wachtwoord.** Nu kies je een profiel uit een lijst; iedereen kan bij ieders
-   dossier en geld.
+1. ~~**Echte opslag.**~~ Gedaan: met sleutels in `.env` staat alles in Supabase, zonder
+   sleutels lokaal zoals vroeger. Zie README om aan te koppelen.
+2. ~~**Inloggen met wachtwoord.**~~ Gedaan bij de Supabase-opzet, met strikte RLS: een
+   speler ziet alleen wat van hemzelf is. Zonder sleutels blijft het de profielkeuze.
 3. **Herinneringen** naar spelers voor hun les, en naar de trainer voor lessen die te lang op
    Open staan.
 4. **Annuleringsregels** — te laat afgezegd is nu gratis en wist de betaalwijze.
