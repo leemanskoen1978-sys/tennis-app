@@ -6,7 +6,8 @@ import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './sess
 import { loadStore, saveStore, resetStore, newId, type StoreData } from './mockStore';
 import { upsertGoal, removeGoal } from '../lib/goals';
 import {
-  SESSIONS_PER_CARD, useSession, releaseSession, removeManualSession, planMethodChange,
+  SESSIONS_PER_CARD, useSession, releaseSession, removeManualSession,
+  planMethodChange, planCancel, planCardDeletion,
 } from '../lib/beurtenkaart';
 import type {
   User, Court, Booking, Lesson, StudentProgress, PlayerGoal, Settings,
@@ -76,7 +77,7 @@ function overlaps(a: Pick<Booking, 'coach_id' | 'start_time' | 'end_time' | 'sta
   });
 }
 
-/** Een geannuleerde of verwijderde les mag geen beurt blijven opeten. */
+/** Een verwijderde les mag geen beurt blijven opeten. */
 function releaseCardFor(data: StoreData, booking: Booking | undefined): Beurtenkaart[] {
   if (!booking?.beurtenkaart_id) return data.beurtenkaarten;
   return data.beurtenkaarten.map((c) =>
@@ -167,24 +168,15 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     const store = storeRef.current;
     if (!store) return;
     const booking = store.bookings.find((b) => b.id === id);
-    const cancelling = patch.status === 'cancelled' && booking?.status !== 'cancelled';
-    // Alleen een teruggegeven beurt dwingt een nieuwe keuze af. Cash, factuur of sponsor
-    // zijn al betaald en horen bij annulering gewoon te blijven staan.
-    const releasing = cancelling && !!booking?.beurtenkaart_id;
-    const cards = cancelling ? releaseCardFor(store, booking) : store.beurtenkaarten;
+    // De beslissing rond de beurt zit in `planCancel`; hier wordt hij alleen gecommit.
+    const plan = booking && patch.status === 'cancelled'
+      ? planCancel(store.beurtenkaarten, booking)
+      : null;
     await commit({
       ...store,
-      beurtenkaarten: cards,
+      beurtenkaarten: plan ? plan.cards : store.beurtenkaarten,
       bookings: store.bookings.map((b) =>
-        b.id === id
-          ? {
-            ...b,
-            ...patch,
-            ...(releasing
-              ? { payment_method: 'open' as PaymentMethod, beurtenkaart_id: undefined }
-              : {}),
-          }
-          : b,
+        b.id === id ? { ...b, ...patch, ...(plan?.patch ?? {}) } : b,
       ),
     });
   }, [commit]);
@@ -269,16 +261,9 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const deleteBeurtenkaart = useCallback(async (id: string) => {
     const store = storeRef.current;
     if (!store) return;
-    await commit({
-      ...store,
-      beurtenkaarten: store.beurtenkaarten.filter((c) => c.id !== id),
-      // Lessen verliezen hun beurt, dus ze moeten opnieuw afgehandeld worden.
-      bookings: store.bookings.map((b) =>
-        b.beurtenkaart_id === id
-          ? { ...b, payment_method: 'open' as PaymentMethod, beurtenkaart_id: undefined }
-          : b,
-      ),
-    });
+    // De beslissing zelf zit in `planCardDeletion`; hier wordt hij alleen gecommit.
+    const plan = planCardDeletion(store.beurtenkaarten, store.bookings, id);
+    await commit({ ...store, beurtenkaarten: plan.cards, bookings: plan.bookings });
   }, [commit]);
 
   const addUser = useCallback(async (u: Omit<User, 'id'>): Promise<User | null> => {

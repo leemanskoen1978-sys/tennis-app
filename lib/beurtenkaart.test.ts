@@ -1,7 +1,8 @@
-import type { Beurtenkaart } from './types';
+import type { Beurtenkaart, Booking } from './types';
 import {
   SESSIONS_PER_CARD, remaining, cardsFor, usableCardFor,
   useSession, releaseSession, removeManualSession, planMethodChange,
+  planCancel, planCardDeletion,
   type MethodChangeBooking,
 } from './beurtenkaart';
 
@@ -204,5 +205,94 @@ describe('planMethodChange', () => {
     const plan = planMethodChange([card()], booking({ status: 'cancelled' }), 'beurtenkaart');
     expect(plan.error).toBe('Een geannuleerde les krijgt geen betaalwijze.');
     expect(usesOf(plan.cards, 'b1')).toBe(0);
+  });
+
+  it('books a session when the lesson points at a card that no longer exists', () => {
+    // Een verweesde verwijzing mag geen gratis les worden: de beurt hoort alsnog ergens af.
+    const plan = planMethodChange(
+      [card({ id: 'k2' })],
+      booking({ beurtenkaart_id: 'weg' }),
+      'beurtenkaart',
+    );
+    expect(plan.error).toBeNull();
+    expect(plan.cardId).toBe('k2');
+    expect(usesOf(plan.cards, 'b1')).toBe(1);
+  });
+
+  it('refuses when the lesson points at a card that no longer exists and there is no other', () => {
+    const plan = planMethodChange([], booking({ beurtenkaart_id: 'weg' }), 'beurtenkaart');
+    expect(plan.error).toBe('Geen beurtenkaart met beurten over voor deze speler.');
+    // De les blijft bij zijn oude verwijzing staan; er is niets gewijzigd.
+    expect(plan.cardId).toBe('weg');
+  });
+});
+
+describe('planCancel', () => {
+  const used = () => card({ uses: [{ booking_id: 'b1', date: iso }] });
+
+  it('gives the session back and puts the lesson on Open', () => {
+    const plan = planCancel([used()], { id: 'b1', status: 'confirmed', beurtenkaart_id: 'k1' });
+    expect(plan.patch).toEqual({ payment_method: 'open', beurtenkaart_id: undefined });
+    expect(plan.cards[0].uses).toEqual([]);
+  });
+
+  it('leaves a cash lesson on cash and the cards untouched', () => {
+    const cards = [used()];
+    const plan = planCancel(cards, { id: 'b9', status: 'confirmed' });
+    expect(plan.patch).toBeNull();
+    expect(plan.cards).toBe(cards);
+  });
+
+  it('gives nothing back a second time', () => {
+    const first = planCancel([used()], { id: 'b1', status: 'confirmed', beurtenkaart_id: 'k1' });
+    // Zoals de les er ná de eerste annulering bij staat: geannuleerd en zonder kaart.
+    const second = planCancel(first.cards, { id: 'b1', status: 'cancelled', beurtenkaart_id: undefined });
+    expect(second.patch).toBeNull();
+    expect(second.cards[0].uses).toEqual([]);
+  });
+
+  it('gives nothing back when the same lesson is cancelled again with its old card still on it', () => {
+    const plan = planCancel([used()], { id: 'b1', status: 'cancelled', beurtenkaart_id: 'k1' });
+    expect(plan.patch).toBeNull();
+    expect(plan.cards[0].uses).toHaveLength(1);
+  });
+
+  it('leaves other cards alone', () => {
+    const other = card({ id: 'k2', uses: [{ booking_id: 'b2', date: iso }] });
+    const plan = planCancel([used(), other], { id: 'b1', status: 'confirmed', beurtenkaart_id: 'k1' });
+    expect(plan.cards[1]).toBe(other);
+  });
+});
+
+describe('planCardDeletion', () => {
+  const booking = (over: Partial<Booking> = {}): Booking => ({
+    id: 'b1', player_id: 'p1', coach_id: 'koen', court_id: 'court-1',
+    start_time: iso, end_time: iso, status: 'confirmed', payment_method: 'beurtenkaart',
+    beurtenkaart_id: 'k1', ...over,
+  });
+
+  it('removes the card and puts both of its lessons back on Open', () => {
+    const plan = planCardDeletion(
+      [card(), card({ id: 'k2' })],
+      [booking({ id: 'b1' }), booking({ id: 'b2' })],
+      'k1',
+    );
+    expect(plan.cards.map((c) => c.id)).toEqual(['k2']);
+    expect(plan.bookings.map((b) => b.payment_method)).toEqual(['open', 'open']);
+    // Geen verweesde verwijzing naar een kaart die er niet meer is.
+    expect(plan.bookings.every((b) => b.beurtenkaart_id === undefined)).toBe(true);
+  });
+
+  it('leaves lessons of another card alone', () => {
+    const other = booking({ id: 'b2', beurtenkaart_id: 'k2' });
+    const plan = planCardDeletion([card(), card({ id: 'k2' })], [booking(), other], 'k1');
+    expect(plan.bookings[1]).toBe(other);
+  });
+
+  it('removes a card that no lesson is attached to, changing nothing else', () => {
+    const cash = booking({ payment_method: 'cash', beurtenkaart_id: undefined });
+    const plan = planCardDeletion([card(), card({ id: 'k2' })], [cash], 'k2');
+    expect(plan.cards.map((c) => c.id)).toEqual(['k1']);
+    expect(plan.bookings).toEqual([cash]);
   });
 });

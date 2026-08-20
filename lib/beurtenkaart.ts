@@ -87,8 +87,11 @@ export function planMethodChange(
 
   // Dezelfde kaart nog eens kiezen kost geen tweede beurt: `cardId` staat er al.
   // Staat de les wél op 'beurtenkaart' zonder kaart (bv. via de standaard betaalwijze
-  // van een speler), dan wordt de beurt hier alsnog afgeboekt.
-  if (method === 'beurtenkaart' && !cardId) {
+  // van een speler), dan wordt de beurt hier alsnog afgeboekt. De vraag is niet of er een
+  // id staat, maar of dat id nog ergens op slaat: een verweesde verwijzing zou anders
+  // stilzwijgend gratis les opleveren.
+  const booked = !!cardId && next.some((c) => c.id === cardId);
+  if (method === 'beurtenkaart' && !booked) {
     const card = usableCardFor(next, booking.player_id);
     if (!card) {
       return { ...unchanged, error: 'Geen beurtenkaart met beurten over voor deze speler.' };
@@ -98,6 +101,59 @@ export function planMethodChange(
   }
 
   return { cards: next, cardId, error: null };
+}
+
+/** De boekinggegevens die een annulering nodig heeft. */
+export type CancelBooking = Pick<Booking, 'id' | 'status' | 'beurtenkaart_id'>;
+
+export interface CancelPlan {
+  cards: Beurtenkaart[];
+  /**
+   * Wat er bovenop de geannuleerde les moet. `null` als de betaalwijze blijft staan:
+   * cash, factuur of sponsor is al betaald en hoort door een annulering niet te wijzigen.
+   */
+  patch: Pick<Booking, 'payment_method' | 'beurtenkaart_id'> | null;
+}
+
+/**
+ * Annuleren van een les. Alleen een teruggegeven beurt dwingt een nieuwe keuze af: de les
+ * gaat terug op 'Open' en laat de kaart los. Twee keer annuleren geeft niet twee beurten
+ * terug — de tweede keer is de les al geannuleerd en is er niets meer los te laten.
+ */
+export function planCancel(cards: Beurtenkaart[], booking: CancelBooking): CancelPlan {
+  const cardId = booking.beurtenkaart_id;
+  if (booking.status === 'cancelled' || !cardId) return { cards, patch: null };
+  return {
+    cards: cards.map((c) => (c.id === cardId ? releaseSession(c, booking.id) : c)),
+    patch: { payment_method: 'open', beurtenkaart_id: undefined },
+  };
+}
+
+/** De boekinggegevens die het verwijderen van een kaart raakt. */
+export type CardBooking = Pick<Booking, 'payment_method' | 'beurtenkaart_id'>;
+
+export interface CardDeletionPlan<B extends CardBooking> {
+  cards: Beurtenkaart[];
+  bookings: B[];
+}
+
+/**
+ * Een kaart weggooien. De lessen die eraan hingen verliezen hun beurt, dus ze moeten
+ * opnieuw afgehandeld worden: terug op 'Open' en zonder verwijzing naar de weg kaart.
+ */
+export function planCardDeletion<B extends CardBooking>(
+  cards: Beurtenkaart[],
+  bookings: B[],
+  cardId: string,
+): CardDeletionPlan<B> {
+  return {
+    cards: cards.filter((c) => c.id !== cardId),
+    bookings: bookings.map((b) =>
+      b.beurtenkaart_id === cardId
+        ? { ...b, payment_method: 'open' as PaymentMethod, beurtenkaart_id: undefined }
+        : b,
+    ),
+  };
 }
 
 /** De min-knop op het kaartscherm: haalt alleen een handmatig gezette beurt weg. */

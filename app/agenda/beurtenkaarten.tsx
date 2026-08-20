@@ -50,6 +50,8 @@ function CardRow({
   const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
   // "Beurt terug" raakt alleen handmatige beurten; zonder zo'n beurt valt er niets terug te halen.
   const hasManual = card.uses.some((u) => !u.booking_id);
+  // Op een volle kaart doet "Beurt af" niets: dan hoort de knop ook uit te staan.
+  const isFull = left === 0;
   const progressLabel = `${used} van ${total} beurten gebruikt, nog ${left} over`;
 
   return (
@@ -73,6 +75,7 @@ function CardRow({
           label="Beurt af"
           variant="secondary"
           fullWidth={false}
+          disabled={isFull}
           icon={<Plus size={16} color={tennisColors.text} />}
           onPress={onAddSession}
         />
