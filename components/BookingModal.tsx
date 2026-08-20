@@ -43,6 +43,10 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   );
   const [notes, setNotes] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
+  // De les is aangemaakt, maar de beurt kon er niet af. Het venster blijft dan open met de
+  // melding erbij; deze id zorgt dat een tweede klik de beurt opnieuw probeert af te boeken
+  // in plaats van een tweede les aan te maken.
+  const [bookedWithoutBeurt, setBookedWithoutBeurt] = useState<string | null>(null);
 
   if (date === null || slot === null) {
     return null;
@@ -72,6 +76,12 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
     users.find((u) => u.id === (playerId ?? currentUser?.id)),
   );
 
+  const handleClose = (): void => {
+    setBookedWithoutBeurt(null);
+    setNotes('');
+    onClose();
+  };
+
   const handleConfirm = async (): Promise<void> => {
     if (!currentUser) {
       return;
@@ -81,9 +91,17 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
     }
     setSubmitting(true);
     try {
+      // De les staat er al en wacht alleen nog op zijn beurt: niets opnieuw aanmaken.
+      if (bookedWithoutBeurt) {
+        const retried = await setPaymentMethod(bookedWithoutBeurt, 'beurtenkaart');
+        if (!retried) {
+          return;
+        }
+        handleClose();
+        return;
+      }
       // Staat de standaard op beurtenkaart, boek dan open en laat setPaymentMethod
-      // de beurt afboeken — dat is de enige plek die dat bewaakt. Lukt het niet
-      // (geen kaart met beurten over), dan blijft de les gewoon op 'open' staan.
+      // de beurt afboeken — dat is de enige plek die dat bewaakt.
       const created = await addBooking({
         player_id: playerId ?? currentUser.id,
         coach_id: coachId,
@@ -98,10 +116,15 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         return;
       }
       if (defaultMethod === 'beurtenkaart') {
-        await setPaymentMethod(created.id, 'beurtenkaart');
+        const paid = await setPaymentMethod(created.id, 'beurtenkaart');
+        if (!paid) {
+          // Geen kaart met beurten over. De les bestaat wel, op Open: het venster blijft
+          // open zodat de trainer de melding van de provider hieronder te zien krijgt.
+          setBookedWithoutBeurt(created.id);
+          return;
+        }
       }
-      setNotes('');
-      onClose();
+      handleClose();
     } finally {
       setSubmitting(false);
     }
@@ -114,7 +137,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
@@ -135,45 +158,58 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
             contentContainerStyle={styles.bodyContent}
             keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.label}>Terrein</Text>
-            <View style={styles.chipRow}>
-              {courts.map((court) => (
-                <Chip
-                  key={court.id}
-                  label={court.name}
-                  selected={court.id === selectedCourtId}
-                  onPress={() => setSelectedCourtId(court.id)}
-                />
-              ))}
-            </View>
+            {bookedWithoutBeurt ? (
+              // De les staat er al. De velden zijn niet meer van toepassing: wat hier nog
+              // ontbreekt is de beurt, niet de boeking.
+              <Text style={styles.notice}>
+                De les is geboekt, maar er ging geen beurt af: de betaalwijze staat nog op
+                “{PAYMENT_LABELS.open}”. Bevestigen probeert de beurt alsnog af te boeken —
+                er komt geen tweede les bij. Sluiten mag ook; je kunt de betaalwijze later
+                bij de les zelf zetten.
+              </Text>
+            ) : (
+              <>
+                <Text style={styles.label}>Terrein</Text>
+                <View style={styles.chipRow}>
+                  {courts.map((court) => (
+                    <Chip
+                      key={court.id}
+                      label={court.name}
+                      selected={court.id === selectedCourtId}
+                      onPress={() => setSelectedCourtId(court.id)}
+                    />
+                  ))}
+                </View>
 
-            <Text style={styles.label}>Notities (optioneel)</Text>
-            <TextInput
-              style={styles.input}
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Voeg een notitie toe…"
-              placeholderTextColor={tennisColors.textMuted}
-              multiline
-            />
-            <Text style={styles.hint}>
-              Betaalwijze: {PAYMENT_LABELS[defaultMethod]}
-              {defaultMethod === 'beurtenkaart' ? ' (er gaat een beurt af)' : ''}
-            </Text>
+                <Text style={styles.label}>Notities (optioneel)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="Voeg een notitie toe…"
+                  placeholderTextColor={tennisColors.textMuted}
+                  multiline
+                />
+                <Text style={styles.hint}>
+                  Betaalwijze: {PAYMENT_LABELS[defaultMethod]}
+                  {defaultMethod === 'beurtenkaart' ? ' (er gaat een beurt af)' : ''}
+                </Text>
+              </>
+            )}
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </ScrollView>
 
           <View style={styles.actions}>
             <Button
-              label="Annuleren"
+              label={bookedWithoutBeurt ? 'Sluiten' : 'Annuleren'}
               variant="secondary"
-              onPress={onClose}
+              onPress={handleClose}
               disabled={submitting}
               fullWidth
             />
             <Button
-              label="Bevestigen"
+              label={bookedWithoutBeurt ? 'Beurt opnieuw proberen' : 'Bevestigen'}
               variant="primary"
               onPress={handleConfirm}
               disabled={submitting}
@@ -254,6 +290,12 @@ const styles = StyleSheet.create({
     color: tennisColors.text,
     backgroundColor: tennisColors.background,
     textAlignVertical: 'top',
+  },
+  notice: {
+    ...typography.body,
+    fontSize: 14,
+    color: tennisColors.text,
+    marginTop: spacing.md,
   },
   hint: {
     fontSize: 13,

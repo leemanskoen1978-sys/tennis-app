@@ -9,6 +9,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { monthRows, toCsv, formatEuro, CSV_COLUMNS } from '../../lib/csv';
+import { totalRevenue } from '../../lib/payments';
 import { shareCsv } from '../../lib/share';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
@@ -49,7 +50,26 @@ export default function ExportScreen(): React.JSX.Element {
     [mine, users, courts, month],
   );
 
-  const total = rows.reduce((sum, r) => sum + r.price, 0);
+  // Dezelfde maand als de tabel, maar dan de boekingen zelf: het bedrag mag niet uit een
+  // eigen kopie van de regel komen, anders spreken twee schermen elkaar weer tegen.
+  const monthBookings = useMemo(() => {
+    const ids = new Set(rows.map((r) => r.id));
+    return mine.filter((b) => ids.has(b.id));
+  }, [mine, rows]);
+
+  const cancelledIds = useMemo(
+    () => new Set(monthBookings.filter((b) => b.status === 'cancelled').map((b) => b.id)),
+    [monthBookings],
+  );
+
+  // Geboekt: alles wat er nog staat. Een geannuleerde les blijft in de tabel en in het
+  // bestand staan, maar telt in geen van beide bedragen mee.
+  const booked = rows
+    .filter((r) => !cancelledIds.has(r.id))
+    .reduce((sum, r) => sum + r.price, 0);
+  // Afgehandeld: exact wat Beheer → Rapport als omzet toont, uit dezelfde functie.
+  const handled = totalRevenue(monthBookings, courts);
+
   const label = `${MONTH_NAMES[month.getMonth()]} ${month.getFullYear()}`;
   const filename = `lessen-${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}.csv`;
   const isCurrentMonth = month.getTime() === startOfMonth(new Date()).getTime();
@@ -94,11 +114,19 @@ export default function ExportScreen(): React.JSX.Element {
         </View>
       )}
 
-      <Card>
-        <Text style={styles.summary}>
-          {rows.length === 1 ? '1 les' : `${rows.length} lessen`} · € {formatEuro(total)}
-        </Text>
-      </Card>
+      {rows.length === 0 ? null : (
+        <Card>
+          <Text style={styles.summary}>
+            {rows.length === 1 ? '1 les' : `${rows.length} lessen`}
+            {' · € '}{formatEuro(booked)} geboekt
+            {' · € '}{formatEuro(handled)} afgehandeld
+          </Text>
+          <Text style={styles.summaryNote}>
+            Geannuleerde lessen tellen in geen van beide bedragen mee. “Afgehandeld” is
+            hetzelfde bedrag als de omzet in Beheer → Rapport.
+          </Text>
+        </Card>
+      )}
 
       {rows.length === 0 ? (
         <Text style={styles.muted}>Geen lessen in deze maand.</Text>
@@ -139,6 +167,7 @@ const styles = StyleSheet.create({
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   month: { ...typography.h3, color: tennisColors.text },
   summary: { ...typography.body, color: tennisColors.text, fontWeight: '600' },
+  summaryNote: { ...typography.body, fontSize: 13, color: tennisColors.textMuted, marginTop: spacing.xs },
   muted: { ...typography.body, color: tennisColors.textMuted },
   todayRow: { alignItems: 'center' },
   error: { color: tennisColors.danger, fontSize: 14 },
