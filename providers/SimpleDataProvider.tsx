@@ -33,7 +33,8 @@ interface DataShape {
   updateBooking: (id: string, patch: Partial<Booking>) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   /** Zet de betaalwijze en houdt de beurtenkaart in de pas. */
-  setPaymentMethod: (bookingId: string, method: PaymentMethod) => Promise<void>;
+  /** `false` bij een geweigerde keuze: onbekende boeking, geannuleerde les, of geen kaart met beurten over. */
+  setPaymentMethod: (bookingId: string, method: PaymentMethod) => Promise<boolean>;
   addBeurtenkaart: (playerId: string) => Promise<void>;
   updateBeurtenkaart: (id: string, patch: Pick<Beurtenkaart, 'remarks'>) => Promise<void>;
   /** Handmatig een beurt af- of bijboeken op het kaartscherm. */
@@ -175,15 +176,15 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [store, commit]);
 
-  const setPaymentMethod = useCallback(async (bookingId: string, method: PaymentMethod) => {
-    if (!store) return;
+  const setPaymentMethod = useCallback(async (bookingId: string, method: PaymentMethod): Promise<boolean> => {
+    if (!store) return false;
     const booking = store.bookings.find((b) => b.id === bookingId);
-    if (!booking) return;
+    if (!booking) return false;
 
     // Een geannuleerde les mag geen beurt opeten en hoort geen betaalwijze te krijgen.
     if (booking.status === 'cancelled') {
       setError('Een geannuleerde les krijgt geen betaalwijze.');
-      return;
+      return false;
     }
 
     let cards = store.beurtenkaarten;
@@ -200,7 +201,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       const card = usableCardFor(cards, booking.player_id);
       if (!card) {
         setError('Geen beurtenkaart met beurten over voor deze speler.');
-        return;
+        return false;
       }
       cards = cards.map((c) => (c.id === card.id ? useSession(c, bookingId, booking.start_time) : c));
       cardId = card.id;
@@ -214,6 +215,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
         b.id === bookingId ? { ...b, payment_method: method, beurtenkaart_id: cardId } : b,
       ),
     });
+    return true;
   }, [store, commit]);
 
   const addBeurtenkaart = useCallback(async (playerId: string) => {

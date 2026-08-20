@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
@@ -9,7 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Chip } from '../../components/ui/Chip';
 import { Screen } from '../../components/ui/Screen';
-import { spacing, typography, webCursor } from '../../constants/theme';
+import { minTapTarget, spacing, typography, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { cardsFor, remaining } from '../../lib/beurtenkaart';
 import { paymentMeta, type PaymentMeta } from '../../lib/payments';
@@ -96,11 +96,37 @@ export default function BookingsScreen(): React.JSX.Element {
     return left === 1 ? 'Nog 1 beurt over.' : `Nog ${left} beurten over.`;
   };
 
+  /**
+   * Het label op de betaal-badge. Bij een les die op een beurtenkaart staat hoort het
+   * saldo van die kaart erbij; hangt er geen kaart aan, dan blijft het bij het label.
+   */
+  const paymentLabelFor = (booking: Booking, meta: PaymentMeta): string => {
+    if (booking.payment_method !== 'beurtenkaart' || !booking.beurtenkaart_id) {
+      return meta.label;
+    }
+    const card = beurtenkaarten.find((c) => c.id === booking.beurtenkaart_id);
+    if (!card) return meta.label;
+    return `${meta.label} · nog ${remaining(card)}`;
+  };
+
+  // De fout is één globale bak: wis bij binnenkomst wat een ander scherm achterliet.
+  // Alleen bij het openen, zodat een melding van dit scherm zelf blijft staan.
+  useEffect(() => {
+    clearError();
+  }, []);
+
   const pickMethod = async (method: PaymentMethod): Promise<void> => {
     if (!payingBooking) return;
     clearError();
-    await setPaymentMethod(payingBooking.id, method);
-    setPayingBooking(null);
+    try {
+      const ok = await setPaymentMethod(payingBooking.id, method);
+      // Bij een geweigerde keuze blijft het blad open: daar, onder de chips die de
+      // trainer net aantikte, staat de melding waar hij kijkt.
+      if (!ok) return;
+      setPayingBooking(null);
+    } catch {
+      // `commit` zette de foutregel al; het blad blijft open zodat die te lezen is.
+    }
   };
 
   return (
@@ -149,6 +175,7 @@ export default function BookingsScreen(): React.JSX.Element {
         visibleBookings.map((booking) => {
           const status = statusMeta(booking.status);
           const payment: PaymentMeta = paymentMeta(booking.payment_method);
+          const paymentLabel = paymentLabelFor(booking, payment);
           const playerName = nameOf(booking.player_id);
           const coachName = nameOf(booking.coach_id);
           return (
@@ -196,13 +223,13 @@ export default function BookingsScreen(): React.JSX.Element {
                       setPayingBooking(booking);
                     }}
                     accessibilityRole="button"
-                    accessibilityLabel={`Betaalwijze wijzigen, nu ${payment.label}`}
-                    style={webCursor}
+                    accessibilityLabel={`Betaalwijze wijzigen, nu ${paymentLabel}`}
+                    style={[styles.paymentTap, webCursor]}
                   >
-                    <Badge label={payment.label} color={payment.color} subtle={payment.subtle} />
+                    <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
                   </Pressable>
                 ) : (
-                  <Badge label={payment.label} color={payment.color} subtle={payment.subtle} />
+                  <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
                 )}
               </View>
 
@@ -279,8 +306,14 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
     marginTop: spacing.xs,
+  },
+  // De badge zelf is maar ~22 px hoog; het raakvlak eromheen houdt de app-brede 44 px aan.
+  paymentTap: {
+    minHeight: minTapTarget,
+    justifyContent: 'center',
   },
   error: {
     color: tennisColors.danger,
