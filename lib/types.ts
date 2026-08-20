@@ -35,6 +35,12 @@ export interface User {
   hourly_rate?: number;
   /** Speler: de betaalwijze die een nieuwe les standaard krijgt. */
   default_payment_method?: PaymentMethod;
+  /**
+   * Speler: het bedrag uit zijn sponsorcontract, in euro's. Leeg betekent: geen
+   * sponsorcontract. Wat er nog van over is, telt `lib/sponsor.ts` uit de gesponsorde
+   * lessen — net als bij de beurtenkaart is er geen apart saldo dat kan gaan afwijken.
+   */
+  sponsor_budget?: number;
 }
 
 export interface Court {

@@ -150,13 +150,15 @@ describe('uitsplitsing per speler', () => {
     expect(rows).toEqual([{ playerId: 'anna', name: 'Anna', lessons: 3, paid: 100, open: 40 }]);
   });
 
-  it('laat een gesponsorde les in geen van beide kolommen staan, maar telt hem wel als les', () => {
+  it('zet een gesponsorde les bij het betaalde bedrag, niet bij het openstaande', () => {
+    // Het sponsorcontract is betaald geld: het bedrag gaat van het sponsorbudget van de
+    // speler af (zie lib/sponsor.ts), dus het is omzet en geen uitstel.
     const rows = totalsByPlayer(
       [onDay('b1', 2026, 7, 1, { payment_method: 'sponsor' })],
       users,
       courts,
     );
-    expect(rows).toEqual([{ playerId: 'anna', name: 'Anna', lessons: 1, paid: 0, open: 0 }]);
+    expect(rows).toEqual([{ playerId: 'anna', name: 'Anna', lessons: 1, paid: 40, open: 0 }]);
   });
 
   it('houdt een speler die niet meer bestaat in het overzicht, als Onbekend', () => {

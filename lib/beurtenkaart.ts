@@ -1,5 +1,6 @@
 // Rekenwerk rond de 10-beurtenkaart. Puur: elke functie geeft een nieuwe kaart terug.
 
+import { sponsorRefusal, type SponsorContext } from './sponsor';
 import type { Beurtenkaart, Booking, PaymentMethod } from './types';
 
 export const SESSIONS_PER_CARD = 10;
@@ -48,7 +49,7 @@ export function releaseSession(card: Beurtenkaart, bookingId: string): Beurtenka
 
 /** De boekinggegevens die een betaalwijzewissel nodig heeft. */
 export type MethodChangeBooking = Pick<
-  Booking, 'id' | 'player_id' | 'start_time' | 'status' | 'beurtenkaart_id'
+  Booking, 'id' | 'player_id' | 'court_id' | 'start_time' | 'end_time' | 'status' | 'beurtenkaart_id'
 >;
 
 export interface MethodChangePlan {
@@ -67,12 +68,26 @@ export function planMethodChange(
   cards: Beurtenkaart[],
   booking: MethodChangeBooking,
   method: PaymentMethod,
+  /**
+   * Wat er nodig is om 'sponsor' te bewaken: de speler met zijn contractbedrag, alle lessen
+   * en de tarieven. Weggelaten wordt sponsor niet bewaakt — de app geeft hem altijd mee;
+   * de tests laten hem weg waar het over de beurtenkaart gaat.
+   */
+  sponsor?: SponsorContext,
 ): MethodChangePlan {
   const unchanged = { cards, cardId: booking.beurtenkaart_id };
 
   // Een geannuleerde les mag geen beurt opeten en hoort geen betaalwijze te krijgen.
   if (booking.status === 'cancelled') {
     return { ...unchanged, error: 'Een geannuleerde les krijgt geen betaalwijze.' };
+  }
+
+  // Sponsor is de beurtenkaart in euro's: het contract heeft een bodem. Past de les er niet
+  // meer in, dan verandert er niets — anders zou een trainer stilzwijgend over het contract
+  // van zijn sponsor heen boeken en dat pas op het rapport ontdekken.
+  if (method === 'sponsor' && sponsor) {
+    const refusal = sponsorRefusal(booking, sponsor);
+    if (refusal) return { ...unchanged, error: refusal };
   }
 
   let next = cards;

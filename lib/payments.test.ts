@@ -194,21 +194,21 @@ describe('totalRevenue', () => {
     expect(totalRevenue(broken, courts)).toBe(0);
   });
 
-  it('counts cash, invoice, qr and beurtenkaart', () => {
+  it('counts cash, invoice, qr, beurtenkaart and sponsor', () => {
     const list: Booking[] = [
       { ...base, id: '1', payment_method: 'cash' },
       { ...base, id: '2', payment_method: 'invoice' },
       { ...base, id: '3', payment_method: 'qr' },
       { ...base, id: '4', payment_method: 'beurtenkaart' },
+      // Sponsor hoort hierbij: de les zit in het sponsorcontract en dat contract is
+      // betaald geld. Zie de toelichting bij `countsAsRevenue`.
+      { ...base, id: '5', payment_method: 'sponsor' },
     ];
-    expect(totalRevenue(list, courts)).toBe(120);
+    expect(totalRevenue(list, courts)).toBe(150);
   });
 
-  it('skips open and sponsor', () => {
-    const list: Booking[] = [
-      { ...base, id: '1', payment_method: 'open' },
-      { ...base, id: '2', payment_method: 'sponsor' },
-    ];
+  it('skips open — daar is nog niets afgesproken', () => {
+    const list: Booking[] = [{ ...base, id: '1', payment_method: 'open' }];
     expect(totalRevenue(list, courts)).toBe(0);
   });
 

@@ -91,9 +91,17 @@ export function pendingPaymentsFor(user: User | null, bookings: Booking[]): Book
   return filterPendingPayment(bookingsFor(user, bookings));
 }
 
-const REVENUE_METHODS: PaymentMethod[] = ['cash', 'invoice', 'qr', 'beurtenkaart'];
+const REVENUE_METHODS: PaymentMethod[] = ['cash', 'invoice', 'qr', 'beurtenkaart', 'sponsor'];
 
-/** Sponsor levert geen geld op en 'open' is nog niets — die tellen niet mee. */
+/**
+ * Alleen 'open' telt niet mee: daar is nog niets afgesproken, dus er is nog geen geld.
+ *
+ * Sponsor telt bewust wél mee. Een gesponsorde les zit in het sponsorcontract, en dat
+ * contract is betaald geld: de speler heeft een bedrag dat hij mag verlessen (zie
+ * `lib/sponsor.ts`), en elke gesponsorde les haalt daar zijn deel uit. Hem uit de omzet
+ * laten zou betekenen dat de trainer werk levert dat nergens in zijn cijfers terugkomt,
+ * terwijl het geld er wel degelijk is. Niet terugdraaien zonder ook het budget te herzien.
+ */
 export function countsAsRevenue(method: PaymentMethod): boolean {
   return REVENUE_METHODS.includes(method);
 }

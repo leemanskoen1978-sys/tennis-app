@@ -1,4 +1,5 @@
-import type { Beurtenkaart, Booking } from './types';
+import type { Beurtenkaart, Booking, Court } from './types';
+import type { SponsorBooking, SponsorContext } from './sponsor';
 import {
   SESSIONS_PER_CARD, remaining, cardsFor, usableCardFor,
   useSession, releaseSession, removeManualSession, planMethodChange,
@@ -123,7 +124,8 @@ describe('removeManualSession', () => {
 describe('planMethodChange', () => {
   function booking(over: Partial<MethodChangeBooking> = {}): MethodChangeBooking {
     return {
-      id: 'b1', player_id: 'p1', start_time: iso, status: 'confirmed', ...over,
+      id: 'b1', player_id: 'p1', court_id: 'court-1', start_time: iso,
+      end_time: '2026-08-20T11:00:00.000Z', status: 'confirmed', ...over,
     };
   }
 
@@ -224,6 +226,65 @@ describe('planMethodChange', () => {
     expect(plan.error).toBe('Geen beurtenkaart met beurten over voor deze speler.');
     // De les blijft bij zijn oude verwijzing staan; er is niets gewijzigd.
     expect(plan.cardId).toBe('weg');
+  });
+
+  // Sponsor is de beurtenkaart in euro's: hetzelfde soort bewaking, ander soort saldo.
+  describe('sponsor', () => {
+    const courts: Court[] = [
+      { id: 'court-1', name: 'Terrein 1', number: 1, indoor: false, hourly_rate: 40 },
+    ];
+    /** Een les van één uur op terrein 1 — 40 euro — die op sponsor staat. */
+    const sponsorLes = (over: Partial<SponsorBooking> & { id: string }): SponsorBooking => ({
+      player_id: 'p1', court_id: 'court-1', status: 'confirmed', payment_method: 'sponsor',
+      start_time: iso, end_time: '2026-08-20T11:00:00.000Z', ...over,
+    });
+    const ctx = (budget: number | undefined, bookings: SponsorBooking[] = []): SponsorContext => ({
+      player: { id: 'p1', sponsor_budget: budget }, bookings, courts,
+    });
+
+    it('laat sponsor toe zolang de les in het budget past', () => {
+      const plan = planMethodChange([card()], booking(), 'sponsor', ctx(100));
+      expect(plan.error).toBeNull();
+    });
+
+    it('weigert sponsor bij een speler zonder sponsorbudget', () => {
+      const plan = planMethodChange([card()], booking(), 'sponsor', ctx(undefined));
+      expect(plan.error).toBe('Deze speler heeft geen sponsorbudget.');
+    });
+
+    it('weigert sponsor als het budget op is', () => {
+      const plan = planMethodChange(
+        [card()], booking(), 'sponsor', ctx(40, [sponsorLes({ id: 'b0' })]),
+      );
+      expect(plan.error).toBe('Het sponsorbudget van deze speler is op.');
+    });
+
+    it('geeft de beurt niet weg bij een geweigerde sponsorkeuze', () => {
+      // Anders zou de les zijn beurt kwijt zijn én op de oude betaalwijze blijven staan.
+      const used = card({ uses: [{ booking_id: 'b1', date: iso }] });
+      const plan = planMethodChange(
+        [used], booking({ beurtenkaart_id: 'k1' }), 'sponsor', ctx(undefined),
+      );
+      expect(plan.error).toBe('Deze speler heeft geen sponsorbudget.');
+      expect(plan.cardId).toBe('k1');
+      expect(usesOf(plan.cards, 'b1')).toBe(1);
+    });
+
+    it('geeft de beurt wél terug als sponsor doorgaat', () => {
+      const used = card({ uses: [{ booking_id: 'b1', date: iso }] });
+      const plan = planMethodChange(
+        [used], booking({ beurtenkaart_id: 'k1' }), 'sponsor', ctx(100),
+      );
+      expect(plan.error).toBeNull();
+      expect(plan.cardId).toBeUndefined();
+      expect(usesOf(plan.cards, 'b1')).toBe(0);
+    });
+
+    it('laat de beurtenkaart met rust: die kijkt niet naar het sponsorbudget', () => {
+      const plan = planMethodChange([card()], booking(), 'beurtenkaart', ctx(undefined));
+      expect(plan.error).toBeNull();
+      expect(usesOf(plan.cards, 'b1')).toBe(1);
+    });
   });
 });
 
