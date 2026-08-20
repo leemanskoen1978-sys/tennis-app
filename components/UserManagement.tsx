@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   View,
@@ -15,7 +15,7 @@ import { spacing, typography, radius } from '../constants/theme';
 import { appConfig } from '../constants/app-config';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import type { Role } from '../lib/types';
+import type { Role, User } from '../lib/types';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 
 interface UserManagementProps {
@@ -23,6 +23,16 @@ interface UserManagementProps {
   onClose: () => void;
   /** Which role the sheet starts on. Trainers is reached from the Trainers section. */
   defaultRole?: Role;
+  /**
+   * Naam waarmee het veld al ingevuld staat. Komt van een keuzelijst waar de trainer een nog
+   * onbekende naam typte: die hoeft hij hier niet nog eens te tikken.
+   */
+  initialName?: string;
+  /**
+   * De zojuist aangemaakte gebruiker. Zo weet het scherm dat de modal opende wie het geworden
+   * is, en kan het die meteen kiezen in de keuzelijst waar de trainer vandaan kwam.
+   */
+  onCreated?: (user: User) => void;
 }
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -60,12 +70,19 @@ function slugify(name: string): string {
 }
 
 export function UserManagement(props: UserManagementProps): JSX.Element {
-  const { visible, onClose, defaultRole = 'player' } = props;
+  const { visible, onClose, defaultRole = 'player', initialName, onCreated } = props;
   const { users, addUser, error } = useSimpleData();
 
-  const [name, setName] = useState<string>('');
+  const [name, setName] = useState<string>(initialName ?? '');
   const [role, setRole] = useState<Role>(defaultRole);
   const [rate, setRate] = useState<string>('');
+
+  // De modal blijft gemonteerd tussen twee keer openen, dus `useState` pikt een nieuwe
+  // `initialName` niet vanzelf op. Bij elk openen zetten we de getypte naam er alsnog in;
+  // schermen die geen beginnaam meegeven, merken hier niets van.
+  useEffect(() => {
+    if (visible && initialName !== undefined) setName(initialName);
+  }, [visible, initialName]);
 
   const trimmedName = name.trim();
   const canSubmit = trimmedName.length > 0;
@@ -81,7 +98,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
       return;
     }
     const parsedRate = Number(rate.replace(',', '.'));
-    await addUser({
+    const created = await addUser({
       name: trimmedName,
       email: generatedEmail,
       role,
@@ -91,6 +108,9 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
     });
     setName('');
     setRate('');
+    // Alleen bij een geslaagde aanmaak: het scherm dat hierop wacht mag niets kiezen
+    // wanneer het opslaan misliep.
+    if (created && onCreated) onCreated(created);
   };
 
   return (

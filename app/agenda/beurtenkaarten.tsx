@@ -9,6 +9,7 @@ import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StudentCombobox } from '../../components/ui/StudentCombobox';
+import { UserManagement } from '../../components/UserManagement';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { remaining, SESSIONS_PER_CARD } from '../../lib/beurtenkaart';
 import { tennisColors } from '../../constants/tennis-colors';
@@ -156,6 +157,9 @@ export default function BeurtenkaartenScreen(): React.JSX.Element {
   const [newPlayerId, setNewPlayerId] = useState<string | null>(null);
   // Welke kaart om bevestiging vraagt voor verwijderen; null = geen.
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  // De naam die in de keuzelijst getypt werd voor een speler die nog niet bestaat; null zolang
+  // de trainer daar niet om vroeg. Zo staat het invulscherm meteen met die naam klaar.
+  const [newPlayerName, setNewPlayerName] = useState<string | null>(null);
 
   const players: User[] = useMemo(() => users.filter((u) => u.role !== 'coach'), [users]);
 
@@ -181,6 +185,7 @@ export default function BeurtenkaartenScreen(): React.JSX.Element {
         value={newPlayerId}
         onChange={setNewPlayerId}
         placeholder="Typ de naam van de speler…"
+        onRequestCreate={setNewPlayerName}
       />
       <Button
         label={`Kaart van ${SESSIONS_PER_CARD} beurten aanmaken`}
@@ -213,6 +218,18 @@ export default function BeurtenkaartenScreen(): React.JSX.Element {
           onDelete={() => { void deleteBeurtenkaart(card.id); setConfirmingId(null); }}
         />
       ))}
+
+      {/* Het volledige invulscherm voor een nieuwe speler. Zodra hij bewaard is, is hij ook
+          meteen de speler van de nieuwe kaart — daarvoor was de trainer hier tenslotte. */}
+      <UserManagement
+        visible={newPlayerName !== null}
+        initialName={newPlayerName ?? ''}
+        onClose={() => setNewPlayerName(null)}
+        onCreated={(u) => {
+          setNewPlayerId(u.id);
+          setNewPlayerName(null);
+        }}
+      />
     </Screen>
   );
 }

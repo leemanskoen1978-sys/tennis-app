@@ -44,7 +44,8 @@ interface DataShape {
   removeCardSession: (id: string) => Promise<void>;
   /** Verwijdert de kaart; lessen die eraan hingen vallen terug op 'open'. */
   deleteBeurtenkaart: (id: string) => Promise<void>;
-  addUser: (u: Omit<User, 'id'>) => Promise<void>;
+  /** Geeft de aangemaakte gebruiker terug, zodat de aanroeper hem meteen kan kiezen. */
+  addUser: (u: Omit<User, 'id'>) => Promise<User | null>;
   /** `role` blijft erbuiten: van een trainer een speler maken raakt boekingen,
    *  lessen en voortgang, en is geen formulierdetail. */
   updateUser: (id: string, patch: Partial<Omit<User, 'id' | 'role'>>) => Promise<void>;
@@ -280,10 +281,12 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [commit]);
 
-  const addUser = useCallback(async (u: Omit<User, 'id'>) => {
+  const addUser = useCallback(async (u: Omit<User, 'id'>): Promise<User | null> => {
     const store = storeRef.current;
-    if (!store) return;
-    await commit({ ...store, users: [...store.users, { ...u, id: newId('u') }] });
+    if (!store) return null;
+    const created: User = { ...u, id: newId('u') };
+    await commit({ ...store, users: [...store.users, created] });
+    return created;
   }, [commit]);
 
   const updateUser = useCallback(

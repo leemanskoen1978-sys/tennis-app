@@ -18,6 +18,7 @@ import { Button } from '../../components/ui/Button';
 import { Chip } from '../../components/ui/Chip';
 import { BookingModal } from '../../components/BookingModal';
 import { StudentCombobox } from '../../components/ui/StudentCombobox';
+import { UserManagement } from '../../components/UserManagement';
 import type { User } from '../../lib/types';
 
 const MONTH_NAMES = [
@@ -68,6 +69,9 @@ export default function HomeScreen(): JSX.Element {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  // De naam die in de keuzelijst getypt werd voor een speler die nog niet bestaat; null zolang
+  // de trainer daar niet om vroeg. Zo staat het invulscherm meteen met die naam klaar.
+  const [newPlayerName, setNewPlayerName] = useState<string | null>(null);
 
   const coaches: User[] = useMemo(
     () => users.filter((u) => u.role === 'coach'),
@@ -155,6 +159,7 @@ export default function HomeScreen(): JSX.Element {
             value={selectedPlayerId}
             onChange={setSelectedPlayerId}
             placeholder="Typ de naam van de speler…"
+            onRequestCreate={setNewPlayerName}
           />
           <Text style={styles.hint}>De les komt op jouw agenda.</Text>
         </>
@@ -316,6 +321,18 @@ export default function HomeScreen(): JSX.Element {
         date={selectedDate}
         slot={selectedSlot}
         courts={courts}
+      />
+
+      {/* Het volledige invulscherm voor een nieuwe speler. Zodra hij bewaard is, is hij ook
+          meteen de speler van de les die de trainer aan het inplannen was. */}
+      <UserManagement
+        visible={newPlayerName !== null}
+        initialName={newPlayerName ?? ''}
+        onClose={() => setNewPlayerName(null)}
+        onCreated={(u) => {
+          setSelectedPlayerId(u.id);
+          setNewPlayerName(null);
+        }}
       />
     </Screen>
   );

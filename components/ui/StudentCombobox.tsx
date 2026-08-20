@@ -1,24 +1,33 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
-import { X, Check } from 'lucide-react-native';
+import { X, Check, Plus } from 'lucide-react-native';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, minTapTarget, webCursor } from '../../constants/theme';
+import { canCreateName } from '../../lib/students';
 import type { User } from '../../lib/types';
 
 /**
  * Autocomplete for picking a student: type a name, up to 5 matching students
  * appear, pick one. Clear (X) resets to none. value = selected id (or null).
+ *
+ * Staat een `onRequestCreate` klaar, dan biedt de lijst een onbekende naam aan om toe te voegen.
+ * Dit component maakt zelf niemand aan: het geeft alleen door dát de trainer een nieuwe speler
+ * wil, met de getypte naam erbij. Het scherm eromheen opent daarna het invulscherm waar alles
+ * ingevuld kan worden. Zonder die prop gedraagt de lijst zich precies als voorheen.
  */
 export function StudentCombobox({
   students,
   value,
   onChange,
   placeholder = 'Typ een naam…',
+  onRequestCreate,
 }: {
   students: User[];
   value: string | null;
   onChange: (id: string | null) => void;
   placeholder?: string;
+  /** De trainer wil deze (nog onbekende) naam toevoegen; het scherm opent het invulscherm. */
+  onRequestCreate?: (name: string) => void;
 }) {
   const selected = students.find((s) => s.id === value) ?? null;
   const [query, setQuery] = useState(selected ? selected.name : '');
@@ -42,7 +51,21 @@ export function StudentCombobox({
     setOpen(true);
   };
 
-  const showList = open && matches.length > 0 && !(selected && query === selected.name);
+  const typedName = query.trim();
+  const showCreate = canCreateName(students, query, onRequestCreate !== undefined);
+
+  /**
+   * Vraag het scherm om het invulscherm te openen. De lijst blijft openstaan: loopt het
+   * invullen ergens vast of bedenkt de trainer zich, dan staat zijn getypte naam er nog en
+   * kan hij alsnog een bestaande speler kiezen.
+   */
+  const requestCreate = () => {
+    if (!onRequestCreate || !typedName) return;
+    onRequestCreate(typedName);
+  };
+
+  const showList =
+    open && (matches.length > 0 || showCreate) && !(selected && query === selected.name);
 
   return (
     <View>
@@ -80,6 +103,17 @@ export function StudentCombobox({
               {value === s.id ? <Check size={16} color={tennisColors.primary} /> : null}
             </Pressable>
           ))}
+          {showCreate ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`"${typedName}" toevoegen…`}
+              onPress={requestCreate}
+              style={({ pressed }) => [styles.row, styles.createRow, webCursor, pressed && styles.rowPressed]}
+            >
+              <Plus size={16} color={tennisColors.primary} />
+              <Text style={styles.createText}>{`"${typedName}" toevoegen…`}</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -111,6 +145,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: tennisColors.border,
   },
   rowPressed: { backgroundColor: tennisColors.primaryTint },
+  // Zelfde rijhoogte als de spelers erboven; alleen het plusje staat hier vooraan.
+  createRow: { justifyContent: 'flex-start', gap: spacing.xs },
+  createText: { fontSize: 15, color: tennisColors.primary },
   rowText: { fontSize: 15, color: tennisColors.text },
   selectedHint: { fontSize: 12, color: tennisColors.textMuted, marginTop: spacing.xs },
 });
