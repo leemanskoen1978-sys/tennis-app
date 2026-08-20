@@ -169,7 +169,9 @@ export default function Drawing() {
     setSaveTitle('');
     setSaveDescription('');
     setSavePlayerId(null);
-    router.push('/coaches/lessons');
+    // Naar de databank en niet naar de tegels: je wilt de veldsituatie die je net
+    // opsloeg terugzien, niet opnieuw een keuze maken.
+    router.push('/coaches/lessons/databank');
   };
 
   const onLayout = (e: LayoutChangeEvent) => {
