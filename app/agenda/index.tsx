@@ -54,11 +54,11 @@ export default function BookingsScreen(): React.JSX.Element {
     );
   }
   // Voor iedereen, want dit is sinds de verhuizing de enige plek waar een speler zijn
-  // eigen lessen van een hele maand nog terugvindt.
+  // eigen lessen terugvindt — die van vroeger én die van straks.
   tiles.push({
-    key: 'month',
-    title: 'Maandoverzicht',
-    subtitle: 'Alle lessen van een maand',
+    key: 'overview',
+    title: 'Overzicht',
+    subtitle: 'Historiek en wat er nog komt',
     icon: CalendarDays,
     onPress: () => router.push('/agenda/export'),
   });

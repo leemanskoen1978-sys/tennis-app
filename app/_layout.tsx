@@ -47,7 +47,9 @@ const SCREENS: ReadonlyArray<{ name: string; title: string }> = [
   { name: 'profile', title: 'Profiel' },
   { name: 'agenda/index', title: 'Agenda' },
   { name: 'agenda/new', title: 'Nieuwe afspraak' },
-  { name: 'agenda/export', title: 'Maandoverzicht' },
+  { name: 'agenda/export', title: 'Overzicht' },
+  { name: 'agenda/historiek', title: 'Historiek' },
+  { name: 'agenda/komend', title: 'Nog te komen' },
   { name: 'players/index', title: 'Spelers' },
   { name: 'players/[id]', title: 'Speler-dossier' },
   // Geen trainer bereikt dit scherm — een voortgangsverslag over een speler vult een
