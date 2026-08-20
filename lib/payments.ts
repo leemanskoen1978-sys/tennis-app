@@ -35,7 +35,6 @@ export function paymentMeta(method: PaymentMethod): PaymentMeta {
     case 'sponsor':
       return { color: tennisColors.warning, label, subtle: false };
     case 'open':
-    default:
       return { color: tennisColors.textMuted, label, subtle: true };
   }
 }
@@ -70,11 +69,12 @@ export function countsAsRevenue(method: PaymentMethod): boolean {
   return REVENUE_METHODS.includes(method);
 }
 
-/** Gerealiseerde omzet: het uurtarief van de baan per afgehandelde, niet-geannuleerde les. */
+/** Gerealiseerde omzet: het uurtarief van de baan per bevestigde les met een betalende betaalwijze. */
 export function totalRevenue(bookings: Booking[], courts: Court[]): number {
   const rateById = new Map(courts.map((c) => [c.id, c.hourly_rate]));
   return bookings
-    .filter((b) => countsAsRevenue(b.payment_method) && b.status !== 'cancelled')
+    // Een les die nog niet bevestigd is (bv. 'pending'), is nog geen geld.
+    .filter((b) => PAYABLE_STATUSES.includes(b.status) && countsAsRevenue(b.payment_method))
     .reduce((sum, b) => sum + (rateById.get(b.court_id) ?? 0), 0);
 }
 

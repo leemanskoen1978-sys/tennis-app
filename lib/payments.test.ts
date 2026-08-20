@@ -20,15 +20,24 @@ describe('PAYMENT_METHODS', () => {
   });
 
   it('all have a Dutch label', () => {
-    for (const m of PAYMENT_METHODS) {
-      expect(PAYMENT_LABELS[m].length).toBeGreaterThan(0);
-    }
+    expect(PAYMENT_LABELS).toEqual({
+      open: 'Open',
+      cash: 'Cash',
+      invoice: 'Factuur',
+      qr: 'QR-code',
+      beurtenkaart: '10-beurtenkaart',
+      sponsor: 'Sponsor',
+    });
   });
 
-  it('gives every method a badge colour', () => {
+  it('gives every method its own colour, matching label, and only "open" is subtle', () => {
+    const metas = PAYMENT_METHODS.map((m) => paymentMeta(m));
+    const colors = metas.map((meta) => meta.color);
+    expect(new Set(colors).size).toBe(colors.length);
     for (const m of PAYMENT_METHODS) {
-      expect(paymentMeta(m).color).toMatch(/^#/);
+      expect(paymentMeta(m).label).toBe(PAYMENT_LABELS[m]);
     }
+    expect(PAYMENT_METHODS.filter((m) => paymentMeta(m).subtle)).toEqual(['open']);
   });
 });
 
@@ -98,6 +107,11 @@ describe('totalRevenue', () => {
 
   it('skips cancelled bookings', () => {
     const list: Booking[] = [{ ...base, payment_method: 'cash', status: 'cancelled' }];
+    expect(totalRevenue(list, courts)).toBe(0);
+  });
+
+  it('skips a pending booking, even with a revenue-generating payment method', () => {
+    const list: Booking[] = [{ ...base, payment_method: 'cash', status: 'pending' }];
     expect(totalRevenue(list, courts)).toBe(0);
   });
 });
