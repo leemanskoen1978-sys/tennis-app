@@ -1,6 +1,7 @@
 import type { Booking, Court, User } from './types';
 import {
-  needsPayment, filterPendingPayment, pendingPaymentsFor, totalRevenue,
+  needsPayment, filterPendingPayment, bookingsFor, pendingPaymentsFor, totalRevenue,
+  bookingMinutes, bookingPrice,
   defaultMethodFor, paymentMeta, PAYMENT_METHODS, PAYMENT_LABELS,
 } from './payments';
 
@@ -67,9 +68,31 @@ describe('filterPendingPayment', () => {
   });
 });
 
+const coach: User = { id: 'koen', name: 'Koen', email: 'k@x.be', role: 'coach' };
+const player: User = { id: 'p1', name: 'Mathis', email: 'm@x.be', role: 'player' };
+
+describe('bookingsFor', () => {
+  it('gives a coach the lessons they teach', () => {
+    const list: Booking[] = [base, { ...base, id: '2', coach_id: 'sanne' }];
+    expect(bookingsFor(coach, list).map((b) => b.id)).toEqual(['1']);
+  });
+
+  it('gives a player the lessons they take', () => {
+    const list: Booking[] = [base, { ...base, id: '2', player_id: 'p2' }];
+    expect(bookingsFor(player, list).map((b) => b.id)).toEqual(['1']);
+  });
+
+  it('does not look at status or payment method', () => {
+    const list: Booking[] = [{ ...base, status: 'cancelled', payment_method: 'cash' }];
+    expect(bookingsFor(player, list).map((b) => b.id)).toEqual(['1']);
+  });
+
+  it('returns nothing without a user', () => {
+    expect(bookingsFor(null, [base])).toEqual([]);
+  });
+});
+
 describe('pendingPaymentsFor', () => {
-  const coach: User = { id: 'koen', name: 'Koen', email: 'k@x.be', role: 'coach' };
-  const player: User = { id: 'p1', name: 'Mathis', email: 'm@x.be', role: 'player' };
 
   it('gives a coach only their own bookings', () => {
     const list: Booking[] = [base, { ...base, id: '2', coach_id: 'sanne' }];
@@ -86,7 +109,57 @@ describe('pendingPaymentsFor', () => {
   });
 });
 
+describe('bookingMinutes', () => {
+  it('is the distance between start and end', () => {
+    expect(bookingMinutes(base)).toBe(60);
+    expect(bookingMinutes({ ...base, end_time: '2026-08-20T10:30:00.000Z' })).toBe(30);
+  });
+
+  it('is 0 for a reversed or unusable time', () => {
+    expect(bookingMinutes({ ...base, end_time: '2026-08-20T09:00:00.000Z' })).toBe(0);
+    expect(bookingMinutes({ ...base, end_time: 'geen datum' })).toBe(0);
+  });
+});
+
+describe('bookingPrice', () => {
+  it('charges the hourly rate pro rata of the duration', () => {
+    expect(bookingPrice({ ...base, end_time: '2026-08-20T10:30:00.000Z' }, 30)).toBe(15);
+    expect(bookingPrice(base, 30)).toBe(30);
+    expect(bookingPrice({ ...base, end_time: '2026-08-20T11:30:00.000Z' }, 30)).toBe(45);
+  });
+
+  it('is 0 without a known rate or with an unusable time', () => {
+    expect(bookingPrice(base, undefined)).toBe(0);
+    expect(bookingPrice({ ...base, end_time: 'geen datum' }, 30)).toBe(0);
+  });
+});
+
 describe('totalRevenue', () => {
+  it('counts half an hour as half the hourly rate, like the monthly export', () => {
+    const list: Booking[] = [
+      { ...base, payment_method: 'cash', end_time: '2026-08-20T10:30:00.000Z' },
+    ];
+    expect(totalRevenue(list, courts)).toBe(15);
+  });
+
+  it('counts a full hour as the whole hourly rate', () => {
+    expect(totalRevenue([{ ...base, payment_method: 'cash' }], courts)).toBe(30);
+  });
+
+  it('counts nothing for a court that is not in the list', () => {
+    const list: Booking[] = [{ ...base, payment_method: 'cash', court_id: 'weg' }];
+    expect(totalRevenue(list, courts)).toBe(0);
+  });
+
+  it('counts nothing for a reversed or unusable time, instead of a negative amount or NaN', () => {
+    const reversed: Booking[] = [
+      { ...base, payment_method: 'cash', end_time: '2026-08-20T09:00:00.000Z' },
+    ];
+    expect(totalRevenue(reversed, courts)).toBe(0);
+    const broken: Booking[] = [{ ...base, payment_method: 'cash', end_time: 'geen datum' }];
+    expect(totalRevenue(broken, courts)).toBe(0);
+  });
+
   it('counts cash, invoice, qr and beurtenkaart', () => {
     const list: Booking[] = [
       { ...base, id: '1', payment_method: 'cash' },

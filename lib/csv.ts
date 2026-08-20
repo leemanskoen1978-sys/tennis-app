@@ -1,7 +1,7 @@
 // Het maandoverzicht als gegevens (monthRows) en als tekst (toCsv), los van elkaar zodat
 // het scherm dezelfde rijen kan tonen die het uitvoert.
 
-import { PAYMENT_LABELS } from './payments';
+import { bookingMinutes, bookingPrice, PAYMENT_LABELS } from './payments';
 import { BOOKING_STATUS_LABELS } from './status';
 import type { Booking, Court, User } from './types';
 
@@ -65,10 +65,10 @@ export function monthRows(
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
     .map((b) => {
       const start = new Date(b.start_time);
-      const rawMinutes = Math.round((new Date(b.end_time).getTime() - start.getTime()) / 60000);
-      // Een kapotte of omgekeerde eindtijd mag geen NaN of negatief bedrag in de export zetten:
-      // de les blijft zichtbaar staan, maar met duur en prijs op 0.
-      const minutes = Number.isFinite(rawMinutes) && rawMinutes > 0 ? rawMinutes : 0;
+      // Duur en prijs komen uit `payments`, zodat het maandoverzicht en de omzet op het
+      // exportscherm hetzelfde bedrag tonen. Een kapotte of omgekeerde eindtijd geeft daar
+      // 0: de les blijft zichtbaar staan, maar met duur en prijs op nul.
+      const minutes = bookingMinutes(b);
       const court = courtById.get(b.court_id);
       return {
         id: b.id,
@@ -78,7 +78,7 @@ export function monthRows(
         player: nameById.get(b.player_id) ?? 'Onbekend',
         court: court?.name ?? 'Onbekend terrein',
         minutes,
-        price: minutes === 0 ? 0 : Math.round(((court?.hourly_rate ?? 0) * minutes) / 60 * 100) / 100,
+        price: bookingPrice(b, court?.hourly_rate),
         status: BOOKING_STATUS_LABELS[b.status],
         payment: PAYMENT_LABELS[b.payment_method],
       };

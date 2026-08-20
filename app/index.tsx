@@ -15,6 +15,7 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
+import { filterPendingPayment } from '../lib/payments';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
 
@@ -38,7 +39,9 @@ export default function Hub() {
 
   const myBookings = bookings.filter((b) => b.player_id === currentUser.id);
   const today = bookingsToday(isCoach ? bookings : myBookings, new Date());
-  const myOpen = myBookings.filter((b) => b.payment_method === 'open').length;
+  // Dezelfde definitie van "staat nog open" als Beheer: een geannuleerde of nog niet
+  // bevestigde les hoort niet op de badge, anders loopt die juist óp bij een annulering.
+  const myOpen = filterPendingPayment(myBookings).length;
 
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 

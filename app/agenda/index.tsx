@@ -12,7 +12,7 @@ import { Screen } from '../../components/ui/Screen';
 import { minTapTarget, spacing, typography, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { cardsFor, remaining } from '../../lib/beurtenkaart';
-import { paymentMeta, type PaymentMeta } from '../../lib/payments';
+import { bookingsFor, paymentMeta, type PaymentMeta } from '../../lib/payments';
 import { BOOKING_STATUS_LABELS } from '../../lib/status';
 import type { Booking, BookingStatus, PaymentMethod } from '../../lib/types';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
@@ -60,11 +60,9 @@ export default function BookingsScreen(): React.JSX.Element {
     if (!currentUser) {
       return [];
     }
-    const filtered = bookings.filter((b) =>
-      isCoach
-        ? !onlyMine || b.coach_id === currentUser.id
-        : b.player_id === currentUser.id,
-    );
+    // Een trainer ziet standaard de hele agenda; verder geldt overal dezelfde regel voor
+    // "van mij", die in `payments` woont.
+    const filtered = isCoach && !onlyMine ? bookings : bookingsFor(currentUser, bookings);
     return [...filtered].sort(
       (a, b) =>
         new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
