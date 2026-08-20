@@ -149,8 +149,8 @@ export interface StudentProgress {
 export type GoalHorizon = 'lessons10' | 'lessons20' | 'season';
 
 /**
- * What a player is working towards. One goal per horizon: "wat is het doel binnen 10
- * lessen" has one answer, not a list.
+ * What a player is working towards. A horizon holds as many goals as the coach wants —
+ * a backhand grip change and more regularity on the serve are two goals, not one.
  *
  * The two types are plain strings rather than a union, because the club adds its own
  * options in Beheer — a union would mean a code change for every new one.

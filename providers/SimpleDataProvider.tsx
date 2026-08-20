@@ -4,7 +4,7 @@ import React, {
 import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
 import { loadStore, saveStore, resetStore, newId, type StoreData } from './mockStore';
-import { upsertGoal } from '../lib/goals';
+import { upsertGoal, removeGoal } from '../lib/goals';
 import type {
   User, Court, Booking, Lesson, StudentProgress, PlayerGoal, Settings,
 } from '../lib/types';
@@ -35,8 +35,9 @@ interface DataShape {
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
   addProgress: (p: Omit<StudentProgress, 'id'>) => Promise<void>;
-  /** One goal per player per horizon; an emptied-out goal is removed. */
+  /** Store a goal under its own id — a horizon holds as many as the coach wants. */
   saveGoal: (goal: PlayerGoal) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
   saveSettings: (s: Settings) => Promise<void>;
   emergencyCleanup: () => Promise<void>;
 }
@@ -178,6 +179,11 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     await commit({ ...store, goals: upsertGoal(store.goals, goal) });
   }, [store, commit]);
 
+  const deleteGoal = useCallback(async (id: string) => {
+    if (!store) return;
+    await commit({ ...store, goals: removeGoal(store.goals, id) });
+  }, [store, commit]);
+
   const saveSettings = useCallback(async (s: Settings) => {
     if (!store) return;
     await commit({ ...store, settings: s });
@@ -224,12 +230,13 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     deleteLesson,
     addProgress,
     saveGoal,
+    deleteGoal,
     saveSettings,
     emergencyCleanup,
   }), [
     store, currentUser, loading, error, clearError, login, logout, refresh,
     addBooking, updateBooking, deleteBooking, addUser, updateUser, addLesson,
-    updateLesson, deleteLesson, addProgress, saveGoal, saveSettings, emergencyCleanup,
+    updateLesson, deleteLesson, addProgress, saveGoal, deleteGoal, saveSettings, emergencyCleanup,
   ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

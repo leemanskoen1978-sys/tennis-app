@@ -33,31 +33,43 @@ export function changeTypeOptions(settings: Pick<Settings, 'change_types'>): str
   return settings.change_types ?? [...DEFAULT_CHANGE_TYPES];
 }
 
-/** The goal a player has for this horizon, or null when none is set yet. */
-export function goalFor(
+/** Every goal this player has for this horizon, in the order they were added. */
+export function goalsFor(
   goals: PlayerGoal[],
   studentId: string,
   horizon: GoalHorizon,
-): PlayerGoal | null {
-  return goals.find((g) => g.student_id === studentId && g.horizon === horizon) ?? null;
+): PlayerGoal[] {
+  return goals.filter((g) => g.student_id === studentId && g.horizon === horizon);
 }
 
-/** A goal with nothing filled in is not a goal; it is stored as absent. */
+/** Nothing filled in yet. Used to decide what to show, never to throw a goal away. */
 export function isEmptyGoal(g: Pick<PlayerGoal, 'shot_type' | 'change_type' | 'notes'>): boolean {
   return !g.shot_type && !g.change_type && !(g.notes ?? '').trim();
 }
 
+export function newGoalId(): string {
+  return `goal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
 /**
- * Put a goal in its place: replace the one for this player and horizon, add it when there
- * is none, drop it when it has been emptied out. One goal per horizon is the whole rule,
- * so it lives here rather than in a screen.
+ * Store a goal under its own id: replace it where it stands, or add it at the end.
+ *
+ * A horizon holds as many goals as the coach wants, so nothing is displaced by writing
+ * another one. Replacing in place matters: a goal must not jump to the bottom of the list
+ * the moment you edit a field.
+ *
+ * An emptied-out goal is kept, not dropped. With an explicit "Doel toevoegen" and a
+ * Verwijderen next to each goal, a card that vanishes while you are clearing a field is a
+ * surprise rather than a convenience.
  */
 export function upsertGoal(goals: PlayerGoal[], goal: PlayerGoal): PlayerGoal[] {
-  const others = goals.filter(
-    (g) => !(g.student_id === goal.student_id && g.horizon === goal.horizon),
-  );
-  if (isEmptyGoal(goal)) return others;
-  return [...others, goal];
+  const known = goals.some((g) => g.id === goal.id);
+  return known ? goals.map((g) => (g.id === goal.id ? goal : g)) : [...goals, goal];
+}
+
+/** Removing a goal is always explicit. */
+export function removeGoal(goals: PlayerGoal[], id: string): PlayerGoal[] {
+  return goals.filter((g) => g.id !== id);
 }
 
 /** Adding a choice in Beheer: trimmed, never blank, never a duplicate (ignoring case). */

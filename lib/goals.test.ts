@@ -1,13 +1,13 @@
 import {
   GOAL_HORIZONS, HORIZON_LABELS, DEFAULT_SHOT_TYPES, DEFAULT_CHANGE_TYPES,
-  shotTypeOptions, changeTypeOptions, goalFor, isEmptyGoal, upsertGoal,
-  addOption, removeOption,
+  shotTypeOptions, changeTypeOptions, goalsFor, isEmptyGoal, upsertGoal, removeGoal,
+  newGoalId, addOption, removeOption,
 } from './goals';
 import type { PlayerGoal } from './types';
 
-const goal = (student: string, horizon: PlayerGoal['horizon'], shot?: string): PlayerGoal => ({
-  id: `${student}-${horizon}`, student_id: student, horizon, shot_type: shot,
-});
+const goal = (
+  id: string, student: string, horizon: PlayerGoal['horizon'], shot?: string,
+): PlayerGoal => ({ id, student_id: student, horizon, shot_type: shot });
 
 describe('horizons', () => {
   it('has exactly the three the coach asked for, in thinking order', () => {
@@ -59,17 +59,29 @@ describe('removeOption', () => {
   });
 });
 
-describe('goalFor', () => {
-  const goals = [goal('p1', 'lessons10', 'Forehand'), goal('p2', 'lessons10', 'Volley')];
+describe('goalsFor', () => {
+  const goals = [
+    goal('a', 'p1', 'lessons10', 'Forehand'),
+    goal('b', 'p1', 'lessons10', 'Opslag'),
+    goal('c', 'p2', 'lessons10', 'Volley'),
+    goal('d', 'p1', 'season', 'Smash'),
+  ];
 
-  it('finds the goal of this player for this horizon', () => {
-    expect(goalFor(goals, 'p1', 'lessons10')?.shot_type).toBe('Forehand');
+  it('gives every goal this player has for this horizon', () => {
+    expect(goalsFor(goals, 'p1', 'lessons10').map((g) => g.shot_type))
+      .toEqual(['Forehand', 'Opslag']);
   });
+
   it('does not mix players up', () => {
-    expect(goalFor(goals, 'p2', 'lessons10')?.shot_type).toBe('Volley');
+    expect(goalsFor(goals, 'p2', 'lessons10').map((g) => g.id)).toEqual(['c']);
   });
-  it('returns null when there is nothing yet', () => {
-    expect(goalFor(goals, 'p1', 'season')).toBeNull();
+
+  it('does not mix horizons up', () => {
+    expect(goalsFor(goals, 'p1', 'season').map((g) => g.id)).toEqual(['d']);
+  });
+
+  it('is empty when the player has nothing for that horizon yet', () => {
+    expect(goalsFor(goals, 'p2', 'season')).toEqual([]);
   });
 });
 
@@ -85,32 +97,60 @@ describe('isEmptyGoal', () => {
   });
 });
 
+describe('newGoalId', () => {
+  it('does not hand out the same id twice', () => {
+    const ids = new Set(Array.from({ length: 50 }, () => newGoalId()));
+    expect(ids.size).toBe(50);
+  });
+});
+
 describe('upsertGoal', () => {
-  it('adds a goal when the player has none for that horizon', () => {
-    const out = upsertGoal([], goal('p1', 'lessons10', 'Forehand'));
+  it('adds a goal the store has not seen', () => {
+    const out = upsertGoal([], goal('a', 'p1', 'lessons10', 'Forehand'));
     expect(out).toHaveLength(1);
   });
 
-  it('replaces rather than duplicates — one goal per horizon', () => {
-    const out = upsertGoal(
-      [goal('p1', 'lessons10', 'Forehand')],
-      goal('p1', 'lessons10', 'Backhand'),
-    );
-    expect(out).toHaveLength(1);
+  it('holds several goals in one horizon', () => {
+    let out = upsertGoal([], goal('a', 'p1', 'lessons10', 'Forehand'));
+    out = upsertGoal(out, goal('b', 'p1', 'lessons10', 'Opslag'));
+    expect(goalsFor(out, 'p1', 'lessons10')).toHaveLength(2);
+  });
+
+  it('replaces a goal in place, so editing does not move it down the list', () => {
+    const start = [
+      goal('a', 'p1', 'lessons10', 'Forehand'),
+      goal('b', 'p1', 'lessons10', 'Opslag'),
+    ];
+    const out = upsertGoal(start, goal('a', 'p1', 'lessons10', 'Backhand'));
+    expect(out.map((g) => g.id)).toEqual(['a', 'b']);
     expect(out[0].shot_type).toBe('Backhand');
   });
 
   it('leaves the other horizons and the other players alone', () => {
-    const start = [goal('p1', 'season', 'Smash'), goal('p2', 'lessons10', 'Volley')];
-    const out = upsertGoal(start, goal('p1', 'lessons10', 'Forehand'));
+    const start = [goal('a', 'p1', 'season', 'Smash'), goal('b', 'p2', 'lessons10', 'Volley')];
+    const out = upsertGoal(start, goal('c', 'p1', 'lessons10', 'Forehand'));
     expect(out).toHaveLength(3);
-    expect(goalFor(out, 'p1', 'season')?.shot_type).toBe('Smash');
-    expect(goalFor(out, 'p2', 'lessons10')?.shot_type).toBe('Volley');
   });
 
-  it('drops a goal that has been emptied out instead of storing a blank one', () => {
-    const start = [goal('p1', 'lessons10', 'Forehand')];
-    const out = upsertGoal(start, { id: 'x', student_id: 'p1', horizon: 'lessons10' });
-    expect(out).toEqual([]);
+  it('keeps a goal that has been emptied out — removing is explicit', () => {
+    const start = [goal('a', 'p1', 'lessons10', 'Forehand')];
+    const out = upsertGoal(start, { id: 'a', student_id: 'p1', horizon: 'lessons10' });
+    expect(out).toHaveLength(1);
+    expect(out[0].shot_type).toBeUndefined();
+  });
+});
+
+describe('removeGoal', () => {
+  it('removes just that goal', () => {
+    const start = [
+      goal('a', 'p1', 'lessons10', 'Forehand'),
+      goal('b', 'p1', 'lessons10', 'Opslag'),
+    ];
+    expect(removeGoal(start, 'a').map((g) => g.id)).toEqual(['b']);
+  });
+
+  it('leaves the list alone when the goal is not in it', () => {
+    const start = [goal('a', 'p1', 'lessons10', 'Forehand')];
+    expect(removeGoal(start, 'zzz')).toHaveLength(1);
   });
 });
