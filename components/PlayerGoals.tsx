@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Target, ChevronRight } from 'lucide-react-native';
 import { Card } from './ui/Card';
+import { Badge } from './ui/Badge';
 import { GoalHorizonSheet } from './GoalHorizonSheet';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import {
-  GOAL_HORIZONS, HORIZON_LABELS, goalsFor, horizonSummary, newGoalId,
-  shotTypeOptions, changeTypeOptions,
+  GOAL_HORIZONS, HORIZON_LABELS, goalsFor, horizonSummary, filledGoalCount, goalCountLabel,
+  newGoalId, shotTypeOptions, changeTypeOptions,
 } from '../lib/goals';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, minTapTarget } from '../constants/theme';
@@ -40,8 +41,10 @@ export function PlayerGoals({ studentId, canEdit }: { studentId: string; canEdit
       {GOAL_HORIZONS.map((horizon) => {
         // Alleen ingevulde doelen halen de regel: een zojuist toegevoegd, nog leeg doel zegt
         // niets over wat er is afgesproken — voor de trainer niet en voor de speler niet.
-        const summary = horizonSummary(goalsFor(goals, studentId, horizon));
+        const horizonGoals = goalsFor(goals, studentId, horizon);
+        const summary = horizonSummary(horizonGoals);
         const filled = summary !== '';
+        const count = filledGoalCount(horizonGoals);
         return (
           <Card
             key={horizon}
@@ -49,13 +52,18 @@ export function PlayerGoals({ studentId, canEdit }: { studentId: string; canEdit
             onPress={() => setOpenHorizon(horizon)}
             accessibilityLabel={
               filled
-                ? `${HORIZON_LABELS[horizon]}: ${summary}, doelen openen`
+                ? `${HORIZON_LABELS[horizon]}: ${goalCountLabel(count)}, ${summary}, doelen openen`
                 : `${HORIZON_LABELS[horizon]}: nog geen doel, doelen openen`
             }
           >
             <View style={styles.row}>
               <View style={styles.rowText}>
-                <Text style={styles.horizon}>{HORIZON_LABELS[horizon]}</Text>
+                <View style={styles.horizonRow}>
+                  <Text style={styles.horizon}>{HORIZON_LABELS[horizon]}</Text>
+                  {/* Het aantal staat als badge naast de naam: dat leest rustiger dan een cijfer
+                      vooraan de zin, en houdt de samenvatting zelf bij het eerste doel. */}
+                  {filled ? <Badge label={goalCountLabel(count)} subtle /> : null}
+                </View>
                 <Text style={filled ? styles.summary : styles.empty} numberOfLines={1}>
                   {filled ? summary : 'Nog geen doel afgesproken.'}
                 </Text>
@@ -99,6 +107,7 @@ const styles = StyleSheet.create({
   card: { paddingVertical: spacing.md, gap: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: minTapTarget },
   rowText: { flex: 1 },
+  horizonRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   horizon: { fontSize: 15, fontWeight: '800', color: tennisColors.primaryDark },
   summary: { fontSize: 14, color: tennisColors.text, marginTop: 2 },
   empty: { fontSize: 14, color: tennisColors.textMuted, marginTop: 2 },

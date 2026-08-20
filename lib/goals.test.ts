@@ -1,7 +1,8 @@
 import {
   GOAL_HORIZONS, HORIZON_LABELS, DEFAULT_SHOT_TYPES, DEFAULT_CHANGE_TYPES,
   shotTypeOptions, changeTypeOptions, goalsFor, isEmptyGoal, upsertGoal, removeGoal,
-  newGoalId, addOption, removeOption, goalSummary, horizonSummary,
+  newGoalId, addOption, removeOption, goalSummary, horizonSummary, filledGoalCount,
+  goalCountLabel,
 } from './goals';
 import type { PlayerGoal } from './types';
 
@@ -145,13 +146,46 @@ describe('horizonSummary', () => {
     expect(horizonSummary([g('a', 'Forehand', 'Greepwissel')])).toBe('Forehand · Greepwissel');
   });
 
-  it('telt de overige ingevulde doelen erachter', () => {
+  it('beschrijft alleen het eerste doel, ook als er meer zijn — het aantal staat apart', () => {
     expect(horizonSummary([g('a', 'Forehand'), g('b', 'Opslag'), g('c', 'Volley')]))
-      .toBe('Forehand · +2');
+      .toBe('Forehand');
   });
 
   it('telt lege doelen niet mee', () => {
     expect(horizonSummary([g('a'), g('b', 'Opslag')])).toBe('Opslag');
+  });
+});
+
+describe('filledGoalCount', () => {
+  const g = (id: string, shot?: string): PlayerGoal => ({
+    id, student_id: 'p1', horizon: 'lessons10', shot_type: shot,
+  });
+
+  it('is nul zonder doelen', () => {
+    expect(filledGoalCount([])).toBe(0);
+  });
+
+  it('telt één ingevuld doel', () => {
+    expect(filledGoalCount([g('a', 'Forehand')])).toBe(1);
+  });
+
+  it('telt meerdere ingevulde doelen', () => {
+    expect(filledGoalCount([g('a', 'Forehand'), g('b', 'Opslag'), g('c', 'Volley')])).toBe(3);
+  });
+
+  it('telt een mix van ingevulde en lege doelen — alleen de ingevulde tellen mee', () => {
+    expect(filledGoalCount([g('a'), g('b', 'Opslag'), g('c')])).toBe(1);
+  });
+});
+
+describe('goalCountLabel', () => {
+  it('gebruikt enkelvoud bij één doel', () => {
+    expect(goalCountLabel(1)).toBe('1 doel');
+  });
+
+  it('gebruikt meervoud bij nul of meer dan één doel', () => {
+    expect(goalCountLabel(0)).toBe('0 doelen');
+    expect(goalCountLabel(2)).toBe('2 doelen');
   });
 });
 

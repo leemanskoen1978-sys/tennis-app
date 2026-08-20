@@ -70,14 +70,25 @@ export function goalSummary(
 
 /**
  * Wat er van een horizon op de compacte regel staat. Alleen ingevulde doelen tellen mee: een
- * zojuist toegevoegd, nog leeg doel mag de regel niet vullen. Zijn het er meer, dan volgt het
- * aantal erachter, zodat je ziet dat er meer achter de tik zit dan die ene regel.
+ * zojuist toegevoegd, nog leeg doel mag de regel niet vullen. Het aantal staat er inmiddels
+ * apart naast (zie filledGoalCount), dus deze regel beschrijft alleen nog het eerste doel.
  */
 export function horizonSummary(goals: PlayerGoal[]): string {
   const filled = goals.filter((g) => !isEmptyGoal(g));
-  if (filled.length === 0) return '';
-  const first = goalSummary(filled[0]);
-  return filled.length === 1 ? first : `${first} · +${filled.length - 1}`;
+  return filled.length === 0 ? '' : goalSummary(filled[0]);
+}
+
+/**
+ * Hoeveel doelen onder deze horizon zijn ingevuld — voor de badge naast de horizonnaam.
+ * Zelfde telling als horizonSummary: een nog leeg doel telt niet mee.
+ */
+export function filledGoalCount(goals: PlayerGoal[]): number {
+  return goals.filter((g) => !isEmptyGoal(g)).length;
+}
+
+/** "1 doel" tegenover "3 doelen" — het label op die badge. */
+export function goalCountLabel(count: number): string {
+  return count === 1 ? '1 doel' : `${count} doelen`;
 }
 
 export function newGoalId(): string {
