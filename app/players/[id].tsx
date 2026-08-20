@@ -1,26 +1,23 @@
-import { useState } from 'react';
-import { View, Text, TextInput, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Star, Plus, X, CheckCircle2, Circle, BookOpen, CalendarPlus } from 'lucide-react-native';
+import { Plus, CheckCircle2, Circle, BookOpen, CalendarPlus } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Chip } from '../../components/ui/Chip';
 import { Badge } from '../../components/ui/Badge';
-import { VoiceRecorder } from '../../components/VoiceRecorder';
 import { LessonDetailModal } from '../../components/LessonDetailModal';
+import { AssignLessonModal } from '../../components/AssignLessonModal';
 import { PlayerGoals } from '../../components/PlayerGoals';
-import {
-  TRAINING_TYPES, TRAINING_LABELS, byDateDesc, ProgressEntryCard, ReportSummary,
-} from '../../components/progress/ProgressViews';
+import { ProgressForm } from '../../components/progress/ProgressForm';
+import { byDateDesc, ProgressEntryCard, ReportSummary } from '../../components/progress/ProgressViews';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { coachesForPlayer } from '../../lib/relations';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
 import { tennisColors } from '../../constants/tennis-colors';
-import { spacing, radius, typography, shadow, webCursor } from '../../constants/theme';
-import type { Lesson, PaymentMethod, TrainingType } from '../../lib/types';
-
-const RATINGS = [1, 2, 3, 4, 5] as const;
+import { spacing, typography, webCursor } from '../../constants/theme';
+import type { Lesson, PaymentMethod } from '../../lib/types';
 
 function fmtDay(iso: string): string {
   return new Date(iso).toLocaleDateString('nl-BE', { weekday: 'short', day: '2-digit', month: 'short' });
@@ -29,25 +26,22 @@ function fmtTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * Het dossier leest van boven naar onder zoals een trainer eraan denkt: wie is dit en wat
+ * staat er gepland, dan het werk (voortgang en doelen), dan het materiaal, en pas onderaan
+ * de administratie die je maar één keer instelt.
+ */
 export default function PlayerDossier() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const {
-    currentUser, users, bookings, courts, lessons, progress,
-    addLesson, updateLesson, addProgress, updateUser,
+    currentUser, users, bookings, courts, lessons, progress, updateLesson, updateUser,
   } = useSimpleData();
 
   const player = users.find((u) => u.id === id) ?? null;
   const isCoach = currentUser?.role === 'coach';
 
-  // Voortgang form
-  const [type, setType] = useState<TrainingType>('techniek');
-  const [rating, setRating] = useState(0);
-  const [notes, setNotes] = useState('');
-  const [homework, setHomework] = useState('');
-  const [voiceUri, setVoiceUri] = useState<string | undefined>(undefined);
-  const [linkLessonId, setLinkLessonId] = useState<string | null>(null);
-
+  const [progressOpen, setProgressOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [detailLesson, setDetailLesson] = useState<Lesson | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -87,25 +81,9 @@ export default function PlayerDossier() {
   const toggleGiven = (l: Lesson) =>
     updateLesson(l.id, { status: l.status === 'gegeven' ? 'gepland' : 'gegeven' });
 
-  const saveProgress = async () => {
-    if (!currentUser) return;
-    await addProgress({
-      student_id: player.id,
-      coach_id: currentUser.id,
-      training_type: type,
-      rating: rating > 0 ? rating : undefined,
-      notes: notes.trim() || undefined,
-      homework: homework.trim() || undefined,
-      voice_memo_uri: voiceUri,
-      lesson_id: linkLessonId ?? undefined,
-    });
-    setType('techniek'); setRating(0); setNotes(''); setHomework('');
-    setVoiceUri(undefined); setLinkLessonId(null);
-  };
-
   return (
     <Screen>
-      {/* Kop */}
+      {/* Wie is dit */}
       <Card>
         <Text style={styles.name}>{player.name}</Text>
         <Badge label={player.role === 'coach' ? 'Coach' : player.role === 'parent' ? 'Ouder' : 'Speler'} color={tennisColors.primary} />
@@ -131,142 +109,65 @@ export default function PlayerDossier() {
         ) : null}
       </Card>
 
-      {/* Doelen — het kader voor de rest van het dossier */}
-      <PlayerGoals studentId={player.id} canEdit={!!isCoach} />
-
-      {/* Lesdagen */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.section}>Lesdagen</Text>
-        {isCoach ? (
-          <Pressable
-            onPress={() => router.push(`/agenda/new?playerId=${player.id}`)}
-            style={[styles.addLink, webCursor]}
-            accessibilityRole="button"
-            accessibilityLabel={`Nieuwe afspraak met ${player.name}`}
-          >
-            <CalendarPlus size={16} color={tennisColors.primary} />
-            <Text style={styles.addLinkText}>Nieuwe afspraak</Text>
-          </Pressable>
-        ) : null}
-      </View>
+      {/* Wat staat er gepland */}
+      <SectionHeader
+        label="Lesdagen"
+        action={isCoach ? {
+          icon: <CalendarPlus size={16} color={tennisColors.primary} />,
+          label: 'Nieuwe afspraak',
+          accessibilityLabel: `Nieuwe afspraak met ${player.name}`,
+          onPress: () => router.push(`/agenda/new?playerId=${player.id}`),
+        } : undefined}
+      />
       {upcoming.length === 0 && past.length === 0 ? (
         <Text style={styles.muted}>Nog geen afspraken.</Text>
       ) : (
         <>
-          {upcoming.length > 0 ? <Text style={styles.subLabel}>Aankomend</Text> : null}
-          {upcoming.map((b) => (
-            <Card key={b.id} style={styles.rowCard}>
-              <View style={styles.rowLine}>
-                <Text style={styles.rowDay}>{fmtDay(b.start_time)}</Text>
-                <Text style={styles.rowTime}>{fmtTime(b.start_time)}–{fmtTime(b.end_time)}</Text>
-              </View>
-              <Text style={styles.rowMeta}>{courtName(b.court_id)} · {nameOf(b.coach_id)}</Text>
-            </Card>
-          ))}
-          {past.length > 0 ? <Text style={styles.subLabel}>Geweest</Text> : null}
-          {past.slice(0, 6).map((b) => (
-            <Card key={b.id} style={styles.rowCard}>
-              <View style={styles.rowLine}>
-                <Text style={styles.rowDay}>{fmtDay(b.start_time)}</Text>
-                <Text style={styles.rowTime}>{fmtTime(b.start_time)}–{fmtTime(b.end_time)}</Text>
-              </View>
-              <Text style={styles.rowMeta}>{courtName(b.court_id)} · {nameOf(b.coach_id)}</Text>
-            </Card>
-          ))}
+          {upcoming.length > 0 ? (
+            <>
+              <Text style={styles.subLabel}>Aankomend</Text>
+              <Card style={styles.listCard}>
+                {upcoming.map((b, i) => (
+                  <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
+                    <View style={styles.rowLine}>
+                      <Text style={styles.rowDay}>{fmtDay(b.start_time)}</Text>
+                      <Text style={styles.rowTime}>{fmtTime(b.start_time)}–{fmtTime(b.end_time)}</Text>
+                    </View>
+                    <Text style={styles.rowMeta}>{courtName(b.court_id)} · {nameOf(b.coach_id)}</Text>
+                  </View>
+                ))}
+              </Card>
+            </>
+          ) : null}
+          {past.length > 0 ? (
+            <>
+              <Text style={styles.subLabel}>Geweest</Text>
+              <Card style={styles.listCard}>
+                {past.slice(0, 6).map((b, i) => (
+                  <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
+                    <View style={styles.rowLine}>
+                      <Text style={styles.rowDay}>{fmtDay(b.start_time)}</Text>
+                      <Text style={styles.rowTime}>{fmtTime(b.start_time)}–{fmtTime(b.end_time)}</Text>
+                    </View>
+                    <Text style={styles.rowMeta}>{courtName(b.court_id)} · {nameOf(b.coach_id)}</Text>
+                  </View>
+                ))}
+              </Card>
+            </>
+          ) : null}
         </>
       )}
 
-      {/* Lesplan */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.section}>Lesplan</Text>
-        {isCoach ? (
-          <Pressable onPress={() => setAssignOpen(true)} style={[styles.addLink, webCursor]} accessibilityRole="button" accessibilityLabel="Les toewijzen">
-            <Plus size={16} color={tennisColors.primary} />
-            <Text style={styles.addLinkText}>Les toewijzen</Text>
-          </Pressable>
-        ) : null}
-      </View>
-
-      <Text style={styles.subLabel}>Te doen</Text>
-      {planned.length === 0 ? <Text style={styles.muted}>Geen geplande lessen.</Text> : planned.map((l) => (
-        <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given={false} ownerName={nameOf(l.coach_id)} />
-      ))}
-      <Text style={styles.subLabel}>Gegeven</Text>
-      {given.length === 0 ? <Text style={styles.muted}>Nog niets gegeven.</Text> : given.map((l) => (
-        <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given ownerName={nameOf(l.coach_id)} />
-      ))}
-
-      {/* Standaard betaalwijze */}
-      {isCoach ? (
-        <Card style={styles.formCard}>
-          <Text style={styles.cardTitle}>Standaard betaalwijze</Text>
-          <Text style={styles.muted}>
-            Een nieuwe les van {player.name} krijgt deze betaalwijze meteen.
-          </Text>
-          <View style={styles.chipRow}>
-            {PAYMENT_METHODS.map((method) => (
-              <Chip
-                key={method}
-                label={PAYMENT_LABELS[method]}
-                selected={(player.default_payment_method ?? 'open') === method}
-                onPress={() => {
-                  void updateUser(player.id, {
-                    default_payment_method: method as PaymentMethod,
-                  });
-                }}
-              />
-            ))}
-          </View>
-        </Card>
-      ) : null}
-
-      {/* Voortgang */}
-      <Text style={styles.section}>Voortgang</Text>
-
+      {/* Het werk: wat er gebeurd is */}
+      <SectionHeader label="Voortgang" />
       {isCoach && currentUser ? (
-        <Card style={styles.formCard}>
-          <Text style={styles.cardTitle}>Nieuwe voortgang</Text>
-          <Text style={styles.label}>Type training</Text>
-          <View style={styles.chipRow}>
-            {TRAINING_TYPES.map((t) => (
-              <Chip key={t} label={TRAINING_LABELS[t]} selected={t === type} onPress={() => setType(t)} />
-            ))}
-          </View>
-
-          <Text style={styles.label}>Beoordeling</Text>
-          <View style={styles.starRow}>
-            {RATINGS.map((r) => {
-              const active = r <= rating;
-              return (
-                <Pressable key={r} onPress={() => setRating(r === rating ? 0 : r)} style={styles.star} accessibilityRole="button" accessibilityLabel={`${r} sterren`}>
-                  <Star size={28} fill={active ? tennisColors.warning : 'transparent'} color={active ? tennisColors.warning : tennisColors.border} />
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {playerLessons.length > 0 ? (
-            <>
-              <Text style={styles.label}>Koppel aan les (optioneel)</Text>
-              <View style={styles.chipRow}>
-                <Chip label="Geen" selected={linkLessonId === null} onPress={() => setLinkLessonId(null)} />
-                {playerLessons.map((l) => (
-                  <Chip key={l.id} label={l.title} selected={linkLessonId === l.id} onPress={() => setLinkLessonId(l.id)} />
-                ))}
-              </View>
-            </>
-          ) : null}
-
-          <Text style={styles.label}>Notities</Text>
-          <TextInput style={[styles.input, styles.multiline]} value={notes} onChangeText={setNotes} placeholder="Notities over de training" placeholderTextColor={tennisColors.textMuted} multiline />
-          <Text style={styles.label}>Huiswerk</Text>
-          <TextInput style={styles.input} value={homework} onChangeText={setHomework} placeholder="Huiswerk" placeholderTextColor={tennisColors.textMuted} />
-          <Text style={styles.label}>Spraakmemo</Text>
-          <VoiceRecorder value={voiceUri} onRecorded={setVoiceUri} onClear={() => setVoiceUri(undefined)} />
-          <Button label="Opslaan" variant="primary" onPress={saveProgress} style={styles.saveBtn} />
-        </Card>
+        <Button
+          label="Voortgang toevoegen"
+          variant="secondary"
+          icon={<Plus size={16} color={tennisColors.text} />}
+          onPress={() => setProgressOpen(true)}
+        />
       ) : null}
-
       {entries.length === 0 ? (
         <Text style={styles.muted}>Nog geen voortgang.</Text>
       ) : (
@@ -278,94 +179,112 @@ export default function PlayerDossier() {
         </>
       )}
 
+      {/* Het werk: waar het naartoe gaat */}
+      <PlayerGoals studentId={player.id} canEdit={!!isCoach} />
+
+      {/* Het materiaal */}
+      <SectionHeader
+        label="Lesplan"
+        action={isCoach ? {
+          icon: <Plus size={16} color={tennisColors.primary} />,
+          label: 'Les toewijzen',
+          accessibilityLabel: 'Les toewijzen',
+          onPress: () => setAssignOpen(true),
+        } : undefined}
+      />
+      <Text style={styles.subLabel}>Te doen</Text>
+      {planned.length === 0 ? <Text style={styles.muted}>Geen geplande lessen.</Text> : (
+        <Card style={styles.listCard}>
+          {planned.map((l, i) => (
+            <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given={false} ownerName={nameOf(l.coach_id)} divided={i > 0} />
+          ))}
+        </Card>
+      )}
+      <Text style={styles.subLabel}>Gegeven</Text>
+      {given.length === 0 ? <Text style={styles.muted}>Nog niets gegeven.</Text> : (
+        <Card style={styles.listCard}>
+          {given.map((l, i) => (
+            <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given ownerName={nameOf(l.coach_id)} divided={i > 0} />
+          ))}
+        </Card>
+      )}
+
+      {/* De administratie: één keer instellen, daarna vergeten */}
+      {isCoach ? (
+        <>
+          <SectionHeader label="Administratie" />
+          <Card>
+            <Text style={styles.cardTitle}>Standaard betaalwijze</Text>
+            <Text style={styles.muted}>
+              Een nieuwe les van {player.name} krijgt deze betaalwijze meteen.
+            </Text>
+            <View style={styles.chipRow}>
+              {PAYMENT_METHODS.map((method) => (
+                <Chip
+                  key={method}
+                  label={PAYMENT_LABELS[method]}
+                  selected={(player.default_payment_method ?? 'open') === method}
+                  onPress={() => {
+                    void updateUser(player.id, {
+                      default_payment_method: method as PaymentMethod,
+                    });
+                  }}
+                />
+              ))}
+            </View>
+          </Card>
+        </>
+      ) : null}
+
       <LessonDetailModal lesson={detailLesson} visible={detailOpen} onClose={() => setDetailOpen(false)} canEdit={!!isCoach} />
       <AssignLessonModal visible={assignOpen} onClose={() => setAssignOpen(false)} playerId={player.id} />
+      <ProgressForm visible={progressOpen} onClose={() => setProgressOpen(false)} studentId={player.id} />
     </Screen>
   );
 }
 
-function PlanRow({ lesson, onOpen, onToggle, canEdit, given, ownerName }: {
-  lesson: Lesson; onOpen: () => void; onToggle: () => void; canEdit: boolean; given: boolean;
-  ownerName?: string;
+/** Sectiekopje in de stijl van de rest van de app, met eventueel één actie rechts. */
+function SectionHeader({ label, action }: {
+  label: string;
+  action?: { icon: ReactNode; label: string; accessibilityLabel: string; onPress: () => void };
 }) {
   return (
-    <Card style={styles.rowCard}>
-      <View style={styles.planRow}>
-        <Pressable onPress={onOpen} style={[styles.planOpen, webCursor]} accessibilityRole="button" accessibilityLabel={lesson.title}>
-          <BookOpen size={18} color={tennisColors.primary} />
-          <View style={styles.planTitleWrap}>
-            <Text style={styles.planTitle} numberOfLines={1}>{lesson.title}</Text>
-            {ownerName ? <Text style={styles.planOwner}>van {ownerName}</Text> : null}
-          </View>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionLabel}>{label}</Text>
+      {action ? (
+        <Pressable
+          onPress={action.onPress}
+          style={[styles.addLink, webCursor]}
+          accessibilityRole="button"
+          accessibilityLabel={action.accessibilityLabel}
+        >
+          {action.icon}
+          <Text style={styles.addLinkText}>{action.label}</Text>
         </Pressable>
-        {canEdit ? (
-          <Pressable onPress={onToggle} style={[styles.toggle, webCursor]} accessibilityRole="button" accessibilityLabel={given ? 'Terug naar gepland' : 'Markeer als gegeven'}>
-            {given ? <CheckCircle2 size={22} color={tennisColors.success} /> : <Circle size={22} color={tennisColors.textMuted} />}
-          </Pressable>
-        ) : null}
-      </View>
-    </Card>
+      ) : null}
+    </View>
   );
 }
 
-function AssignLessonModal({ visible, onClose, playerId }: { visible: boolean; onClose: () => void; playerId: string }) {
-  const { currentUser, users, lessons, addLesson, updateLesson } = useSimpleData();
-  const ownerName = (uid?: string) => users.find((u) => u.id === uid)?.name ?? 'Onbekend';
-  const [title, setTitle] = useState('');
-  const [url, setUrl] = useState('');
-
-  // The whole library, not just your own material: coaches share what they make. The
-  // !student_id check stays — that hides lessons already assigned to a player.
-  const library = lessons.filter((l) => !l.student_id);
-
-  const assign = (lessonId: string) => updateLesson(lessonId, { student_id: playerId, status: 'gepland' });
-
-  const create = async () => {
-    if (!currentUser || !title.trim()) return;
-    await addLesson({
-      title: title.trim(),
-      url: url.trim() || undefined,
-      uploaded_by: currentUser.id,
-      coach_id: currentUser.id,
-      student_id: playerId,
-      status: 'gepland',
-    });
-    setTitle(''); setUrl('');
-    onClose();
-  };
-
+function PlanRow({ lesson, onOpen, onToggle, canEdit, given, ownerName, divided }: {
+  lesson: Lesson; onOpen: () => void; onToggle: () => void; canEdit: boolean; given: boolean;
+  ownerName?: string; divided: boolean;
+}) {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Les toewijzen</Text>
-            <Pressable onPress={onClose} style={webCursor} accessibilityRole="button" accessibilityLabel="Sluiten"><X size={22} color={tennisColors.textMuted} /></Pressable>
-          </View>
-          <ScrollView contentContainerStyle={styles.sheetBody}>
-            <Text style={styles.label}>Nieuwe les</Text>
-            <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Titel" placeholderTextColor={tennisColors.textMuted} />
-            <TextInput style={styles.input} value={url} onChangeText={setUrl} placeholder="Video-URL (optioneel)" placeholderTextColor={tennisColors.textMuted} autoCapitalize="none" />
-            <Button label="Aanmaken & toewijzen" variant="primary" onPress={create} disabled={!title.trim()} />
-
-            {library.length > 0 ? (
-              <>
-                <Text style={[styles.label, { marginTop: spacing.lg }]}>Uit bibliotheek</Text>
-                {library.map((l) => (
-                  <View key={l.id} style={styles.libRow}>
-                    <View style={styles.libTitleWrap}>
-                      <Text style={styles.libTitle} numberOfLines={1}>{l.title}</Text>
-                      <Text style={styles.libOwner}>van {ownerName(l.coach_id ?? l.uploaded_by)}</Text>
-                    </View>
-                    <Button label="Toewijzen" variant="secondary" fullWidth={false} onPress={() => { assign(l.id); onClose(); }} />
-                  </View>
-                ))}
-              </>
-            ) : null}
-          </ScrollView>
+    <View style={[styles.planRow, styles.listRow, divided && styles.divided]}>
+      <Pressable onPress={onOpen} style={[styles.planOpen, webCursor]} accessibilityRole="button" accessibilityLabel={lesson.title}>
+        <BookOpen size={18} color={tennisColors.primary} />
+        <View style={styles.planTitleWrap}>
+          <Text style={styles.planTitle} numberOfLines={1}>{lesson.title}</Text>
+          {ownerName ? <Text style={styles.planOwner}>van {ownerName}</Text> : null}
         </View>
-      </View>
-    </Modal>
+      </Pressable>
+      {canEdit ? (
+        <Pressable onPress={onToggle} style={[styles.toggle, webCursor]} accessibilityRole="button" accessibilityLabel={given ? 'Terug naar gepland' : 'Markeer als gegeven'}>
+          {given ? <CheckCircle2 size={22} color={tennisColors.success} /> : <Circle size={22} color={tennisColors.textMuted} />}
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -376,11 +295,18 @@ const styles = StyleSheet.create({
   coachRowItem: { flexDirection: 'row', alignItems: 'center' },
   coachRowLabel: { fontSize: 14, fontWeight: '600', color: tennisColors.text },
   coachLink: { fontSize: 14, fontWeight: '600', color: tennisColors.primary, textDecorationLine: 'underline' },
-  section: { ...typography.h2, color: tennisColors.text, marginTop: spacing.sm },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.lg },
+  sectionLabel: {
+    ...typography.label,
+    color: tennisColors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   subLabel: { fontSize: 13, fontWeight: '700', color: tennisColors.textMuted, marginTop: spacing.sm, textTransform: 'uppercase' },
   muted: { color: tennisColors.textMuted, fontSize: 14 },
-  rowCard: { paddingVertical: spacing.md },
+  listCard: { gap: 0, paddingVertical: spacing.xs },
+  listRow: { paddingVertical: spacing.md },
+  divided: { borderTopWidth: 1, borderTopColor: tennisColors.border },
   rowLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowDay: { fontSize: 15, fontWeight: '700', color: tennisColors.text, textTransform: 'capitalize' },
   rowTime: { fontSize: 14, color: tennisColors.text },
@@ -393,29 +319,6 @@ const styles = StyleSheet.create({
   toggle: { padding: 4 },
   addLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   addLinkText: { fontSize: 13, fontWeight: '700', color: tennisColors.primary },
-  formCard: { marginTop: spacing.sm },
   cardTitle: { fontSize: 18, fontWeight: '700', color: tennisColors.text, marginBottom: spacing.sm },
-  label: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted, marginTop: spacing.md, marginBottom: spacing.xs },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  starRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  star: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  input: {
-    borderWidth: 1, borderColor: tennisColors.border, borderRadius: radius.sm,
-    paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: tennisColors.text,
-    backgroundColor: tennisColors.surface, marginBottom: spacing.sm,
-  },
-  multiline: { minHeight: 72, textAlignVertical: 'top' },
-  saveBtn: { marginTop: spacing.lg },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: tennisColors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl, maxHeight: '85%', ...shadow('lg'),
-  },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
-  sheetTitle: { ...typography.h2, color: tennisColors.text },
-  sheetBody: { paddingBottom: spacing.lg },
-  libRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: tennisColors.border },
-  libTitleWrap: { flex: 1 },
-  libTitle: { fontSize: 14, color: tennisColors.text },
-  libOwner: { fontSize: 12, color: tennisColors.textMuted, marginTop: 1 },
 });

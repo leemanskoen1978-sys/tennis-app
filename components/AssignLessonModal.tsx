@@ -1,0 +1,94 @@
+import { useState } from 'react';
+import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { X } from 'lucide-react-native';
+import { Button } from './ui/Button';
+import { useSimpleData } from '../providers/SimpleDataProvider';
+import { tennisColors } from '../constants/tennis-colors';
+import { spacing, radius, typography, shadow, webCursor } from '../constants/theme';
+
+/** Een les aan een speler hangen: nieuw aanmaken, of er een uit de gedeelde bibliotheek kiezen. */
+export function AssignLessonModal({ visible, onClose, playerId }: {
+  visible: boolean;
+  onClose: () => void;
+  playerId: string;
+}) {
+  const { currentUser, users, lessons, addLesson, updateLesson } = useSimpleData();
+  const ownerName = (uid?: string) => users.find((u) => u.id === uid)?.name ?? 'Onbekend';
+  const [title, setTitle] = useState('');
+  const [url, setUrl] = useState('');
+
+  // The whole library, not just your own material: coaches share what they make. The
+  // !student_id check stays — that hides lessons already assigned to a player.
+  const library = lessons.filter((l) => !l.student_id);
+
+  const assign = (lessonId: string) => updateLesson(lessonId, { student_id: playerId, status: 'gepland' });
+
+  const create = async () => {
+    if (!currentUser || !title.trim()) return;
+    await addLesson({
+      title: title.trim(),
+      url: url.trim() || undefined,
+      uploaded_by: currentUser.id,
+      coach_id: currentUser.id,
+      student_id: playerId,
+      status: 'gepland',
+    });
+    setTitle(''); setUrl('');
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.backdrop}>
+        <View style={styles.sheet}>
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>Les toewijzen</Text>
+            <Pressable onPress={onClose} style={webCursor} accessibilityRole="button" accessibilityLabel="Sluiten"><X size={22} color={tennisColors.textMuted} /></Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.sheetBody}>
+            <Text style={styles.label}>Nieuwe les</Text>
+            <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Titel" placeholderTextColor={tennisColors.textMuted} />
+            <TextInput style={styles.input} value={url} onChangeText={setUrl} placeholder="Video-URL (optioneel)" placeholderTextColor={tennisColors.textMuted} autoCapitalize="none" />
+            <Button label="Aanmaken & toewijzen" variant="primary" onPress={create} disabled={!title.trim()} />
+
+            {library.length > 0 ? (
+              <>
+                <Text style={[styles.label, { marginTop: spacing.lg }]}>Uit bibliotheek</Text>
+                {library.map((l) => (
+                  <View key={l.id} style={styles.libRow}>
+                    <View style={styles.libTitleWrap}>
+                      <Text style={styles.libTitle} numberOfLines={1}>{l.title}</Text>
+                      <Text style={styles.libOwner}>van {ownerName(l.coach_id ?? l.uploaded_by)}</Text>
+                    </View>
+                    <Button label="Toewijzen" variant="secondary" fullWidth={false} onPress={() => { assign(l.id); onClose(); }} />
+                  </View>
+                ))}
+              </>
+            ) : null}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: tennisColors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl, maxHeight: '85%', ...shadow('lg'),
+  },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
+  sheetTitle: { ...typography.h2, color: tennisColors.text },
+  sheetBody: { paddingBottom: spacing.lg },
+  label: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted, marginTop: spacing.md, marginBottom: spacing.xs },
+  input: {
+    borderWidth: 1, borderColor: tennisColors.border, borderRadius: radius.sm,
+    paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: tennisColors.text,
+    backgroundColor: tennisColors.surface, marginBottom: spacing.sm,
+  },
+  libRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: tennisColors.border },
+  libTitleWrap: { flex: 1 },
+  libTitle: { fontSize: 14, color: tennisColors.text },
+  libOwner: { fontSize: 12, color: tennisColors.textMuted, marginTop: 1 },
+});

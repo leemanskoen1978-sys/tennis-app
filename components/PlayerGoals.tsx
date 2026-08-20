@@ -179,7 +179,13 @@ function GoalFields({
 
 const styles = StyleSheet.create({
   heading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg },
-  headingText: { ...typography.h2, color: tennisColors.text },
+  // Zelfde kopstijl als de andere secties van het dossier, anders leest het als een los scherm.
+  headingText: {
+    ...typography.label,
+    color: tennisColors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   card: { gap: spacing.xs, zIndex: 1 },
   horizon: { fontSize: 15, fontWeight: '800', color: tennisColors.primaryDark },
   goal: {
