@@ -45,6 +45,25 @@ jobs:
       - name: Tests
         run: npm test -- --ci
 
+      - name: Sleutels nakijken
+        # Een half ingevulde set is altijd een vergissing, en die vergissing is stil: de
+        # app valt dan terug op de opslag van de browser en ziet er verder normaal uit.
+        # Eén keer gebeurd met een secret dat leeg werd opgeslagen; sindsdien stopt de
+        # build daarop in plaats van een website op te leveren die niets bewaart.
+        env:
+          URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -n "$URL" ] && [ -n "$KEY" ]; then
+            echo "Supabase-sleutels gevonden."
+          elif [ -z "$URL" ] && [ -z "$KEY" ]; then
+            echo "::warning::Geen Supabase-sleutels: de site draait op de opslag van de browser."
+          else
+            echo "::error::Er is maar één van de twee sleutels gezet. Zo bouwt de site wel," \
+                 "maar bewaart hij niets in de databank."
+            exit 1
+          fi
+
       - name: Website bouwen
         run: npx expo export -p web
         env:
