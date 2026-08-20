@@ -3,6 +3,8 @@ import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 
 import { Star, X } from 'lucide-react-native';
 import { Button } from '../ui/Button';
 import { Chip } from '../ui/Chip';
+import { StudentCombobox } from '../ui/StudentCombobox';
+import { UserManagement } from '../UserManagement';
 import { VoiceRecorder } from '../VoiceRecorder';
 import { AudioMemo, Stars, TRAINING_TYPES, TRAINING_LABELS, formatDate } from './ProgressViews';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
@@ -19,17 +21,28 @@ const RATINGS = [1, 2, 3, 4, 5] as const;
  *
  * Staat in een blad en niet op het dossier zelf: een trainer vult dit hooguit na een les
  * in, terwijl hij het dossier de rest van de tijd leest.
+ *
+ * De speler komt van buiten mee (vanuit zijn dossier is die keuze al gemaakt) óf wordt
+ * bovenin het blad gekozen. Dat tweede is er voor het Spelers-scherm: daar wil een trainer
+ * na zijn lesdag een notitie kwijt zonder eerst het juiste dossier op te zoeken.
  */
 export function ProgressForm({ visible, onClose, studentId, entry = null, canEdit = true }: {
   visible: boolean;
   onClose: () => void;
-  studentId: string;
+  /** De speler waarover het gaat. Ontbreekt hij, dan kiest het blad zelf een speler. */
+  studentId?: string;
   /** De notitie die bewerkt wordt; `null` betekent een nieuwe. */
   entry?: StudentProgress | null;
   /** Alleen een trainer wijzigt of verwijdert; een speler mag wel lezen wat er staat. */
   canEdit?: boolean;
 }) {
-  const { currentUser, lessons, addProgress, updateProgress, deleteProgress } = useSimpleData();
+  const { currentUser, users, lessons, addProgress, updateProgress, deleteProgress } = useSimpleData();
+
+  // De speler die in het blad gekozen wordt. Alleen in beeld als er van buiten geen speler
+  // meekwam; anders blijft dit ongebruikt en staat het blad er precies zo bij als voorheen.
+  const [pickedId, setPickedId] = useState<string | null>(entry?.student_id ?? null);
+  // De getypte naam van een nog onbekende speler; is die er, dan staat het invulscherm open.
+  const [newPlayerName, setNewPlayerName] = useState<string | null>(null);
 
   const [type, setType] = useState<TrainingType>(entry?.training_type ?? 'techniek');
   const [rating, setRating] = useState(entry?.rating ?? 0);
@@ -51,9 +64,14 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
     setVoiceUri(entry?.voice_memo_uri);
     setLinkLessonId(entry?.lesson_id ?? null);
     setConfirmingDelete(false);
+    setPickedId(entry?.student_id ?? null);
+    setNewPlayerName(null);
   }, [visible, entry?.id]);
 
-  const playerLessons = lessons.filter((l) => l.student_id === studentId);
+  // Wie de notitie krijgt: van buiten meegegeven, anders wat er in het blad gekozen is.
+  const targetId = studentId ?? pickedId;
+  const players = users.filter((u) => u.role !== 'coach');
+  const playerLessons = targetId ? lessons.filter((l) => l.student_id === targetId) : [];
 
   /** Wat er in de velden staat, in de vorm waarin het bewaard wordt. */
   const fields = () => ({
@@ -68,12 +86,13 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
   const persist = async (): Promise<void> => {
     // `created_at` gaat niet mee: een rechtgezette notitie hoort op zijn eigen datum
     // te blijven staan, anders springt hij bij elke correctie bovenaan het dossier.
+    if (!targetId) return;
     if (entry) {
       await updateProgress(entry.id, fields());
       return;
     }
     if (!currentUser) return;
-    await addProgress({ ...fields(), student_id: studentId, coach_id: currentUser.id });
+    await addProgress({ ...fields(), student_id: targetId, coach_id: currentUser.id });
   };
 
   const save = async (): Promise<void> => {
@@ -138,88 +157,140 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
               ) : null}
             </ScrollView>
           ) : (
-            <ScrollView contentContainerStyle={styles.sheetBody}>
-              <Text style={styles.label}>Type training</Text>
-              <View style={styles.chipRow}>
-                {TRAINING_TYPES.map((t) => (
-                  <Chip key={t} label={TRAINING_LABELS[t]} selected={t === type} onPress={() => setType(t)} />
-                ))}
-              </View>
+            <>
+              <ScrollView contentContainerStyle={styles.sheetBody}>
+                {/* Alleen als de speler nog niet vastligt. Vanuit een dossier is die keuze al
+                    gemaakt en zou een keuzeveld alleen maar uitnodigen om hem te verzetten. */}
+                {studentId === undefined ? (
+                  <>
+                    <Text style={styles.label}>Speler</Text>
+                    <StudentCombobox
+                      students={players}
+                      value={pickedId}
+                      onChange={(id) => {
+                        setPickedId(id);
+                        // Een les van de vorige speler hoort niet aan deze notitie te blijven hangen.
+                        setLinkLessonId(null);
+                      }}
+                      placeholder="Typ de naam van de speler…"
+                      onRequestCreate={setNewPlayerName}
+                    />
+                  </>
+                ) : null}
 
-              <Text style={styles.label}>Beoordeling</Text>
-              <View style={styles.starRow}>
-                {RATINGS.map((r) => {
-                  const active = r <= rating;
-                  return (
-                    <Pressable key={r} onPress={() => setRating(r === rating ? 0 : r)} style={styles.star} accessibilityRole="button" accessibilityLabel={`${r} sterren`}>
-                      <Star size={28} fill={active ? tennisColors.warning : 'transparent'} color={active ? tennisColors.warning : tennisColors.border} />
-                    </Pressable>
-                  );
-                })}
-              </View>
+                <Text style={styles.label}>Type training</Text>
+                <View style={styles.chipRow}>
+                  {TRAINING_TYPES.map((t) => (
+                    <Chip key={t} label={TRAINING_LABELS[t]} selected={t === type} onPress={() => setType(t)} />
+                  ))}
+                </View>
 
-              {playerLessons.length > 0 ? (
-                <>
-                  <Text style={styles.label}>Koppel aan les (optioneel)</Text>
-                  <View style={styles.chipRow}>
-                    <Chip label="Geen" selected={linkLessonId === null} onPress={() => setLinkLessonId(null)} />
-                    {playerLessons.map((l) => (
-                      <Chip key={l.id} label={l.title} selected={linkLessonId === l.id} onPress={() => setLinkLessonId(l.id)} />
-                    ))}
-                  </View>
-                </>
-              ) : null}
+                <Text style={styles.label}>Beoordeling</Text>
+                <View style={styles.starRow}>
+                  {RATINGS.map((r) => {
+                    const active = r <= rating;
+                    return (
+                      <Pressable key={r} onPress={() => setRating(r === rating ? 0 : r)} style={styles.star} accessibilityRole="button" accessibilityLabel={`${r} sterren`}>
+                        <Star size={28} fill={active ? tennisColors.warning : 'transparent'} color={active ? tennisColors.warning : tennisColors.border} />
+                      </Pressable>
+                    );
+                  })}
+                </View>
 
-              <Text style={styles.label}>Notities</Text>
-              <TextInput style={[styles.input, styles.multiline]} value={notes} onChangeText={setNotes} placeholder="Notities over de training" placeholderTextColor={tennisColors.textMuted} accessibilityLabel="Notities" multiline />
-              <Text style={styles.label}>Huiswerk</Text>
-              <TextInput style={styles.input} value={homework} onChangeText={setHomework} placeholder="Huiswerk" placeholderTextColor={tennisColors.textMuted} accessibilityLabel="Huiswerk" />
-              <Text style={styles.label}>Spraakmemo</Text>
-              <VoiceRecorder value={voiceUri} onRecorded={setVoiceUri} onClear={() => setVoiceUri(undefined)} />
-              <Button label="Opslaan" variant="primary" onPress={() => { void save(); }} style={styles.saveBtn} />
+                {playerLessons.length > 0 ? (
+                  <>
+                    <Text style={styles.label}>Koppel aan les (optioneel)</Text>
+                    <View style={styles.chipRow}>
+                      <Chip label="Geen" selected={linkLessonId === null} onPress={() => setLinkLessonId(null)} />
+                      {playerLessons.map((l) => (
+                        <Chip key={l.id} label={l.title} selected={linkLessonId === l.id} onPress={() => setLinkLessonId(l.id)} />
+                      ))}
+                    </View>
+                  </>
+                ) : null}
 
-              {/* Verwijderen staat onderaan en achter een vraag: het is het einde van
-                  deze notitie, niet iets wat je in het voorbijgaan aantikt. */}
-              {entry ? (
-                confirmingDelete ? (
-                  <View style={styles.confirmBox}>
-                    <Text style={styles.confirmText}>
-                      Deze voortgangsnotitie verwijderen? Dat kan niet ongedaan gemaakt worden.
-                    </Text>
+                <Text style={styles.label}>Notities</Text>
+                {/* De voorbeeldtekst zegt wát er verwacht wordt; "Notities" alleen liet een
+                    trainer raden of hier de les of de speler beschreven moet worden. */}
+                <TextInput style={[styles.input, styles.multiline]} value={notes} onChangeText={setNotes} placeholder="Beschrijf waar jullie deze les aan gewerkt hebben…" placeholderTextColor={tennisColors.textMuted} accessibilityLabel="Notities" multiline />
+                <Text style={styles.label}>Huiswerk</Text>
+                <TextInput style={styles.input} value={homework} onChangeText={setHomework} placeholder="Huiswerk" placeholderTextColor={tennisColors.textMuted} accessibilityLabel="Huiswerk" />
+                <Text style={styles.label}>Spraakmemo</Text>
+                <VoiceRecorder value={voiceUri} onRecorded={setVoiceUri} onClear={() => setVoiceUri(undefined)} />
+
+                {/* Verwijderen staat onderaan en achter een vraag: het is het einde van
+                    deze notitie, niet iets wat je in het voorbijgaan aantikt. */}
+                {entry ? (
+                  confirmingDelete ? (
+                    <View style={styles.confirmBox}>
+                      <Text style={styles.confirmText}>
+                        Deze voortgangsnotitie verwijderen? Dat kan niet ongedaan gemaakt worden.
+                      </Text>
+                      <View style={styles.confirmRow}>
+                        <Button
+                          label="Ja, verwijderen"
+                          variant="danger"
+                          fullWidth={false}
+                          onPress={() => {
+                            void deleteProgress(entry.id);
+                            setConfirmingDelete(false);
+                            onClose();
+                          }}
+                        />
+                        <Button
+                          label="Nee"
+                          variant="secondary"
+                          fullWidth={false}
+                          onPress={() => setConfirmingDelete(false)}
+                        />
+                      </View>
+                    </View>
+                  ) : (
                     <View style={styles.confirmRow}>
                       <Button
-                        label="Ja, verwijderen"
+                        label="Verwijderen"
                         variant="danger"
                         fullWidth={false}
-                        onPress={() => {
-                          void deleteProgress(entry.id);
-                          setConfirmingDelete(false);
-                          onClose();
-                        }}
-                      />
-                      <Button
-                        label="Nee"
-                        variant="secondary"
-                        fullWidth={false}
-                        onPress={() => setConfirmingDelete(false)}
+                        onPress={() => setConfirmingDelete(true)}
                       />
                     </View>
-                  </View>
-                ) : (
-                  <View style={styles.confirmRow}>
-                    <Button
-                      label="Verwijderen"
-                      variant="danger"
-                      fullWidth={false}
-                      onPress={() => setConfirmingDelete(true)}
-                    />
-                  </View>
-                )
-              ) : null}
-            </ScrollView>
+                  )
+                ) : null}
+              </ScrollView>
+
+              {/* De twee knoppen staan vast onderaan het blad en scrollen niet mee: bij een
+                  lange notitie zocht je anders eerst de knop Opslaan terug. Annuleren sluit
+                  zonder te bewaren — dat is iets anders dan de kruisknop, die een lopende
+                  correctie juist vasthoudt. */}
+              <View style={styles.footer}>
+                <Button label="Annuleren" variant="secondary" fullWidth={false} onPress={onClose} style={styles.footerBtn} />
+                <Button
+                  label="Opslaan"
+                  variant="primary"
+                  fullWidth={false}
+                  // Zonder speler is er niets om de notitie aan te hangen.
+                  disabled={!targetId}
+                  onPress={() => { void save(); }}
+                  style={styles.footerBtn}
+                />
+              </View>
+            </>
           )}
         </View>
       </View>
+
+      {/* Het volledige invulscherm voor een speler die nog niet bestaat. Zodra hij bewaard
+          is, is hij ook meteen de speler van deze notitie. */}
+      <UserManagement
+        visible={newPlayerName !== null}
+        initialName={newPlayerName ?? ''}
+        onClose={() => setNewPlayerName(null)}
+        onCreated={(u) => {
+          setPickedId(u.id);
+          setLinkLessonId(null);
+          setNewPlayerName(null);
+        }}
+      />
     </Modal>
   );
 }
@@ -249,7 +320,12 @@ const styles = StyleSheet.create({
     backgroundColor: tennisColors.surface, marginBottom: spacing.sm,
   },
   multiline: { minHeight: 72, textAlignVertical: 'top' },
-  saveBtn: { marginTop: spacing.lg },
+  // De vaste rij onderaan: een lijntje erboven zodat hij niet in de velden lijkt te staan.
+  footer: {
+    flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.md,
+    borderTopWidth: 1, borderTopColor: tennisColors.border,
+  },
+  footerBtn: { flex: 1 },
   readType: { fontSize: 15, fontWeight: '700', color: tennisColors.primaryDark },
   readMuted: { fontSize: 13, color: tennisColors.textMuted, marginTop: 2 },
   readValue: { fontSize: 14, color: tennisColors.text, lineHeight: 20 },

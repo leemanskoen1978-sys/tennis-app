@@ -1,6 +1,8 @@
 import {
-  buildLesplan, coachesForPlayer, lesplanSummary, playersForCoach, type Lesplan,
+  buildLesplan, coachesForPlayer, lesplanSummary, nextBookingFor, noteCountLabel,
+  playerListLine, playersForCoach, type Lesplan,
 } from './relations';
+import { formatDayTime } from './datetime';
 import type { Booking, Lesson, StudentProgress } from './types';
 
 const booking = (player: string, coach: string): Booking => ({
@@ -192,5 +194,61 @@ describe('lesplanSummary', () => {
   it('speaks singular and says so when there is nothing', () => {
     expect(lesplanSummary(plan(1, 1))).toBe('1 te doen · 1 notitie');
     expect(lesplanSummary(plan(0, 0))).toBe('niets te doen · geen notities');
+  });
+});
+
+describe('nextBookingFor', () => {
+  const at = (id: string, player: string, start: string, status: Booking['status'] = 'confirmed'): Booking => ({
+    ...booking(player, 'koen'),
+    id,
+    start_time: start,
+    end_time: start,
+    status,
+  });
+  const now = new Date('2026-08-20T09:00:00Z');
+
+  it('has no answer when nothing is planned', () => {
+    expect(nextBookingFor('mathis', [], now)).toBeNull();
+  });
+
+  it('takes the earliest lesson that is still to come', () => {
+    const list = [
+      at('later', 'mathis', '2026-08-25T09:00:00Z'),
+      at('soon', 'mathis', '2026-08-21T09:00:00Z'),
+    ];
+    expect(nextBookingFor('mathis', list, now)?.id).toBe('soon');
+  });
+
+  it('skips the past, other players and cancelled lessons', () => {
+    const list = [
+      at('past', 'mathis', '2026-08-01T09:00:00Z'),
+      at('someone-else', 'lotte', '2026-08-21T09:00:00Z'),
+      at('cancelled', 'mathis', '2026-08-22T09:00:00Z', 'cancelled'),
+      at('good', 'mathis', '2026-08-23T09:00:00Z'),
+    ];
+    expect(nextBookingFor('mathis', list, now)?.id).toBe('good');
+  });
+
+  it('still counts a lesson that starts exactly now', () => {
+    expect(nextBookingFor('mathis', [at('nu', 'mathis', '2026-08-20T09:00:00Z')], now)?.id).toBe('nu');
+  });
+});
+
+describe('noteCountLabel', () => {
+  it('speaks singular, plural and nothing', () => {
+    expect(noteCountLabel(0)).toBe('geen notities');
+    expect(noteCountLabel(1)).toBe('1 notitie');
+    expect(noteCountLabel(4)).toBe('4 notities');
+  });
+});
+
+describe('playerListLine', () => {
+  it('says when the next lesson is, with the note count behind it', () => {
+    const next = { ...booking('mathis', 'koen'), start_time: '2026-08-21T09:00:00Z' };
+    expect(playerListLine(next, 2)).toBe(`Volgende les ${formatDayTime(next.start_time)} · 2 notities`);
+  });
+
+  it('says plainly that nothing is planned', () => {
+    expect(playerListLine(null, 0)).toBe('Geen les gepland · geen notities');
   });
 });

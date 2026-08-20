@@ -4,6 +4,7 @@
 // progress note exists between them. That makes the relation many-to-many for free
 // and it can never go stale: book Mathis with Sanne and Mathis is in Sanne's list.
 
+import { formatDayTime } from './datetime';
 import type { Booking, Lesson, StudentProgress } from './types';
 
 /** Every coach that has a booking, lesson or progress note with this player. */
@@ -113,8 +114,42 @@ export function buildLesplan(
  */
 export function lesplanSummary(plan: Lesplan): string {
   const todo = plan.planned.length > 0 ? `${plan.planned.length} te doen` : 'niets te doen';
-  const notes = plan.entryCount === 0
-    ? 'geen notities'
-    : plan.entryCount === 1 ? '1 notitie' : `${plan.entryCount} notities`;
-  return `${todo} · ${notes}`;
+  return `${todo} · ${noteCountLabel(plan.entryCount)}`;
+}
+
+/** Hoeveel notities er zijn, in woorden: "geen notities", "1 notitie", "3 notities". */
+export function noteCountLabel(count: number): string {
+  if (count <= 0) return 'geen notities';
+  return count === 1 ? '1 notitie' : `${count} notities`;
+}
+
+/**
+ * De eerstvolgende les van een speler: de vroegste die nog moet komen. Geannuleerde lessen
+ * tellen niet mee — die gaan niet door, dus daar hoeft een trainer zich niet op voor te
+ * bereiden. Niets gepland levert `null`, en dat is geen fout maar een antwoord.
+ */
+export function nextBookingFor(
+  playerId: string,
+  bookings: Booking[],
+  now: Date,
+): Booking | null {
+  const from = now.getTime();
+  const upcoming = bookings
+    .filter((b) => b.player_id === playerId && b.status !== 'cancelled')
+    .filter((b) => {
+      const t = new Date(b.start_time).getTime();
+      return Number.isFinite(t) && t >= from;
+    })
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+  return upcoming[0] ?? null;
+}
+
+/**
+ * De ene regel onder de naam in de spelerslijst: wanneer je deze speler weer ziet, en
+ * hoeveel je al over hem genoteerd hebt. Meer niet — een tweede kolom vol cijfers maakt
+ * van een keuzelijst een rapport.
+ */
+export function playerListLine(next: Booking | null, noteCount: number): string {
+  const lesson = next ? `Volgende les ${formatDayTime(next.start_time)}` : 'Geen les gepland';
+  return `${lesson} · ${noteCountLabel(noteCount)}`;
 }
