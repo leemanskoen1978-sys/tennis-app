@@ -1,0 +1,75 @@
+# De website bouwen en online zetten op GitHub Pages.
+#
+# Elke push naar main gaat hier langs. Eerst de controles die lokaal ook draaien (types en
+# tests), dan pas de build: een website die online staat terwijl de tests rood zijn, is
+# erger dan een website die even niet vernieuwt.
+#
+# De Supabase-sleutels komen uit de repository-secrets. Staan ze er niet, dan bouwt hij nog
+# steeds — de app valt dan terug op de opslag van de browser (zie providers/backend). Dat is
+# handig om te tonen, maar niet wat je wilt voor de club.
+
+name: Website
+
+on:
+  push:
+    branches: [main]
+  # Zo kun je hem ook met de hand starten, bijvoorbeeld na het zetten van de sleutels.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Eén build tegelijk; een nieuwe push mag de vorige onderbreken.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  bouwen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Types nakijken
+        run: npx tsc --noEmit
+
+      - name: Tests
+        run: npm test -- --ci
+
+      - name: Website bouwen
+        run: npx expo export -p web
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Klaarzetten voor Pages
+        # De app is één pagina die zelf zijn adressen afhandelt. Vraagt iemand /agenda
+        # rechtstreeks op, dan zoekt Pages een bestand dat er niet is en toont 404.html —
+        # dus dat is dezelfde pagina. .nojekyll houdt de map _expo overeind: Jekyll gooit
+        # mappen met een underscore anders weg, en dan is de hele bundel weg.
+        run: |
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  online-zetten:
+    needs: bouwen
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - id: pages
+        uses: actions/deploy-pages@v4
