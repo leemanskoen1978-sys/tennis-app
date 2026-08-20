@@ -25,13 +25,17 @@ export function countedBookings(bookings: Booking[]): Booking[] {
   return bookings.filter((b) => b.status !== 'cancelled');
 }
 
-/** Het uurtarief per terrein, één keer opgezocht in plaats van per les opnieuw. */
-function ratesById(courts: Court[]): Map<string, number> {
-  return new Map(courts.map((c) => [c.id, c.hourly_rate]));
+/**
+ * Het terrein per id, één keer opgezocht in plaats van per les opnieuw. Het hele terrein en
+ * niet alleen zijn uurtarief: bij een groepsles beslist ook de tariefstaffel mee wat een les
+ * kost (zie `bookingPrice`).
+ */
+function courtsById(courts: Court[]): Map<string, Court> {
+  return new Map(courts.map((c) => [c.id, c]));
 }
 
 /** Wat één les opbrengt; 0 zolang er niets betaalds is afgesproken. */
-function revenueOf(b: Booking, rates: Map<string, number>): number {
+function revenueOf(b: Booking, rates: Map<string, Court>): number {
   if (!PAYABLE_STATUSES.includes(b.status) || !countsAsRevenue(b.payment_method)) return 0;
   return bookingPrice(b, rates.get(b.court_id));
 }
@@ -45,7 +49,7 @@ function revenueOf(b: Booking, rates: Map<string, number>): number {
  * `countsAsRevenue`). Hij telt dus mee als omzet — in de kolom "betaald" — en juist daarom
  * nooit als openstaand: er komt niets meer bij.
  */
-function openAmountOf(b: Booking, rates: Map<string, number>): number {
+function openAmountOf(b: Booking, rates: Map<string, Court>): number {
   if (!PAYABLE_STATUSES.includes(b.status) || b.payment_method !== 'open') return 0;
   return bookingPrice(b, rates.get(b.court_id));
 }
@@ -86,7 +90,7 @@ export function totalsByPlayer(
   courts: Court[],
 ): PlayerTotal[] {
   const nameById = new Map(users.map((u) => [u.id, u.name]));
-  const rates = ratesById(courts);
+  const rates = courtsById(courts);
   const totals = new Map<string, PlayerTotal>();
 
   for (const b of countedBookings(bookings)) {
@@ -213,7 +217,7 @@ export function monthlySeries(
   months: number,
 ): MonthPoint[] {
   const count = Math.max(0, Math.floor(months));
-  const rates = ratesById(courts);
+  const rates = courtsById(courts);
 
   const series: MonthPoint[] = [];
   const index = new Map<string, MonthPoint>();

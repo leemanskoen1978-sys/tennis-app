@@ -2,7 +2,8 @@ import type { Booking, Court, User } from './types';
 import {
   needsPayment, filterPendingPayment, bookingsFor, bookingsByCoach, visibleBookings,
   pendingPaymentsFor, totalRevenue,
-  bookingMinutes, bookingPrice, coachPayout, totalCoachPayout, clubMargin,
+  bookingMinutes, bookingPrice, rateForGroup, bookingsBilledTo,
+  coachPayout, totalCoachPayout, clubMargin,
   defaultMethodFor, paymentMeta, PAYMENT_METHODS, PAYMENT_LABELS,
 } from './payments';
 
@@ -155,16 +156,119 @@ describe('bookingMinutes', () => {
   });
 });
 
+const baan = courts[0];
+/** Tot 2 spelers het gewone tarief, vanaf 3 het groepstarief. */
+const staffelBaan: Court = {
+  ...baan,
+  group_rates: [{ max_players: 2, rate: 30 }, { max_players: 4, rate: 45 }],
+};
+
 describe('bookingPrice', () => {
   it('charges the hourly rate pro rata of the duration', () => {
-    expect(bookingPrice({ ...base, end_time: '2026-08-20T10:30:00.000Z' }, 30)).toBe(15);
-    expect(bookingPrice(base, 30)).toBe(30);
-    expect(bookingPrice({ ...base, end_time: '2026-08-20T11:30:00.000Z' }, 30)).toBe(45);
+    expect(bookingPrice({ ...base, end_time: '2026-08-20T10:30:00.000Z' }, baan)).toBe(15);
+    expect(bookingPrice(base, baan)).toBe(30);
+    expect(bookingPrice({ ...base, end_time: '2026-08-20T11:30:00.000Z' }, baan)).toBe(45);
   });
 
-  it('is 0 without a known rate or with an unusable time', () => {
+  it('is 0 without a known court or with an unusable time', () => {
     expect(bookingPrice(base, undefined)).toBe(0);
-    expect(bookingPrice({ ...base, end_time: 'geen datum' }, 30)).toBe(0);
+    expect(bookingPrice({ ...base, end_time: 'geen datum' }, baan)).toBe(0);
+  });
+
+  it('keeps the plain hourly rate for one player, staffel or not', () => {
+    expect(bookingPrice(base, staffelBaan)).toBe(30);
+    expect(bookingPrice({ ...base, participant_ids: [] }, staffelBaan)).toBe(30);
+  });
+
+  it('keeps the plain hourly rate for a group when the court has no staffel', () => {
+    expect(bookingPrice({ ...base, participant_ids: ['p2', 'p3'] }, baan)).toBe(30);
+  });
+
+  it('charges the step the group fits in — one total for the whole lesson', () => {
+    // Twee spelers vallen nog in de eerste stap, drie en vier in de tweede.
+    expect(bookingPrice({ ...base, participant_ids: ['p2'] }, staffelBaan)).toBe(30);
+    expect(bookingPrice({ ...base, participant_ids: ['p2', 'p3'] }, staffelBaan)).toBe(45);
+    expect(bookingPrice({ ...base, participant_ids: ['p2', 'p3', 'p4'] }, staffelBaan)).toBe(45);
+  });
+
+  it('uses the highest step for a group bigger than the staffel, without inventing an amount', () => {
+    expect(bookingPrice({ ...base, participant_ids: ['p2', 'p3', 'p4', 'p5', 'p6'] }, staffelBaan))
+      .toBe(45);
+  });
+
+  it('does not care in what order the steps were entered', () => {
+    const doorElkaar: Court = {
+      ...baan,
+      group_rates: [{ max_players: 4, rate: 45 }, { max_players: 2, rate: 30 }],
+    };
+    expect(bookingPrice({ ...base, participant_ids: ['p2'] }, doorElkaar)).toBe(30);
+    expect(bookingPrice({ ...base, participant_ids: ['p2', 'p3'] }, doorElkaar)).toBe(45);
+  });
+
+  it('ignores a nonsense step instead of pricing the lesson at 0 or NaN', () => {
+    const rommel: Court = {
+      ...baan,
+      group_rates: [
+        { max_players: 2, rate: Number.NaN },
+        { max_players: 0, rate: 10 },
+        { max_players: 4, rate: 45 },
+      ],
+    };
+    // De kapotte stap valt weg: twee spelers vallen daardoor in "tot 4 spelers".
+    expect(bookingPrice({ ...base, participant_ids: ['p2'] }, rommel)).toBe(45);
+    // Blijft er niets bruikbaars over, dan geldt gewoon het uurtarief.
+    const allesKapot: Court = { ...baan, group_rates: [{ max_players: -1, rate: -5 }] };
+    expect(bookingPrice({ ...base, participant_ids: ['p2', 'p3'] }, allesKapot)).toBe(30);
+  });
+
+  it('counts a participant who no longer exists — the lesson was given with them on court', () => {
+    // De prijs komt uit wat er op de les staat, niet uit de ledenlijst: een verwijderd
+    // account hoort een gegeven les niet met terugwerkende kracht goedkoper te maken.
+    expect(bookingPrice({ ...base, participant_ids: ['weg-1', 'weg-2'] }, staffelBaan)).toBe(45);
+  });
+
+  it('ignores duplicates and the payer standing in his own participant list', () => {
+    expect(bookingPrice({ ...base, participant_ids: ['p2', 'p2', 'p1'] }, staffelBaan)).toBe(30);
+  });
+
+  it('still charges pro rata for a group: half a lesson is half the group amount', () => {
+    expect(bookingPrice(
+      { ...base, end_time: '2026-08-20T10:30:00.000Z', participant_ids: ['p2', 'p3'] },
+      staffelBaan,
+    )).toBe(22.5);
+  });
+});
+
+describe('rateForGroup', () => {
+  it('is the plain hourly rate for one player and without a staffel', () => {
+    expect(rateForGroup(staffelBaan, 1)).toBe(30);
+    expect(rateForGroup(baan, 4)).toBe(30);
+    expect(rateForGroup(undefined, 3)).toBe(0);
+  });
+
+  it('climbs to the step the group fits in and stops at the highest one', () => {
+    expect(rateForGroup(staffelBaan, 2)).toBe(30);
+    expect(rateForGroup(staffelBaan, 3)).toBe(45);
+    expect(rateForGroup(staffelBaan, 9)).toBe(45);
+  });
+});
+
+describe('bookingsBilledTo', () => {
+  it('gives a player only the lessons they pay for, not the ones they join', () => {
+    const list: Booking[] = [base, { ...base, id: '2', player_id: 'p9', participant_ids: ['p1'] }];
+    expect(bookingsBilledTo(player, list).map((b) => b.id)).toEqual(['1']);
+    // Meedoen is iets anders dan betalen: in zijn agenda staan ze allebei.
+    expect(bookingsFor(player, list).map((b) => b.id)).toEqual(['1', '2']);
+  });
+
+  it('leaves a group lesson out of a participant\'s open payments', () => {
+    const groep: Booking = {
+      ...base, id: '2', player_id: 'p9', participant_ids: ['p1'], payment_method: 'open',
+    };
+    const deelnemer: User = { id: 'p1', name: 'Mathis', email: 'm@x.be', role: 'player' };
+    expect(pendingPaymentsFor(deelnemer, [groep])).toEqual([]);
+    const betaler: User = { id: 'p9', name: 'Lotte', email: 'l@x.be', role: 'player' };
+    expect(pendingPaymentsFor(betaler, [groep]).map((b) => b.id)).toEqual(['2']);
   });
 });
 
@@ -234,6 +338,17 @@ describe('coachPayout en totalCoachPayout', () => {
   it('pays a full hour at the whole coach rate', () => {
     expect(coachPayout(base, 24)).toBe(24);
     expect(totalCoachPayout([{ ...base }], coaches)).toBe(24);
+  });
+
+  it('pays the same for a group lesson — one hour given is one hour given', () => {
+    // De club vraagt meer voor een groep, de trainer krijgt daar niets extra van: hij staat
+    // één uur op de baan, met één of met vier spelers.
+    const groepsles: Booking = { ...base, participant_ids: ['p2', 'p3'] };
+    expect(coachPayout(groepsles, 24)).toBe(24);
+    expect(totalCoachPayout(
+      [groepsles],
+      [{ id: 'koen', name: 'Koen', email: 'k@x.be', role: 'coach', hourly_rate: 24 }],
+    )).toBe(24);
   });
 
   it('pays half an hour at half the coach rate, like bookingPrice does for the player', () => {

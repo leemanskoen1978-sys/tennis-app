@@ -43,17 +43,61 @@ export interface User {
   sponsor_budget?: number;
 }
 
+/**
+ * Eén stap van de groepstaffel van een terrein: "tot en met `max_players` spelers kost een
+ * uur les `rate`".
+ *
+ * `rate` is het TOTAAL voor de les, niet het bedrag per speler. Vier spelers op een baan van
+ * € 45 leveren dus € 45 op en geen € 180. Dat is precies het punt waar iemand later verkeerd
+ * gokt, dus het staat hier met zoveel woorden: de betaler betaalt dit bedrag, de anderen
+ * betalen niets.
+ */
+export interface CourtGroupRate {
+  /** Tot en met hoeveel spelers deze stap geldt. */
+  max_players: number;
+  /** Het totaalbedrag per uur voor de hele les, in euro's. */
+  rate: number;
+}
+
 export interface Court {
   id: string;
   name: string;
   number: number;
   indoor: boolean;
+  /** Het gewone uurtarief: wat één speler (of een les zonder staffel) per uur kost. */
   hourly_rate: number;
+  /**
+   * De groepstaffel, bijvoorbeeld [{ max_players: 2, rate: 30 }, { max_players: 4, rate: 45 }]:
+   * "tot 2 spelers € 30, tot 4 spelers € 45". Leeg of afwezig betekent: geen staffel, en dan
+   * geldt `hourly_rate` voor elke groepsgrootte — precies zoals de app zich altijd gedroeg.
+   *
+   * De volgorde van de stappen doet er niet toe; `rateForGroup` in lib/payments sorteert ze
+   * zelf en kiest de laagste stap die groot genoeg is.
+   */
+  group_rates?: CourtGroupRate[];
 }
 
+/**
+ * Eén les. Bij een groepsles staan er meerdere spelers op de baan, maar betaalt er één.
+ *
+ * `player_id` is die betaler, en dat blijft het hart van de les: aan hem hangen de
+ * betaalwijze, de beurtenkaart, het sponsorbudget en de regel "per speler" in het rapport.
+ * De extra deelnemers in `participant_ids` doen mee op de baan maar raken het geld niet —
+ * daarom staan ze apart en niet in één lijst met de betaler. Was het één lijst, dan zou elke
+ * plek die vandaag "de speler van deze les" vraagt (beurt afboeken, sponsorbudget, omzet per
+ * speler) opnieuw moeten kiezen wíe daarvan bedoeld wordt, en dat is precies het soort keuze
+ * dat op vijf schermen vijf antwoorden krijgt.
+ */
 export interface Booking {
   id: string;
+  /** De speler die betaalt. Ook bij een groepsles: één les, één rekening. */
   player_id: string;
+  /**
+   * De andere spelers die meedoen, zonder de betaler. Leeg of afwezig is een gewone les
+   * voor één speler. De groepsgrootte is dus 1 + het aantal hierin — zie `groupSize`
+   * in lib/groups, dat is de enige plek die dat mag uitrekenen.
+   */
+  participant_ids?: string[];
   coach_id: string;
   court_id: string;
   start_time: string; // ISO

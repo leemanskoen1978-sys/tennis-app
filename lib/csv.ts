@@ -81,7 +81,7 @@ export function csvRows(bookings: Booking[], users: User[], courts: Court[]): Cs
         player: nameById.get(b.player_id) ?? 'Onbekend',
         court: court?.name ?? 'Onbekend terrein',
         minutes,
-        price: bookingPrice(b, court?.hourly_rate),
+        price: bookingPrice(b, court),
         // Wat de trainer krijgt, op zijn eigen uurtarief. Nog geen tarief ingevuld (of een
         // trainer die niet meer bestaat) geeft 0 — zichtbaar nul in plaats van een leeg vak.
         coachPay: coachPayout(b, rateById.get(b.coach_id)),

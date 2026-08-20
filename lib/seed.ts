@@ -2,17 +2,31 @@ import type { User, Court, Settings, Booking, Lesson, StudentProgress } from './
 
 // Fixed ids so the mock store has stable relations across reloads.
 export const seedUsers: User[] = [
-  { id: 'u-koen', name: 'Koen', email: 'koen@example.com', role: 'coach' },
+  // De trainers hebben een uurtarief, en bewust een ander dan het baantarief: alleen zo
+  // laat de demo meteen zien dat "wat de speler betaalt" en "wat de trainer krijgt" twee
+  // verschillende bedragen zijn, en dat de club er iets aan overhoudt. Ze verschillen ook
+  // onderling, zodat het rapport een echte uitsplitsing per trainer toont.
+  { id: 'u-koen', name: 'Koen', email: 'koen@example.com', role: 'coach', hourly_rate: 22 },
   // A second coach, sharing Mathis with Koen. Without one you cannot see what the app
   // does now: shared dossiers, "who wrote this" labels, and money staying per coach.
-  { id: 'u-sanne', name: 'Sanne', email: 'sanne@example.com', role: 'coach' },
+  { id: 'u-sanne', name: 'Sanne', email: 'sanne@example.com', role: 'coach', hourly_rate: 26 },
   { id: 'u-mathis', name: 'Mathis', email: 'mathis@example.com', role: 'player' },
   { id: 'u-test', name: 'Test', email: 'test@example.com', role: 'player' },
 ];
 
+// De banen hebben meteen een groepstaffel, zodat een groepsles te proberen is zonder eerst
+// bij Beheer → Banen tarieven in te vullen. Tot 2 spelers is dat gewoon het uurtarief — "1 en
+// 2 spelers is hetzelfde" — en vanaf 3 geldt het hogere bedrag. Elk bedrag is het TOTAAL voor
+// de les, niet per speler.
 export const seedCourts: Court[] = [
-  { id: 'court-1', name: 'Baan 1', number: 1, indoor: false, hourly_rate: 30 },
-  { id: 'court-2', name: 'Baan 2', number: 2, indoor: true, hourly_rate: 35 },
+  {
+    id: 'court-1', name: 'Baan 1', number: 1, indoor: false, hourly_rate: 30,
+    group_rates: [{ max_players: 2, rate: 30 }, { max_players: 4, rate: 45 }],
+  },
+  {
+    id: 'court-2', name: 'Baan 2', number: 2, indoor: true, hourly_rate: 35,
+    group_rates: [{ max_players: 2, rate: 35 }, { max_players: 4, rate: 52 }],
+  },
 ];
 
 export const defaultSettings: Settings = {

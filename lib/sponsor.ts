@@ -4,8 +4,12 @@
 // overgang te testen is in plaats van met de hand na te spelen in de app.
 //
 // Een gesponsorde les kost hier evenveel als elke andere les: `bookingPrice`, dus het
-// uurtarief van het terrein naar rato van de duur. Een half uur eet zo een half uurtarief
+// tarief van het terrein naar rato van de duur. Een half uur eet zo een half uurtarief
 // van het contract op, precies zoals het in de omzet terechtkomt.
+//
+// Bij een groepsles is dat het GROEPSbedrag, één keer. Het contract hangt aan de betaler, en
+// die betaalt bij een groepsles nu eenmaal de hele les — dus dat is ook wat er van zijn
+// budget af gaat. De meespelers raken zijn budget niet.
 
 import { formatEuro } from './csv';
 import { bookingPrice } from './payments';
@@ -16,11 +20,15 @@ export type SponsorPlayer = Pick<User, 'id' | 'sponsor_budget'>;
 
 /** De lessenvelden die het verbruik nodig heeft. */
 export type SponsorBooking = Pick<
-  Booking, 'id' | 'player_id' | 'court_id' | 'status' | 'payment_method' | 'start_time' | 'end_time'
+  Booking,
+  | 'id' | 'player_id' | 'participant_ids' | 'court_id' | 'status' | 'payment_method'
+  | 'start_time' | 'end_time'
 >;
 
 /** De lessenvelden die nodig zijn om te weten wat één les kost. */
-export type PricedBooking = Pick<Booking, 'id' | 'player_id' | 'court_id' | 'start_time' | 'end_time'>;
+export type PricedBooking = Pick<
+  Booking, 'id' | 'player_id' | 'participant_ids' | 'court_id' | 'start_time' | 'end_time'
+>;
 
 /** Centen bij elkaar optellen laat kommagetallen driften; een bedrag blijft een bedrag. */
 function euro(n: number): number {
@@ -43,9 +51,9 @@ export interface SponsorState {
   left: number;
 }
 
-/** Wat één les kost volgens het tarief van zijn terrein. */
+/** Wat één les kost volgens het tarief van zijn terrein, groepsstaffel meegerekend. */
 export function sponsorPriceOf(booking: PricedBooking, courts: Court[]): number {
-  return bookingPrice(booking, courts.find((c) => c.id === booking.court_id)?.hourly_rate);
+  return bookingPrice(booking, courts.find((c) => c.id === booking.court_id));
 }
 
 /**

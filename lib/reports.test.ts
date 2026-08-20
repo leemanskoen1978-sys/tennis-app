@@ -354,3 +354,46 @@ describe('het verloop per maand', () => {
     expect(series.reduce((t, p) => t + p.lessons, 0)).toBe(0);
   });
 });
+
+describe('groepslessen in het rapport', () => {
+  const staffel: Court[] = [
+    {
+      ...courts[0],
+      group_rates: [{ max_players: 2, rate: 40 }, { max_players: 4, rate: 60 }],
+    },
+    courts[1],
+  ];
+  const groepsles = lesson({ id: 'g1', player_id: 'anna', participant_ids: ['bram', 'cato'] });
+
+  it('boekt de hele groepsles bij de betaler en niet bij de meespelers', () => {
+    const rows = totalsByPlayer([groepsles], users, staffel);
+    expect(rows.map((r) => r.playerId)).toEqual(['anna']);
+    expect(rows[0].lessons).toBe(1);
+    // Het groepsbedrag, één keer: bram en cato betalen niets.
+    expect(rows[0].paid).toBe(60);
+  });
+
+  it('telt de openstaande groepsles ook maar één keer, bij de betaler', () => {
+    const open = { ...groepsles, payment_method: 'open' as const };
+    const rows = totalsByPlayer([open], users, staffel);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ playerId: 'anna', paid: 0, open: 60 });
+  });
+
+  it('rekent de omzet op het groepstarief, niet op het gewone uurtarief', () => {
+    expect(totalRevenue([groepsles], staffel)).toBe(60);
+    // Zonder staffel verandert er niets aan wat de app altijd al deed.
+    expect(totalRevenue([groepsles], courts)).toBe(40);
+  });
+
+  it('laat het trainersloon ongemoeid: één uur les blijft één uur les', () => {
+    const koen: User[] = [{ id: 'koen', email: 'k@x.be', name: 'Koen', role: 'coach', hourly_rate: 25 }];
+    expect(totalCoachPayout([groepsles], koen)).toBe(25);
+    expect(payoutsByCoach([groepsles], koen)[0]).toMatchObject({ lessons: 1, amount: 25 });
+  });
+
+  it('telt de groepsles één keer in de maandreeks', () => {
+    const series = monthlySeries([groepsles], staffel, new Date(2026, 7, 15), 1);
+    expect(series[0]).toMatchObject({ lessons: 1, amount: 60 });
+  });
+});

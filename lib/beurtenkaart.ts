@@ -49,7 +49,9 @@ export function releaseSession(card: Beurtenkaart, bookingId: string): Beurtenka
 
 /** De boekinggegevens die een betaalwijzewissel nodig heeft. */
 export type MethodChangeBooking = Pick<
-  Booking, 'id' | 'player_id' | 'court_id' | 'start_time' | 'end_time' | 'status' | 'beurtenkaart_id'
+  Booking,
+  | 'id' | 'player_id' | 'participant_ids' | 'court_id' | 'start_time' | 'end_time'
+  | 'status' | 'beurtenkaart_id'
 >;
 
 export interface MethodChangePlan {
