@@ -35,14 +35,21 @@ export function AudioMemo({ uri }: { uri: string }) {
   return React.createElement('audio', { src: uri, controls: true, style: { height: 32, width: '100%', marginTop: 4 } });
 }
 
-export function ProgressEntryCard({ p, studentName, showStudent, lessonTitle, coachName }: {
+export function ProgressEntryCard({ p, studentName, showStudent, lessonTitle, coachName, onPress }: {
   p: StudentProgress; studentName: string; showStudent: boolean; lessonTitle?: string;
   /** Who wrote this. Required wherever a dossier is shared between coaches — without it
    *  you cannot weigh a judgement about a player against who gave it. */
   coachName?: string;
+  /** Meegeven maakt de kaart aantikbaar; de details en de handelingen wonen dan in het
+   *  blad dat erop opengaat. Zonder blad erachter blijft de kaart wat hij was: leesbaar. */
+  onPress?: () => void;
 }) {
   return (
-    <Card style={styles.entryCard}>
+    <Card
+      style={styles.entryCard}
+      onPress={onPress}
+      accessibilityLabel={`${TRAINING_LABELS[p.training_type]}${p.created_at ? ` van ${formatDate(p.created_at)}` : ''}, openen`}
+    >
       <View style={styles.entryHeader}>
         <Text style={styles.entryType}>{TRAINING_LABELS[p.training_type]}</Text>
         <Stars count={p.rating ?? 0} />
@@ -53,7 +60,11 @@ export function ProgressEntryCard({ p, studentName, showStudent, lessonTitle, co
       {lessonTitle ? <Text style={styles.entryLesson}>Les: {lessonTitle}</Text> : null}
       {p.notes ? <Text style={styles.entryText}>{p.notes}</Text> : null}
       {p.homework ? <Text style={styles.entryHomework}>Huiswerk: {p.homework}</Text> : null}
-      {p.voice_memo_uri ? <AudioMemo uri={p.voice_memo_uri} /> : null}
+      {/* Op een aantikbare kaart blijft het bij een vermelding: op de knopjes van de
+          speler drukken zou de kaart eronder openen. Afspelen kan in het blad. */}
+      {p.voice_memo_uri
+        ? (onPress ? <Text style={styles.memoNative}>🔊 Spraakmemo</Text> : <AudioMemo uri={p.voice_memo_uri} />)
+        : null}
     </Card>
   );
 }

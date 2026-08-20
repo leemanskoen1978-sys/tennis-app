@@ -54,6 +54,15 @@ interface DataShape {
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
   addProgress: (p: Omit<StudentProgress, 'id'>) => Promise<void>;
+  /** Een beoordeling of notitie rechtzetten. `student_id`, `coach_id` en `created_at`
+   *  blijven erbuiten: een gecorrigeerde notitie is niet ineens een nieuwe, hoort nog
+   *  bij dezelfde speler, en blijft van wie hem opschreef. */
+  updateProgress: (
+    id: string,
+    patch: Partial<Omit<StudentProgress, 'id' | 'student_id' | 'coach_id' | 'created_at'>>,
+  ) => Promise<void>;
+  /** Onomkeerbaar: alleen achter een bevestiging in beeld brengen. */
+  deleteProgress: (id: string) => Promise<void>;
   /** Store a goal under its own id — a horizon holds as many as the coach wants. */
   saveGoal: (goal: PlayerGoal) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
@@ -314,6 +323,24 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     await commit({ ...store, progress: [...store.progress, entry] });
   }, [commit]);
 
+  const updateProgress = useCallback(async (
+    id: string,
+    patch: Partial<Omit<StudentProgress, 'id' | 'student_id' | 'coach_id' | 'created_at'>>,
+  ) => {
+    const store = storeRef.current;
+    if (!store) return;
+    await commit({
+      ...store,
+      progress: store.progress.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+    });
+  }, [commit]);
+
+  const deleteProgress = useCallback(async (id: string) => {
+    const store = storeRef.current;
+    if (!store) return;
+    await commit({ ...store, progress: store.progress.filter((p) => p.id !== id) });
+  }, [commit]);
+
   const saveGoal = useCallback(async (goal: PlayerGoal) => {
     const store = storeRef.current;
     if (!store) return;
@@ -380,6 +407,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     updateLesson,
     deleteLesson,
     addProgress,
+    updateProgress,
+    deleteProgress,
     saveGoal,
     deleteGoal,
     saveSettings,
@@ -389,7 +418,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     addBooking, updateBooking, deleteBooking, setPaymentMethod, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, addLesson,
-    updateLesson, deleteLesson, addProgress, saveGoal, deleteGoal, saveSettings, emergencyCleanup,
+    updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
+    saveGoal, deleteGoal, saveSettings, emergencyCleanup,
   ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

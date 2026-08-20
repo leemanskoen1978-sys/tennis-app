@@ -17,7 +17,7 @@ import { coachesForPlayer } from '../../lib/relations';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
-import type { Lesson, PaymentMethod } from '../../lib/types';
+import type { Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
 
 /**
@@ -36,6 +36,8 @@ export default function PlayerDossier() {
   const isCoach = currentUser?.role === 'coach';
 
   const [progressOpen, setProgressOpen] = useState(false);
+  // Welke voortgangsnotitie openstaat; null = blad dicht.
+  const [openEntry, setOpenEntry] = useState<StudentProgress | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [detailLesson, setDetailLesson] = useState<Lesson | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -170,7 +172,7 @@ export default function PlayerDossier() {
         <>
           <ReportSummary entries={entries} />
           {entries.map((p) => (
-            <ProgressEntryCard key={p.id} p={p} studentName={player.name} showStudent={false} lessonTitle={lessonTitle(p.lesson_id)} coachName={nameOf(p.coach_id)} />
+            <ProgressEntryCard key={p.id} p={p} studentName={player.name} showStudent={false} lessonTitle={lessonTitle(p.lesson_id)} coachName={nameOf(p.coach_id)} onPress={() => setOpenEntry(p)} />
           ))}
         </>
       )}
@@ -235,6 +237,14 @@ export default function PlayerDossier() {
       <LessonDetailModal lesson={detailLesson} visible={detailOpen} onClose={() => setDetailOpen(false)} canEdit={!!isCoach} />
       <AssignLessonModal visible={assignOpen} onClose={() => setAssignOpen(false)} playerId={player.id} />
       <ProgressForm visible={progressOpen} onClose={() => setProgressOpen(false)} studentId={player.id} />
+      {/* Hetzelfde blad, nu met een notitie erin: bewerken voor de trainer, lezen voor de speler. */}
+      <ProgressForm
+        visible={openEntry !== null}
+        onClose={() => setOpenEntry(null)}
+        studentId={player.id}
+        entry={openEntry}
+        canEdit={!!isCoach}
+      />
     </Screen>
   );
 }
