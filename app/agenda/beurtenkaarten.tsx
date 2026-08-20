@@ -21,9 +21,135 @@ function fmt(iso: string): string {
   });
 }
 
+/**
+ * Eén kaartrij. Staat apart zodat de opmerking zijn eigen tekst kan bijhouden: met één map in
+ * het bovenliggende scherm zou die omvallen zodra de lijst met kaarten verandert.
+ */
+function CardRow({
+  card, playerName, confirming, onConfirm, onCancelConfirm,
+  onSaveRemarks, onAddSession, onRemoveSession, onDelete,
+}: {
+  card: Beurtenkaart;
+  playerName: string;
+  confirming: boolean;
+  onConfirm: () => void;
+  onCancelConfirm: () => void;
+  onSaveRemarks: (remarks: string | undefined) => void;
+  onAddSession: () => void;
+  onRemoveSession: () => void;
+  onDelete: () => void;
+}): React.JSX.Element {
+  // Het opmerkingenveld houdt zijn eigen tekst bij, zodat typen niet vecht met de bewaarde waarde.
+  const [remarks, setRemarks] = useState(card.remarks ?? '');
+
+  const total = card.total_sessions;
+  const used = card.uses.length;
+  const left = remaining(card);
+  // Een kaart zonder beurten zou anders NaN% breed worden.
+  const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+  // "Beurt terug" raakt alleen handmatige beurten; zonder zo'n beurt valt er niets terug te halen.
+  const hasManual = card.uses.some((u) => !u.booking_id);
+  const progressLabel = `${used} van ${total} beurten gebruikt, nog ${left} over`;
+
+  return (
+    <Card>
+      <Text style={styles.cardName}>{playerName}</Text>
+      <Text style={styles.cardMeta}>
+        {used} van {total} gebruikt · nog {left} over · aangemaakt {fmt(card.created_at)}
+      </Text>
+
+      <View
+        style={styles.bar}
+        accessibilityRole="progressbar"
+        accessibilityLabel={progressLabel}
+        accessibilityValue={{ min: 0, max: total, now: used, text: progressLabel }}
+      >
+        <View style={[styles.barFill, { width: `${pct}%` }]} />
+      </View>
+
+      <View style={styles.stepRow}>
+        <Button
+          label="Beurt af"
+          variant="secondary"
+          fullWidth={false}
+          icon={<Plus size={16} color={tennisColors.text} />}
+          onPress={onAddSession}
+        />
+        <Button
+          label="Beurt terug"
+          variant="secondary"
+          fullWidth={false}
+          disabled={!hasManual}
+          icon={<Minus size={16} color={tennisColors.text} />}
+          onPress={onRemoveSession}
+        />
+      </View>
+      <Text style={styles.hint}>
+        Handmatig bijstellen raakt alleen beurten zonder les; een beurt van een les komt
+        terug door die les op een andere betaalwijze te zetten.
+      </Text>
+
+      <Text style={styles.subLabel}>Opmerking</Text>
+      <TextInput
+        style={[styles.input, styles.multiline]}
+        value={remarks}
+        onChangeText={setRemarks}
+        onBlur={() => { onSaveRemarks(remarks.trim() || undefined); }}
+        placeholder="Bijvoorbeeld: betaald op 3 september"
+        placeholderTextColor={tennisColors.textMuted}
+        accessibilityLabel={`Opmerking bij de kaart van ${playerName}`}
+        multiline
+      />
+
+      {card.uses.length > 0 ? (
+        <>
+          <Text style={styles.subLabel}>Gebruikte beurten</Text>
+          {card.uses.map((use, i) => (
+            <Text key={`${use.booking_id}-${i}`} style={styles.useLine}>
+              {i + 1}. {fmt(use.date)}{use.booking_id ? '' : ' (handmatig)'}
+            </Text>
+          ))}
+        </>
+      ) : null}
+
+      {confirming ? (
+        <View style={styles.confirmBox}>
+          <Text style={styles.confirmText}>
+            Kaart verwijderen? {card.uses.filter((u) => u.booking_id).length} les(sen)
+            verliezen hun beurt en komen terug op Open.
+          </Text>
+          <View style={styles.stepRow}>
+            <Button
+              label="Ja, verwijderen"
+              variant="danger"
+              fullWidth={false}
+              onPress={onDelete}
+            />
+            <Button
+              label="Nee"
+              variant="secondary"
+              fullWidth={false}
+              onPress={onCancelConfirm}
+            />
+          </View>
+        </View>
+      ) : (
+        <View style={styles.stepRow}>
+          <Button
+            label="Verwijderen"
+            variant="danger"
+            fullWidth={false}
+            onPress={onConfirm}
+          />
+        </View>
+      )}
+    </Card>
+  );
+}
+
 export default function BeurtenkaartenScreen(): React.JSX.Element {
   const {
-    currentUser, users, beurtenkaarten,
+    currentUser, users, beurtenkaarten, error,
     addBeurtenkaart, updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
   } = useSimpleData();
 
@@ -67,102 +193,26 @@ export default function BeurtenkaartenScreen(): React.JSX.Element {
         }}
       />
 
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
       {sorted.length === 0 ? (
         <Text style={styles.muted}>Nog geen beurtenkaarten.</Text>
       ) : null}
 
-      {sorted.map((card) => {
-        const left = remaining(card);
-        const used = card.uses.length;
-        const pct = Math.min(100, Math.round((used / card.total_sessions) * 100));
-        return (
-          <Card key={card.id}>
-            <Text style={styles.cardName}>{nameOf(card.player_id)}</Text>
-            <Text style={styles.cardMeta}>
-              {left} van {card.total_sessions} beurten over · aangemaakt {fmt(card.created_at)}
-            </Text>
-
-            <View style={styles.bar}>
-              <View style={[styles.barFill, { width: `${pct}%` }]} />
-            </View>
-
-            <View style={styles.stepRow}>
-              <Button
-                label="Beurt af"
-                variant="secondary"
-                fullWidth={false}
-                icon={<Plus size={16} color={tennisColors.text} />}
-                onPress={() => { void addCardSession(card.id); }}
-              />
-              <Button
-                label="Beurt terug"
-                variant="secondary"
-                fullWidth={false}
-                icon={<Minus size={16} color={tennisColors.text} />}
-                onPress={() => { void removeCardSession(card.id); }}
-              />
-            </View>
-            <Text style={styles.hint}>
-              Handmatig bijstellen raakt alleen beurten zonder les; een beurt van een les komt
-              terug door die les op een andere betaalwijze te zetten.
-            </Text>
-
-            <Text style={styles.subLabel}>Opmerking</Text>
-            <TextInput
-              style={styles.input}
-              defaultValue={card.remarks ?? ''}
-              placeholder="Bijvoorbeeld: betaald op 3 september"
-              placeholderTextColor={tennisColors.textMuted}
-              onEndEditing={(e) => {
-                void updateBeurtenkaart(card.id, { remarks: e.nativeEvent.text.trim() || undefined });
-              }}
-            />
-
-            {card.uses.length > 0 ? (
-              <>
-                <Text style={styles.subLabel}>Gebruikte beurten</Text>
-                {card.uses.map((use, i) => (
-                  <Text key={`${use.booking_id}-${i}`} style={styles.useLine}>
-                    {i + 1}. {fmt(use.date)}{use.booking_id ? '' : ' (handmatig)'}
-                  </Text>
-                ))}
-              </>
-            ) : null}
-
-            {confirmingId === card.id ? (
-              <View style={styles.confirmBox}>
-                <Text style={styles.confirmText}>
-                  Kaart verwijderen? {card.uses.filter((u) => u.booking_id).length} les(sen)
-                  verliezen hun beurt en komen terug op Open.
-                </Text>
-                <View style={styles.stepRow}>
-                  <Button
-                    label="Ja, verwijderen"
-                    variant="danger"
-                    fullWidth={false}
-                    onPress={() => { void deleteBeurtenkaart(card.id); setConfirmingId(null); }}
-                  />
-                  <Button
-                    label="Nee"
-                    variant="secondary"
-                    fullWidth={false}
-                    onPress={() => setConfirmingId(null)}
-                  />
-                </View>
-              </View>
-            ) : (
-              <View style={styles.stepRow}>
-                <Button
-                  label="Verwijderen"
-                  variant="danger"
-                  fullWidth={false}
-                  onPress={() => setConfirmingId(card.id)}
-                />
-              </View>
-            )}
-          </Card>
-        );
-      })}
+      {sorted.map((card) => (
+        <CardRow
+          key={card.id}
+          card={card}
+          playerName={nameOf(card.player_id)}
+          confirming={confirmingId === card.id}
+          onConfirm={() => setConfirmingId(card.id)}
+          onCancelConfirm={() => setConfirmingId(null)}
+          onSaveRemarks={(r) => { void updateBeurtenkaart(card.id, { remarks: r }); }}
+          onAddSession={() => { void addCardSession(card.id); }}
+          onRemoveSession={() => { void removeCardSession(card.id); }}
+          onDelete={() => { void deleteBeurtenkaart(card.id); setConfirmingId(null); }}
+        />
+      ))}
     </Screen>
   );
 }
@@ -188,6 +238,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
     color: tennisColors.text, backgroundColor: tennisColors.background, marginTop: spacing.xs,
   },
+  multiline: { minHeight: 60, textAlignVertical: 'top' },
+  error: { color: tennisColors.danger, fontSize: 14 },
   useLine: { fontSize: 14, color: tennisColors.text, marginTop: 2 },
   confirmBox: {
     marginTop: spacing.sm, padding: spacing.md, borderRadius: radius.md,
