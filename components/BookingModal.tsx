@@ -36,7 +36,7 @@ function parseHour(slot: string): number {
 
 export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const { visible, onClose, coachId, date, slot, courts, playerId } = props;
-  const { currentUser, users, addBooking, error } = useSimpleData();
+  const { currentUser, users, addBooking, setPaymentMethod, error } = useSimpleData();
 
   const [selectedCourtId, setSelectedCourtId] = useState<string>(
     courts[0]?.id ?? '',
@@ -68,6 +68,10 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const start_time = startDate.toISOString();
   const end_time = endDate.toISOString();
 
+  const defaultMethod = defaultMethodFor(
+    users.find((u) => u.id === (playerId ?? currentUser?.id)),
+  );
+
   const handleConfirm = async (): Promise<void> => {
     if (!currentUser) {
       return;
@@ -77,16 +81,25 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
     }
     setSubmitting(true);
     try {
-      await addBooking({
+      // Staat de standaard op beurtenkaart, boek dan open en laat setPaymentMethod
+      // de beurt afboeken — dat is de enige plek die dat bewaakt. Lukt het niet
+      // (geen kaart met beurten over), dan blijft de les gewoon op 'open' staan.
+      const created = await addBooking({
         player_id: playerId ?? currentUser.id,
         coach_id: coachId,
         court_id: selectedCourtId || courts[0]?.id || '',
         start_time,
         end_time,
         status: 'confirmed',
-        payment_method: defaultMethodFor(users.find((u) => u.id === (playerId ?? currentUser.id))),
+        payment_method: defaultMethod === 'beurtenkaart' ? 'open' : defaultMethod,
         notes: notes.trim() ? notes.trim() : undefined,
       });
+      if (!created) {
+        return;
+      }
+      if (defaultMethod === 'beurtenkaart') {
+        await setPaymentMethod(created.id, 'beurtenkaart');
+      }
       setNotes('');
       onClose();
     } finally {
@@ -144,7 +157,8 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
               multiline
             />
             <Text style={styles.hint}>
-              Betaalwijze: {PAYMENT_LABELS[defaultMethodFor(users.find((u) => u.id === (playerId ?? currentUser?.id)))]}
+              Betaalwijze: {PAYMENT_LABELS[defaultMethod]}
+              {defaultMethod === 'beurtenkaart' ? ' (er gaat een beurt af)' : ''}
             </Text>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
