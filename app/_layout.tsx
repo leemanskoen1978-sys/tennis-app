@@ -28,6 +28,7 @@ const SCREENS: ReadonlyArray<{ name: string; title: string }> = [
   { name: 'profile', title: 'Profiel' },
   { name: 'agenda/index', title: 'Agenda' },
   { name: 'agenda/new', title: 'Nieuwe afspraak' },
+  { name: 'agenda/beurtenkaarten', title: 'Beurtenkaarten' },
   { name: 'players/index', title: 'Spelers' },
   { name: 'players/[id]', title: 'Speler-dossier' },
   { name: 'players/progress', title: 'Voortgang' },
