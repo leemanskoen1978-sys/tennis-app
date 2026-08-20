@@ -22,7 +22,15 @@ import type { GoalHorizon } from '../lib/types';
  * je in één oogopslag welke horizon al gevuld is en welke nog leeg. De velden zelf staan in
  * het blad dat een tik erop opent — zelfde patroon als het maandoverzicht met zijn leskaarten.
  */
-export function PlayerGoals({ studentId, canEdit }: { studentId: string; canEdit: boolean }) {
+export function PlayerGoals({ studentId, canEdit, showHeading = true }: {
+  studentId: string;
+  canEdit: boolean;
+  /**
+   * Staat dit blok al onder een sectiekop (het dossier klapt "Doelen" zelf open en dicht),
+   * dan zou een tweede kop met dezelfde naam er twee keer staan.
+   */
+  showHeading?: boolean;
+}) {
   const { goals, settings, saveGoal, deleteGoal } = useSimpleData();
   const shots = shotTypeOptions(settings);
   const changes = changeTypeOptions(settings);
@@ -33,10 +41,12 @@ export function PlayerGoals({ studentId, canEdit }: { studentId: string; canEdit
 
   return (
     <>
-      <View style={styles.heading}>
-        <Target size={18} color={tennisColors.primary} />
-        <Text style={styles.headingText}>Doelen</Text>
-      </View>
+      {showHeading ? (
+        <View style={styles.heading}>
+          <Target size={18} color={tennisColors.primary} />
+          <Text style={styles.headingText}>Doelen</Text>
+        </View>
+      ) : null}
 
       {GOAL_HORIZONS.map((horizon) => {
         // Alleen ingevulde doelen halen de regel: een zojuist toegevoegd, nog leeg doel zegt

@@ -6,6 +6,7 @@ import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
+import { CollapsibleSection } from '../../components/ui/CollapsibleSection';
 import { CoachDetailsModal } from '../../components/CoachDetailsModal';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { playersForCoach } from '../../lib/relations';
@@ -14,11 +15,20 @@ import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
 
+/**
+ * Zelfde opbouw als het spelersdossier: de kop-kaart met de trainer blijft altijd staan,
+ * de secties eronder klappen in tot één regel met een telling. Standaard staat Agenda open,
+ * want de reden om een trainersdossier te openen is bijna altijd: wanneer geeft hij les?
+ * De spelerslijst zegt met zijn aantal genoeg tot je hem echt nodig hebt.
+ */
 export default function CoachDossier() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { users, bookings, courts, lessons, progress, currentUser } = useSimpleData();
   const [editOpen, setEditOpen] = useState(false);
+  // Niet onthouden tussen bezoeken: een stand van vorige week zegt niets over vandaag.
+  const [agendaOpen, setAgendaOpen] = useState(true);
+  const [playersOpen, setPlayersOpen] = useState(false);
 
   const coach = users.find((u) => u.id === id && u.role === 'coach') ?? null;
 
@@ -48,6 +58,14 @@ export default function CoachDossier() {
   const players = playersForCoach(coach.id, bookings, lessons, progress)
     .map((pid) => ({ id: pid, name: playerName(pid) }))
     .sort((a, b) => a.name.localeCompare(b.name, 'nl'));
+
+  // Wat er dichtgeklapt van elke sectie te zien is, geteld op dezelfde lijsten als eronder.
+  const agendaSummary = upcoming.length > 0
+    ? `${upcoming.length} aankomend`
+    : past.length > 0 ? 'niets aankomend' : 'geen afspraken';
+  const spelersSummary = players.length === 0
+    ? 'nog geen'
+    : players.length === 1 ? '1 speler' : `${players.length} spelers`;
 
   return (
     // `reading`: dit dossier is vooral lopende tekst (doelen, lesplan, notities);
@@ -93,52 +111,64 @@ export default function CoachDossier() {
         />
       ) : null}
 
-      <Text style={styles.section}>Agenda</Text>
-      {upcoming.length === 0 && past.length === 0 ? (
-        <Text style={styles.muted}>Nog geen afspraken.</Text>
-      ) : (
-        <>
-          {upcoming.length > 0 ? <Text style={styles.subLabel}>Aankomend</Text> : null}
-          {upcoming.map((b) => (
-            <Card key={b.id} style={styles.rowCard}>
-              <View style={styles.rowLine}>
-                <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
-                <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
-              </View>
-              <Text style={styles.rowMeta}>{courtName(b.court_id)} · {playerName(b.player_id)}</Text>
-            </Card>
-          ))}
-          {past.length > 0 ? <Text style={styles.subLabel}>Geweest</Text> : null}
-          {past.slice(0, 6).map((b) => (
-            <Card key={b.id} style={styles.rowCard}>
-              <View style={styles.rowLine}>
-                <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
-                <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
-              </View>
-              <Text style={styles.rowMeta}>{courtName(b.court_id)} · {playerName(b.player_id)}</Text>
-            </Card>
-          ))}
-        </>
-      )}
+      <CollapsibleSection
+        title="Agenda"
+        summary={agendaSummary}
+        open={agendaOpen}
+        onToggle={() => setAgendaOpen((o) => !o)}
+      >
+        {upcoming.length === 0 && past.length === 0 ? (
+          <Text style={styles.muted}>Nog geen afspraken.</Text>
+        ) : (
+          <>
+            {upcoming.length > 0 ? <Text style={styles.subLabel}>Aankomend</Text> : null}
+            {upcoming.map((b) => (
+              <Card key={b.id} style={styles.rowCard}>
+                <View style={styles.rowLine}>
+                  <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
+                  <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
+                </View>
+                <Text style={styles.rowMeta}>{courtName(b.court_id)} · {playerName(b.player_id)}</Text>
+              </Card>
+            ))}
+            {past.length > 0 ? <Text style={styles.subLabel}>Geweest</Text> : null}
+            {past.slice(0, 6).map((b) => (
+              <Card key={b.id} style={styles.rowCard}>
+                <View style={styles.rowLine}>
+                  <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
+                  <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
+                </View>
+                <Text style={styles.rowMeta}>{courtName(b.court_id)} · {playerName(b.player_id)}</Text>
+              </Card>
+            ))}
+          </>
+        )}
+      </CollapsibleSection>
 
-      <Text style={styles.section}>Spelers</Text>
-      {players.length === 0 ? (
-        <Text style={styles.muted}>Nog geen spelers.</Text>
-      ) : (
-        players.map((p) => (
-          <Card key={p.id} style={styles.rowCard}>
-            <Pressable
-              onPress={() => router.push(`/players/${p.id}`)}
-              style={[styles.playerRow, webCursor]}
-              accessibilityRole="button"
-              accessibilityLabel={`Open dossier van ${p.name}`}
-            >
-              <Text style={styles.playerName}>{p.name}</Text>
-              <ChevronRight size={18} color={tennisColors.textMuted} />
-            </Pressable>
-          </Card>
-        ))
-      )}
+      <CollapsibleSection
+        title="Spelers"
+        summary={spelersSummary}
+        open={playersOpen}
+        onToggle={() => setPlayersOpen((o) => !o)}
+      >
+        {players.length === 0 ? (
+          <Text style={styles.muted}>Nog geen spelers.</Text>
+        ) : (
+          players.map((p) => (
+            <Card key={p.id} style={styles.rowCard}>
+              <Pressable
+                onPress={() => router.push(`/players/${p.id}`)}
+                style={[styles.playerRow, webCursor]}
+                accessibilityRole="button"
+                accessibilityLabel={`Open dossier van ${p.name}`}
+              >
+                <Text style={styles.playerName}>{p.name}</Text>
+                <ChevronRight size={18} color={tennisColors.textMuted} />
+              </Pressable>
+            </Card>
+          ))
+        )}
+      </CollapsibleSection>
     </Screen>
   );
 }
@@ -153,7 +183,6 @@ const styles = StyleSheet.create({
   },
   fieldValue: { fontSize: 14, color: tennisColors.text, marginTop: 2 },
   editButton: { marginTop: spacing.lg },
-  section: { ...typography.h2, color: tennisColors.text, marginTop: spacing.lg, marginBottom: spacing.sm },
   subLabel: { fontSize: 12, fontWeight: '700', color: tennisColors.textMuted, textTransform: 'uppercase', marginTop: spacing.sm, marginBottom: spacing.xs },
   muted: { fontSize: 14, color: tennisColors.textMuted },
   rowCard: { marginBottom: spacing.sm },
