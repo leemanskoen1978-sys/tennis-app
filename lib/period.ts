@@ -30,6 +30,11 @@ const MONTH_SHORT = [
   'jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec',
 ];
 
+/** De korte naam van een maand ("jan", "mrt"), voor plekken waar het volle woord niet past. */
+export function shortMonthName(monthIndex: number): string {
+  return MONTH_SHORT[((monthIndex % 12) + 12) % 12];
+}
+
 /** Het begin van de dag waarop `d` valt, lokale tijd. */
 export function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
