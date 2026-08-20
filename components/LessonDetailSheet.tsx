@@ -21,6 +21,7 @@ import {
   bookingPaymentMeta, lessonPriceLine, lessonShares, splitOf, type PaymentMeta,
 } from '../lib/payments';
 import { formatEuro } from '../lib/money';
+import { seriesFrom } from '../lib/series';
 import { sponsorHint, sponsorState } from '../lib/sponsor';
 import { BOOKING_STATUS_LABELS } from '../lib/status';
 import type { Beurtenkaart, Booking, BookingStatus, PaymentMethod } from '../lib/types';
@@ -41,6 +42,30 @@ const STATUS_COLORS: Record<BookingStatus, string> = {
  * van die kaart erbij; hangt er geen kaart aan, dan blijft het bij het label. Gedeeld met
  * het maandoverzicht, zodat de kaart en dit blad hetzelfde zeggen.
  */
+/**
+ * Hoe de reeks heet waar deze les bij hoort. De boeking draagt alleen een `series_id`, geen
+ * frequentie — die lees je terug uit de afstand tussen de lessen. De kleinste afstand telt:
+ * in een wekelijkse reeks waar één week oversprong staat een gat van veertien dagen, maar
+ * ergens staat dan nog altijd een gat van zeven. Herkent hij het niet, dan blijft het bij
+ * "een reeks": een verkeerde naam is erger dan geen naam.
+ */
+function seriesName(sameSeries: ReadonlyArray<{ start_time: string }>): string {
+  const times = sameSeries.map((b) => new Date(b.start_time).getTime()).sort((a, b) => a - b);
+  let smallest = Infinity;
+  for (let i = 1; i < times.length; i++) {
+    smallest = Math.min(smallest, times[i] - times[i - 1]);
+  }
+  const days = Math.round(smallest / 86_400_000);
+  if (days === 7) return 'een wekelijkse reeks';
+  if (days === 14) return 'een tweewekelijkse reeks';
+  return 'een reeks';
+}
+
+/** "1 les" / "5 lessen", voor de vraag hoeveel er meegaan. */
+function lessons(n: number): string {
+  return n === 1 ? '1 les' : `${n} lessen`;
+}
+
 export function paymentLabelFor(
   booking: Booking,
   meta: PaymentMeta,
@@ -67,7 +92,8 @@ export function LessonDetailSheet({
   const router = useRouter();
   const {
     bookings, users, courts, beurtenkaarten,
-    updateBooking, setPaymentMethod, setParticipants, setPaymentSplit, error, clearError,
+    updateBooking, deleteBooking, cancelSeriesFrom, deleteSeriesFrom,
+    setPaymentMethod, setParticipants, setPaymentSplit, error, clearError,
   } = useSimpleData();
   // Twee bladen over elkaar heen wordt op web en telefoon rommelig: de tweede backdrop
   // verduistert de eerste en op Android sluit één druk op terug ze allebei. Daarom is dit
@@ -80,6 +106,9 @@ export function LessonDetailSheet({
   // Wat er ongevraagd meeveranderde toen de deelnemers wijzigden (een teruggegeven beurt,
   // een les die naar factuur ging). Blijft staan tot het blad dichtgaat.
   const [notice, setNotice] = useState<string | null>(null);
+  // Welke vraag er in het blad zelf openstaat: annuleren, verwijderen, of geen. Bewust geen
+  // `Alert`, want die blokkeert op web — dit volgt het bevestigingsvak van de beurtenkaarten.
+  const [confirming, setConfirming] = useState<'cancel' | 'delete' | null>(null);
 
   // De aanroeper geeft de les mee die hij had toen de kaart werd aangetikt. Lees hem terug
   // uit de opslag, anders blijven status en betaalwijze hier op de oude waarde staan zodra
@@ -108,6 +137,15 @@ export function LessonDetailSheet({
   const amountOf = (id: string): number | null =>
     shares.find((share) => share.player_id === id)?.amount ?? null;
 
+  // Hoort de les bij een reeks, dan raakt een handeling hier mogelijk meer dan deze ene les.
+  // `tail` is deze les plus alle latere: precies wat "en alle volgende" wegveegt.
+  const inSeries = Boolean(booking.series_id);
+  const tail = inSeries ? seriesFrom(bookings, booking.id) : [];
+  const sameSeries = inSeries ? bookings.filter((b) => b.series_id === booking.series_id) : [];
+  // Is deze de laatste van de reeks, dan is "alleen deze" hetzelfde als "en alle volgende";
+  // twee knoppen die hetzelfde doen zijn dan alleen maar verwarrend.
+  const tailOnlyThis = tail.length <= 1;
+
   const cardHint = (): string | undefined => {
     const cards = cardsFor(beurtenkaarten, booking.player_id);
     if (cards.length === 0) return 'Deze speler heeft nog geen beurtenkaart.';
@@ -133,6 +171,7 @@ export function LessonDetailSheet({
   const close = (): void => {
     setNotice(null);
     setEditingPlayers(false);
+    setConfirming(null);
     onClose();
   };
 
@@ -179,6 +218,13 @@ export function LessonDetailSheet({
 
             <ScrollView contentContainerStyle={styles.body}>
               <Text style={styles.court}>{courtName}</Text>
+              {/* Een les uit een reeks ziet er verder uit als elke andere les. Zeg het dus,
+                  vóór iemand hem annuleert in de veronderstelling dat het er één was. */}
+              {inSeries ? (
+                <Text style={styles.hint}>
+                  Onderdeel van {seriesName(sameSeries)} · {lessons(tail.length)} vanaf deze.
+                </Text>
+              ) : null}
 
               {/* Beide namen klikken door: een les is het raakpunt van Spelers en Trainers,
                   dus dit is de natuurlijke sprong tussen die twee delen. */}
@@ -322,7 +368,10 @@ export function LessonDetailSheet({
 
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
-              {canManage && canCancel ? (
+              {/* Een losse les gaat rechtstreeks: één les annuleren is geen vraag waard, en
+                  verwijderen bestond hier niet. Bij een reeks wél, want daar kan één druk
+                  een half seizoen meenemen — dus eerst vragen wat je bedoelt. */}
+              {canManage && canCancel && !inSeries ? (
                 <View style={styles.actions}>
                   <Button
                     label="Annuleren"
@@ -333,6 +382,83 @@ export function LessonDetailSheet({
                     }}
                   />
                 </View>
+              ) : null}
+
+              {canManage && inSeries ? (
+                confirming ? (
+                  <View style={styles.confirmBox}>
+                    <Text style={styles.confirmText}>
+                      {confirming === 'cancel' ? 'Annuleren' : 'Verwijderen'}:{' '}
+                      {tailOnlyThis
+                        ? 'dit is de laatste les van de reeks.'
+                        : `alleen deze les, of deze en alle volgende (${lessons(tail.length)})?`}
+                      {confirming === 'delete' ? ' Weg is weg.' : ''}
+                    </Text>
+                    <View style={styles.confirmRow}>
+                      <Button
+                        label={tailOnlyThis ? 'Ja, deze les' : 'Alleen deze les'}
+                        variant="danger"
+                        fullWidth={false}
+                        onPress={() => {
+                          setConfirming(null);
+                          if (confirming === 'cancel') {
+                            void updateBooking(booking.id, { status: 'cancelled' });
+                            return;
+                          }
+                          // De les bestaat straks niet meer; het blad zou naar een lege
+                          // boeking staan te kijken, dus het gaat mee dicht.
+                          void deleteBooking(booking.id);
+                          close();
+                        }}
+                      />
+                      {tailOnlyThis ? null : (
+                        <Button
+                          label={`Deze en alle volgende (${tail.length})`}
+                          variant="danger"
+                          fullWidth={false}
+                          onPress={() => {
+                            setConfirming(null);
+                            if (confirming === 'cancel') {
+                              void cancelSeriesFrom(booking.id);
+                              return;
+                            }
+                            void deleteSeriesFrom(booking.id);
+                            close();
+                          }}
+                        />
+                      )}
+                      <Button
+                        label="Nee"
+                        variant="secondary"
+                        fullWidth={false}
+                        onPress={() => setConfirming(null)}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <View style={[styles.actions, styles.confirmRow]}>
+                    {canCancel ? (
+                      <Button
+                        label="Annuleren"
+                        variant="danger"
+                        fullWidth={false}
+                        onPress={() => {
+                          clearError();
+                          setConfirming('cancel');
+                        }}
+                      />
+                    ) : null}
+                    <Button
+                      label="Verwijderen"
+                      variant="danger"
+                      fullWidth={false}
+                      onPress={() => {
+                        clearError();
+                        setConfirming('delete');
+                      }}
+                    />
+                  </View>
+                )
               ) : null}
             </ScrollView>
           </View>
@@ -402,4 +528,9 @@ const styles = StyleSheet.create({
   notes: { ...typography.body, color: tennisColors.text },
   error: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.sm },
   actions: { marginTop: spacing.lg, alignItems: 'flex-start' },
+  // Hetzelfde vak als bij het verwijderen van een beurtenkaart: de vraag staat in het blad
+  // zelf, niet in een Alert die op web het scherm blokkeert.
+  confirmBox: { marginTop: spacing.lg, gap: spacing.sm },
+  confirmText: { fontSize: 14, color: tennisColors.text },
+  confirmRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
 });

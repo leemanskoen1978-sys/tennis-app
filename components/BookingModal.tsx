@@ -23,6 +23,11 @@ import {
 } from '../lib/beurtenkaart';
 import { sponsorHint, sponsorState } from '../lib/sponsor';
 import { formatDay } from '../lib/datetime';
+import { formatDayInput, parseDayInput } from '../lib/period';
+import {
+  MAX_LESSONS, planSeries, seriesSummary,
+  type RecurrenceFrequency, type RecurrenceRule,
+} from '../lib/recurrence';
 
 interface BookingModalProps {
   visible: boolean;
@@ -43,13 +48,30 @@ function parseHour(slot: string): number {
   return parseInt(hourPart, 10);
 }
 
+/**
+ * Een lokale dag als YYYY-MM-DD, het formaat dat de herhaalregel verwacht. Bewust niet via
+ * `toISOString()`: die rekent naar UTC om en maakt van een avond in de zomer de dag ervoor.
+ */
+function dayKey(d: Date): string {
+  const two = (n: number): string => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
+}
+
+/** "1 les" / "5 lessen" — komt in meerdere meldingen hieronder terug. */
+function lessons(n: number): string {
+  return n === 1 ? '1 les' : `${n} lessen`;
+}
+
+/** Hoeveel dagen er tussen twee lessen van een reeks zitten. */
+const STEP_DAYS: Record<RecurrenceFrequency, number> = { weekly: 7, biweekly: 14 };
+
 export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const { visible, onClose, coachId, date, slot, courts, playerId } = props;
   // `courts` is een prop (de terreinen waaruit je hier kiest); voor de prijs van een les
   // is de hele lijst nodig, dus die komt uit de opslag onder een eigen naam.
   const {
     currentUser, users, bookings, courts: allCourts, beurtenkaarten,
-    addBooking, setPaymentMethod, error,
+    addBooking, addBookingSeries, setPaymentMethod, error,
   } = useSimpleData();
 
   const [selectedCourtId, setSelectedCourtId] = useState<string>(
@@ -72,6 +94,13 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const [split, setSplit] = useState<PaymentSplit>('together');
   // De naam die in de keuzelijst getypt werd voor een speler die nog niet bestaat.
   const [newPlayerName, setNewPlayerName] = useState<string | null>(null);
+  // Herhalen: `null` is één losse les, en dat blijft de standaard — zonder keuze hier
+  // gebeurt er precies wat er vóór de reeksen gebeurde.
+  const [repeat, setRepeat] = useState<RecurrenceFrequency | null>(null);
+  const [untilText, setUntilText] = useState<string>('');
+  // De afsluitende melding van een reeks waarvan niet elke les zijn betaalwijze kreeg. Zolang
+  // die er staat blijft het venster open: dichtklappen zou zeggen "alles gelukt".
+  const [seriesNotice, setSeriesNotice] = useState<string | null>(null);
 
   if (date === null || slot === null) {
     return null;
@@ -124,6 +153,16 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
     allCourts.find((c) => c.id === (selectedCourtId || courts[0]?.id)),
   );
 
+  // De reeks zoals hij er nú uitziet, met wat er in het veld staat. Het rekenwerk loopt mee
+  // terwijl de trainer tikt: een halve datum levert geen regel en dus geen plan op.
+  const untilDate = repeat ? parseDayInput(untilText) : null;
+  const rule: RecurrenceRule | null = repeat && untilDate
+    ? { frequency: repeat, until: dayKey(untilDate) }
+    : null;
+  const plan = rule ? planSeries(start_time, end_time, rule, coachId, bookings) : null;
+  // Een reeks zonder één bruikbare les is geen boeking; de knop hoort dan niet te werken.
+  const blockedSeries = repeat !== null && (plan === null || plan.usable.length === 0);
+
   /** Zelfde formulering als het exportscherm: hoeveel beurten heeft deze speler nog. */
   const beurtenHint = (): string => {
     const cards = forPlayerId ? cardsFor(beurtenkaarten, forPlayerId) : [];
@@ -136,8 +175,26 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const sponsorTekst = (): string =>
     sponsorHint(sponsorState(users.find((u) => u.id === forPlayerId), bookings, allCourts));
 
+  /**
+   * Een frequentie aanklikken. De einddatum wordt meteen ingevuld op twaalf lessen vooruit:
+   * een leeg veld naast "Wekelijks" laat de trainer raden wat er verwacht wordt, en twaalf
+   * lessen is de maat van een lesblok. Wat hij zelf al tikte blijft staan.
+   */
+  const kiesHerhaling = (frequency: RecurrenceFrequency | null): void => {
+    setRepeat(frequency);
+    if (frequency && !untilText.trim()) {
+      const days = 11 * STEP_DAYS[frequency];
+      setUntilText(formatDayInput(
+        new Date(date.getFullYear(), date.getMonth(), date.getDate() + days),
+      ));
+    }
+  };
+
   const handleClose = (): void => {
     setBookedWithoutBeurt(null);
+    setSeriesNotice(null);
+    setRepeat(null);
+    setUntilText('');
     setNotes('');
     setParticipants([]);
     setSplit('together');
@@ -165,19 +222,54 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         handleClose();
         return;
       }
-      // Bij een bewaakte betaalwijze: boek op open en laat setPaymentMethod de beurt
-      // afboeken of het sponsorbudget nakijken — dat is de enige plek die dat bewaakt.
-      const created = await addBooking({
+      const base = {
         player_id: playerId ?? currentUser.id,
         coach_id: coachId,
         court_id: selectedCourtId || courts[0]?.id || '',
         start_time,
         end_time,
-        status: 'confirmed',
-        payment_method: bewaakt ? 'open' : method,
+        status: 'confirmed' as const,
         participant_ids: participants.length > 0 ? participants : undefined,
         payment_split: isGroup ? split : undefined,
         notes: notes.trim() ? notes.trim() : undefined,
+      };
+
+      if (rule && plan) {
+        // Nul bruikbare lessen is geen reeks; de knop staat dan al uit, maar een reeks van
+        // niets aanmaken mag ook hier niet kunnen.
+        if (plan.usable.length === 0) return;
+        // De betaalwijze gaat hier wél mee zoals gekozen: de provider doet per les de
+        // bewaakte weg, met de beurten van de eerdere lessen van deze reeks meegeteld.
+        const { created, skipped } = await addBookingSeries(
+          { ...base, payment_method: method },
+          rule,
+        );
+        if (created.length === 0) return;
+        // Betrouwbaarder dan de foutregel: kijk in wat er terugkwam. Een les die op “Open”
+        // staat terwijl er iets anders gekozen was, kreeg geen beurt of geen budget meer.
+        const open = method === 'open'
+          ? 0
+          : created.filter((b) => b.payment_method === 'open').length;
+        if (open > 0) {
+          const gelukt = created.length - open;
+          setSeriesNotice(
+            `${lessons(created.length)} aangemaakt: ${gelukt} op ${PAYMENT_LABELS[method]}, `
+            + `${open} op ${PAYMENT_LABELS.open} — die vind je in Beheer → Betalingen.`
+            + (skipped.length > 0
+              ? ` ${lessons(skipped.length)} overgeslagen, de trainer was dan al bezet.`
+              : ''),
+          );
+          return;
+        }
+        handleClose();
+        return;
+      }
+
+      // Bij een bewaakte betaalwijze: boek op open en laat setPaymentMethod de beurt
+      // afboeken of het sponsorbudget nakijken — dat is de enige plek die dat bewaakt.
+      const created = await addBooking({
+        ...base,
+        payment_method: bewaakt ? 'open' : method,
       });
       if (!created) {
         return;
@@ -227,7 +319,11 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
               contentContainerStyle={styles.bodyContent}
               keyboardShouldPersistTaps="handled"
             >
-              {bookedWithoutBeurt ? (
+              {seriesNotice ? (
+                // De reeks staat er; alleen het geld klopte niet overal. De velden zijn niet
+                // meer van toepassing, de melding is het enige wat hier nog telt.
+                <Text style={styles.notice}>{seriesNotice}</Text>
+              ) : bookedWithoutBeurt ? (
                 // De les staat er al. De velden zijn niet meer van toepassing: wat hier nog
                 // ontbreekt is de beurt, niet de boeking.
                 <Text style={styles.notice}>
@@ -328,27 +424,100 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                     placeholderTextColor={tennisColors.textMuted}
                     multiline
                   />
+
+                  <Text style={styles.label}>Herhalen</Text>
+                  <View style={styles.chipRow}>
+                    <Chip
+                      label="Niet herhalen"
+                      selected={repeat === null}
+                      onPress={() => kiesHerhaling(null)}
+                    />
+                    <Chip
+                      label="Wekelijks"
+                      selected={repeat === 'weekly'}
+                      onPress={() => kiesHerhaling('weekly')}
+                    />
+                    <Chip
+                      label="Tweewekelijks"
+                      selected={repeat === 'biweekly'}
+                      onPress={() => kiesHerhaling('biweekly')}
+                    />
+                  </View>
+
+                  {repeat ? (
+                    <>
+                      <Text style={styles.fieldLabel}>Tot en met</Text>
+                      <TextInput
+                        style={styles.dayInput}
+                        value={untilText}
+                        onChangeText={setUntilText}
+                        placeholder="dd/mm/jjjj"
+                        placeholderTextColor={tennisColors.textMuted}
+                        accessibilityLabel="Laatste dag van de reeks"
+                        inputMode="numeric"
+                      />
+                      {!untilDate ? (
+                        <Text style={styles.hint}>Vul de laatste dag in als dd/mm/jjjj.</Text>
+                      ) : null}
+
+                      {/* Wat er gaat gebeuren, vóór het bevestigen. De overgeslagen dagen
+                          staan er met datum bij: "3 overgeslagen" zonder te zeggen welke
+                          laat de trainer met een raadsel achter. */}
+                      {plan && rule ? (
+                        <>
+                          <Text style={styles.price}>{seriesSummary(plan, rule)}</Text>
+                          {plan.skipped.length > 0 ? (
+                            <Text style={styles.hint}>
+                              {lessons(plan.skipped.length)} overgeslagen omdat de trainer dan
+                              al bezet is: {plan.skipped.map((s) => formatDay(s.start_time)).join(', ')}.
+                            </Text>
+                          ) : null}
+                          {plan.usable.length === 0 ? (
+                            <Text style={styles.error}>
+                              Geen enkel moment van deze reeks is nog vrij; er valt niets te
+                              boeken.
+                            </Text>
+                          ) : null}
+                          {plan.usable.length + plan.skipped.length >= MAX_LESSONS ? (
+                            <Text style={styles.hint}>
+                              Een reeks gaat tot {MAX_LESSONS} lessen; wat daarna komt valt
+                              erbuiten.
+                            </Text>
+                          ) : null}
+                        </>
+                      ) : null}
+                    </>
+                  ) : null}
                 </>
               )}
 
-              {error ? <Text style={styles.error}>{error}</Text> : null}
+              {/* Bij een afgeronde reeks zegt de melding hierboven al wat er misging; de
+                  foutregel van de provider zou dat woord voor woord herhalen. */}
+              {error && !seriesNotice ? <Text style={styles.error}>{error}</Text> : null}
             </ScrollView>
 
             <View style={styles.actions}>
-              <Button
-                label={bookedWithoutBeurt ? 'Sluiten' : 'Annuleren'}
-                variant="secondary"
-                onPress={handleClose}
-                disabled={submitting}
-                fullWidth
-              />
-              <Button
-                label={bookedWithoutBeurt ? 'Betaalwijze opnieuw proberen' : 'Bevestigen'}
-                variant="primary"
-                onPress={handleConfirm}
-                disabled={submitting}
-                fullWidth
-              />
+              {seriesNotice ? (
+                // Er valt hier niets meer te bevestigen: de lessen staan er al.
+                <Button label="Sluiten" variant="primary" onPress={handleClose} fullWidth />
+              ) : (
+                <>
+                  <Button
+                    label={bookedWithoutBeurt ? 'Sluiten' : 'Annuleren'}
+                    variant="secondary"
+                    onPress={handleClose}
+                    disabled={submitting}
+                    fullWidth
+                  />
+                  <Button
+                    label={bookedWithoutBeurt ? 'Betaalwijze opnieuw proberen' : 'Bevestigen'}
+                    variant="primary"
+                    onPress={handleConfirm}
+                    disabled={submitting || blockedSeries}
+                    fullWidth
+                  />
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -438,6 +607,22 @@ const styles = StyleSheet.create({
     color: tennisColors.text,
     backgroundColor: tennisColors.background,
     textAlignVertical: 'top',
+  },
+  fieldLabel: {
+    ...typography.label,
+    color: tennisColors.textMuted,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  // Eén regel, dus lager dan het notitieveld; verder dezelfde omlijsting als daar.
+  dayInput: {
+    borderWidth: 1,
+    borderColor: tennisColors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    color: tennisColors.text,
+    backgroundColor: tennisColors.background,
   },
   notice: {
     ...typography.body,
