@@ -366,6 +366,23 @@ create policy kaarten_write on beurtenkaarten for all
   to authenticated using (is_coach()) with check (is_coach());
 
 -- ---------------------------------------------------------------------------
+-- Rechten voor de app
+--
+-- RLS zegt WELKE rijen iemand mag; deze grants zeggen dat de rol überhaupt met de tabel
+-- mag praten. Supabase zet dat normaal zelf goed, maar bij een project waar "privileges
+-- automatisch toekennen" uit staat, gebeurt dat niet — en dan krijgt de app op elk scherm
+-- "permission denied for table" terwijl er niets mis is met de regels hieronder. Ze hier
+-- expliciet zetten kost niets en haalt die val weg.
+--
+-- Alleen `authenticated`: wie niet ingelogd is, heeft in deze app niets te zoeken.
+-- ---------------------------------------------------------------------------
+
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to authenticated;
+
+-- ---------------------------------------------------------------------------
 -- Startgegevens
 --
 -- Alleen wat een lege club nodig heeft om te kunnen boeken. Gebruikers komen uit het
