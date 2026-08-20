@@ -1,46 +1,125 @@
-import React from 'react';
-import { useRouter } from 'expo-router';
+// De agenda beantwoordt twee vragen: wat staat er vandaag te gebeuren, en waar ga ik heen.
+// De lessen zelf worden niet hier afgehandeld — betalen en annuleren doe je in het
+// maandoverzicht, zodat er maar één plek is waar een les verandert.
 
-import { Button } from '../../components/ui/Button';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import {
+  CalendarPlus, CreditCard, Ticket, CalendarDays, type LucideIcon,
+} from 'lucide-react-native';
+
+import { Badge } from '../../components/ui/Badge';
+import { Card } from '../../components/ui/Card';
 import { Screen } from '../../components/ui/Screen';
-import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
+import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
+import { bookingsOnDay } from '../../lib/hub';
+import { bookingsFor, paymentMeta } from '../../lib/payments';
+import { tennisColors } from '../../constants/tennis-colors';
+import { spacing, typography } from '../../constants/theme';
+
+interface Tile {
+  key: string;
+  title: string;
+  subtitle: string;
+  icon: LucideIcon;
+  onPress: () => void;
+  badge?: number;
+}
+
+function timeLabel(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+}
 
 export default function BookingsScreen(): React.JSX.Element {
-  const { currentUser } = useSimpleData();
+  const { currentUser, bookings, users, courts } = useSimpleData();
+  const pending = usePendingPaymentBookings();
   const router = useRouter();
 
   const isCoach = currentUser?.role === 'coach';
 
-  // De agenda is alleen nog de wegwijzer; de lessen zelf staan in het maandoverzicht,
-  // waar ze ook betaald en geannuleerd worden.
+  // Vandaag in lokale tijd; `bookingsOnDay` bepaalt wat "deze dag" is, dezelfde regel
+  // die de teller op het hoofdscherm gebruikt.
+  const today = useMemo(
+    () => bookingsOnDay(bookingsFor(currentUser ?? null, bookings), new Date()),
+    [currentUser, bookings],
+  );
+
+  const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? 'Onbekend';
+  const courtName = (id: string): string => courts.find((c) => c.id === id)?.name ?? 'Onbekende baan';
+
+  const tiles: Tile[] = [];
+  if (isCoach) {
+    tiles.push(
+      { key: 'new', title: 'Nieuwe afspraak', subtitle: 'Les inplannen voor een speler', icon: CalendarPlus, onPress: () => router.push('/agenda/new') },
+      { key: 'pay', title: 'Betalingen', subtitle: 'Openstaande lessen afhandelen', icon: CreditCard, onPress: () => router.push('/admin/payments'), badge: pending.length },
+      { key: 'cards', title: 'Beurtenkaarten', subtitle: 'Kaarten en resterende beurten', icon: Ticket, onPress: () => router.push('/agenda/beurtenkaarten') },
+    );
+  }
+  // Voor iedereen, want dit is sinds de verhuizing de enige plek waar een speler zijn
+  // eigen lessen van een hele maand nog terugvindt.
+  tiles.push({
+    key: 'month',
+    title: 'Maandoverzicht',
+    subtitle: 'Alle lessen van een maand',
+    icon: CalendarDays,
+    onPress: () => router.push('/agenda/export'),
+  });
+
   return (
     <Screen>
-      {isCoach ? (
-        <>
-          <Button
-            label="Nieuwe afspraak"
-            variant="primary"
-            onPress={() => router.push('/agenda/new')}
+      {/* Vandaag staat boven de tegels: het is het antwoord op "wat moet ik nu doen". */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Vandaag</Text>
+        {today.length === 0 ? (
+          <Text style={styles.muted}>Geen lessen vandaag.</Text>
+        ) : (
+          today.map((b) => {
+            const payment = paymentMeta(b.payment_method);
+            // Je hoeft je eigen naam niet te lezen: een trainer ziet de speler,
+            // een speler ziet de trainer.
+            const other = isCoach ? nameOf(b.player_id) : nameOf(b.coach_id);
+            return (
+              <Card key={b.id}>
+                <Text style={styles.lessonTime}>
+                  {timeLabel(b.start_time)} · {other}
+                </Text>
+                <Text style={styles.lessonCourt}>{courtName(b.court_id)}</Text>
+                <Badge label={payment.label} color={payment.color} subtle={payment.subtle} />
+              </Card>
+            );
+          })
+        )}
+      </View>
+
+      <TileGrid>
+        {tiles.map((t) => (
+          <ActionTile
+            key={t.key}
+            title={t.title}
+            subtitle={t.subtitle}
+            icon={t.icon}
+            onPress={t.onPress}
+            badge={t.badge}
           />
-          <Button
-            label="Betalingen verwerken"
-            variant="secondary"
-            onPress={() => router.push('/admin/payments')}
-          />
-          <Button
-            label="Beurtenkaarten"
-            variant="secondary"
-            onPress={() => router.push('/agenda/beurtenkaarten')}
-          />
-        </>
-      ) : null}
-      {/* Voor iedereen, want dit is sinds de verhuizing de enige plek waar een speler zijn
-          eigen lessen nog terugvindt. */}
-      <Button
-        label="Maandoverzicht"
-        variant={isCoach ? 'secondary' : 'primary'}
-        onPress={() => router.push('/agenda/export')}
-      />
+        ))}
+      </TileGrid>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  section: { gap: spacing.md },
+  sectionLabel: {
+    ...typography.label,
+    color: tennisColors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  muted: { color: tennisColors.textMuted, fontSize: 14 },
+  lessonTime: { ...typography.h3, color: tennisColors.text },
+  lessonCourt: { fontSize: 13, color: tennisColors.textMuted },
+});

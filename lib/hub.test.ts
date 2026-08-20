@@ -1,4 +1,4 @@
-import { bookingsToday, countPlayers, countCoaches } from './hub';
+import { bookingsOnDay, bookingsToday, countPlayers, countCoaches } from './hub';
 import type { Booking, User } from './types';
 
 const at = (iso: string, status: Booking['status'] = 'confirmed'): Booking => ({
@@ -21,6 +21,27 @@ describe('bookingsToday', () => {
 
   it('is zero on an empty list', () => {
     expect(bookingsToday([], now)).toBe(0);
+  });
+});
+
+describe('bookingsOnDay', () => {
+  const day = new Date(2026, 7, 19, 12, 0, 0); // 19 aug 2026, lokale tijd
+  const iso = (d: number, h: number) => new Date(2026, 7, d, h, 0, 0).toISOString();
+
+  it('houdt de lessen van deze dag over, van vroeg tot laat en op tijd gesorteerd', () => {
+    const late = at(iso(19, 22));
+    const early = at(iso(19, 7));
+    const list = [late, at(iso(18, 20)), early, at(iso(20, 7))];
+    expect(bookingsOnDay(list, day).map((b) => b.id)).toEqual([early.id, late.id]);
+  });
+
+  it('laat een geannuleerde les weg', () => {
+    const list = [at(iso(19, 9), 'cancelled'), at(iso(19, 10))];
+    expect(bookingsOnDay(list, day).map((b) => b.id)).toEqual([iso(19, 10)]);
+  });
+
+  it('is leeg op een dag zonder lessen', () => {
+    expect(bookingsOnDay([at(iso(18, 9))], day)).toEqual([]);
   });
 });
 
