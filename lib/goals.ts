@@ -47,6 +47,39 @@ export function isEmptyGoal(g: Pick<PlayerGoal, 'shot_type' | 'change_type' | 'n
   return !g.shot_type && !g.change_type && !(g.notes ?? '').trim();
 }
 
+/** Een lange opmerking past niet op één regel; hierna volgt een beletselteken. */
+const SUMMARY_MAX = 60;
+
+function shorten(text: string): string {
+  const oneLine = text.trim().split('\n')[0].trim();
+  return oneLine.length > SUMMARY_MAX ? `${oneLine.slice(0, SUMMARY_MAX).trimEnd()}…` : oneLine;
+}
+
+/**
+ * Eén doel in één regel: de slag en de wijziging, want dat is waar een trainer een doel aan
+ * herkent. Staat daar nog niets, dan draagt de opmerking de regel — beter iets herkenbaars
+ * dan een lege regel bij een doel dat wel degelijk is ingevuld.
+ */
+export function goalSummary(
+  g: Pick<PlayerGoal, 'shot_type' | 'change_type' | 'notes'>,
+): string {
+  const parts = [g.shot_type, g.change_type].filter((p): p is string => !!p);
+  if (parts.length > 0) return parts.join(' · ');
+  return shorten(g.notes ?? '');
+}
+
+/**
+ * Wat er van een horizon op de compacte regel staat. Alleen ingevulde doelen tellen mee: een
+ * zojuist toegevoegd, nog leeg doel mag de regel niet vullen. Zijn het er meer, dan volgt het
+ * aantal erachter, zodat je ziet dat er meer achter de tik zit dan die ene regel.
+ */
+export function horizonSummary(goals: PlayerGoal[]): string {
+  const filled = goals.filter((g) => !isEmptyGoal(g));
+  if (filled.length === 0) return '';
+  const first = goalSummary(filled[0]);
+  return filled.length === 1 ? first : `${first} · +${filled.length - 1}`;
+}
+
 export function newGoalId(): string {
   return `goal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }

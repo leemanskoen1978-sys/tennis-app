@@ -1,7 +1,7 @@
 import {
   GOAL_HORIZONS, HORIZON_LABELS, DEFAULT_SHOT_TYPES, DEFAULT_CHANGE_TYPES,
   shotTypeOptions, changeTypeOptions, goalsFor, isEmptyGoal, upsertGoal, removeGoal,
-  newGoalId, addOption, removeOption,
+  newGoalId, addOption, removeOption, goalSummary, horizonSummary,
 } from './goals';
 import type { PlayerGoal } from './types';
 
@@ -94,6 +94,64 @@ describe('isEmptyGoal', () => {
     expect(isEmptyGoal({ shot_type: 'Forehand' })).toBe(false);
     expect(isEmptyGoal({ change_type: 'Techniek' })).toBe(false);
     expect(isEmptyGoal({ notes: 'Let op de greep' })).toBe(false);
+  });
+});
+
+describe('goalSummary', () => {
+  it('zet slag en wijziging naast elkaar', () => {
+    expect(goalSummary({ shot_type: 'Forehand', change_type: 'Greepwissel' }))
+      .toBe('Forehand · Greepwissel');
+  });
+
+  it('laat weg wat niet is ingevuld', () => {
+    expect(goalSummary({ shot_type: 'Forehand' })).toBe('Forehand');
+    expect(goalSummary({ change_type: 'Regelmaat' })).toBe('Regelmaat');
+  });
+
+  it('valt terug op de opmerking als slag en wijziging leeg zijn', () => {
+    expect(goalSummary({ notes: '  Let op de greep  ' })).toBe('Let op de greep');
+  });
+
+  it('houdt het bij de eerste regel van een opmerking', () => {
+    expect(goalSummary({ notes: 'Greep\nen verder nog van alles' })).toBe('Greep');
+  });
+
+  it('kort een lange opmerking af', () => {
+    const long = 'a'.repeat(80);
+    const out = goalSummary({ notes: long });
+    expect(out.endsWith('…')).toBe(true);
+    expect(out.length).toBeLessThanOrEqual(61);
+  });
+
+  it('is leeg bij een leeg doel', () => {
+    expect(goalSummary({})).toBe('');
+  });
+});
+
+describe('horizonSummary', () => {
+  const g = (id: string, shot?: string, change?: string): PlayerGoal => ({
+    id, student_id: 'p1', horizon: 'lessons10', shot_type: shot, change_type: change,
+  });
+
+  it('is leeg zonder doelen', () => {
+    expect(horizonSummary([])).toBe('');
+  });
+
+  it('is leeg als er alleen nog lege doelen staan', () => {
+    expect(horizonSummary([g('a')])).toBe('');
+  });
+
+  it('toont het ene ingevulde doel', () => {
+    expect(horizonSummary([g('a', 'Forehand', 'Greepwissel')])).toBe('Forehand · Greepwissel');
+  });
+
+  it('telt de overige ingevulde doelen erachter', () => {
+    expect(horizonSummary([g('a', 'Forehand'), g('b', 'Opslag'), g('c', 'Volley')]))
+      .toBe('Forehand · +2');
+  });
+
+  it('telt lege doelen niet mee', () => {
+    expect(horizonSummary([g('a'), g('b', 'Opslag')])).toBe('Opslag');
   });
 });
 
