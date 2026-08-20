@@ -6,7 +6,9 @@
 //  1. Een geannuleerde les telt nergens mee. Hij is niet doorgegaan, dus hij is geen les en
 //     geen geld. Dezelfde keuze als bij de bedragen op Historiek.
 //  2. Een bedrag is gerealiseerde omzet: dezelfde regel als `totalRevenue`, zodat de som van
-//     alle spelers en de som van alle maanden exact het getal op de omzetkaart is.
+//     alle spelers en de som van alle maanden exact het getal op de omzetkaart is. Naast dat
+//     bedrag staat per speler wat er nog openstaat; dat is een apart getal en telt nooit bij
+//     de omzet op.
 
 import { bookingPrice, countsAsRevenue } from './payments';
 import { shortMonthName } from './period';
@@ -31,6 +33,20 @@ function revenueOf(b: Booking, rates: Map<string, number>): number {
   return bookingPrice(b, rates.get(b.court_id));
 }
 
+/**
+ * Wat er van één les nog openstaat: de volle prijs zolang de betaalwijze 'open' is, anders 0.
+ * Dezelfde prijsregel als `revenueOf`, zodat betaald en openstaand optelbaar zijn.
+ *
+ * Sponsor staat hier bewust niet bij. Een gesponsorde les is een gemaakte keuze, geen
+ * uitstel: er komt nooit nog geld van. Hij telt dus niet als omzet (zie `countsAsRevenue`)
+ * én niet als openstaand — hij valt in geen van beide kolommen en is alleen te zien aan het
+ * aantal lessen en aan de kaart "Per betaalwijze".
+ */
+function openAmountOf(b: Booking, rates: Map<string, number>): number {
+  if (!PAYABLE_STATUSES.includes(b.status) || b.payment_method !== 'open') return 0;
+  return bookingPrice(b, rates.get(b.court_id));
+}
+
 /** Centen bij elkaar optellen laat kommagetallen driften; een bedrag blijft een bedrag. */
 function euro(n: number): number {
   return Math.round(n * 100) / 100;
@@ -41,19 +57,27 @@ export interface PlayerTotal {
   name: string;
   /** Aantal lessen van deze speler in de selectie, geannuleerde niet meegerekend. */
   lessons: number;
-  /** Gerealiseerde omzet van die lessen. */
-  amount: number;
+  /** Gerealiseerde omzet van die lessen: het geld dat binnen is of onderweg is. */
+  paid: number;
+  /** De waarde van de lessen waarvan de betaalwijze nog 'open' staat. */
+  open: number;
 }
 
 /**
- * Wie hoeveel lessen had en wat dat opbracht, op bedrag aflopend: wie het meeste bijdraagt
- * staat bovenaan. Bij een gelijk bedrag beslist de naam, anders wisselt de volgorde van twee
- * spelers met hetzelfde bedrag bij elke hertekening van plaats.
+ * Wie hoeveel lessen had, wat daarvan betaald is en wat er nog openstaat.
+ *
+ * Gesorteerd op betaald plus openstaand, aflopend: dat is wat een speler in totaal waard is
+ * geweest, en alleen zo blijft een speler die twee lessen nog niet afrekende bovenaan staan
+ * in plaats van onderaan bij de spelers zonder lessen. Bij een gelijk totaal beslist de naam,
+ * anders wisselen twee spelers met hetzelfde totaal bij elke hertekening van plaats.
+ *
+ * Een gesponsorde les komt in geen van beide bedragen voor — zie `openAmountOf`. Een
+ * geannuleerde les telt nergens mee, ook niet als les.
  *
  * Een speler die niet meer bestaat verdwijnt niet uit het overzicht: zijn lessen zijn wél
  * gegeven en zijn geld is wél binnengekomen, dus hij blijft staan als "Onbekend".
  */
-export function revenueByPlayer(
+export function totalsByPlayer(
   bookings: Booking[],
   users: User[],
   courts: Court[],
@@ -67,16 +91,18 @@ export function revenueByPlayer(
       playerId: b.player_id,
       name: nameById.get(b.player_id) ?? 'Onbekend',
       lessons: 0,
-      amount: 0,
+      paid: 0,
+      open: 0,
     };
     row.lessons += 1;
-    row.amount += revenueOf(b, rates);
+    row.paid += revenueOf(b, rates);
+    row.open += openAmountOf(b, rates);
     totals.set(b.player_id, row);
   }
 
   return [...totals.values()]
-    .map((r) => ({ ...r, amount: euro(r.amount) }))
-    .sort((a, b) => (b.amount - a.amount) || a.name.localeCompare(b.name, 'nl'));
+    .map((r) => ({ ...r, paid: euro(r.paid), open: euro(r.open) }))
+    .sort((a, b) => ((b.paid + b.open) - (a.paid + a.open)) || a.name.localeCompare(b.name, 'nl'));
 }
 
 export type PaymentBreakdown = Record<PaymentMethod, number>;

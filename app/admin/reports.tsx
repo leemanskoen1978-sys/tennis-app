@@ -31,7 +31,7 @@ import {
 import {
   bookingsInPeriod, currentPeriod, periodLabel, shortMonthName, type Period,
 } from '../../lib/period';
-import { countByPaymentMethod, countedBookings, monthlySeries, revenueByPlayer } from '../../lib/reports';
+import { countByPaymentMethod, countedBookings, monthlySeries, totalsByPlayer } from '../../lib/reports';
 import type { User } from '../../lib/types';
 
 /**
@@ -71,7 +71,7 @@ export default function ReportsScreen(): React.JSX.Element {
   const pending = useMemo(() => filterPendingPayment(shown).length, [shown]);
   const breakdown = useMemo(() => countByPaymentMethod(shown), [shown]);
   const perPlayer = useMemo(
-    () => revenueByPlayer(shown, users, courts),
+    () => totalsByPlayer(shown, users, courts),
     [shown, users, courts],
   );
 
@@ -131,21 +131,44 @@ export default function ReportsScreen(): React.JSX.Element {
           {perPlayer.length === 0 ? (
             <Text style={styles.emptyLine}>Geen lessen in {periodLabel(period)}.</Text>
           ) : (
-            perPlayer.map((row) => (
-              <View key={row.playerId} style={styles.playerRow}>
-                <View style={styles.playerNameWrap}>
-                  <Text style={styles.statLabel}>{row.name}</Text>
-                  <Text style={styles.playerLessons}>
-                    {row.lessons === 1 ? '1 les' : `${row.lessons} lessen`}
+            <>
+              {/* Een kop, anders is niet te zien welk bedrag welk is. Hij hoort bij de
+                  kolommen eronder, dus hij krijgt exact dezelfde breedtes. */}
+              <View style={styles.playerHead}>
+                <Text style={[styles.nameCol, styles.colHead]}>Speler</Text>
+                <Text style={[styles.amountCol, styles.colHead]}>Betaald</Text>
+                <Text style={[styles.amountCol, styles.colHead]}>Openstaand</Text>
+              </View>
+              {perPlayer.map((row) => (
+                <View key={row.playerId} style={styles.playerRow}>
+                  <View style={styles.playerNameWrap}>
+                    <Text style={styles.statLabel}>{row.name}</Text>
+                    <Text style={styles.playerLessons}>
+                      {row.lessons === 1 ? '1 les' : `${row.lessons} lessen`}
+                    </Text>
+                  </View>
+                  <Text style={[styles.amountCol, styles.playerAmount]}>
+                    €{formatEuro(row.paid)}
+                  </Text>
+                  {/* Alleen kleuren als er echt iets openstaat: anders vraagt een rij vol
+                      nullen om aandacht die er niet is. */}
+                  <Text
+                    style={[
+                      styles.amountCol,
+                      styles.playerAmount,
+                      row.open > 0 ? styles.openAmount : null,
+                    ]}
+                  >
+                    €{formatEuro(row.open)}
                   </Text>
                 </View>
-                <Text style={styles.playerAmount}>€{formatEuro(row.amount)}</Text>
-              </View>
-            ))
+              ))}
+            </>
           )}
           <Text style={styles.note}>
-            Op bedrag aflopend. Geannuleerde lessen tellen nergens mee; een les zonder
-            afgesproken betaalwijze telt wel als les, maar nog niet als geld.
+            Op totaal aflopend. Betaald is het geld dat afgesproken is, openstaand zijn de
+            lessen waarvoor nog niets gekozen is. Geannuleerde lessen tellen nergens mee, en
+            een gesponsorde les staat in geen van beide kolommen.
           </Text>
         </Card>
       ) : null}
@@ -231,18 +254,37 @@ const styles = StyleSheet.create({
     color: tennisColors.textMuted,
     marginTop: spacing.xs,
   },
+  // Drie kolommen naast elkaar, geen horizontale scroll: er staan maar twee bedragen en die
+  // zijn kort, dus een vaste kolombreedte rechts is genoeg. De naam krijgt wat overblijft en
+  // mag over twee regels afbreken — op een smalle telefoon zakt "Van der Steen" netjes door
+  // in plaats van de bedragen weg te duwen.
+  playerHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+    paddingBottom: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: tennisColors.border,
+  },
+  colHead: {
+    ...typography.caption,
+    color: tennisColors.textMuted,
+  },
   playerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: tennisColors.border,
   },
-  playerNameWrap: { flexShrink: 1, gap: 2 },
+  nameCol: { flex: 1, flexShrink: 1 },
+  playerNameWrap: { flex: 1, flexShrink: 1, gap: 2 },
+  // Breed genoeg voor "Openstaand" in de kop en voor een bedrag van vier cijfers eronder.
+  amountCol: { width: 84, textAlign: 'right' },
   playerLessons: { ...typography.caption, color: tennisColors.textMuted },
-  playerAmount: { fontSize: 17, fontWeight: '700', color: tennisColors.text },
+  playerAmount: { fontSize: 16, fontWeight: '700', color: tennisColors.text },
+  openAmount: { color: tennisColors.warning },
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',

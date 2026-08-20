@@ -1,5 +1,5 @@
 import { totalRevenue } from './payments';
-import { countByPaymentMethod, monthlySeries, revenueByPlayer } from './reports';
+import { countByPaymentMethod, monthlySeries, totalsByPlayer } from './reports';
 import type { Booking, Court, User } from './types';
 
 const courts: Court[] = [
@@ -39,12 +39,12 @@ function onDay(id: string, y: number, m: number, d: number, over: Partial<Bookin
 
 describe('uitsplitsing per speler', () => {
   it('geeft een lege lijst als er in de periode niets is', () => {
-    expect(revenueByPlayer([], users, courts)).toEqual([]);
+    expect(totalsByPlayer([], users, courts)).toEqual([]);
   });
 
   it('telt één les als één les met het uurtarief van het terrein', () => {
-    expect(revenueByPlayer([lesson({ id: 'b1' })], users, courts)).toEqual([
-      { playerId: 'anna', name: 'Anna', lessons: 1, amount: 40 },
+    expect(totalsByPlayer([lesson({ id: 'b1' })], users, courts)).toEqual([
+      { playerId: 'anna', name: 'Anna', lessons: 1, paid: 40, open: 0 },
     ]);
   });
 
@@ -53,11 +53,11 @@ describe('uitsplitsing per speler', () => {
       id: 'b1',
       end_time: new Date(2026, 7, 10, 10, 30).toISOString(),
     });
-    expect(revenueByPlayer([half], users, courts)[0].amount).toBe(20);
+    expect(totalsByPlayer([half], users, courts)[0].paid).toBe(20);
   });
 
-  it('zet de speler met het hoogste bedrag bovenaan', () => {
-    const rows = revenueByPlayer(
+  it('zet de speler met het hoogste totaal bovenaan', () => {
+    const rows = totalsByPlayer(
       [
         onDay('b1', 2026, 7, 1, { player_id: 'anna' }),
         onDay('b2', 2026, 7, 2, { player_id: 'bram', court_id: 'court-2' }),
@@ -68,15 +68,32 @@ describe('uitsplitsing per speler', () => {
       users,
       courts,
     );
-    expect(rows.map((r) => [r.name, r.lessons, r.amount])).toEqual([
+    expect(rows.map((r) => [r.name, r.lessons, r.paid])).toEqual([
       ['Bram', 2, 120],
       ['Cato', 2, 80],
       ['Anna', 1, 40],
     ]);
   });
 
-  it('laat bij een gelijk bedrag de naam beslissen, zodat de volgorde niet wisselt', () => {
-    const rows = revenueByPlayer(
+  it('sorteert op betaald plus openstaand, zodat een speler die nog niets afrekende niet onderaan zakt', () => {
+    const rows = totalsByPlayer(
+      [
+        // Anna: één betaalde les van 40. Bram: twee openstaande lessen van 60, samen 120.
+        onDay('b1', 2026, 7, 1, { player_id: 'anna' }),
+        onDay('b2', 2026, 7, 2, { player_id: 'bram', court_id: 'court-2', payment_method: 'open' }),
+        onDay('b3', 2026, 7, 3, { player_id: 'bram', court_id: 'court-2', payment_method: 'open' }),
+      ],
+      users,
+      courts,
+    );
+    expect(rows.map((r) => [r.name, r.paid, r.open])).toEqual([
+      ['Bram', 0, 120],
+      ['Anna', 40, 0],
+    ]);
+  });
+
+  it('laat bij een gelijk totaal de naam beslissen, zodat de volgorde niet wisselt', () => {
+    const rows = totalsByPlayer(
       [
         onDay('b1', 2026, 7, 1, { player_id: 'cato' }),
         onDay('b2', 2026, 7, 2, { player_id: 'anna' }),
@@ -88,7 +105,7 @@ describe('uitsplitsing per speler', () => {
   });
 
   it('laat een geannuleerde les nergens meetellen', () => {
-    const rows = revenueByPlayer(
+    const rows = totalsByPlayer(
       [
         onDay('b1', 2026, 7, 1, { player_id: 'anna' }),
         onDay('b2', 2026, 7, 2, { player_id: 'anna', status: 'cancelled' }),
@@ -96,21 +113,55 @@ describe('uitsplitsing per speler', () => {
       users,
       courts,
     );
-    expect(rows).toEqual([{ playerId: 'anna', name: 'Anna', lessons: 1, amount: 40 }]);
+    expect(rows).toEqual([{ playerId: 'anna', name: 'Anna', lessons: 1, paid: 40, open: 0 }]);
   });
 
-  it('telt een les zonder afgesproken betaalwijze wel als les, maar niet als geld', () => {
-    const rows = revenueByPlayer(
-      [onDay('b1', 2026, 7, 1, { payment_method: 'open' })],
+  it('laat een geannuleerde openstaande les ook niet als openstaand meetellen', () => {
+    const rows = totalsByPlayer(
+      [onDay('b1', 2026, 7, 1, { payment_method: 'open', status: 'cancelled' })],
       users,
       courts,
     );
-    expect(rows).toEqual([{ playerId: 'anna', name: 'Anna', lessons: 1, amount: 0 }]);
+    expect(rows).toEqual([]);
+  });
+
+  it('zet een les zonder afgesproken betaalwijze volledig bij openstaand', () => {
+    const rows = totalsByPlayer(
+      [
+        onDay('b1', 2026, 7, 1, { payment_method: 'open' }),
+        onDay('b2', 2026, 7, 2, { payment_method: 'open' }),
+      ],
+      users,
+      courts,
+    );
+    expect(rows).toEqual([{ playerId: 'anna', name: 'Anna', lessons: 2, paid: 0, open: 80 }]);
+  });
+
+  it('splitst een mengeling van betaald en openstaand over de twee kolommen', () => {
+    const rows = totalsByPlayer(
+      [
+        onDay('b1', 2026, 7, 1, { payment_method: 'cash' }),
+        onDay('b2', 2026, 7, 2, { payment_method: 'invoice', court_id: 'court-2' }),
+        onDay('b3', 2026, 7, 3, { payment_method: 'open' }),
+      ],
+      users,
+      courts,
+    );
+    expect(rows).toEqual([{ playerId: 'anna', name: 'Anna', lessons: 3, paid: 100, open: 40 }]);
+  });
+
+  it('laat een gesponsorde les in geen van beide kolommen staan, maar telt hem wel als les', () => {
+    const rows = totalsByPlayer(
+      [onDay('b1', 2026, 7, 1, { payment_method: 'sponsor' })],
+      users,
+      courts,
+    );
+    expect(rows).toEqual([{ playerId: 'anna', name: 'Anna', lessons: 1, paid: 0, open: 0 }]);
   });
 
   it('houdt een speler die niet meer bestaat in het overzicht, als Onbekend', () => {
-    const rows = revenueByPlayer([onDay('b1', 2026, 7, 1, { player_id: 'weg' })], users, courts);
-    expect(rows).toEqual([{ playerId: 'weg', name: 'Onbekend', lessons: 1, amount: 40 }]);
+    const rows = totalsByPlayer([onDay('b1', 2026, 7, 1, { player_id: 'weg' })], users, courts);
+    expect(rows).toEqual([{ playerId: 'weg', name: 'Onbekend', lessons: 1, paid: 40, open: 0 }]);
   });
 
   it('telt samen op tot precies de omzet op de kaart erboven', () => {
@@ -119,8 +170,9 @@ describe('uitsplitsing per speler', () => {
       onDay('b2', 2026, 7, 2, { player_id: 'bram', court_id: 'court-2' }),
       onDay('b3', 2026, 7, 3, { player_id: 'cato', payment_method: 'open' }),
       onDay('b4', 2026, 7, 4, { player_id: 'cato', status: 'cancelled' }),
+      onDay('b5', 2026, 7, 5, { player_id: 'bram', payment_method: 'sponsor' }),
     ];
-    const sum = revenueByPlayer(bookings, users, courts).reduce((t, r) => t + r.amount, 0);
+    const sum = totalsByPlayer(bookings, users, courts).reduce((t, r) => t + r.paid, 0);
     expect(sum).toBe(totalRevenue(bookings, courts));
   });
 });
