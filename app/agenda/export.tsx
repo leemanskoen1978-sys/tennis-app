@@ -9,7 +9,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { monthRows, toCsv, formatEuro, CSV_COLUMNS } from '../../lib/csv';
-import { totalRevenue } from '../../lib/payments';
+import { bookingsFor, totalRevenue } from '../../lib/payments';
 import { shareCsv } from '../../lib/share';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
@@ -34,16 +34,12 @@ export default function ExportScreen(): React.JSX.Element {
   // globale error van de provider thuis.
   const [exportError, setExportError] = useState<string | null>(null);
 
-  const isCoach = currentUser?.role === 'coach';
-
   // Een trainer voert zijn eigen lessen uit, een speler die van hemzelf: geld en dossiers
-  // blijven per persoon, ook in een export. Dezelfde regel als pendingPaymentsFor.
-  const mine = useMemo(() => {
-    if (!currentUser) return [];
-    return bookings.filter((b) =>
-      isCoach ? b.coach_id === currentUser.id : b.player_id === currentUser.id,
-    );
-  }, [bookings, currentUser, isCoach]);
+  // blijven per persoon, ook in een export. Gedeelde regel uit lib/payments.
+  const mine = useMemo(
+    () => bookingsFor(currentUser, bookings),
+    [bookings, currentUser],
+  );
 
   const rows = useMemo(
     () => monthRows(mine, users, courts, month),
