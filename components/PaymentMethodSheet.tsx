@@ -1,0 +1,82 @@
+import React from 'react';
+import { Modal, View, Text, StyleSheet } from 'react-native';
+
+import { tennisColors } from '../constants/tennis-colors';
+import { spacing, radius, typography, shadow } from '../constants/theme';
+import { Button } from './ui/Button';
+import { Chip } from './ui/Chip';
+import { PAYMENT_METHODS, PAYMENT_LABELS } from '../lib/payments';
+import type { PaymentMethod } from '../lib/types';
+
+interface Props {
+  visible: boolean;
+  current: PaymentMethod;
+  /** Getoond bij '10-beurtenkaart', bijvoorbeeld "nog 4 beurten". */
+  cardHint?: string;
+  error?: string | null;
+  onPick: (method: PaymentMethod) => void;
+  onClose: () => void;
+}
+
+/** Eén blad met de zes betaalwijzen, gedeeld door elk scherm dat er een moet kiezen. */
+export function PaymentMethodSheet({
+  visible,
+  current,
+  cardHint,
+  error,
+  onPick,
+  onClose,
+}: Props): React.JSX.Element {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.backdrop}>
+        <View style={styles.sheet}>
+          <View style={styles.handle} />
+          <Text style={styles.title}>Betaalwijze</Text>
+
+          <View style={styles.chipRow}>
+            {PAYMENT_METHODS.map((method) => (
+              <Chip
+                key={method}
+                label={PAYMENT_LABELS[method]}
+                selected={method === current}
+                onPress={() => onPick(method)}
+              />
+            ))}
+          </View>
+
+          {cardHint ? <Text style={styles.hint}>{cardHint}</Text> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <Button label="Sluiten" variant="secondary" onPress={onClose} />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: tennisColors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+    gap: spacing.md,
+    ...shadow('lg'),
+  },
+  handle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: radius.sm,
+    backgroundColor: tennisColors.border,
+    marginBottom: spacing.sm,
+  },
+  title: { ...typography.h2, color: tennisColors.text },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  hint: { ...typography.body, fontSize: 14, color: tennisColors.textMuted, fontStyle: 'italic' },
+  error: { color: tennisColors.danger, fontSize: 14 },
+});

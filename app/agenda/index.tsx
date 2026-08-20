@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 
+import { PaymentMethodSheet } from '../../components/PaymentMethodSheet';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -10,9 +11,10 @@ import { Chip } from '../../components/ui/Chip';
 import { Screen } from '../../components/ui/Screen';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
+import { cardsFor, remaining } from '../../lib/beurtenkaart';
 import { paymentMeta, type PaymentMeta } from '../../lib/payments';
 import { BOOKING_STATUS_LABELS } from '../../lib/status';
-import type { Booking, BookingStatus } from '../../lib/types';
+import type { Booking, BookingStatus, PaymentMethod } from '../../lib/types';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 
 interface BadgeMeta {
@@ -34,12 +36,23 @@ function statusMeta(status: BookingStatus): BadgeMeta {
 }
 
 export default function BookingsScreen(): React.JSX.Element {
-  const { currentUser, bookings, users, courts, updateBooking } =
-    useSimpleData();
+  const {
+    currentUser,
+    bookings,
+    users,
+    courts,
+    updateBooking,
+    beurtenkaarten,
+    setPaymentMethod,
+    error,
+    clearError,
+  } = useSimpleData();
   const router = useRouter();
   // View choice, not access control: a coach sees every booking by default and can fall
   // back to their own lessons on a busy day.
   const [onlyMine, setOnlyMine] = useState<boolean>(false);
+  // Welke afspraak zijn betaalwijze laat kiezen; null = blad dicht.
+  const [payingBooking, setPayingBooking] = useState<Booking | null>(null);
 
   const isCoach = currentUser?.role === 'coach';
 
@@ -75,6 +88,21 @@ export default function BookingsScreen(): React.JSX.Element {
     void updateBooking(booking.id, { status: 'cancelled' });
   };
 
+  const cardHintFor = (booking: Booking | null): string | undefined => {
+    if (!booking) return undefined;
+    const cards = cardsFor(beurtenkaarten, booking.player_id);
+    if (cards.length === 0) return 'Deze speler heeft nog geen beurtenkaart.';
+    const left = cards.reduce((sum, c) => sum + remaining(c), 0);
+    return left === 1 ? 'Nog 1 beurt over.' : `Nog ${left} beurten over.`;
+  };
+
+  const pickMethod = async (method: PaymentMethod): Promise<void> => {
+    if (!payingBooking) return;
+    clearError();
+    await setPaymentMethod(payingBooking.id, method);
+    setPayingBooking(null);
+  };
+
   return (
     <Screen>
       {isCoach ? (
@@ -89,6 +117,16 @@ export default function BookingsScreen(): React.JSX.Element {
             variant="secondary"
             onPress={() => router.push('/admin/payments')}
           />
+          <Button
+            label="Beurtenkaarten"
+            variant="secondary"
+            onPress={() => router.push('/agenda/beurtenkaarten')}
+          />
+          <Button
+            label="Maandoverzicht"
+            variant="secondary"
+            onPress={() => router.push('/agenda/export')}
+          />
           <View style={styles.filterRow}>
             <Chip
               label="Alleen die van mij"
@@ -98,6 +136,8 @@ export default function BookingsScreen(): React.JSX.Element {
           </View>
         </>
       ) : null}
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {visibleBookings.length === 0 ? (
         <View style={styles.emptyState}>
@@ -147,7 +187,23 @@ export default function BookingsScreen(): React.JSX.Element {
 
               <View style={styles.badgeRow}>
                 <Badge label={status.label} color={status.color} subtle={status.subtle} />
-                <Badge label={payment.label} color={payment.color} subtle={payment.subtle} />
+                {/* Een speler kijkt alleen; een geannuleerde les krijgt geen betaalwijze
+                    meer, dus daar blijft het een gewone badge. */}
+                {isCoach && booking.status !== 'cancelled' ? (
+                  <Pressable
+                    onPress={() => {
+                      clearError();
+                      setPayingBooking(booking);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Betaalwijze wijzigen, nu ${payment.label}`}
+                    style={webCursor}
+                  >
+                    <Badge label={payment.label} color={payment.color} subtle={payment.subtle} />
+                  </Pressable>
+                ) : (
+                  <Badge label={payment.label} color={payment.color} subtle={payment.subtle} />
+                )}
               </View>
 
               {canCancel(booking.status) ? (
@@ -164,6 +220,20 @@ export default function BookingsScreen(): React.JSX.Element {
           );
         })
       )}
+
+      <PaymentMethodSheet
+        visible={payingBooking !== null}
+        current={payingBooking?.payment_method ?? 'open'}
+        cardHint={cardHintFor(payingBooking)}
+        error={error}
+        onPick={(m) => {
+          void pickMethod(m);
+        }}
+        onClose={() => {
+          clearError();
+          setPayingBooking(null);
+        }}
+      />
     </Screen>
   );
 }
@@ -211,6 +281,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginTop: spacing.xs,
+  },
+  error: {
+    color: tennisColors.danger,
+    fontSize: 14,
   },
   cancelRow: {
     marginTop: spacing.sm,

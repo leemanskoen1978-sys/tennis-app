@@ -180,6 +180,12 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     const booking = store.bookings.find((b) => b.id === bookingId);
     if (!booking) return;
 
+    // Een geannuleerde les mag geen beurt opeten en hoort geen betaalwijze te krijgen.
+    if (booking.status === 'cancelled') {
+      setError('Een geannuleerde les krijgt geen betaalwijze.');
+      return;
+    }
+
     let cards = store.beurtenkaarten;
     let cardId = booking.beurtenkaart_id;
 
