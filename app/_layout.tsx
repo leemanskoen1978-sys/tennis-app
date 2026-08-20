@@ -25,6 +25,23 @@ const headerBase = {
   headerShadowVisible: false,
 } as const;
 
+// Wie het scherm ook opent, de tabbalk zegt al "Agenda" / "Spelers" / "Trainers" / "Beheer";
+// een kop met precies dezelfde tekst erboven is dan alleen nog verspilde ruimte. Dieper dan
+// dat hoofdscherm is de kop juist het enige dat nog zegt waar je bent, dus die blijft staan.
+//
+// agenda/new en coaches/lessons zijn voor een speler wél een eigen tabblad (Reserveren,
+// Mijn lessen) maar voor een trainer een scherm ónder Agenda resp. Trainers. De titel op die
+// schermen ("Nieuwe afspraak", "Lesmateriaal") is geen letterlijke herhaling van het tabblad
+// waar hij vandaan komt, en een trainer heeft daar juist wél houvast aan nodig — dus de kop
+// blijft op deze twee staan, voor beide rollen.
+const HEADLESS = new Set([
+  'agenda/index',
+  'players/index',
+  'players/progress',
+  'coaches/index',
+  'admin/index',
+]);
+
 /** Screens in the order of the hub: Agenda, Spelers, Trainers, Beheer. */
 const SCREENS: ReadonlyArray<{ name: string; title: string }> = [
   { name: 'profile', title: 'Profiel' },
@@ -33,6 +50,9 @@ const SCREENS: ReadonlyArray<{ name: string; title: string }> = [
   { name: 'agenda/export', title: 'Maandoverzicht' },
   { name: 'players/index', title: 'Spelers' },
   { name: 'players/[id]', title: 'Speler-dossier' },
+  // Geen trainer bereikt dit scherm — een voortgangsverslag over een speler vult een
+  // trainer in via de kaart in het spelersdossier. Hier komt alleen een speler, via het
+  // tabblad Voortgang, dus de kop zou letterlijk herhalen wat die tab al zegt.
   { name: 'players/progress', title: 'Voortgang' },
   { name: 'coaches/index', title: 'Trainers' },
   { name: 'coaches/[id]', title: 'Trainer-dossier' },
@@ -96,7 +116,14 @@ function Root() {
             <Stack.Screen name="index" />
             <Stack.Screen name="login" />
             {SCREENS.map((s) => (
-              <Stack.Screen key={s.name} name={s.name} options={{ ...headerBase, title: s.title }} />
+              <Stack.Screen
+                key={s.name}
+                name={s.name}
+                // Een scherm met een eigen tabblad heeft de kop niet nodig: de tabbalk
+                // zegt al waar je bent. options={{}} laat screenOptions (headerShown: false)
+                // gewoon gelden.
+                options={HEADLESS.has(s.name) ? {} : { ...headerBase, title: s.title }}
+              />
             ))}
           </Stack>
         </ThemeProvider>
