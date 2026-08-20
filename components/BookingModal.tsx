@@ -13,6 +13,7 @@ import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
 import type { Court } from '../lib/types';
 import { useSimpleData } from '../providers/SimpleDataProvider';
+import { defaultMethodFor, PAYMENT_LABELS } from '../lib/payments';
 
 interface BookingModalProps {
   visible: boolean;
@@ -83,7 +84,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         start_time,
         end_time,
         status: 'confirmed',
-        payment_method: 'open',
+        payment_method: defaultMethodFor(users.find((u) => u.id === (playerId ?? currentUser.id))),
         notes: notes.trim() ? notes.trim() : undefined,
       });
       setNotes('');
@@ -142,6 +143,9 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
               placeholderTextColor={tennisColors.textMuted}
               multiline
             />
+            <Text style={styles.hint}>
+              Betaalwijze: {PAYMENT_LABELS[defaultMethodFor(users.find((u) => u.id === (playerId ?? currentUser?.id)))]}
+            </Text>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </ScrollView>
@@ -236,6 +240,12 @@ const styles = StyleSheet.create({
     color: tennisColors.text,
     backgroundColor: tennisColors.background,
     textAlignVertical: 'top',
+  },
+  hint: {
+    fontSize: 13,
+    color: tennisColors.textMuted,
+    fontStyle: 'italic',
+    marginTop: spacing.sm,
   },
   error: {
     color: tennisColors.danger,

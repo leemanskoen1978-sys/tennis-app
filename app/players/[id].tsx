@@ -15,9 +15,10 @@ import {
 } from '../../components/progress/ProgressViews';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { coachesForPlayer } from '../../lib/relations';
+import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, shadow, webCursor } from '../../constants/theme';
-import type { Lesson, TrainingType } from '../../lib/types';
+import type { Lesson, PaymentMethod, TrainingType } from '../../lib/types';
 
 const RATINGS = [1, 2, 3, 4, 5] as const;
 
@@ -33,7 +34,7 @@ export default function PlayerDossier() {
   const router = useRouter();
   const {
     currentUser, users, bookings, courts, lessons, progress,
-    addLesson, updateLesson, addProgress,
+    addLesson, updateLesson, addProgress, updateUser,
   } = useSimpleData();
 
   const player = users.find((u) => u.id === id) ?? null;
@@ -194,6 +195,30 @@ export default function PlayerDossier() {
       {given.length === 0 ? <Text style={styles.muted}>Nog niets gegeven.</Text> : given.map((l) => (
         <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given ownerName={nameOf(l.coach_id)} />
       ))}
+
+      {/* Standaard betaalwijze */}
+      {isCoach ? (
+        <Card style={styles.formCard}>
+          <Text style={styles.cardTitle}>Standaard betaalwijze</Text>
+          <Text style={styles.muted}>
+            Een nieuwe les van {player.name} krijgt deze betaalwijze meteen.
+          </Text>
+          <View style={styles.chipRow}>
+            {PAYMENT_METHODS.map((method) => (
+              <Chip
+                key={method}
+                label={PAYMENT_LABELS[method]}
+                selected={(player.default_payment_method ?? 'open') === method}
+                onPress={() => {
+                  void updateUser(player.id, {
+                    default_payment_method: method as PaymentMethod,
+                  });
+                }}
+              />
+            ))}
+          </View>
+        </Card>
+      ) : null}
 
       {/* Voortgang */}
       <Text style={styles.section}>Voortgang</Text>
