@@ -9,6 +9,7 @@ import { Chip } from '../../components/ui/Chip';
 import { Badge } from '../../components/ui/Badge';
 import { VoiceRecorder } from '../../components/VoiceRecorder';
 import { LessonDetailModal } from '../../components/LessonDetailModal';
+import { PlayerGoals } from '../../components/PlayerGoals';
 import {
   TRAINING_TYPES, TRAINING_LABELS, byDateDesc, ProgressEntryCard, ReportSummary,
 } from '../../components/progress/ProgressViews';
@@ -129,6 +130,9 @@ export default function PlayerDossier() {
         ) : null}
       </Card>
 
+      {/* Doelen — het kader voor de rest van het dossier */}
+      <PlayerGoals studentId={player.id} canEdit={!!isCoach} />
+
       {/* Lesdagen */}
       <View style={styles.sectionHeader}>
         <Text style={styles.section}>Lesdagen</Text>
@@ -182,7 +186,7 @@ export default function PlayerDossier() {
         ) : null}
       </View>
 
-      <Text style={styles.subLabel}>Doelen / Te doen</Text>
+      <Text style={styles.subLabel}>Te doen</Text>
       {planned.length === 0 ? <Text style={styles.muted}>Geen geplande lessen.</Text> : planned.map((l) => (
         <PlanRow key={l.id} lesson={l} onOpen={() => openLesson(l)} onToggle={() => toggleGiven(l)} canEdit={!!isCoach} given={false} ownerName={nameOf(l.coach_id)} />
       ))}

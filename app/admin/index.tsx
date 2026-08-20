@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-  CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus,
+  CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target,
   ChevronRight, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
@@ -32,6 +32,7 @@ export default function Admin() {
     { key: 'pay', label: 'Betalingen', icon: CreditCard, onPress: () => router.push('/admin/payments'), badge: pending.length },
     { key: 'rep', label: 'Rapport', icon: BarChart3, onPress: () => router.push('/admin/reports') },
     { key: 'courts', label: 'Banen', icon: LayoutGrid, onPress: () => router.push('/admin/courts') },
+    { key: 'goals', label: 'Doelen', icon: Target, onPress: () => router.push('/admin/goals') },
     { key: 'set', label: 'Instellingen', icon: SettingsIcon, onPress: () => router.push('/admin/settings') },
     { key: 'add', label: 'Speler toevoegen', icon: UserPlus, onPress: () => setAddOpen(true) },
   ];

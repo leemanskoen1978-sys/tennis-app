@@ -4,8 +4,9 @@ import React, {
 import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
 import { loadStore, saveStore, resetStore, newId, type StoreData } from './mockStore';
+import { upsertGoal } from '../lib/goals';
 import type {
-  User, Court, Booking, Lesson, StudentProgress, Settings,
+  User, Court, Booking, Lesson, StudentProgress, PlayerGoal, Settings,
 } from '../lib/types';
 
 interface DataShape {
@@ -14,6 +15,7 @@ interface DataShape {
   bookings: Booking[];
   lessons: Lesson[];
   progress: StudentProgress[];
+  goals: PlayerGoal[];
   settings: Settings;
   currentUser: User | null;
   loading: boolean;
@@ -33,6 +35,8 @@ interface DataShape {
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
   addProgress: (p: Omit<StudentProgress, 'id'>) => Promise<void>;
+  /** One goal per player per horizon; an emptied-out goal is removed. */
+  saveGoal: (goal: PlayerGoal) => Promise<void>;
   saveSettings: (s: Settings) => Promise<void>;
   emergencyCleanup: () => Promise<void>;
 }
@@ -169,6 +173,11 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     await commit({ ...store, progress: [...store.progress, entry] });
   }, [store, commit]);
 
+  const saveGoal = useCallback(async (goal: PlayerGoal) => {
+    if (!store) return;
+    await commit({ ...store, goals: upsertGoal(store.goals, goal) });
+  }, [store, commit]);
+
   const saveSettings = useCallback(async (s: Settings) => {
     if (!store) return;
     await commit({ ...store, settings: s });
@@ -196,6 +205,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     bookings: store?.bookings ?? [],
     lessons: store?.lessons ?? [],
     progress: store?.progress ?? [],
+    goals: store?.goals ?? [],
     settings: store?.settings ?? { booking_end_time: '21:00', theme: 'light', language: 'nl' },
     currentUser,
     loading,
@@ -213,12 +223,13 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     updateLesson,
     deleteLesson,
     addProgress,
+    saveGoal,
     saveSettings,
     emergencyCleanup,
   }), [
     store, currentUser, loading, error, clearError, login, logout, refresh,
     addBooking, updateBooking, deleteBooking, addUser, updateUser, addLesson,
-    updateLesson, deleteLesson, addProgress, saveSettings, emergencyCleanup,
+    updateLesson, deleteLesson, addProgress, saveGoal, saveSettings, emergencyCleanup,
   ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

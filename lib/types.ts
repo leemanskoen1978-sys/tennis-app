@@ -145,8 +145,29 @@ export interface StudentProgress {
   created_at?: string; // ISO — set when the entry is created (for timelines/reports)
 }
 
+/** How far ahead a goal looks. Three fixed horizons — the coach picks the content. */
+export type GoalHorizon = 'lessons10' | 'lessons20' | 'season';
+
+/**
+ * What a player is working towards. One goal per horizon: "wat is het doel binnen 10
+ * lessen" has one answer, not a list.
+ *
+ * The two types are plain strings rather than a union, because the club adds its own
+ * options in Beheer — a union would mean a code change for every new one.
+ */
+export interface PlayerGoal {
+  id: string;
+  student_id: string;
+  horizon: GoalHorizon;
+  shot_type?: string;   // Type slag — from Settings.shot_types
+  change_type?: string; // Type wijziging — from Settings.change_types
+  notes?: string;       // Opmerkingen
+}
+
 export interface Settings {
   booking_end_time: string;
+  shot_types?: string[];   // choices for a goal's Type slag
+  change_types?: string[]; // choices for a goal's Type wijziging
   theme?: 'light' | 'dark';
   language?: 'nl' | 'en';
   notifications?: Record<string, boolean>;

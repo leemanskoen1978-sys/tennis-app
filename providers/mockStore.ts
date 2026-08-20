@@ -1,7 +1,7 @@
 // In-memory mock backend, persisted to AsyncStorage (localStorage on web).
 // Same shape the Supabase layer will later return, so screens don't change.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Booking, Court, Lesson, StudentProgress, User, Settings } from '../lib/types';
+import type { Booking, Court, Lesson, PlayerGoal, StudentProgress, User, Settings } from '../lib/types';
 import {
   seedUsers, seedCourts, seedBookings, seedLessons, seedProgress, defaultSettings,
 } from '../lib/seed';
@@ -16,6 +16,7 @@ export interface StoreData {
   bookings: Booking[];
   lessons: Lesson[];
   progress: StudentProgress[];
+  goals: PlayerGoal[];
   settings: Settings;
   /** Which shipped lesson catalogues have already been added, so a deleted
    *  training stays deleted instead of reappearing on the next load. */
@@ -29,8 +30,27 @@ function freshSeed(): StoreData {
     bookings: [...seedBookings],
     lessons: [...seedLessons],
     progress: [...seedProgress],
+    goals: [],
     settings: { ...defaultSettings },
     installed_catalogues: [],
+  };
+}
+
+/**
+ * A store written by an older version has no `goals` key. Reading it back would hand the
+ * screens `undefined` where they expect a list, so every collection is filled in on load.
+ * Cheap, and it means a new collection never needs a wipe to arrive.
+ */
+function withDefaults(data: StoreData): StoreData {
+  return {
+    ...data,
+    users: data.users ?? [],
+    courts: data.courts ?? [],
+    bookings: data.bookings ?? [],
+    lessons: data.lessons ?? [],
+    progress: data.progress ?? [],
+    goals: data.goals ?? [],
+    settings: { ...defaultSettings, ...data.settings },
   };
 }
 
@@ -57,7 +77,7 @@ export async function loadStore(): Promise<StoreData> {
       await saveStore(seeded);
       return seeded;
     }
-    const stored = JSON.parse(raw) as StoreData;
+    const stored = withDefaults(JSON.parse(raw) as StoreData);
     const merged = withCatalogues(stored);
     if (merged !== stored) await saveStore(merged);
     return merged;

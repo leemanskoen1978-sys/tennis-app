@@ -39,6 +39,7 @@ const SCREENS: ReadonlyArray<{ name: string; title: string }> = [
   { name: 'admin/payments', title: 'Betalingen' },
   { name: 'admin/reports', title: 'Rapport' },
   { name: 'admin/courts', title: 'Banen' },
+  { name: 'admin/goals', title: 'Doelen' },
   { name: 'admin/settings', title: 'Instellingen' },
 ];
 
