@@ -31,11 +31,11 @@ import { spacing, radius, typography, shadow, minTapTarget, webCursor, contentMa
 
 /** De kleur bij een status; dezelfde die het maandoverzicht ooit op de kaart zette. */
 const STATUS_COLORS: Record<BookingStatus, string> = {
-  pending: tennisColors.warning,
-  confirmed: tennisColors.primary,
-  cancelled: tennisColors.textMuted,
-  completed: tennisColors.court,
-  synchronized: tennisColors.court,
+  pending: tennisColors.warningFill,
+  confirmed: tennisColors.primaryFill,
+  cancelled: tennisColors.mutedFill,
+  completed: tennisColors.courtFill,
+  synchronized: tennisColors.courtFill,
 };
 
 /**

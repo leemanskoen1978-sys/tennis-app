@@ -23,12 +23,9 @@ export const radius = {
 // Web uses boxShadow; native uses elevation. `shadow()` returns the right props.
 export function shadow(level: 'sm' | 'md' | 'lg' = 'md') {
   if (Platform.OS === 'web') {
-    const box = {
-      sm: '0 1px 2px rgba(16,24,20,0.05)',
-      md: '0 1px 3px rgba(16,24,20,0.06), 0 4px 10px rgba(16,24,20,0.05)',
-      lg: '0 12px 32px rgba(16,24,20,0.16)',
-    }[level];
-    return { boxShadow: box } as const;
+    // De schaduw zelf staat als CSS-variabele naast de kleuren (lib/theme-mode), want op
+    // donker is hij een andere schaduw en niet dezelfde met een andere dekking.
+    return { boxShadow: `var(--tc-shadow-${level})` } as const;
   }
   const native = {
     sm: { elevation: 1 },

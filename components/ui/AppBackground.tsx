@@ -1,4 +1,4 @@
-import { View, Image, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { tennisColors } from '../../constants/tennis-colors';
 
@@ -45,5 +45,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
-  mark: { width: '92%', height: '100%', opacity: 0.16 },
+  // De dekking komt uit het thema: op donker moet het teken sterker staan om even
+  // aanwezig te zijn (zie `decor` in constants/tennis-colors).
+  mark: {
+    width: '92%',
+    height: '100%',
+    opacity: Platform.OS === 'web' ? ('var(--tc-mark-opacity)' as unknown as number) : 0.16,
+  },
 });

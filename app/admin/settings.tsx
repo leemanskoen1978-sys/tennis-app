@@ -111,7 +111,7 @@ export default function SettingsScreen(): React.JSX.Element {
         <Button
           label="Noodopruiming"
           variant="danger"
-          icon={<Trash2 size={18} color={tennisColors.white} />}
+          icon={<Trash2 size={18} color={tennisColors.onFill} />}
           onPress={() =>
             confirmDanger(
               'Weet je het zeker? Dit zet alle gegevens terug naar de begininstellingen en je wordt uitgelogd.',

@@ -25,11 +25,11 @@ export function Button({
 }) {
   const bg =
     variant === 'primary'
-      ? tennisColors.primary
+      ? tennisColors.primaryFill
       : variant === 'danger'
-        ? tennisColors.danger
+        ? tennisColors.dangerFill
         : tennisColors.surface;
-  const fg = variant === 'secondary' ? tennisColors.text : tennisColors.white;
+  const fg = variant === 'secondary' ? tennisColors.text : tennisColors.onFill;
   const border = variant === 'secondary' ? tennisColors.border : 'transparent';
 
   return (

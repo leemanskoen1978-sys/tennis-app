@@ -84,12 +84,12 @@ function WebVoiceRecorder({
     <View style={styles.box}>
       {recording ? (
         <Pressable onPress={stop} style={[styles.btn, styles.stopBtn, webCursor]} accessibilityRole="button" accessibilityLabel="Stop opname">
-          <Square size={18} color={tennisColors.white} />
+          <Square size={18} color={tennisColors.onFill} />
           <Text style={styles.btnTextLight}>Stop • {mmss}</Text>
         </Pressable>
       ) : (
         <Pressable onPress={start} style={[styles.btn, styles.recBtn, webCursor]} accessibilityRole="button" accessibilityLabel="Start opname">
-          <Mic size={18} color={tennisColors.white} />
+          <Mic size={18} color={tennisColors.onFill} />
           <Text style={styles.btnTextLight}>{value ? 'Opnieuw opnemen' : 'Opnemen'}</Text>
         </Pressable>
       )}
@@ -116,9 +116,9 @@ function WebVoiceRecorder({
 const styles = StyleSheet.create({
   box: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   btn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: spacing.lg, paddingVertical: 10, borderRadius: radius.md },
-  recBtn: { backgroundColor: tennisColors.primary },
+  recBtn: { backgroundColor: tennisColors.primaryFill },
   stopBtn: { backgroundColor: tennisColors.danger },
-  btnTextLight: { color: tennisColors.white, fontWeight: '700', fontSize: 14 },
+  btnTextLight: { color: tennisColors.onFill, fontWeight: '700', fontSize: 14 },
   iconBtn: { padding: 8 },
   hintWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   hint: { color: tennisColors.textMuted, fontSize: 12 },

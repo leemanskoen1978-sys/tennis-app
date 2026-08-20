@@ -343,8 +343,8 @@ const styles = StyleSheet.create({
   },
   exerciseTitle: { fontSize: 14, fontWeight: '800', color: tennisColors.text },
   exerciseNr: {
-    fontSize: 13, fontWeight: '800', color: tennisColors.white,
-    backgroundColor: tennisColors.primary, borderRadius: radius.pill,
+    fontSize: 13, fontWeight: '800', color: tennisColors.onFill,
+    backgroundColor: tennisColors.primaryFill, borderRadius: radius.pill,
     minWidth: 24, textAlign: 'center', paddingHorizontal: 6, paddingVertical: 2,
   },
   exerciseChip: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted },

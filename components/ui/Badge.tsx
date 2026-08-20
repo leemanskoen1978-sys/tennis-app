@@ -6,7 +6,7 @@ import { radius, spacing } from '../../constants/theme';
 /** Small status pill. Pass a background color; text auto-contrasts to white/dark. */
 export function Badge({
   label,
-  color = tennisColors.primary,
+  color = tennisColors.primaryFill,
   subtle = false,
 }: {
   label: string;
@@ -22,7 +22,7 @@ export function Badge({
           : { backgroundColor: color },
       ]}
     >
-      <Text style={[styles.text, { color: subtle ? tennisColors.primaryDark : tennisColors.white }]}>
+      <Text style={[styles.text, { color: subtle ? tennisColors.primaryDark : tennisColors.onFill }]}>
         {label}
       </Text>
     </View>

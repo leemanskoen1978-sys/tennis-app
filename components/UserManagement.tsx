@@ -43,9 +43,9 @@ const ROLE_LABELS: Record<Role, string> = {
 };
 
 const ROLE_BADGE_COLORS: Record<Role, string> = {
-  player: tennisColors.primary,
-  coach: tennisColors.primary,
-  parent: tennisColors.court,
+  player: tennisColors.primaryFill,
+  coach: tennisColors.primaryFill,
+  parent: tennisColors.courtFill,
 };
 
 /** Coach uses primary badge, parent uses court, player is subtle. */
@@ -242,7 +242,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
               label={role === 'coach' ? 'Trainer toevoegen' : 'Toevoegen'}
               onPress={handleAdd}
               disabled={!canSubmit}
-              icon={<UserPlus size={18} color={tennisColors.white} />}
+              icon={<UserPlus size={18} color={tennisColors.onFill} />}
               style={styles.addButton}
             />
           </View>

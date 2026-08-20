@@ -174,7 +174,7 @@ export function CoachDetailsModal({
             <Button
               label="Opslaan"
               variant="primary"
-              icon={<Save size={18} color={tennisColors.white} />}
+              icon={<Save size={18} color={tennisColors.onFill} />}
               disabled={!canSave}
               onPress={() => { void save(); }}
               style={styles.saveButton}

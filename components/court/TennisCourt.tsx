@@ -1,6 +1,5 @@
 import React from 'react';
 import Svg, { Rect, Line, G } from 'react-native-svg';
-import { tennisColors } from '../../constants/tennis-colors';
 
 export type CourtOrientation = 'vertical' | 'horizontal';
 
@@ -11,7 +10,9 @@ export type CourtOrientation = 'vertical' | 'horizontal';
  * The clay surface is painted full-bleed by the canvas behind this SVG.
  */
 export function TennisCourt({ orientation = 'vertical' }: { orientation?: CourtOrientation }) {
-  const W = tennisColors.white;
+  // De belijning van een tennisbaan is wit, in elk thema. Dit is geen kleur uit het palet
+  // maar een eigenschap van het ding dat hier getekend wordt.
+  const W = '#FFFFFF';
   const sw = 4;
 
   const lines = (

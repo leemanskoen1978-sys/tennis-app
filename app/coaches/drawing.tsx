@@ -27,7 +27,16 @@ type HistoryItem = { kind: 'stroke' | 'object'; id: string };
 const OBJECT_SIZE = 38;
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
-const PEN_COLORS = [tennisColors.danger, tennisColors.court, tennisColors.white, tennisColors.text];
+// Vaste kleuren, geen palet-kleuren. Een gekozen penkleur wordt mee opgeslagen in de
+// tekening; zou daar een thema-kleur in staan, dan veranderde een bewaarde tekening van
+// kleur zodra iemand naar donker omschakelt. Een tekening op een oranje gravelbaan hoort
+// er bovendien in elk thema hetzelfde uit te zien.
+const PEN_COLORS = [
+  { value: '#C0392B', label: 'rood' },
+  { value: '#2C5F8A', label: 'blauw' },
+  { value: '#FFFFFF', label: 'wit' },
+  { value: '#16221A', label: 'zwart' },
+] as const;
 
 export default function Drawing() {
   const router = useRouter();
@@ -44,7 +53,7 @@ export default function Drawing() {
   const [savePlayerId, setSavePlayerId] = useState<string | null>(null);
 
   const [tool, setTool] = useState<Tool>('pen');
-  const [color, setColor] = useState<string>(tennisColors.danger);
+  const [color, setColor] = useState<string>(PEN_COLORS[0].value);
   const [strokes, setStrokes] = useState<CourtStroke[]>([]);
   const [current, setCurrent] = useState('');
   const [objects, setObjects] = useState<CourtObject[]>([]);
@@ -182,9 +191,9 @@ export default function Drawing() {
   return (
     <View style={styles.container}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.toolbarWrap} contentContainerStyle={styles.toolbar}>
-        <ToolButton label="Tekenen" active={tool === 'pen'} onPress={() => setTool('pen')} icon={<Pencil size={18} color={tool === 'pen' ? tennisColors.white : tennisColors.text} />} />
-        <ToolButton label="Kegel" active={tool === 'cone'} onPress={() => setTool('cone')} icon={<Cone size={18} color={tool === 'cone' ? tennisColors.white : tennisColors.text} />} />
-        <ToolButton label="Speler" active={tool === 'player'} onPress={() => setTool('player')} icon={<PersonStanding size={18} color={tool === 'player' ? tennisColors.white : tennisColors.text} />} />
+        <ToolButton label="Tekenen" active={tool === 'pen'} onPress={() => setTool('pen')} icon={<Pencil size={18} color={tool === 'pen' ? tennisColors.onFill : tennisColors.text} />} />
+        <ToolButton label="Kegel" active={tool === 'cone'} onPress={() => setTool('cone')} icon={<Cone size={18} color={tool === 'cone' ? tennisColors.onFill : tennisColors.text} />} />
+        <ToolButton label="Speler" active={tool === 'player'} onPress={() => setTool('player')} icon={<PersonStanding size={18} color={tool === 'player' ? tennisColors.onFill : tennisColors.text} />} />
         <ToolButton label="Racket" active={tool === 'racket'} onPress={() => setTool('racket')} icon={<Text style={{ fontSize: 15 }}>🎾</Text>} />
         <ToolButton
           label={orientation === 'vertical' ? 'Horizontaal' : 'Verticaal'}
@@ -209,11 +218,11 @@ export default function Drawing() {
         <View style={styles.swatches}>
           {PEN_COLORS.map((c) => (
             <Pressable
-              key={c}
+              key={c.value}
               accessibilityRole="button"
-              accessibilityLabel={`Kleur ${c === tennisColors.danger ? 'rood' : c === tennisColors.court ? 'blauw' : c === tennisColors.white ? 'wit' : 'zwart'}`}
-              onPress={() => setColor(c)}
-              style={[styles.swatch, { backgroundColor: c }, color === c && styles.swatchActive, webCursor]}
+              accessibilityLabel={`Kleur ${c.label}`}
+              onPress={() => setColor(c.value)}
+              style={[styles.swatch, { backgroundColor: c.value }, color === c.value && styles.swatchActive, webCursor]}
             />
           ))}
           <Text style={styles.hint}>Teken met je vinger. Kies een object om het op het veld te zetten.</Text>
@@ -378,10 +387,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md, backgroundColor: tennisColors.surface,
     borderWidth: 1, borderColor: tennisColors.border,
   },
-  toolActive: { backgroundColor: tennisColors.primary, borderColor: tennisColors.primary },
+  toolActive: { backgroundColor: tennisColors.primaryFill, borderColor: tennisColors.primaryFill },
   toolDisabled: { opacity: 0.5 },
   toolText: { fontSize: 13, fontWeight: '600', color: tennisColors.text },
-  toolTextActive: { color: tennisColors.white },
+  toolTextActive: { color: tennisColors.onFill },
   swatches: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.xs, flexWrap: 'wrap' },
   swatch: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: tennisColors.border },
   swatchActive: { borderColor: tennisColors.primary, borderWidth: 3 },

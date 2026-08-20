@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     height: 10, borderRadius: radius.pill, backgroundColor: tennisColors.primaryTint,
     marginTop: spacing.sm, overflow: 'hidden',
   },
-  barFill: { height: 10, backgroundColor: tennisColors.primary },
+  barFill: { height: 10, backgroundColor: tennisColors.primaryFill },
   stepRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm, flexWrap: 'wrap' },
   hint: { fontSize: 12, color: tennisColors.textMuted, fontStyle: 'italic', marginTop: spacing.xs },
   input: {

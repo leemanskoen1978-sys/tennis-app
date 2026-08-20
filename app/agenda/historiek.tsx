@@ -131,7 +131,7 @@ export default function HistoriekScreen(): React.JSX.Element {
           label="Exporteren"
           variant="primary"
           disabled={rows.length === 0}
-          icon={<Download size={16} color={tennisColors.white} />}
+          icon={<Download size={16} color={tennisColors.onFill} />}
           onPress={() => { void onExport(); }}
         />
         <Text style={styles.exportNote}>

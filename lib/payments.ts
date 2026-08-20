@@ -29,17 +29,17 @@ export function paymentMeta(method: PaymentMethod): PaymentMeta {
   const label = PAYMENT_LABELS[method];
   switch (method) {
     case 'cash':
-      return { color: tennisColors.success, label, subtle: false };
+      return { color: tennisColors.successFill, label, subtle: false };
     case 'invoice':
-      return { color: tennisColors.court, label, subtle: false };
+      return { color: tennisColors.courtFill, label, subtle: false };
     case 'qr':
-      return { color: tennisColors.primaryDark, label, subtle: false };
+      return { color: tennisColors.primaryFillDeep, label, subtle: false };
     case 'beurtenkaart':
-      return { color: tennisColors.clay, label, subtle: false };
+      return { color: tennisColors.clayFill, label, subtle: false };
     case 'sponsor':
-      return { color: tennisColors.warning, label, subtle: false };
+      return { color: tennisColors.warningFill, label, subtle: false };
     case 'open':
-      return { color: tennisColors.textMuted, label, subtle: true };
+      return { color: tennisColors.mutedFill, label, subtle: true };
   }
 }
 

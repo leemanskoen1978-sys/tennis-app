@@ -140,7 +140,7 @@ export function LessonDetailModal({
                 <TrainingPlanView plan={planFrom(lesson)} />
 
                 {lesson.url ? (
-                  <Button label="Video openen" variant="primary" icon={<ExternalLink size={18} color={tennisColors.white} />} onPress={() => { if (lesson.url) void Linking.openURL(lesson.url); }} />
+                  <Button label="Video openen" variant="primary" icon={<ExternalLink size={18} color={tennisColors.onFill} />} onPress={() => { if (lesson.url) void Linking.openURL(lesson.url); }} />
                 ) : (
                   <Text style={styles.descMuted}>Geen video-link.</Text>
                 )}
@@ -198,7 +198,7 @@ export function LessonDetailModal({
                 {canEdit ? (
                   <View style={styles.actions}>
                     <Button label="Bewerken" variant="secondary" icon={<Pencil size={16} color={tennisColors.text} />} onPress={startEdit} />
-                    <Button label="Verwijderen" variant="danger" icon={<Trash2 size={16} color={tennisColors.white} />} onPress={remove} />
+                    <Button label="Verwijderen" variant="danger" icon={<Trash2 size={16} color={tennisColors.onFill} />} onPress={remove} />
                   </View>
                 ) : null}
               </>

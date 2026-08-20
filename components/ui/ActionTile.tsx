@@ -42,9 +42,9 @@ export function ActionTile({
     >
       <View style={styles.tileTop}>
         <View style={[styles.iconWrap, primary && styles.iconWrapPrimary]}>
-          <Icon color={primary ? tennisColors.white : tennisColors.primary} size={24} />
+          <Icon color={primary ? tennisColors.onFill : tennisColors.primary} size={24} />
         </View>
-        {badge && badge > 0 ? <Badge label={String(badge)} color={tennisColors.warning} /> : null}
+        {badge && badge > 0 ? <Badge label={String(badge)} color={tennisColors.warningFill} /> : null}
       </View>
       <Text style={[styles.tileTitle, primary && styles.textOnPrimary]}>{title}</Text>
       {subtitle ? (
@@ -71,15 +71,15 @@ const styles = StyleSheet.create({
   // passen, 260 de breedte waarboven een tegel als een balk gaat ogen.
   tileWide: { minWidth: 150, maxWidth: 260 },
   // De primaire tegel is bewust de volle rij breed; die mag de maximumbreedte negeren.
-  tilePrimary: { flexBasis: '100%', maxWidth: '100%', backgroundColor: tennisColors.primary },
+  tilePrimary: { flexBasis: '100%', maxWidth: '100%', backgroundColor: tennisColors.primaryFill },
   tileTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iconWrap: {
     width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
     backgroundColor: tennisColors.primaryTint,
   },
-  iconWrapPrimary: { backgroundColor: 'rgba(255,255,255,0.2)' },
+  iconWrapPrimary: { backgroundColor: tennisColors.onFillWash },
   tileTitle: { ...typography.h3, color: tennisColors.text, marginTop: spacing.sm },
   tileSub: { fontSize: 13, color: tennisColors.textMuted },
-  textOnPrimary: { color: tennisColors.white },
-  subOnPrimary: { color: 'rgba(255,255,255,0.85)' },
+  textOnPrimary: { color: tennisColors.onFill },
+  subOnPrimary: { color: tennisColors.onFillMuted },
 });

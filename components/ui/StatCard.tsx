@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: tennisColors.primaryTint,
   },
-  iconWrapWarning: { backgroundColor: '#F6EEDC' },
+  iconWrapWarning: { backgroundColor: tennisColors.warningTint },
   value: { ...typography.h1, color: tennisColors.text },
   label: { ...typography.caption, color: tennisColors.textMuted, textAlign: 'center' },
 });

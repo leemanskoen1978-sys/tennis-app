@@ -80,7 +80,7 @@ export function LessonCards({
                   {isAwaitingApproval(booking) ? (
                     <Badge
                       label={BOOKING_STATUS_LABELS.pending}
-                      color={tennisColors.warning}
+                      color={tennisColors.warningFill}
                     />
                   ) : null}
                   <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />

@@ -99,7 +99,7 @@ export default function CoachDossier() {
     <Screen>
       <Card>
         <Text style={styles.name}>{coach.name}</Text>
-        <Badge label="Trainer" color={tennisColors.primary} />
+        <Badge label="Trainer" color={tennisColors.primaryFill} />
         {coach.email ? <Text style={styles.contact}>{coach.email}</Text> : null}
         {coach.phone ? <Text style={styles.contact}>{coach.phone}</Text> : null}
 

@@ -165,7 +165,7 @@ export default function NewLessonScreen(): React.JSX.Element {
         <Button
           label="Toevoegen"
           variant="primary"
-          icon={<Plus size={18} color={tennisColors.white} />}
+          icon={<Plus size={18} color={tennisColors.onFill} />}
           disabled={title.trim().length === 0}
           onPress={() => {
             void handleAdd();

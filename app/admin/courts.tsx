@@ -74,7 +74,7 @@ function CourtCard({ court }: { court: Court }): React.JSX.Element {
         <Text style={styles.name}>{court.name}</Text>
         <Badge
           label={court.indoor ? 'Binnen' : 'Buiten'}
-          color={court.indoor ? tennisColors.court : tennisColors.primary}
+          color={court.indoor ? tennisColors.courtFill : tennisColors.primaryFill}
           subtle={!court.indoor}
         />
       </View>

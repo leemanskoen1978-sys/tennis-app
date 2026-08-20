@@ -109,7 +109,7 @@ function OptionList({
           accessibilityState={{ disabled: draft.trim().length === 0 }}
           style={[styles.addBtn, draft.trim().length === 0 && styles.addBtnOff, webCursor]}
         >
-          <Plus size={18} color={draft.trim() ? tennisColors.white : tennisColors.textMuted} />
+          <Plus size={18} color={draft.trim() ? tennisColors.onFill : tennisColors.textMuted} />
         </Pressable>
       </View>
     </Card>
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   addBtn: {
     width: 44, height: 44, borderRadius: radius.md,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: tennisColors.primary,
+    backgroundColor: tennisColors.primaryFill,
   },
   addBtnOff: { backgroundColor: tennisColors.border },
 });

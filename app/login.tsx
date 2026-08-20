@@ -23,9 +23,9 @@ const ROLE_LABELS: Record<Role, string> = {
 function roleBadgeProps(role: string): { label: string; color?: string; subtle?: boolean } {
   switch (role) {
     case 'coach':
-      return { label: ROLE_LABELS.coach, color: tennisColors.primary };
+      return { label: ROLE_LABELS.coach, color: tennisColors.primaryFill };
     case 'parent':
-      return { label: ROLE_LABELS.parent, color: tennisColors.court };
+      return { label: ROLE_LABELS.parent, color: tennisColors.courtFill };
     case 'player':
     default:
       return { label: ROLE_LABELS.player ?? role, subtle: true };
@@ -156,7 +156,7 @@ export default function Login(): React.JSX.Element {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={[tennisColors.primary, tennisColors.primaryDark]}
+        colors={[tennisColors.primaryFill, tennisColors.primaryFillDeep]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}
@@ -229,13 +229,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: '800',
-    color: tennisColors.white,
+    color: tennisColors.onFill,
     letterSpacing: 0.3,
   },
   subtitle: {
     marginTop: 6,
     fontSize: 16,
-    color: tennisColors.white,
+    color: tennisColors.onFill,
     opacity: 0.9,
   },
   errorBox: {
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 14,
     borderRadius: 12,
-    backgroundColor: '#FDECEA',
+    backgroundColor: tennisColors.dangerTint,
     borderWidth: 1,
     borderColor: tennisColors.danger,
   },

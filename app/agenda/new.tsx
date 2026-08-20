@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayCellActive: {
-    backgroundColor: tennisColors.primary,
+    backgroundColor: tennisColors.primaryFill,
     borderColor: tennisColors.primary,
   },
   dayCellDisabled: {
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     color: tennisColors.textMuted,
   },
   dayTextActive: {
-    color: tennisColors.white,
+    color: tennisColors.onFill,
   },
   dayTextDisabled: {
     color: tennisColors.textMuted,
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   slotActive: {
-    backgroundColor: tennisColors.primary,
+    backgroundColor: tennisColors.primaryFill,
     borderColor: tennisColors.primary,
   },
   slotDisabled: {
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     color: tennisColors.text,
   },
   slotTextActive: {
-    color: tennisColors.white,
+    color: tennisColors.onFill,
   },
   slotTextDisabled: {
     color: tennisColors.textMuted,

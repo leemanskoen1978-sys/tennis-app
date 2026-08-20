@@ -191,7 +191,7 @@ export default function ProfileScreen(): React.JSX.Element {
   return (
     <Screen contentStyle={styles.screenContent}>
       <LinearGradient
-        colors={[tennisColors.primary, tennisColors.primaryDark]}
+        colors={[tennisColors.primaryFill, tennisColors.primaryFillDeep]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.hero, isWide && styles.heroWide]}
@@ -291,14 +291,14 @@ const styles = StyleSheet.create({
     borderRadius: 42,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: tennisColors.onFillWash,
     borderWidth: 3,
-    borderColor: tennisColors.white,
+    borderColor: tennisColors.onFill,
   },
-  avatarText: { fontSize: 28, fontWeight: '800', color: tennisColors.white },
+  avatarText: { fontSize: 28, fontWeight: '800', color: tennisColors.onFill },
   heroText: { flex: 1, gap: spacing.xs },
-  heroName: { ...typography.h1, color: tennisColors.white },
-  heroRole: { fontSize: 15, color: 'rgba(255,255,255,0.85)' },
+  heroName: { ...typography.h1, color: tennisColors.onFill },
+  heroRole: { fontSize: 15, color: tennisColors.onFillMuted },
   statsWrap: { marginTop: -OVERLAP, paddingHorizontal: spacing.lg, gap: spacing.sm },
   rateWarning: { fontSize: 13, color: tennisColors.warning },
   body: { padding: spacing.lg, gap: spacing.lg },

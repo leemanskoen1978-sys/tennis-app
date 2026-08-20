@@ -202,7 +202,7 @@ export default function PlayerDossier() {
       {/* Wie is dit */}
       <Card>
         <Text style={styles.name}>{player.name}</Text>
-        <Badge label={player.role === 'coach' ? 'Coach' : player.role === 'parent' ? 'Ouder' : 'Speler'} color={tennisColors.primary} />
+        <Badge label={player.role === 'coach' ? 'Coach' : player.role === 'parent' ? 'Ouder' : 'Speler'} color={tennisColors.primaryFill} />
         {player.email ? <Text style={styles.contact}>{player.email}</Text> : null}
         {player.phone ? <Text style={styles.contact}>{player.phone}</Text> : null}
         {playerCoaches.length > 0 ? (
@@ -241,7 +241,7 @@ export default function PlayerDossier() {
       <DetailSheet title="Lesdagen" visible={sheetOpen('lesdagen')} onClose={closeSheet}>
         {isCoach ? (
           <SheetAction
-            icon={<CalendarPlus size={16} color={tennisColors.primary} />}
+            icon={<CalendarPlus size={16} color={tennisColors.primaryFill} />}
             label="Nieuwe afspraak"
             accessibilityLabel={`Nieuwe afspraak met ${player.name}`}
             onPress={() => goTo(`/agenda/new?playerId=${player.id}`)}
@@ -297,13 +297,13 @@ export default function PlayerDossier() {
         {isCoach && currentUser ? (
           <View style={styles.actionRow}>
             <SheetAction
-              icon={<Plus size={16} color={tennisColors.primary} />}
+              icon={<Plus size={16} color={tennisColors.primaryFill} />}
               label="Les toewijzen"
               accessibilityLabel="Les toewijzen"
               onPress={() => setAssignOpen(true)}
             />
             <SheetAction
-              icon={<Plus size={16} color={tennisColors.primary} />}
+              icon={<Plus size={16} color={tennisColors.primaryFill} />}
               label="Voortgang toevoegen"
               accessibilityLabel={`Voortgang toevoegen voor ${player.name}`}
               onPress={() => setProgressOpen(true)}
@@ -429,7 +429,7 @@ function PlanRow({ lesson, onOpen, onToggle, canEdit, given, ownerName, divided 
   return (
     <View style={[styles.planRow, styles.listRow, divided && styles.divided]}>
       <Pressable onPress={onOpen} style={[styles.planOpen, webCursor]} accessibilityRole="button" accessibilityLabel={lesson.title}>
-        <BookOpen size={18} color={tennisColors.primary} />
+        <BookOpen size={18} color={tennisColors.primaryFill} />
         <View style={styles.planTitleWrap}>
           <Text style={styles.planTitle} numberOfLines={1}>{lesson.title}</Text>
           {ownerName ? <Text style={styles.planOwner}>van {ownerName}</Text> : null}

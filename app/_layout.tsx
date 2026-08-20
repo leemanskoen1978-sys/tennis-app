@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Stack, Redirect, useSegments } from 'expo-router';
 import { ThemeProvider, DefaultTheme, type Theme } from '@react-navigation/native';
 import { View, ActivityIndicator } from 'react-native';
@@ -6,6 +7,12 @@ import { MenuBar } from '../components/ui/MenuBar';
 import { TabBar } from '../components/ui/TabBar';
 import { AppBackground } from '../components/ui/AppBackground';
 import { tennisColors } from '../constants/tennis-colors';
+import { applyThemeMode, rememberedThemeMode } from '../lib/theme-mode';
+
+// Nog vóór er iets getekend wordt: het thema van de vorige keer. De echte keuze staat in de
+// instellingen van de club en komt pas mee met de databank; zonder deze regel zie je bij
+// elke start eerst een wit scherm dat daarna omslaat naar donker.
+applyThemeMode(rememberedThemeMode() ?? 'light');
 
 // One plain stack. Bovenin staat de MenuBar (naam, terug, profiel), onderin de TabBar met
 // de secties — daar is op een telefoon je duim al. De stack zit ertussen; de stack header
@@ -88,8 +95,15 @@ const transparentTheme: Theme = {
 };
 
 function Root() {
-  const { loading, currentUser } = useSimpleData();
+  const { loading, currentUser, settings } = useSimpleData();
   const segments = useSegments();
+
+  // De enige plek waar het thema uit de instellingen op het scherm terechtkomt. Verder
+  // rendert er niets opnieuw: dit zet één attribuut op de pagina en de browser verft de
+  // rest (zie lib/theme-mode).
+  useEffect(() => {
+    applyThemeMode(settings.theme ?? 'light');
+  }, [settings.theme]);
 
   if (loading) {
     return (
