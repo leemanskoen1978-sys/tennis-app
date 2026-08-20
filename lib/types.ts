@@ -7,7 +7,17 @@ export type BookingStatus =
   | 'cancelled'
   | 'completed'
   | 'synchronized';
-export type PaymentStatus = 'paid' | 'unpaid' | 'invoice' | null;
+/**
+ * Hoe een les betaald wordt. Eén veld, geen aparte status: 'open' betekent dat er nog
+ * niets is afgesproken en houdt de les in de werklijst van Beheer → Betalingen.
+ */
+export type PaymentMethod =
+  | 'open'
+  | 'cash'
+  | 'invoice'
+  | 'qr'
+  | 'beurtenkaart'
+  | 'sponsor';
 export type TrainingType = 'techniek' | 'tactiek' | 'fysiek' | 'mentaal' | 'match';
 
 export interface User {
@@ -23,6 +33,8 @@ export interface User {
   notification_settings?: Record<string, boolean>;
   /** Coach only, display-only: revenue is computed from the court rate, not from this. */
   hourly_rate?: number;
+  /** Speler: de betaalwijze die een nieuwe les standaard krijgt. */
+  default_payment_method?: PaymentMethod;
 }
 
 export interface Court {
@@ -41,7 +53,9 @@ export interface Booking {
   start_time: string; // ISO
   end_time: string; // ISO
   status: BookingStatus;
-  payment_status: PaymentStatus;
+  payment_method: PaymentMethod;
+  /** De kaart die de beurt voor deze les droeg — alleen gezet bij 'beurtenkaart'. */
+  beurtenkaart_id?: string;
   notes?: string;
   actual_start_time?: string;
   actual_end_time?: string;
@@ -172,4 +186,23 @@ export interface Settings {
   language?: 'nl' | 'en';
   notifications?: Record<string, boolean>;
   blocked_popups_until?: string | null;
+}
+
+/** Eén gebruikte beurt van een kaart. `booking_id` is leeg bij een handmatige beurt. */
+export interface BeurtenkaartUse {
+  booking_id: string;
+  date: string; // ISO
+}
+
+/**
+ * Een kaart van tien beurten. De beurten staan als lijst en niet als teller, zodat de
+ * geschiedenis zichtbaar blijft en een beurt bij annulering terug kan.
+ */
+export interface Beurtenkaart {
+  id: string;
+  player_id: string;
+  total_sessions: number;
+  remarks?: string;
+  created_at: string; // ISO
+  uses: BeurtenkaartUse[];
 }

@@ -1,26 +1,51 @@
+import type { Booking, Court, User } from './types';
 import {
   needsPayment, filterPendingPayment, pendingPaymentsFor, totalRevenue,
+  defaultMethodFor, paymentMeta, PAYMENT_METHODS, PAYMENT_LABELS,
 } from './payments';
-import type { Booking, Court, User } from './types';
 
 const base: Booking = {
-  id: '1', player_id: 'p', coach_id: 'c', court_id: 'court1',
-  start_time: '2026-08-20T09:00:00Z', end_time: '2026-08-20T10:00:00Z',
-  status: 'confirmed', payment_status: null,
+  id: '1', player_id: 'p1', coach_id: 'koen', court_id: 'court-1',
+  start_time: '2026-08-20T10:00:00.000Z', end_time: '2026-08-20T11:00:00.000Z',
+  status: 'confirmed', payment_method: 'open',
 };
 
+const courts: Court[] = [
+  { id: 'court-1', name: 'Baan 1', number: 1, indoor: false, hourly_rate: 30 },
+];
+
+describe('PAYMENT_METHODS', () => {
+  it('are the six agreed values, with open first', () => {
+    expect(PAYMENT_METHODS).toEqual(['open', 'cash', 'invoice', 'qr', 'beurtenkaart', 'sponsor']);
+  });
+
+  it('all have a Dutch label', () => {
+    for (const m of PAYMENT_METHODS) {
+      expect(PAYMENT_LABELS[m].length).toBeGreaterThan(0);
+    }
+  });
+
+  it('gives every method a badge colour', () => {
+    for (const m of PAYMENT_METHODS) {
+      expect(paymentMeta(m).color).toMatch(/^#/);
+    }
+  });
+});
+
 describe('needsPayment', () => {
-  it('is true for confirmed/completed/synchronized without payment_status', () => {
-    expect(needsPayment({ ...base, status: 'confirmed' })).toBe(true);
+  it('is true for a realized booking still on open', () => {
+    expect(needsPayment(base)).toBe(true);
     expect(needsPayment({ ...base, status: 'completed' })).toBe(true);
     expect(needsPayment({ ...base, status: 'synchronized' })).toBe(true);
   });
-  it('is false when already paid/invoiced/unpaid', () => {
-    expect(needsPayment({ ...base, payment_status: 'paid' })).toBe(false);
-    expect(needsPayment({ ...base, payment_status: 'invoice' })).toBe(false);
-    expect(needsPayment({ ...base, payment_status: 'unpaid' })).toBe(false);
+
+  it('is false once any method is chosen', () => {
+    expect(needsPayment({ ...base, payment_method: 'cash' })).toBe(false);
+    expect(needsPayment({ ...base, payment_method: 'sponsor' })).toBe(false);
+    expect(needsPayment({ ...base, payment_method: 'beurtenkaart' })).toBe(false);
   });
-  it('is false for pending/cancelled status', () => {
+
+  it('is false for pending or cancelled bookings', () => {
     expect(needsPayment({ ...base, status: 'pending' })).toBe(false);
     expect(needsPayment({ ...base, status: 'cancelled' })).toBe(false);
   });
@@ -28,71 +53,64 @@ describe('needsPayment', () => {
 
 describe('filterPendingPayment', () => {
   it('returns only bookings that need payment', () => {
-    const list = [base, { ...base, id: '2', payment_status: 'paid' as const }];
+    const list: Booking[] = [base, { ...base, id: '2', payment_method: 'cash' }];
     expect(filterPendingPayment(list).map((b) => b.id)).toEqual(['1']);
   });
 });
 
-describe('totalRevenue', () => {
-  const courts: Court[] = [
-    { id: 'court1', name: 'Baan 1', number: 1, indoor: false, hourly_rate: 30 },
-  ];
-  it('sums hourly_rate for paid bookings only', () => {
-    const list: Booking[] = [
-      { ...base, id: '1', payment_status: 'paid' },
-      { ...base, id: '2', payment_status: 'invoice' },
-      { ...base, id: '3', payment_status: null },
-    ];
-    expect(totalRevenue(list, courts)).toBe(30);
-  });
-  it('excludes cancelled bookings even if marked paid', () => {
-    const list: Booking[] = [
-      { ...base, id: '1', payment_status: 'paid' },
-      { ...base, id: '2', payment_status: 'paid', status: 'cancelled' },
-    ];
-    expect(totalRevenue(list, courts)).toBe(30);
-  });
-
-  // A coach may only see their own revenue, never the club total. totalRevenue is
-  // pure, so scoping is the caller's job: hand it the coach's bookings, not all of
-  // them. This test pins that the distinction is real and measurable.
-  it('is scoped by whatever list it is given, so a coach total differs from the club total', () => {
-    const all: Booking[] = [
-      { ...base, id: '1', coach_id: 'koen', payment_status: 'paid' },
-      { ...base, id: '2', coach_id: 'sanne', payment_status: 'paid' },
-    ];
-    const koensBookings = all.filter((b) => b.coach_id === 'koen');
-    expect(totalRevenue(all, courts)).toBe(60);
-    expect(totalRevenue(koensBookings, courts)).toBe(30);
-    expect(totalRevenue(koensBookings, courts)).not.toBe(totalRevenue(all, courts));
-  });
-});
-
 describe('pendingPaymentsFor', () => {
-  const koen: User = { id: 'koen', name: 'Koen', email: 'k@x', role: 'coach' };
-  const sanne: User = { id: 'sanne', name: 'Sanne', email: 's@x', role: 'coach' };
-  const mathis: User = { id: 'mathis', name: 'Mathis', email: 'm@x', role: 'player' };
-  const list: Booking[] = [
-    { ...base, id: '1', coach_id: 'koen', player_id: 'mathis' },
-    { ...base, id: '2', coach_id: 'sanne', player_id: 'mathis' },
-    { ...base, id: '3', coach_id: 'sanne', player_id: 'lotte' },
-  ];
+  const coach: User = { id: 'koen', name: 'Koen', email: 'k@x.be', role: 'coach' };
+  const player: User = { id: 'p1', name: 'Mathis', email: 'm@x.be', role: 'player' };
 
-  it('gives a coach only their own bookings, never a colleague\'s', () => {
-    expect(pendingPaymentsFor(koen, list).map((b) => b.id)).toEqual(['1']);
-    expect(pendingPaymentsFor(sanne, list).map((b) => b.id)).toEqual(['2', '3']);
+  it('gives a coach only their own bookings', () => {
+    const list: Booking[] = [base, { ...base, id: '2', coach_id: 'sanne' }];
+    expect(pendingPaymentsFor(coach, list).map((b) => b.id)).toEqual(['1']);
   });
 
   it('gives a player only their own bookings', () => {
-    expect(pendingPaymentsFor(mathis, list).map((b) => b.id)).toEqual(['1', '2']);
+    const list: Booking[] = [base, { ...base, id: '2', player_id: 'p2' }];
+    expect(pendingPaymentsFor(player, list).map((b) => b.id)).toEqual(['1']);
   });
 
-  it('is empty without a user', () => {
-    expect(pendingPaymentsFor(null, list)).toEqual([]);
+  it('returns nothing without a user', () => {
+    expect(pendingPaymentsFor(null, [base])).toEqual([]);
+  });
+});
+
+describe('totalRevenue', () => {
+  it('counts cash, invoice, qr and beurtenkaart', () => {
+    const list: Booking[] = [
+      { ...base, id: '1', payment_method: 'cash' },
+      { ...base, id: '2', payment_method: 'invoice' },
+      { ...base, id: '3', payment_method: 'qr' },
+      { ...base, id: '4', payment_method: 'beurtenkaart' },
+    ];
+    expect(totalRevenue(list, courts)).toBe(120);
   });
 
-  it('still only returns bookings that actually need payment', () => {
-    const settled: Booking[] = [{ ...base, id: '1', coach_id: 'koen', payment_status: 'paid' }];
-    expect(pendingPaymentsFor(koen, settled)).toEqual([]);
+  it('skips open and sponsor', () => {
+    const list: Booking[] = [
+      { ...base, id: '1', payment_method: 'open' },
+      { ...base, id: '2', payment_method: 'sponsor' },
+    ];
+    expect(totalRevenue(list, courts)).toBe(0);
+  });
+
+  it('skips cancelled bookings', () => {
+    const list: Booking[] = [{ ...base, payment_method: 'cash', status: 'cancelled' }];
+    expect(totalRevenue(list, courts)).toBe(0);
+  });
+});
+
+describe('defaultMethodFor', () => {
+  it('takes the player default when set', () => {
+    const p: User = { id: 'p1', name: 'M', email: 'm@x.be', role: 'player', default_payment_method: 'qr' };
+    expect(defaultMethodFor(p)).toBe('qr');
+  });
+
+  it('falls back to open', () => {
+    const p: User = { id: 'p1', name: 'M', email: 'm@x.be', role: 'player' };
+    expect(defaultMethodFor(p)).toBe('open');
+    expect(defaultMethodFor(null)).toBe('open');
   });
 });

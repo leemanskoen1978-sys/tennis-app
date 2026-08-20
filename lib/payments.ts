@@ -1,13 +1,50 @@
-import type { Booking, Court, User } from './types';
+import { tennisColors } from '../constants/tennis-colors';
+import type { Booking, Court, PaymentMethod, User } from './types';
+
+export const PAYMENT_METHODS: readonly PaymentMethod[] = [
+  'open', 'cash', 'invoice', 'qr', 'beurtenkaart', 'sponsor',
+] as const;
+
+export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
+  open: 'Open',
+  cash: 'Cash',
+  invoice: 'Factuur',
+  qr: 'QR-code',
+  beurtenkaart: '10-beurtenkaart',
+  sponsor: 'Sponsor',
+};
+
+export interface PaymentMeta {
+  color: string;
+  label: string;
+  subtle: boolean;
+}
+
+/** Kleur en label voor de badge. 'open' is bewust ingetogen: het is nog geen keuze. */
+export function paymentMeta(method: PaymentMethod): PaymentMeta {
+  const label = PAYMENT_LABELS[method];
+  switch (method) {
+    case 'cash':
+      return { color: tennisColors.success, label, subtle: false };
+    case 'invoice':
+      return { color: tennisColors.court, label, subtle: false };
+    case 'qr':
+      return { color: tennisColors.primaryDark, label, subtle: false };
+    case 'beurtenkaart':
+      return { color: tennisColors.clay, label, subtle: false };
+    case 'sponsor':
+      return { color: tennisColors.warning, label, subtle: false };
+    case 'open':
+    default:
+      return { color: tennisColors.textMuted, label, subtle: true };
+  }
+}
 
 const PAYABLE_STATUSES: Booking['status'][] = ['confirmed', 'completed', 'synchronized'];
 
-/** A booking needs payment handling when it is realized but has no payment_status yet. */
+/** Een les vraagt nog om afhandeling zolang de betaalwijze op 'open' staat. */
 export function needsPayment(b: Booking): boolean {
-  return (
-    PAYABLE_STATUSES.includes(b.status) &&
-    (b.payment_status === null || b.payment_status === undefined)
-  );
+  return PAYABLE_STATUSES.includes(b.status) && b.payment_method === 'open';
 }
 
 export function filterPendingPayment(bookings: Booking[]): Booking[] {
@@ -15,9 +52,8 @@ export function filterPendingPayment(bookings: Booking[]): Booking[] {
 }
 
 /**
- * The payments a user is allowed to handle. Money stays per coach: a coach handles the
- * payments for their own bookings, a player only sees their own. Nobody settles a
- * colleague's lesson.
+ * De betalingen die een gebruiker mag afhandelen. Geld blijft per trainer: een trainer
+ * handelt zijn eigen lessen af, een speler ziet alleen die van hemzelf.
  */
 export function pendingPaymentsFor(user: User | null, bookings: Booking[]): Booking[] {
   if (!user) return [];
@@ -27,10 +63,22 @@ export function pendingPaymentsFor(user: User | null, bookings: Booking[]): Book
   return filterPendingPayment(mine);
 }
 
-/** Realized cash income: sums court hourly_rate for paid, non-cancelled bookings. */
+const REVENUE_METHODS: PaymentMethod[] = ['cash', 'invoice', 'qr', 'beurtenkaart'];
+
+/** Sponsor levert geen geld op en 'open' is nog niets — die tellen niet mee. */
+export function countsAsRevenue(method: PaymentMethod): boolean {
+  return REVENUE_METHODS.includes(method);
+}
+
+/** Gerealiseerde omzet: het uurtarief van de baan per afgehandelde, niet-geannuleerde les. */
 export function totalRevenue(bookings: Booking[], courts: Court[]): number {
   const rateById = new Map(courts.map((c) => [c.id, c.hourly_rate]));
   return bookings
-    .filter((b) => b.payment_status === 'paid' && b.status !== 'cancelled')
+    .filter((b) => countsAsRevenue(b.payment_method) && b.status !== 'cancelled')
     .reduce((sum, b) => sum + (rateById.get(b.court_id) ?? 0), 0);
+}
+
+/** De betaalwijze die een nieuwe les van deze speler krijgt. */
+export function defaultMethodFor(player: User | null | undefined): PaymentMethod {
+  return player?.default_payment_method ?? 'open';
 }
