@@ -1,12 +1,13 @@
 // In-memory mock backend, persisted to AsyncStorage (localStorage on web).
 // Same shape the Supabase layer will later return, so screens don't change.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Booking, Court, Lesson, PlayerGoal, StudentProgress, User, Settings } from '../lib/types';
+import type { Beurtenkaart, Booking, Court, Lesson, PlayerGoal, StudentProgress, User, Settings } from '../lib/types';
 import {
   seedUsers, seedCourts, seedBookings, seedLessons, seedProgress, defaultSettings,
 } from '../lib/seed';
 import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { installCatalogue } from '../lib/catalogue';
+import { migrateBookings } from '../lib/migrate';
 
 const STORE_KEY = 'tennis.mockStore.v1';
 
@@ -14,6 +15,7 @@ export interface StoreData {
   users: User[];
   courts: Court[];
   bookings: Booking[];
+  beurtenkaarten: Beurtenkaart[];
   lessons: Lesson[];
   progress: StudentProgress[];
   goals: PlayerGoal[];
@@ -28,6 +30,7 @@ function freshSeed(): StoreData {
     users: [...seedUsers],
     courts: [...seedCourts],
     bookings: [...seedBookings],
+    beurtenkaarten: [],
     lessons: [...seedLessons],
     progress: [...seedProgress],
     goals: [],
@@ -46,7 +49,8 @@ function withDefaults(data: StoreData): StoreData {
     ...data,
     users: data.users ?? [],
     courts: data.courts ?? [],
-    bookings: data.bookings ?? [],
+    bookings: migrateBookings(data.bookings),
+    beurtenkaarten: data.beurtenkaarten ?? [],
     lessons: data.lessons ?? [],
     progress: data.progress ?? [],
     goals: data.goals ?? [],

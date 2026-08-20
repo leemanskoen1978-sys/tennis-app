@@ -36,28 +36,28 @@ export const seedBookings: Booking[] = [
   {
     id: 'b-1', player_id: 'u-mathis', coach_id: 'u-koen', court_id: 'court-1',
     start_time: futureISO(2, 10), end_time: futureISO(2, 11),
-    status: 'confirmed', payment_status: null, notes: 'Techniektraining',
+    status: 'confirmed', payment_method: 'open', notes: 'Techniektraining',
   },
   {
     id: 'b-2', player_id: 'u-test', coach_id: 'u-koen', court_id: 'court-2',
     start_time: futureISO(3, 14), end_time: futureISO(3, 15),
-    status: 'confirmed', payment_status: 'paid',
+    status: 'confirmed', payment_method: 'cash',
   },
   {
     id: 'b-3', player_id: 'u-mathis', coach_id: 'u-koen', court_id: 'court-1',
     start_time: futureISO(-2, 9), end_time: futureISO(-2, 10),
-    status: 'completed', payment_status: null, notes: 'Match play',
+    status: 'completed', payment_method: 'open', notes: 'Match play',
   },
   // Sanne's side: Mathis trains with both, so his dossier is genuinely shared.
   {
     id: 'b-4', player_id: 'u-mathis', coach_id: 'u-sanne', court_id: 'court-2',
     start_time: futureISO(4, 16), end_time: futureISO(4, 17),
-    status: 'confirmed', payment_status: null, notes: 'Tactiek',
+    status: 'confirmed', payment_method: 'open', notes: 'Tactiek',
   },
   {
     id: 'b-5', player_id: 'u-test', coach_id: 'u-sanne', court_id: 'court-1',
     start_time: futureISO(-1, 11), end_time: futureISO(-1, 12),
-    status: 'completed', payment_status: 'paid',
+    status: 'completed', payment_method: 'cash',
   },
 ];
 
