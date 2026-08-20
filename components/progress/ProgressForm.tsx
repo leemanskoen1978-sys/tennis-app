@@ -7,7 +7,7 @@ import { VoiceRecorder } from '../VoiceRecorder';
 import { AudioMemo, Stars, TRAINING_TYPES, TRAINING_LABELS, formatDate } from './ProgressViews';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { tennisColors } from '../../constants/tennis-colors';
-import { spacing, radius, typography, shadow, webCursor } from '../../constants/theme';
+import { spacing, radius, typography, shadow, webCursor, contentMaxWidth } from '../../constants/theme';
 import type { StudentProgress, TrainingType } from '../../lib/types';
 
 const RATINGS = [1, 2, 3, 4, 5] as const;
@@ -226,7 +226,13 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  // Zonder breedte-cap plakt een blad in een breed venster over de volle breedte, terwijl
+  // de rest van de app gecentreerd op zijn maximum staat. Een blad hoort bij het scherm
+  // eronder, dus het houdt dezelfde maat aan.
   sheet: {
+    width: '100%',
+    maxWidth: contentMaxWidth,
+    alignSelf: 'center',
     backgroundColor: tennisColors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl, maxHeight: '85%', ...shadow('lg'),
   },

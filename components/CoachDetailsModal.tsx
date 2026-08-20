@@ -6,7 +6,7 @@ import { X, Save } from 'lucide-react-native';
 import { Chip } from './ui/Chip';
 import { Button } from './ui/Button';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, typography, radius, webCursor } from '../constants/theme';
+import { spacing, typography, radius, webCursor, contentMaxWidth } from '../constants/theme';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { generateSlots, DAY_LABELS } from '../lib/slots';
 import type { User } from '../lib/types';
@@ -188,7 +188,11 @@ export function CoachDetailsModal({
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(28, 43, 30, 0.55)', justifyContent: 'flex-end' },
+  // Zelfde breedte-cap als de andere bladen: gecentreerd, niet over de volle breedte.
   sheet: {
+    width: '100%',
+    maxWidth: contentMaxWidth,
+    alignSelf: 'center',
     backgroundColor: tennisColors.background,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,

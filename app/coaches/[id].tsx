@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronRight, Pencil } from 'lucide-react-native';
+import { CalendarDays, ChevronRight, Pencil, Users, type LucideIcon } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { CollapsibleSection } from '../../components/ui/CollapsibleSection';
+import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
+import { DetailSheet } from '../../components/ui/DetailSheet';
 import { CoachDetailsModal } from '../../components/CoachDetailsModal';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { playersForCoach } from '../../lib/relations';
@@ -16,19 +17,22 @@ import { spacing, typography, webCursor } from '../../constants/theme';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
 
 /**
- * Zelfde opbouw als het spelersdossier: de kop-kaart met de trainer blijft altijd staan,
- * de secties eronder klappen in tot één regel met een telling. Standaard staat Agenda open,
- * want de reden om een trainersdossier te openen is bijna altijd: wanneer geeft hij les?
- * De spelerslijst zegt met zijn aantal genoeg tot je hem echt nodig hebt.
+ * Zelfde opbouw als het spelersdossier: de kop-kaart met de trainer blijft altijd staan, en
+ * daaronder staan de onderdelen als tegels met hun telling erbij. Een tik opent het
+ * onderdeel in een blad. Dezelfde iconen als elders in de app: de kalender van Agenda en de
+ * mensen van Spelers.
  */
+
+/** De onderdelen van het trainersdossier; elk krijgt een tegel en een blad. */
+type SectionKey = 'agenda' | 'spelers';
 export default function CoachDossier() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { users, bookings, courts, lessons, progress, currentUser } = useSimpleData();
   const [editOpen, setEditOpen] = useState(false);
-  // Niet onthouden tussen bezoeken: een stand van vorige week zegt niets over vandaag.
-  const [agendaOpen, setAgendaOpen] = useState(true);
-  const [playersOpen, setPlayersOpen] = useState(false);
+  // Welk onderdeel openstaat; null = je kijkt naar het raster. Niet onthouden tussen
+  // bezoeken: een stand van vorige week zegt niets over vandaag.
+  const [openSection, setOpenSection] = useState<SectionKey | null>(null);
 
   const coach = users.find((u) => u.id === id && u.role === 'coach') ?? null;
 
@@ -59,7 +63,7 @@ export default function CoachDossier() {
     .map((pid) => ({ id: pid, name: playerName(pid) }))
     .sort((a, b) => a.name.localeCompare(b.name, 'nl'));
 
-  // Wat er dichtgeklapt van elke sectie te zien is, geteld op dezelfde lijsten als eronder.
+  // Wat er op de tegel staat, geteld op dezelfde lijsten als de inhoud van het blad.
   const agendaSummary = upcoming.length > 0
     ? `${upcoming.length} aankomend`
     : past.length > 0 ? 'niets aankomend' : 'geen afspraken';
@@ -67,10 +71,20 @@ export default function CoachDossier() {
     ? 'nog geen'
     : players.length === 1 ? '1 speler' : `${players.length} spelers`;
 
+  const tiles: Array<{ key: SectionKey; title: string; subtitle: string; icon: LucideIcon }> = [
+    { key: 'agenda', title: 'Agenda', subtitle: agendaSummary, icon: CalendarDays },
+    { key: 'spelers', title: 'Spelers', subtitle: spelersSummary, icon: Users },
+  ];
+
+  const closeSheet = () => setOpenSection(null);
+  /** Een blad verlaten om ergens anders heen te gaan: eerst dicht, dan pas navigeren. */
+  const goTo = (path: string) => { closeSheet(); router.push(path); };
+
   return (
-    // `reading`: dit dossier is vooral lopende tekst (doelen, lesplan, notities);
-    // die leest niet op de volle breedte van een breed venster.
-    <Screen reading>
+    // Geen `reading`: het scherm zelf is een raster tegels, en dat mag op een breed venster
+    // dezelfde ruimte gebruiken als de andere tegelschermen. De lijsten zitten in de bladen,
+    // en die houden hun eigen, smallere maximumbreedte aan.
+    <Screen>
       <Card>
         <Text style={styles.name}>{coach.name}</Text>
         <Badge label="Trainer" color={tennisColors.primary} />
@@ -111,12 +125,19 @@ export default function CoachDossier() {
         />
       ) : null}
 
-      <CollapsibleSection
-        title="Agenda"
-        summary={agendaSummary}
-        open={agendaOpen}
-        onToggle={() => setAgendaOpen((o) => !o)}
-      >
+      <TileGrid>
+        {tiles.map((t) => (
+          <ActionTile
+            key={t.key}
+            title={t.title}
+            subtitle={t.subtitle}
+            icon={t.icon}
+            onPress={() => setOpenSection(t.key)}
+          />
+        ))}
+      </TileGrid>
+
+      <DetailSheet title="Agenda" visible={openSection === 'agenda'} onClose={closeSheet}>
         {upcoming.length === 0 && past.length === 0 ? (
           <Text style={styles.muted}>Nog geen afspraken.</Text>
         ) : (
@@ -143,21 +164,16 @@ export default function CoachDossier() {
             ))}
           </>
         )}
-      </CollapsibleSection>
+      </DetailSheet>
 
-      <CollapsibleSection
-        title="Spelers"
-        summary={spelersSummary}
-        open={playersOpen}
-        onToggle={() => setPlayersOpen((o) => !o)}
-      >
+      <DetailSheet title="Spelers" visible={openSection === 'spelers'} onClose={closeSheet}>
         {players.length === 0 ? (
           <Text style={styles.muted}>Nog geen spelers.</Text>
         ) : (
           players.map((p) => (
             <Card key={p.id} style={styles.rowCard}>
               <Pressable
-                onPress={() => router.push(`/players/${p.id}`)}
+                onPress={() => goTo(`/players/${p.id}`)}
                 style={[styles.playerRow, webCursor]}
                 accessibilityRole="button"
                 accessibilityLabel={`Open dossier van ${p.name}`}
@@ -168,7 +184,7 @@ export default function CoachDossier() {
             </Card>
           ))
         )}
-      </CollapsibleSection>
+      </DetailSheet>
     </Screen>
   );
 }

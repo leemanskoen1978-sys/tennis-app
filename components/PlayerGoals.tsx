@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Target, ChevronRight } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { GoalHorizonSheet } from './GoalHorizonSheet';
@@ -10,7 +10,7 @@ import {
   newGoalId, shotTypeOptions, changeTypeOptions,
 } from '../lib/goals';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, typography, minTapTarget } from '../constants/theme';
+import { spacing, minTapTarget } from '../constants/theme';
 import type { GoalHorizon } from '../lib/types';
 
 /**
@@ -21,33 +21,20 @@ import type { GoalHorizon } from '../lib/types';
  * Elke horizon is hier één korte regel: de naam, en daarnaast wat er is afgesproken. Zo zie
  * je in één oogopslag welke horizon al gevuld is en welke nog leeg. De velden zelf staan in
  * het blad dat een tik erop opent — zelfde patroon als het maandoverzicht met zijn leskaarten.
+ *
+ * De rijen en het blad zijn met opzet twee losse onderdelen. Het dossier toont de rijen in
+ * een blad (achter de tegel Doelen), en een blad binnen een blad bestaat niet: React Native
+ * hangt de inhoud van een gesloten Modal helemaal weg. Daarom hangt de aanroeper het blad
+ * naast de rijen op, op het scherm zelf.
  */
-export function PlayerGoals({ studentId, canEdit, showHeading = true }: {
+export function GoalHorizonRows({ studentId, onOpen }: {
   studentId: string;
-  canEdit: boolean;
-  /**
-   * Staat dit blok al onder een sectiekop (het dossier klapt "Doelen" zelf open en dicht),
-   * dan zou een tweede kop met dezelfde naam er twee keer staan.
-   */
-  showHeading?: boolean;
-}) {
-  const { goals, settings, saveGoal, deleteGoal } = useSimpleData();
-  const shots = shotTypeOptions(settings);
-  const changes = changeTypeOptions(settings);
-  // Welke horizon zijn doelen laat zien; null = blad dicht.
-  const [openHorizon, setOpenHorizon] = useState<GoalHorizon | null>(null);
-
-  const openGoals = openHorizon ? goalsFor(goals, studentId, openHorizon) : [];
+  onOpen: (horizon: GoalHorizon) => void;
+}): React.JSX.Element {
+  const { goals } = useSimpleData();
 
   return (
     <>
-      {showHeading ? (
-        <View style={styles.heading}>
-          <Target size={18} color={tennisColors.primary} />
-          <Text style={styles.headingText}>Doelen</Text>
-        </View>
-      ) : null}
-
       {GOAL_HORIZONS.map((horizon) => {
         // Alleen ingevulde doelen halen de regel: een zojuist toegevoegd, nog leeg doel zegt
         // niets over wat er is afgesproken — voor de trainer niet en voor de speler niet.
@@ -59,7 +46,7 @@ export function PlayerGoals({ studentId, canEdit, showHeading = true }: {
           <Card
             key={horizon}
             style={styles.card}
-            onPress={() => setOpenHorizon(horizon)}
+            onPress={() => onOpen(horizon)}
             accessibilityLabel={
               filled
                 ? `${HORIZON_LABELS[horizon]}: ${goalCountLabel(count)}, ${summary}, doelen openen`
@@ -83,36 +70,40 @@ export function PlayerGoals({ studentId, canEdit, showHeading = true }: {
           </Card>
         );
       })}
-
-      {openHorizon ? (
-        <GoalHorizonSheet
-          horizon={openHorizon}
-          goals={openGoals}
-          shots={shots}
-          changes={changes}
-          canEdit={canEdit}
-          visible
-          onClose={() => setOpenHorizon(null)}
-          onSave={(goal) => void saveGoal(goal)}
-          onDelete={(id) => void deleteGoal(id)}
-          onAdd={() =>
-            void saveGoal({ id: newGoalId(), student_id: studentId, horizon: openHorizon })
-          }
-        />
-      ) : null}
     </>
   );
 }
 
+/**
+ * Het blad met de doelen van één horizon, aangesloten op de opslag: toevoegen, opslaan en
+ * verwijderen gaan hier langs, zodat de aanroeper alleen hoeft te zeggen welke horizon open
+ * staat. `horizon` is null als er niets openstaat.
+ */
+export function PlayerGoalSheet({ studentId, horizon, canEdit, onClose }: {
+  studentId: string;
+  horizon: GoalHorizon | null;
+  canEdit: boolean;
+  onClose: () => void;
+}): React.JSX.Element | null {
+  const { goals, settings, saveGoal, deleteGoal } = useSimpleData();
+  if (!horizon) return null;
+  return (
+    <GoalHorizonSheet
+      horizon={horizon}
+      goals={goalsFor(goals, studentId, horizon)}
+      shots={shotTypeOptions(settings)}
+      changes={changeTypeOptions(settings)}
+      canEdit={canEdit}
+      visible
+      onClose={onClose}
+      onSave={(goal) => void saveGoal(goal)}
+      onDelete={(id) => void deleteGoal(id)}
+      onAdd={() => void saveGoal({ id: newGoalId(), student_id: studentId, horizon })}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
-  heading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg },
-  // Zelfde kopstijl als de andere secties van het dossier, anders leest het als een los scherm.
-  headingText: {
-    ...typography.label,
-    color: tennisColors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
   // Krapper dan een gewone kaart: dit is een regel om aan te tikken, geen blok om te lezen.
   card: { paddingVertical: spacing.md, gap: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: minTapTarget },

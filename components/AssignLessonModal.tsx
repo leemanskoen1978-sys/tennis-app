@@ -4,7 +4,7 @@ import { X } from 'lucide-react-native';
 import { Button } from './ui/Button';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, radius, typography, shadow, webCursor } from '../constants/theme';
+import { spacing, radius, typography, shadow, webCursor, contentMaxWidth } from '../constants/theme';
 
 /** Een les aan een speler hangen: nieuw aanmaken, of er een uit de gedeelde bibliotheek kiezen. */
 export function AssignLessonModal({ visible, onClose, playerId }: {
@@ -74,7 +74,13 @@ export function AssignLessonModal({ visible, onClose, playerId }: {
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  // Zonder breedte-cap plakt een blad in een breed venster over de volle breedte, terwijl
+  // de rest van de app gecentreerd op zijn maximum staat. Een blad hoort bij het scherm
+  // eronder, dus het houdt dezelfde maat aan.
   sheet: {
+    width: '100%',
+    maxWidth: contentMaxWidth,
+    alignSelf: 'center',
     backgroundColor: tennisColors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl, maxHeight: '85%', ...shadow('lg'),
   },

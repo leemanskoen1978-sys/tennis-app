@@ -18,7 +18,7 @@ import { paymentMeta, type PaymentMeta } from '../lib/payments';
 import { BOOKING_STATUS_LABELS } from '../lib/status';
 import type { Beurtenkaart, Booking, BookingStatus, PaymentMethod } from '../lib/types';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, radius, typography, shadow, minTapTarget, webCursor } from '../constants/theme';
+import { spacing, radius, typography, shadow, minTapTarget, webCursor, contentMaxWidth } from '../constants/theme';
 
 /** De kleur bij een status; dezelfde die het maandoverzicht ooit op de kaart zette. */
 const STATUS_COLORS: Record<BookingStatus, string> = {
@@ -222,7 +222,13 @@ export function LessonDetailSheet({
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+  // Zonder breedte-cap plakt een blad in een breed venster over de volle breedte, terwijl
+  // de rest van de app gecentreerd op zijn maximum staat. Een blad hoort bij het scherm
+  // eronder, dus het houdt dezelfde maat aan.
   sheet: {
+    width: '100%',
+    maxWidth: contentMaxWidth,
+    alignSelf: 'center',
     backgroundColor: tennisColors.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,

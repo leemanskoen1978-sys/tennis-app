@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, View, Text, StyleSheet } from 'react-native';
 
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, radius, typography, shadow } from '../constants/theme';
+import { spacing, radius, typography, shadow, contentMaxWidth } from '../constants/theme';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../lib/payments';
@@ -57,7 +57,11 @@ export function PaymentMethodSheet({
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+  // Zelfde breedte-cap als de andere bladen: gecentreerd, niet over de volle breedte.
   sheet: {
+    width: '100%',
+    maxWidth: contentMaxWidth,
+    alignSelf: 'center',
     backgroundColor: tennisColors.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
