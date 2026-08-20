@@ -12,7 +12,8 @@ import { Screen, useIsWide } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { bookingsInMonth, monthRows, toCsv, formatEuro } from '../../lib/csv';
+import { csvRows, toCsv, formatEuro } from '../../lib/csv';
+import { bookingsInPeriod, monthPeriod } from '../../lib/period';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
 import { bookingsFor, paymentMeta, totalRevenue, type PaymentMeta } from '../../lib/payments';
 import { shareCsv } from '../../lib/share';
@@ -60,15 +61,13 @@ export default function ExportScreen(): React.JSX.Element {
     [bookings, currentUser],
   );
 
-  const rows = useMemo(
-    () => monthRows(mine, users, courts, month),
-    [mine, users, courts, month],
-  );
+  // Dezelfde selectie voor scherm en bestand: eerst de periode, dan pas de rijen.
+  const monthBookings = useMemo(() => bookingsInPeriod(mine, monthPeriod(month)), [mine, month]);
 
-  // Dezelfde maand als het bestand, maar dan de boekingen zelf: de kaarten hebben status,
-  // betaalwijze en id nodig. Eén gedeelde maandfilter, zodat scherm en bestand niet uit
-  // elkaar kunnen lopen.
-  const monthBookings = useMemo(() => bookingsInMonth(mine, month), [mine, month]);
+  const rows = useMemo(
+    () => csvRows(monthBookings, users, courts),
+    [monthBookings, users, courts],
+  );
 
   const cancelledIds = useMemo(
     () => new Set(monthBookings.filter((b) => b.status === 'cancelled').map((b) => b.id)),

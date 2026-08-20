@@ -1,5 +1,5 @@
-// Het maandoverzicht als gegevens (monthRows) en als tekst (toCsv), los van elkaar zodat
-// het scherm dezelfde rijen kan tonen die het uitvoert.
+// Het overzicht als gegevens (csvRows) en als tekst (toCsv), los van elkaar zodat het
+// scherm dezelfde rijen kan tonen die het uitvoert.
 
 import { bookingMinutes, bookingPrice, PAYMENT_LABELS } from './payments';
 import { BOOKING_STATUS_LABELS } from './status';
@@ -48,30 +48,19 @@ function two(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-function inMonth(iso: string, month: Date): boolean {
-  const d = new Date(iso);
-  return d.getFullYear() === month.getFullYear() && d.getMonth() === month.getMonth();
-}
-
 /**
- * De boekingen van één kalendermaand, op tijd oplopend. Het scherm toont de lessen zelf
- * (met status en betaalwijze) en exporteert dezelfde maand als tekst; door beide hierlangs
- * te laten lopen kan "welke lessen vallen in deze maand" niet op twee plekken uiteenlopen.
+ * De lessen die je meekrijgt, op tijd gesorteerd en met de namen al opgezocht. Wélke lessen
+ * dat zijn beslist het scherm (periode, trainer) — de selectie stond hier eerst vast op één
+ * kalendermaand, en dat maakte elke andere periode onmogelijk. Filteren doe je met
+ * `bookingsInPeriod` uit lib/period; dit blijft de vertaling naar rijen.
  */
-export function bookingsInMonth(bookings: Booking[], month: Date): Booking[] {
-  return bookings
-    .filter((b) => inMonth(b.start_time, month))
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-}
-
-/** De lessen van één kalendermaand, op tijd gesorteerd, met de namen al opgezocht. */
-export function monthRows(
-  bookings: Booking[], users: User[], courts: Court[], month: Date,
-): CsvRow[] {
+export function csvRows(bookings: Booking[], users: User[], courts: Court[]): CsvRow[] {
   const nameById = new Map(users.map((u) => [u.id, u.name]));
   const courtById = new Map(courts.map((c) => [c.id, c]));
 
-  return bookingsInMonth(bookings, month)
+  return [...bookings]
+    // Het bestand staat altijd op tijd oplopend, ook als het scherm anders sorteert.
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
     .map((b) => {
       const start = new Date(b.start_time);
       // Duur en prijs komen uit `payments`, zodat het maandoverzicht en de omzet op het

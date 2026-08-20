@@ -63,6 +63,27 @@ export function bookingsFor(user: User | null, bookings: Booking[]): Booking[] {
 }
 
 /**
+ * De lessen die iemand in een overzicht mag zien vóór hij zelf filtert. Een speler ziet
+ * alleen zijn eigen lessen — dat blijft de harde regel, ook als hij op één trainer filtert.
+ * Een trainer mag over de schutting kijken: hij kan de agenda van een collega opvragen, dus
+ * bij hem is de hele lijst de basis en kiest de trainerfilter erin.
+ */
+export function visibleBookings(user: User | null, bookings: Booking[]): Booking[] {
+  if (!user) return [];
+  return user.role === 'coach' ? bookings : bookingsFor(user, bookings);
+}
+
+/**
+ * Filteren op één trainer; null betekent "alle trainers" en laat alles staan. Bewust een
+ * losse functie naast `visibleBookings`: wie mag wat zien is een andere vraag dan wat je op
+ * dit moment wílt zien, en alleen zo blijft de eerste regel altijd gelden.
+ */
+export function bookingsByCoach(bookings: Booking[], coachId: string | null): Booking[] {
+  if (coachId === null) return bookings;
+  return bookings.filter((b) => b.coach_id === coachId);
+}
+
+/**
  * De betalingen die een gebruiker mag afhandelen. Geld blijft per trainer: een trainer
  * handelt zijn eigen lessen af, een speler ziet alleen die van hemzelf.
  */

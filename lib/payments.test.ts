@@ -1,6 +1,7 @@
 import type { Booking, Court, User } from './types';
 import {
-  needsPayment, filterPendingPayment, bookingsFor, pendingPaymentsFor, totalRevenue,
+  needsPayment, filterPendingPayment, bookingsFor, bookingsByCoach, visibleBookings,
+  pendingPaymentsFor, totalRevenue,
   bookingMinutes, bookingPrice,
   defaultMethodFor, paymentMeta, PAYMENT_METHODS, PAYMENT_LABELS,
 } from './payments';
@@ -89,6 +90,39 @@ describe('bookingsFor', () => {
 
   it('returns nothing without a user', () => {
     expect(bookingsFor(null, [base])).toEqual([]);
+  });
+});
+
+describe('visibleBookings', () => {
+  it('geeft een trainer alle lessen, ook die van een collega — hij mag verder kijken dan zichzelf', () => {
+    const list: Booking[] = [base, { ...base, id: '2', coach_id: 'sanne' }];
+    expect(visibleBookings(coach, list).map((b) => b.id)).toEqual(['1', '2']);
+  });
+
+  it('houdt een speler bij zijn eigen lessen', () => {
+    const list: Booking[] = [base, { ...base, id: '2', player_id: 'p2' }];
+    expect(visibleBookings(player, list).map((b) => b.id)).toEqual(['1']);
+  });
+
+  it('geeft niets terug zonder gebruiker', () => {
+    expect(visibleBookings(null, [base])).toEqual([]);
+  });
+});
+
+describe('bookingsByCoach', () => {
+  it('houdt alleen de lessen van die ene trainer over', () => {
+    const list: Booking[] = [base, { ...base, id: '2', coach_id: 'sanne' }];
+    expect(bookingsByCoach(list, 'sanne').map((b) => b.id)).toEqual(['2']);
+  });
+
+  it('laat bij "alle trainers" alles staan', () => {
+    const list: Booking[] = [base, { ...base, id: '2', coach_id: 'sanne' }];
+    expect(bookingsByCoach(list, null)).toEqual(list);
+  });
+
+  it('laat een speler ook met een trainerfilter nooit de les van een andere speler zien', () => {
+    const list: Booking[] = [base, { ...base, id: '2', player_id: 'p2', coach_id: 'sanne' }];
+    expect(bookingsByCoach(visibleBookings(player, list), 'sanne')).toEqual([]);
   });
 });
 
