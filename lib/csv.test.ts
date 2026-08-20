@@ -3,7 +3,7 @@ import { csvRows, toCsv, formatEuro, CSV_HEADER, CSV_COLUMNS } from './csv';
 import { bookingsInPeriod, monthPeriod } from './period';
 
 const users: User[] = [
-  { id: 'koen', name: 'Koen', email: 'k@x.be', role: 'coach' },
+  { id: 'koen', name: 'Koen', email: 'k@x.be', role: 'coach', hourly_rate: 24 },
   { id: 'p1', name: 'Mathis', email: 'm@x.be', role: 'player' },
 ];
 
@@ -55,14 +55,30 @@ describe('csvRows', () => {
     expect(row.court).toBe('Baan 1');
     expect(row.minutes).toBe(60);
     expect(row.price).toBe(30);
+    expect(row.coachPay).toBe(24);
     expect(row.status).toBe('Bevestigd');
     expect(row.payment).toBe('Cash');
   });
 
-  it('prices a half hour at half the rate', () => {
+  it('prices a half hour at half the rate, for player and coach alike', () => {
     const [row] = csvRows([booking({ end_time: '2026-08-20T08:30:00.000Z' })], users, courts);
     expect(row.minutes).toBe(30);
     expect(row.price).toBe(15);
+    expect(row.coachPay).toBe(12);
+  });
+
+  it('gives the coach nothing when he has no hourly rate set', () => {
+    const zonder: User[] = [{ id: 'koen', name: 'Koen', email: 'k@x.be', role: 'coach' }, users[1]];
+    const [row] = csvRows([booking()], zonder, courts);
+    // De speler betaalt gewoon de baan; alleen het loon van de trainer valt op nul.
+    expect(row.price).toBe(30);
+    expect(row.coachPay).toBe(0);
+  });
+
+  it('gives an unknown coach nothing, without breaking the price', () => {
+    const [row] = csvRows([booking({ coach_id: 'weg' })], users, courts);
+    expect(row.coach).toBe('Onbekend');
+    expect(row.coachPay).toBe(0);
   });
 
   it('names an unknown player and court instead of leaving them empty', () => {
@@ -82,12 +98,14 @@ describe('csvRows', () => {
     );
     expect(row.minutes).toBe(0);
     expect(row.price).toBe(0);
+    expect(row.coachPay).toBe(0);
   });
 
   it('gives zero duration and price when end_time cannot be parsed', () => {
     const [row] = csvRows([booking({ end_time: 'niet-een-datum' })], users, courts);
     expect(row.minutes).toBe(0);
     expect(row.price).toBe(0);
+    expect(row.coachPay).toBe(0);
   });
 
   it('gives the rows of the export the same lessons, in the same order, as the period filter', () => {
@@ -119,6 +137,21 @@ describe('formatEuro', () => {
 });
 
 describe('CSV_COLUMNS', () => {
+  it('are the agreed columns, in the agreed order', () => {
+    expect(CSV_COLUMNS.map((c) => c.label)).toEqual([
+      'Datum', 'Uur', 'Trainer', 'Speler', 'Terrein', 'Duur (min)',
+      'Prijs speler (EUR)', 'Loon trainer (EUR)', 'Status', 'Betaalwijze',
+    ]);
+    expect(CSV_COLUMNS).toHaveLength(10);
+  });
+
+  it('writes the two amounts next to each other, the player first', () => {
+    const [row] = csvRows([booking()], users, courts);
+    const cells = CSV_COLUMNS.map((c) => c.value(row));
+    expect(cells[6]).toBe('30,00');
+    expect(cells[7]).toBe('24,00');
+  });
+
   it('is the single source for the header, in the same order', () => {
     expect(CSV_COLUMNS.map((c) => c.label)).toEqual([...CSV_HEADER]);
   });

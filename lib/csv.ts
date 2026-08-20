@@ -1,7 +1,7 @@
 // Het overzicht als gegevens (csvRows) en als tekst (toCsv), los van elkaar zodat het
 // scherm dezelfde rijen kan tonen die het uitvoert.
 
-import { bookingMinutes, bookingPrice, PAYMENT_LABELS } from './payments';
+import { bookingMinutes, bookingPrice, coachPayout, PAYMENT_LABELS } from './payments';
 import { BOOKING_STATUS_LABELS } from './status';
 import type { Booking, Court, User } from './types';
 
@@ -13,7 +13,8 @@ export interface CsvRow {
   player: string;
   court: string;
   minutes: number;
-  price: number;   // euro
+  price: number;    // euro — wat de speler betaalt, op het uurtarief van het terrein
+  coachPay: number; // euro — wat de trainer krijgt, op zijn eigen uurtarief
   status: string;
   payment: string;
 }
@@ -37,7 +38,10 @@ export const CSV_COLUMNS: readonly CsvColumn[] = [
   { label: 'Speler', value: (r) => r.player },
   { label: 'Terrein', value: (r) => r.court },
   { label: 'Duur (min)', value: (r) => String(r.minutes) },
-  { label: 'Prijs (EUR)', value: (r) => formatEuro(r.price) },
+  // Twee bedragen naast elkaar, en de kop zegt van wie ze zijn: de speler betaalt de baan,
+  // de trainer krijgt zijn eigen uurtarief. Wat de club overhoudt is het verschil.
+  { label: 'Prijs speler (EUR)', value: (r) => formatEuro(r.price) },
+  { label: 'Loon trainer (EUR)', value: (r) => formatEuro(r.coachPay) },
   { label: 'Status', value: (r) => r.status },
   { label: 'Betaalwijze', value: (r) => r.payment },
 ];
@@ -56,6 +60,7 @@ function two(n: number): string {
  */
 export function csvRows(bookings: Booking[], users: User[], courts: Court[]): CsvRow[] {
   const nameById = new Map(users.map((u) => [u.id, u.name]));
+  const rateById = new Map(users.map((u) => [u.id, u.hourly_rate]));
   const courtById = new Map(courts.map((c) => [c.id, c]));
 
   return [...bookings]
@@ -77,6 +82,9 @@ export function csvRows(bookings: Booking[], users: User[], courts: Court[]): Cs
         court: court?.name ?? 'Onbekend terrein',
         minutes,
         price: bookingPrice(b, court?.hourly_rate),
+        // Wat de trainer krijgt, op zijn eigen uurtarief. Nog geen tarief ingevuld (of een
+        // trainer die niet meer bestaat) geeft 0 — zichtbaar nul in plaats van een leeg vak.
+        coachPay: coachPayout(b, rateById.get(b.coach_id)),
         status: BOOKING_STATUS_LABELS[b.status],
         payment: PAYMENT_LABELS[b.payment_method],
       };

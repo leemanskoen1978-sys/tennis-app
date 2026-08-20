@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   LogOut, Mail, Phone, Euro, CalendarDays, CreditCard, ChevronRight,
-  Settings as SettingsIcon, BarChart3, SlidersHorizontal, type LucideIcon,
+  Settings as SettingsIcon, BarChart3, SlidersHorizontal, Wallet, type LucideIcon,
 } from 'lucide-react-native';
 
 import { Screen, useIsWide } from '../components/ui/Screen';
@@ -23,6 +23,9 @@ import { spacing, radius, typography, webCursor, minTapTarget } from '../constan
 import { tennisColors } from '../constants/tennis-colors';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday } from '../lib/hub';
+import { totalCoachPayout } from '../lib/payments';
+import { bookingsInPeriod, currentPeriod } from '../lib/period';
+import { formatEuro } from '../lib/csv';
 
 const ROLE_LABELS: Record<string, string> = {
   player: 'Speler',
@@ -115,6 +118,16 @@ export default function ProfileScreen(): React.JSX.Element {
   const myBookings = bookings.filter((b) => b.player_id === currentUser.id);
   const today = bookingsToday(isCoach ? bookings : myBookings, new Date());
 
+  // Wat een trainer deze maand verdiende: zijn eigen uurtarief over zijn eigen lessen. Dus
+  // niet de omzet — die loopt op het uurtarief van de baan en is wat de spelers betalen.
+  // Zonder ingevuld tarief is dat 0, en dat zeggen we er hieronder met zoveel woorden bij.
+  const rateMissing = currentUser.hourly_rate === undefined;
+  const myLessons = bookings.filter((b) => b.coach_id === currentUser.id);
+  const earnedThisMonth = totalCoachPayout(
+    bookingsInPeriod(myLessons, currentPeriod()),
+    [currentUser],
+  );
+
   const contactRows: Row[] = [
     { key: 'mail', icon: Mail, title: currentUser.email, subtitle: 'E-mailadres' },
     {
@@ -124,11 +137,13 @@ export default function ProfileScreen(): React.JSX.Element {
       subtitle: 'Telefoonnummer',
     },
   ];
-  if (isCoach && currentUser.hourly_rate) {
+  // De rij staat er bij een trainer altijd, ook zonder tarief: zolang hij leeg is, is zijn
+  // loon nul, en dat hoort te zien te zijn in plaats van weg te vallen met de rij.
+  if (isCoach) {
     contactRows.push({
       key: 'rate',
       icon: Euro,
-      title: `€ ${currentUser.hourly_rate}`,
+      title: rateMissing ? 'Nog niet ingesteld' : `€ ${currentUser.hourly_rate}`,
       subtitle: 'Jouw uurtarief',
     });
   }
@@ -198,7 +213,20 @@ export default function ProfileScreen(): React.JSX.Element {
             label="Openstaande betalingen"
             tone={pending.length > 0 ? 'warning' : 'primary'}
           />
+          {isCoach ? (
+            <StatCard
+              icon={Wallet}
+              value={`€${formatEuro(earnedThisMonth)}`}
+              label="Verdiend deze maand"
+              tone={rateMissing ? 'warning' : 'primary'}
+            />
+          ) : null}
         </StatCardRow>
+        {isCoach && rateMissing ? (
+          <Text style={styles.rateWarning}>
+            Je uurtarief is nog niet ingesteld, dus je verdiensten blijven op €0,00 staan.
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.body}>
@@ -255,7 +283,8 @@ const styles = StyleSheet.create({
   heroText: { flex: 1, gap: spacing.xs },
   heroName: { ...typography.h1, color: tennisColors.white },
   heroRole: { fontSize: 15, color: 'rgba(255,255,255,0.85)' },
-  statsWrap: { marginTop: -OVERLAP, paddingHorizontal: spacing.lg },
+  statsWrap: { marginTop: -OVERLAP, paddingHorizontal: spacing.lg, gap: spacing.sm },
+  rateWarning: { fontSize: 13, color: tennisColors.warning },
   body: { padding: spacing.lg, gap: spacing.lg },
   section: { gap: spacing.sm },
   sectionLabel: {

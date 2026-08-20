@@ -15,6 +15,9 @@ import { formatWorkingDays } from '../../lib/slots';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
+import { totalCoachPayout } from '../../lib/payments';
+import { bookingsInPeriod, currentPeriod } from '../../lib/period';
+import { formatEuro } from '../../lib/csv';
 
 /**
  * Zelfde opbouw als het spelersdossier: de kop-kaart met de trainer blijft altijd staan, en
@@ -58,6 +61,14 @@ export default function CoachDossier() {
 
   const playerName = (pid: string) => users.find((u) => u.id === pid)?.name ?? 'Onbekend';
 
+  // Wat deze trainer deze maand verdient: zijn eigen uurtarief over zijn eigen lessen, langs
+  // dezelfde weg als op zijn profiel. Geen tarief ingevuld geeft 0, met een melding erbij.
+  const rateMissing = coach.hourly_rate === undefined;
+  const earnedThisMonth = totalCoachPayout(
+    bookingsInPeriod(bookings.filter((b) => b.coach_id === coach.id), currentPeriod()),
+    [coach],
+  );
+
   // Derived from bookings/lessons/progress — see lib/relations.ts. No assignment screen.
   const players = playersForCoach(coach.id, bookings, lessons, progress)
     .map((pid) => ({ id: pid, name: playerName(pid) }))
@@ -99,9 +110,20 @@ export default function CoachDossier() {
             : 'De hele dag'}
         </Text>
 
-        {/* Display only: the revenue sums run on the court rate, never on this. */}
-        {coach.hourly_rate ? (
-          <Text style={styles.rate}>Uurtarief: €{coach.hourly_rate} per uur</Text>
+        {/* Het uurtarief van de trainer is wat híj krijgt; wat de speler betaalt loopt op het
+            uurtarief van de baan. Twee verschillende bedragen — zie lib/payments. */}
+        <Text style={styles.fieldLabel}>Uurtarief</Text>
+        <Text style={rateMissing ? styles.warnValue : styles.fieldValue}>
+          {rateMissing ? 'Nog niet ingesteld' : `€${coach.hourly_rate} per uur`}
+        </Text>
+
+        <Text style={styles.fieldLabel}>Verdiend deze maand</Text>
+        <Text style={styles.fieldValue}>€{formatEuro(earnedThisMonth)}</Text>
+        {/* Zonder tarief is dat bedrag nul, en dat mag niet als een gewone nul overkomen. */}
+        {rateMissing ? (
+          <Text style={styles.warnValue}>
+            Zolang het uurtarief leeg is, blijft dit op €0,00 staan.
+          </Text>
         ) : null}
 
         {/* Only your own details. A colleague's card has no button at all — a control
@@ -192,7 +214,7 @@ export default function CoachDossier() {
 const styles = StyleSheet.create({
   name: { ...typography.h1, color: tennisColors.text },
   contact: { fontSize: 14, color: tennisColors.textMuted, marginTop: 2 },
-  rate: { fontSize: 14, color: tennisColors.text, marginTop: spacing.sm },
+  warnValue: { fontSize: 14, color: tennisColors.warning, marginTop: 2 },
   fieldLabel: {
     fontSize: 12, fontWeight: '700', color: tennisColors.textMuted,
     textTransform: 'uppercase', marginTop: spacing.md,

@@ -7,7 +7,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { AlertCircle, CalendarDays, Euro } from 'lucide-react-native';
+import { AlertCircle, CalendarDays, Euro, Wallet } from 'lucide-react-native';
 
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
@@ -25,13 +25,16 @@ import {
   bookingsByCoach,
   filterPendingPayment,
   paymentMeta,
+  totalCoachPayout,
   totalRevenue,
   visibleBookings,
 } from '../../lib/payments';
 import {
   bookingsInPeriod, currentPeriod, periodLabel, shortMonthName, type Period,
 } from '../../lib/period';
-import { countByPaymentMethod, countedBookings, monthlySeries, totalsByPlayer } from '../../lib/reports';
+import {
+  countByPaymentMethod, countedBookings, monthlySeries, payoutsByCoach, totalsByPlayer,
+} from '../../lib/reports';
 import type { User } from '../../lib/types';
 
 /**
@@ -74,6 +77,12 @@ export default function ReportsScreen(): React.JSX.Element {
     () => totalsByPlayer(shown, users, courts),
     [shown, users, courts],
   );
+  // Twee verschillende bedragen: `revenue` is wat de spelers betalen (uurtarief van de baan),
+  // `payout` is wat de trainers krijgen (hun eigen uurtarief). Het verschil is wat de club
+  // overhoudt; dat cijfer staat hier bewust niet als kaart — het rapport gaat over wat er
+  // binnenkomt en wat eruit gaat, en de rest is een som die iedereen zelf kan maken.
+  const payout = useMemo(() => totalCoachPayout(shown, users), [shown, users]);
+  const perCoach = useMemo(() => payoutsByCoach(shown, users), [shown, users]);
 
   // De grafiek loopt bewust langs `allowed` en niet langs `shown`: één maand omzet zegt niets
   // zonder de maanden ervoor, dus het verloop houdt zijn eigen venster van een half jaar tot
@@ -119,7 +128,11 @@ export default function ReportsScreen(): React.JSX.Element {
           de twee kaarten die over hemzelf gaan. */}
       <StatCardRow>
         {isCoach ? (
-          <StatCard icon={Euro} value={`€${formatEuro(revenue)}`} label="Omzet" />
+          <>
+            <StatCard icon={Euro} value={`€${formatEuro(revenue)}`} label="Omzet" />
+            {/* Naast de omzet, niet erin: dit is wat er weer uitgaat naar de trainers. */}
+            <StatCard icon={Wallet} value={`€${formatEuro(payout)}`} label="Trainersloon" />
+          </>
         ) : null}
         <StatCard icon={CalendarDays} value={lessons} label="Lessen" />
         <StatCard icon={AlertCircle} value={pending} label="Openstaand" tone="warning" />
@@ -168,7 +181,55 @@ export default function ReportsScreen(): React.JSX.Element {
           <Text style={styles.note}>
             Op totaal aflopend. Betaald is het geld dat afgesproken is, openstaand zijn de
             lessen waarvoor nog niets gekozen is. Geannuleerde lessen tellen nergens mee, en
-            een gesponsorde les staat in geen van beide kolommen.
+            een gesponsorde les staat bij betaald: het sponsorcontract is betaald geld.
+          </Text>
+        </Card>
+      ) : null}
+
+      {isCoach ? (
+        <Card>
+          <Text style={styles.cardTitle}>Per trainer</Text>
+          {perCoach.length === 0 ? (
+            <Text style={styles.emptyLine}>Geen lessen in {periodLabel(period)}.</Text>
+          ) : (
+            <>
+              {/* Dezelfde kolommenopzet als "Per speler", zodat de twee kaarten zich op
+                  dezelfde manier laten lezen. Hier staat één bedrag, dus één kolom rechts. */}
+              <View style={styles.playerHead}>
+                <Text style={[styles.nameCol, styles.colHead]}>Trainer</Text>
+                <Text style={[styles.amountCol, styles.colHead]}>Loon</Text>
+              </View>
+              {perCoach.map((row) => (
+                <View key={row.coachId} style={styles.playerRow}>
+                  <View style={styles.playerNameWrap}>
+                    <Text style={styles.statLabel}>{row.name}</Text>
+                    <Text style={styles.playerLessons}>
+                      {row.lessons === 1 ? '1 les' : `${row.lessons} lessen`}
+                    </Text>
+                    {/* Een vergeten uurtarief mag niet als een stille nul voorbijgaan: het
+                        bedrag klopt pas als iemand het tarief invult. */}
+                    {row.missingRate ? (
+                      <Text style={styles.warnLine}>Uurtarief nog niet ingesteld</Text>
+                    ) : null}
+                  </View>
+                  <Text
+                    style={[
+                      styles.amountCol,
+                      styles.playerAmount,
+                      row.missingRate ? styles.openAmount : null,
+                    ]}
+                  >
+                    €{formatEuro(row.amount)}
+                  </Text>
+                </View>
+              ))}
+            </>
+          )}
+          <Text style={styles.note}>
+            Op bedrag aflopend. Dit is wat de trainer krijgt: zijn eigen uurtarief naar rato
+            van de duur, ongeacht de betaalwijze — het uur is gegeven. De omzet hierboven
+            loopt op het uurtarief van de baan; het verschil houdt de club over. Geannuleerde
+            lessen tellen nergens mee.
           </Text>
         </Card>
       ) : null}
@@ -283,6 +344,8 @@ const styles = StyleSheet.create({
   // Breed genoeg voor "Openstaand" in de kop en voor een bedrag van vier cijfers eronder.
   amountCol: { width: 84, textAlign: 'right' },
   playerLessons: { ...typography.caption, color: tennisColors.textMuted },
+  // Dezelfde kleur als een openstaand bedrag: allebei "hier moet nog iets gebeuren".
+  warnLine: { ...typography.caption, color: tennisColors.warning },
   playerAmount: { fontSize: 16, fontWeight: '700', color: tennisColors.text },
   openAmount: { color: tennisColors.warning },
   statRow: {
