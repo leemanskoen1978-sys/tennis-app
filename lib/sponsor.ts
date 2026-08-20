@@ -12,7 +12,7 @@
 // `planMethodChange` (lib/beurtenkaart); hier is het alleen de reden dat het verbruik nooit
 // een groepsbedrag kan bevatten.
 
-import { formatEuro } from './csv';
+import { formatEuro } from './money';
 import { bookingPrice, lessonShares } from './payments';
 import type { Booking, Court, User } from './types';
 

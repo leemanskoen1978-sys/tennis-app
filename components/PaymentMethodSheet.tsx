@@ -6,6 +6,7 @@ import { spacing, radius, typography, shadow, contentMaxWidth } from '../constan
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../lib/payments';
+import { GROEPSLES_ALLEEN_FACTUUR, GROEPSLES_METHOD } from '../lib/beurtenkaart';
 import type { PaymentMethod } from '../lib/types';
 
 interface Props {
@@ -16,6 +17,12 @@ interface Props {
   /** Hetzelfde voor 'Sponsor', in euro's: wat er van het sponsorbudget over is. */
   sponsorHint?: string;
   error?: string | null;
+  /**
+   * Bij een groepsles valt er niets te kiezen: die gaat altijd op factuur. De andere
+   * betaalwijzen staan er dan uitgeschakeld bij, met de reden eronder — een keuze die
+   * gewoon weigert als je erop tikt is erger dan een keuze die je ziet dat niet kan.
+   */
+  groupLesson?: boolean;
   onPick: (method: PaymentMethod) => void;
   onClose: () => void;
 }
@@ -27,6 +34,7 @@ export function PaymentMethodSheet({
   cardHint,
   sponsorHint,
   error,
+  groupLesson = false,
   onPick,
   onClose,
 }: Props): React.JSX.Element {
@@ -43,15 +51,22 @@ export function PaymentMethodSheet({
                 key={method}
                 label={PAYMENT_LABELS[method]}
                 selected={method === current}
+                disabled={groupLesson && method !== GROEPSLES_METHOD}
                 onPress={() => onPick(method)}
               />
             ))}
           </View>
 
-          {cardHint ? <Text style={styles.hint}>{cardHint}</Text> : null}
+          {groupLesson ? (
+            <Text style={styles.hint}>
+              {GROEPSLES_ALLEEN_FACTUUR} Een beurtenkaart en het sponsorbudget gelden alleen
+              voor een privéles.
+            </Text>
+          ) : null}
+          {!groupLesson && cardHint ? <Text style={styles.hint}>{cardHint}</Text> : null}
           {/* Twee saldo's onder elkaar: beurten voor de kaart, euro's voor de sponsor.
               Allebei het antwoord op dezelfde vraag — kan deze les hier nog bij? */}
-          {sponsorHint ? <Text style={styles.hint}>{sponsorHint}</Text> : null}
+          {!groupLesson && sponsorHint ? <Text style={styles.hint}>{sponsorHint}</Text> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Button label="Sluiten" variant="secondary" onPress={onClose} />

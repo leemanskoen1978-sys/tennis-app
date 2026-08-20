@@ -5,6 +5,7 @@
 // and it can never go stale: book Mathis with Sanne and Mathis is in Sanne's list.
 
 import { formatDayTime } from './datetime';
+import { lessonPlayerIds, playsIn } from './groups';
 import type { Booking, Lesson, StudentProgress } from './types';
 
 /** Every coach that has a booking, lesson or progress note with this player. */
@@ -15,8 +16,10 @@ export function coachesForPlayer(
   progress: StudentProgress[],
 ): string[] {
   const ids = new Set<string>();
+  // Ook de groepslessen waarin hij meespeelt: hij stond op die baan bij die trainer, dus
+  // die trainer werkt met hem — of hij de les nu betaalde of niet.
   for (const b of bookings) {
-    if (b.player_id === playerId && b.coach_id) ids.add(b.coach_id);
+    if (playsIn(b, playerId) && b.coach_id) ids.add(b.coach_id);
   }
   for (const l of lessons) {
     if (l.student_id === playerId && l.coach_id) ids.add(l.coach_id);
@@ -36,7 +39,8 @@ export function playersForCoach(
 ): string[] {
   const ids = new Set<string>();
   for (const b of bookings) {
-    if (b.coach_id === coachId && b.player_id) ids.add(b.player_id);
+    if (b.coach_id !== coachId) continue;
+    for (const id of lessonPlayerIds(b)) if (id) ids.add(id);
   }
   for (const l of lessons) {
     if (l.coach_id === coachId && l.student_id) ids.add(l.student_id);
@@ -135,7 +139,8 @@ export function nextBookingFor(
 ): Booking | null {
   const from = now.getTime();
   const upcoming = bookings
-    .filter((b) => b.player_id === playerId && b.status !== 'cancelled')
+    // Meespelen telt: een deelnemer moet zijn les net zo goed zien aankomen als de betaler.
+    .filter((b) => playsIn(b, playerId) && b.status !== 'cancelled')
     .filter((b) => {
       const t = new Date(b.start_time).getTime();
       return Number.isFinite(t) && t >= from;

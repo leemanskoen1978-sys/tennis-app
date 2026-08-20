@@ -1,5 +1,6 @@
 import { tennisColors } from '../constants/tennis-colors';
-import { groupSize, isGroupLesson, lessonPlayerIds, playsIn } from './groups';
+import { groupSize, groupSizeLabel, isGroupLesson, lessonPlayerIds, playsIn } from './groups';
+import { formatEuro } from './money';
 import type {
   Booking, Court, CourtGroupRate, PaymentMethod, PaymentSplit, User,
 } from './types';
@@ -145,6 +146,33 @@ export function bookingPaymentMeta(b: SplitBooking): PaymentMeta {
   return { ...meta, label: `${meta.label} · apart` };
 }
 
+/**
+ * Wat deze les kost, in één regel — dezelfde formulering op elk scherm dat het toont, zodat
+ * de trainer bij het boeken en bij de les zelf hetzelfde leest.
+ *
+ * Bij een groepsles staat het aantal spelers erbij: het bedrag verandert als er een naam bij
+ * komt, en zonder die telling lijkt dat willekeurig. Delen de spelers niet gelijk op (een
+ * bedrag dat niet door drie gaat), dan staat er een marge in plaats van een bedrag dat bij
+ * één van hen een cent naast de waarheid zit.
+ */
+export function lessonPriceLine(
+  b: SplitBooking & TimedBooking,
+  court: PricedCourt | undefined,
+): string {
+  const total = bookingPrice(b, court);
+  const size = groupSize(b);
+  if (size === 1) return `€ ${formatEuro(total)} voor deze les.`;
+  const samen = `€ ${formatEuro(total)} voor deze les met ${groupSizeLabel(size)}`;
+  if (splitOf(b) === 'together') return `${samen}, op één factuur.`;
+  const amounts = lessonShares(b, court).map((share) => share.amount);
+  const low = Math.min(...amounts);
+  const high = Math.max(...amounts);
+  const ieder = low === high
+    ? `€ ${formatEuro(low)} per speler`
+    : `€ ${formatEuro(low)} à € ${formatEuro(high)} per speler`;
+  return `${samen}, apart gefactureerd: ${ieder}.`;
+}
+
 /** Een les vraagt nog om afhandeling zolang er iemand op 'open' staat. */
 export function needsPayment(b: Booking): boolean {
   return PAYABLE_STATUSES.includes(b.status)
@@ -262,12 +290,13 @@ export type PricedCourt = Pick<Court, 'hourly_rate' | 'group_rates'>;
 export type PricedBooking = TimedBooking & Pick<Booking, 'player_id' | 'participant_ids'>;
 
 /**
- * De bruikbare stappen van de staffel, oplopend op groepsgrootte. Een stap zonder echt
+ * De bruikbare stappen van de staffel, oplopend op groepsgrootte. Ook het beheerscherm toont
+ * ze in deze volgorde, zodat wat de trainer ziet dezelfde staffel is als die gerekend wordt. Een stap zonder echt
  * bedrag of zonder echt aantal spelers valt weg: een half ingevulde stap hoort de prijs niet
  * op 0 of op NaN te zetten. Blijft er niets over, dan is er gewoon geen staffel en geldt het
  * uurtarief — de app doet dan precies wat ze zonder staffel ook deed.
  */
-function usableSteps(court: PricedCourt | undefined): CourtGroupRate[] {
+export function groupRateSteps(court: PricedCourt | undefined): CourtGroupRate[] {
   return (court?.group_rates ?? [])
     .filter((s): s is CourtGroupRate =>
       !!s
@@ -291,7 +320,7 @@ function usableSteps(court: PricedCourt | undefined): CourtGroupRate[] {
 export function rateForGroup(court: PricedCourt | undefined, size: number): number {
   const hourly = court?.hourly_rate;
   const base = typeof hourly === 'number' && Number.isFinite(hourly) ? hourly : 0;
-  const steps = usableSteps(court);
+  const steps = groupRateSteps(court);
   if (size <= 1 || steps.length === 0) return base;
   const step = steps.find((s) => size <= s.max_players) ?? steps[steps.length - 1];
   return step.rate;

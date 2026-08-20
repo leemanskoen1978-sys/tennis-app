@@ -11,10 +11,16 @@ import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow } from '../constants/theme';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
-import type { Court, PaymentMethod } from '../lib/types';
+import { ParticipantPicker } from './ParticipantPicker';
+import { UserManagement } from './UserManagement';
+import type { Court, PaymentMethod, PaymentSplit } from '../lib/types';
 import { useSimpleData } from '../providers/SimpleDataProvider';
-import { defaultMethodFor, PAYMENT_LABELS, PAYMENT_METHODS } from '../lib/payments';
-import { cardsFor, remaining } from '../lib/beurtenkaart';
+import {
+  defaultMethodFor, lessonPriceLine, PAYMENT_LABELS, PAYMENT_METHODS,
+} from '../lib/payments';
+import {
+  cardsFor, remaining, GROEPSLES_ALLEEN_FACTUUR, GROEPSLES_METHOD,
+} from '../lib/beurtenkaart';
 import { sponsorHint, sponsorState } from '../lib/sponsor';
 import { formatDay } from '../lib/datetime';
 
@@ -60,6 +66,12 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   // Zo blijft de standaard van de speler leidend — wisselt de trainer van speler, dan
   // schuift de keuze mee — terwijl een aangeklikte betaalwijze wél blijft staan.
   const [chosenMethod, setChosenMethod] = useState<PaymentMethod | null>(null);
+  // De medespelers van een groepsles: de betaler staat er niet bij, die is `forPlayerId`.
+  const [participants, setParticipants] = useState<string[]>([]);
+  // Bij een groepsles: één factuur voor de betaler, of ieder zijn deel.
+  const [split, setSplit] = useState<PaymentSplit>('together');
+  // De naam die in de keuzelijst getypt werd voor een speler die nog niet bestaat.
+  const [newPlayerName, setNewPlayerName] = useState<string | null>(null);
 
   if (date === null || slot === null) {
     return null;
@@ -87,13 +99,30 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
 
   const forPlayerId = playerId ?? currentUser?.id;
   const defaultMethod = defaultMethodFor(users.find((u) => u.id === forPlayerId));
-  // De betaalwijze waarmee geboekt wordt: de eigen keuze, anders de standaard.
-  const method: PaymentMethod = chosenMethod ?? defaultMethod;
+  const isGroup = participants.length > 0;
+  // De betaalwijze waarmee geboekt wordt: bij een groepsles staat die vast op factuur,
+  // anders de eigen keuze en anders de standaard van de speler.
+  const method: PaymentMethod = isGroup ? GROEPSLES_METHOD : (chosenMethod ?? defaultMethod);
 
   // Beurtenkaart en sponsor hebben allebei een bodem. Ze lopen daarom niet rechtstreeks
   // mee in de nieuwe les, maar via `setPaymentMethod`: dat is de enige plek die de beurt
-  // afboekt en het sponsorbudget bewaakt.
+  // afboekt en het sponsorbudget bewaakt. Bij een groepsles komen ze niet voor.
   const bewaakt = method === 'beurtenkaart' || method === 'sponsor';
+
+  const players = users.filter((u) => u.role !== 'coach');
+  // Wat de les gaat kosten, met de gekozen namen erin verwerkt: zo ziet de trainer meteen
+  // wat er verandert als hij er een speler bij zet.
+  const priceLine = lessonPriceLine(
+    {
+      player_id: forPlayerId ?? '',
+      participant_ids: participants,
+      payment_method: method,
+      payment_split: split,
+      start_time,
+      end_time,
+    },
+    allCourts.find((c) => c.id === (selectedCourtId || courts[0]?.id)),
+  );
 
   /** Zelfde formulering als het exportscherm: hoeveel beurten heeft deze speler nog. */
   const beurtenHint = (): string => {
@@ -110,6 +139,8 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const handleClose = (): void => {
     setBookedWithoutBeurt(null);
     setNotes('');
+    setParticipants([]);
+    setSplit('together');
     // Het venster blijft gemonteerd; zonder dit begint de volgende boeking met de keuze
     // van de vorige in plaats van met de standaard van die speler.
     setChosenMethod(null);
@@ -144,6 +175,8 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         end_time,
         status: 'confirmed',
         payment_method: bewaakt ? 'open' : method,
+        participant_ids: participants.length > 0 ? participants : undefined,
+        payment_split: isGroup ? split : undefined,
         notes: notes.trim() ? notes.trim() : undefined,
       });
       if (!created) {
@@ -168,110 +201,172 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const slotEndLabel = `${String(hour + 1).padStart(2, '0')}:00`;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleClose}
-    >
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <Text style={styles.title}>Les boeken</Text>
-          <Text style={styles.subtitle}>
-            {formatDay(date)} · {slot}–{slotEndLabel}
-          </Text>
-          {/* Booking for someone else is easy to do by accident, so name them. */}
-          {playerId && playerId !== currentUser?.id ? (
-            <Text style={styles.forWhom}>
-              Voor {users.find((u) => u.id === playerId)?.name ?? 'onbekende speler'}
+    <>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="slide"
+        onRequestClose={handleClose}
+      >
+        <View style={styles.backdrop}>
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
+            <Text style={styles.title}>Les boeken</Text>
+            <Text style={styles.subtitle}>
+              {formatDay(date)} · {slot}–{slotEndLabel}
             </Text>
-          ) : null}
-
-          <ScrollView
-            style={styles.body}
-            contentContainerStyle={styles.bodyContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            {bookedWithoutBeurt ? (
-              // De les staat er al. De velden zijn niet meer van toepassing: wat hier nog
-              // ontbreekt is de beurt, niet de boeking.
-              <Text style={styles.notice}>
-                De les is geboekt, maar “{PAYMENT_LABELS[method]}” ging er niet op: de
-                betaalwijze staat nog op “{PAYMENT_LABELS.open}”. Bevestigen probeert het
-                alsnog — er komt geen tweede les bij. Sluiten mag ook; je kunt de betaalwijze
-                later bij de les zelf zetten.
+            {/* Booking for someone else is easy to do by accident, so name them. */}
+            {playerId && playerId !== currentUser?.id ? (
+              <Text style={styles.forWhom}>
+                Voor {users.find((u) => u.id === playerId)?.name ?? 'onbekende speler'}
               </Text>
-            ) : (
-              <>
-                <Text style={styles.label}>Terrein</Text>
-                <View style={styles.chipRow}>
-                  {courts.map((court) => (
-                    <Chip
-                      key={court.id}
-                      label={court.name}
-                      selected={court.id === selectedCourtId}
-                      onPress={() => setSelectedCourtId(court.id)}
-                    />
-                  ))}
-                </View>
+            ) : null}
 
-                <Text style={styles.label}>Betaalwijze</Text>
-                <View style={styles.chipRow}>
-                  {PAYMENT_METHODS.map((m) => (
-                    <Chip
-                      key={m}
-                      label={PAYMENT_LABELS[m]}
-                      selected={m === method}
-                      onPress={() => setChosenMethod(m)}
-                    />
-                  ))}
-                </View>
-                {method === 'beurtenkaart' ? (
-                  <Text style={styles.hint}>
-                    Er gaat een beurt af. {beurtenHint()}
-                  </Text>
-                ) : null}
-                {method === 'sponsor' ? (
-                  <Text style={styles.hint}>
-                    De les gaat van het sponsorcontract af. {sponsorTekst()}
-                  </Text>
-                ) : null}
+            <ScrollView
+              style={styles.body}
+              contentContainerStyle={styles.bodyContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              {bookedWithoutBeurt ? (
+                // De les staat er al. De velden zijn niet meer van toepassing: wat hier nog
+                // ontbreekt is de beurt, niet de boeking.
+                <Text style={styles.notice}>
+                  De les is geboekt, maar “{PAYMENT_LABELS[method]}” ging er niet op: de
+                  betaalwijze staat nog op “{PAYMENT_LABELS.open}”. Bevestigen probeert het
+                  alsnog — er komt geen tweede les bij. Sluiten mag ook; je kunt de betaalwijze
+                  later bij de les zelf zetten.
+                </Text>
+              ) : (
+                <>
+                  <Text style={styles.label}>Terrein</Text>
+                  <View style={styles.chipRow}>
+                    {courts.map((court) => (
+                      <Chip
+                        key={court.id}
+                        label={court.name}
+                        selected={court.id === selectedCourtId}
+                        onPress={() => setSelectedCourtId(court.id)}
+                      />
+                    ))}
+                  </View>
 
-                <Text style={styles.label}>Notities (optioneel)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={notes}
-                  onChangeText={setNotes}
-                  placeholder="Voeg een notitie toe…"
-                  placeholderTextColor={tennisColors.textMuted}
-                  multiline
-                />
-              </>
-            )}
+                  <Text style={styles.label}>Medespelers (optioneel)</Text>
+                  <ParticipantPicker
+                    players={players}
+                    payerId={forPlayerId}
+                    value={participants}
+                    onChange={setParticipants}
+                    onRequestCreate={setNewPlayerName}
+                  />
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-          </ScrollView>
+                  {/* Wat de les kost, meteen onder de namen: hier ziet de trainer de staffel
+                      in werking zodra hij er iemand bij zet. */}
+                  <Text style={styles.price}>{priceLine}</Text>
 
-          <View style={styles.actions}>
-            <Button
-              label={bookedWithoutBeurt ? 'Sluiten' : 'Annuleren'}
-              variant="secondary"
-              onPress={handleClose}
-              disabled={submitting}
-              fullWidth
-            />
-            <Button
-              label={bookedWithoutBeurt ? 'Betaalwijze opnieuw proberen' : 'Bevestigen'}
-              variant="primary"
-              onPress={handleConfirm}
-              disabled={submitting}
-              fullWidth
-            />
+                  {isGroup ? (
+                    <>
+                      <Text style={styles.label}>Factuur</Text>
+                      <View style={styles.chipRow}>
+                        <Chip
+                          label="Samen"
+                          selected={split === 'together'}
+                          onPress={() => setSplit('together')}
+                        />
+                        <Chip
+                          label="Apart"
+                          selected={split === 'separate'}
+                          onPress={() => setSplit('separate')}
+                        />
+                      </View>
+                      <Text style={styles.hint}>
+                        {split === 'together'
+                          ? `Het hele bedrag gaat naar ${users.find((u) => u.id === forPlayerId)?.name ?? 'de betaler'}.`
+                          : 'Elke speler krijgt zijn eigen deel gefactureerd.'}
+                      </Text>
+                    </>
+                  ) : null}
+
+                  <Text style={styles.label}>Betaalwijze</Text>
+                  {isGroup ? (
+                    // Bij een groepsles valt er niets te kiezen; een rij chips die allemaal
+                    // weigeren is erger dan geen rij.
+                    <Text style={styles.hint}>
+                      {PAYMENT_LABELS[GROEPSLES_METHOD]}. {GROEPSLES_ALLEEN_FACTUUR} Een
+                      beurtenkaart en het sponsorbudget gelden alleen voor een privéles.
+                    </Text>
+                  ) : (
+                    <>
+                      <View style={styles.chipRow}>
+                        {PAYMENT_METHODS.map((m) => (
+                          <Chip
+                            key={m}
+                            label={PAYMENT_LABELS[m]}
+                            selected={m === method}
+                            onPress={() => setChosenMethod(m)}
+                          />
+                        ))}
+                      </View>
+                      {method === 'beurtenkaart' ? (
+                        <Text style={styles.hint}>
+                          Er gaat een beurt af. {beurtenHint()}
+                        </Text>
+                      ) : null}
+                      {method === 'sponsor' ? (
+                        <Text style={styles.hint}>
+                          De les gaat van het sponsorcontract af. {sponsorTekst()}
+                        </Text>
+                      ) : null}
+                    </>
+                  )}
+
+                  <Text style={styles.label}>Notities (optioneel)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={notes}
+                    onChangeText={setNotes}
+                    placeholder="Voeg een notitie toe…"
+                    placeholderTextColor={tennisColors.textMuted}
+                    multiline
+                  />
+                </>
+              )}
+
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+            </ScrollView>
+
+            <View style={styles.actions}>
+              <Button
+                label={bookedWithoutBeurt ? 'Sluiten' : 'Annuleren'}
+                variant="secondary"
+                onPress={handleClose}
+                disabled={submitting}
+                fullWidth
+              />
+              <Button
+                label={bookedWithoutBeurt ? 'Betaalwijze opnieuw proberen' : 'Bevestigen'}
+                variant="primary"
+                onPress={handleConfirm}
+                disabled={submitting}
+                fullWidth
+              />
+            </View>
           </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      {/* Het volledige invulscherm voor een nieuwe speler. Bewust naast het boekvenster en
+          niet erin: twee bladen in elkaar geschoven raakt op web en Android in de knoop.
+          Zodra hij bewaard is, doet hij meteen mee aan de les die geboekt wordt. */}
+      <UserManagement
+        visible={newPlayerName !== null}
+        initialName={newPlayerName ?? ''}
+        onClose={() => setNewPlayerName(null)}
+        onCreated={(u) => {
+          setParticipants((current) => (current.includes(u.id) ? current : [...current, u.id]));
+          setNewPlayerName(null);
+        }}
+      />
+    </>
   );
 }
 
@@ -347,6 +442,12 @@ const styles = StyleSheet.create({
   notice: {
     ...typography.body,
     fontSize: 14,
+    color: tennisColors.text,
+    marginTop: spacing.md,
+  },
+  price: {
+    ...typography.body,
+    fontWeight: '600',
     color: tennisColors.text,
     marginTop: spacing.md,
   },

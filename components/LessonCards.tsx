@@ -11,7 +11,8 @@ import { Card } from './ui/Card';
 import { useIsWide } from './ui/Screen';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { formatDay, formatTimeRange } from '../lib/datetime';
-import { paymentMeta, type PaymentMeta } from '../lib/payments';
+import { groupSize, shortGroupLabel } from '../lib/groups';
+import { bookingPaymentMeta, type PaymentMeta } from '../lib/payments';
 import type { Booking } from '../lib/types';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
@@ -45,12 +46,17 @@ export function LessonCards({
           halve rij wit achter. Daaronder blijft het één kolom, zoals op een telefoon. */}
       <View style={isWide ? styles.grid : styles.stack}>
         {bookings.map((booking) => {
-          const payment: PaymentMeta = paymentMeta(booking.payment_method);
+          const payment: PaymentMeta = bookingPaymentMeta(booking);
           const paymentLabel = paymentLabelFor(booking, payment, beurtenkaarten);
           // Je eigen naam hoef je niet te lezen: een trainer ziet de speler, een speler de
           // trainer. Kijkt een trainer naar de agenda van een collega, dan zegt de speler
           // hem het meest — de trainer staat dan al in de filter erboven.
-          const other = isCoach ? nameOf(booking.player_id) : nameOf(booking.coach_id);
+          // Bij een groepsles staat er "Mathis +2": de speler die de les op zijn naam heeft,
+          // en hoeveel er nog bij stonden. De namen zelf staan in het detailblad — daar is
+          // ruimte voor, op een korte kaart niet.
+          const other = isCoach
+            ? shortGroupLabel(nameOf(booking.player_id), groupSize(booking))
+            : nameOf(booking.coach_id);
           return (
             <View key={booking.id} style={isWide ? styles.cell : undefined}>
               <Card

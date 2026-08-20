@@ -16,7 +16,8 @@ import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
 import { bookingsOnDay } from '../../lib/hub';
 import { formatTimeRange } from '../../lib/datetime';
-import { bookingsFor, paymentMeta } from '../../lib/payments';
+import { groupSize, shortGroupLabel } from '../../lib/groups';
+import { bookingsFor, bookingPaymentMeta } from '../../lib/payments';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 
@@ -77,10 +78,13 @@ export default function BookingsScreen(): React.JSX.Element {
             <Text style={styles.muted}>Geen lessen vandaag.</Text>
           ) : (
             today.map((b) => {
-              const payment = paymentMeta(b.payment_method);
+              const payment = bookingPaymentMeta(b);
               // Je hoeft je eigen naam niet te lezen: een trainer ziet de speler,
               // een speler ziet de trainer.
-              const other = isCoach ? nameOf(b.player_id) : nameOf(b.coach_id);
+              // Zelfde vorm als op de leskaarten: "Mathis +2" bij een groepsles.
+              const other = isCoach
+                ? shortGroupLabel(nameOf(b.player_id), groupSize(b))
+                : nameOf(b.coach_id);
               return (
                 <Card key={b.id}>
                   <Text style={styles.lessonTime}>

@@ -10,11 +10,17 @@ import { ChevronRight, X } from 'lucide-react-native';
 
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
+import { Chip } from './ui/Chip';
+import { ParticipantPicker } from './ParticipantPicker';
 import { PaymentMethodSheet } from './PaymentMethodSheet';
 import { useSimpleData } from '../providers/SimpleDataProvider';
-import { cardsFor, remaining } from '../lib/beurtenkaart';
+import { cardsFor, remaining, GROEPSLES_ALLEEN_FACTUUR } from '../lib/beurtenkaart';
 import { formatDayTimeRange } from '../lib/datetime';
-import { paymentMeta, type PaymentMeta } from '../lib/payments';
+import { isGroupLesson, participantIdsOf } from '../lib/groups';
+import {
+  bookingPaymentMeta, lessonPriceLine, lessonShares, splitOf, type PaymentMeta,
+} from '../lib/payments';
+import { formatEuro } from '../lib/money';
 import { sponsorHint, sponsorState } from '../lib/sponsor';
 import { BOOKING_STATUS_LABELS } from '../lib/status';
 import type { Beurtenkaart, Booking, BookingStatus, PaymentMethod } from '../lib/types';
@@ -61,13 +67,19 @@ export function LessonDetailSheet({
   const router = useRouter();
   const {
     bookings, users, courts, beurtenkaarten,
-    updateBooking, setPaymentMethod, error, clearError,
+    updateBooking, setPaymentMethod, setParticipants, setPaymentSplit, error, clearError,
   } = useSimpleData();
   // Twee bladen over elkaar heen wordt op web en telefoon rommelig: de tweede backdrop
   // verduistert de eerste en op Android sluit één druk op terug ze allebei. Daarom is dit
   // een schakelaar en geen tweede laag — staat hij aan, dan is het detailblad even dicht en
   // heeft het gedeelde betaalwijze-blad het scherm alleen. Sluiten brengt de details terug.
   const [choosing, setChoosing] = useState(false);
+  // De medespelers bijstellen is een handeling met gevolgen voor het geld; die staat daarom
+  // achter een knop en niet altijd open.
+  const [editingPlayers, setEditingPlayers] = useState(false);
+  // Wat er ongevraagd meeveranderde toen de deelnemers wijzigden (een teruggegeven beurt,
+  // een les die naar factuur ging). Blijft staan tot het blad dichtgaat.
+  const [notice, setNotice] = useState<string | null>(null);
 
   // De aanroeper geeft de les mee die hij had toen de kaart werd aangetikt. Lees hem terug
   // uit de opslag, anders blijven status en betaalwijze hier op de oude waarde staan zodra
@@ -80,12 +92,21 @@ export function LessonDetailSheet({
   const playerName = nameOf(booking.player_id);
   const coachName = nameOf(booking.coach_id);
 
-  const payment = paymentMeta(booking.payment_method);
+  const payment = bookingPaymentMeta(booking);
   const paymentLabel = paymentLabelFor(booking, payment, beurtenkaarten);
   const isCancelled = booking.status === 'cancelled';
   const canCancel = !isCancelled && booking.status !== 'completed';
   // Alleen bij een lopende les: op een geannuleerde les valt niets meer te betalen.
   const canPay = canManage && !isCancelled;
+  const isGroup = isGroupLesson(booking);
+  const court = courts.find((c) => c.id === booking.court_id);
+  const players = users.filter((u) => u.role !== 'coach');
+  // Wie er meedoet en wie wat betaalt: één lijst, met de betaler vooraan. Bij samen
+  // factureren staat het hele bedrag bij hem en niets bij de rest — dat is precies wat er
+  // hoort te staan, want zij betalen ook niets.
+  const shares = lessonShares(booking, court);
+  const amountOf = (id: string): number | null =>
+    shares.find((share) => share.player_id === id)?.amount ?? null;
 
   const cardHint = (): string | undefined => {
     const cards = cardsFor(beurtenkaarten, booking.player_id);
@@ -107,8 +128,16 @@ export function LessonDetailSheet({
       booking.id,
     ));
 
-  const goTo = (path: string): void => {
+  /** Dichtdoen zet het blad ook weer schoon: een melding of een open keuzelijst van de
+   *  vorige les hoort niet boven de volgende te blijven hangen. */
+  const close = (): void => {
+    setNotice(null);
+    setEditingPlayers(false);
     onClose();
+  };
+
+  const goTo = (path: string): void => {
+    close();
     router.push(path);
   };
 
@@ -131,7 +160,7 @@ export function LessonDetailSheet({
         visible={visible && !choosing}
         transparent
         animationType="slide"
-        onRequestClose={onClose}
+        onRequestClose={close}
       >
         <View style={styles.backdrop}>
           <View style={styles.sheet}>
@@ -139,7 +168,7 @@ export function LessonDetailSheet({
             <View style={styles.header}>
               <Text style={styles.title}>{formatDayTimeRange(booking.start_time, booking.end_time)}</Text>
               <Pressable
-                onPress={onClose}
+                onPress={close}
                 accessibilityRole="button"
                 accessibilityLabel="Sluiten"
                 style={[styles.close, webCursor]}
@@ -159,9 +188,33 @@ export function LessonDetailSheet({
                 accessibilityLabel={`Open dossier van ${playerName}`}
                 style={[styles.partyLine, webCursor]}
               >
-                <Text style={styles.partyLink}>Speler: {playerName}</Text>
+                <Text style={styles.partyLink}>
+                  {isGroup ? 'Betaalt' : 'Speler'}: {playerName}
+                  {isGroup ? ` · € ${formatEuro(amountOf(booking.player_id) ?? 0)}` : ''}
+                </Text>
                 <ChevronRight size={16} color={tennisColors.textMuted} />
               </Pressable>
+              {isGroup ? (
+                <>
+                  <Text style={styles.label}>Medespelers</Text>
+                  {participantIdsOf(booking).map((id) => (
+                    <Pressable
+                      key={id}
+                      onPress={() => goTo(`/players/${id}`)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Open dossier van ${nameOf(id)}`}
+                      style={[styles.partyLine, webCursor]}
+                    >
+                      <Text style={styles.partyLink}>
+                        {nameOf(id)}
+                        {amountOf(id) !== null ? ` · € ${formatEuro(amountOf(id) as number)}` : ''}
+                      </Text>
+                      <ChevronRight size={16} color={tennisColors.textMuted} />
+                    </Pressable>
+                  ))}
+                </>
+              ) : null}
+
               <Pressable
                 onPress={() => goTo(`/coaches/${booking.coach_id}`)}
                 accessibilityRole="button"
@@ -174,7 +227,7 @@ export function LessonDetailSheet({
 
               <View style={styles.badgeRow}>
                 <Badge label={BOOKING_STATUS_LABELS[booking.status]} color={STATUS_COLORS[booking.status]} />
-                {canPay ? (
+                {canPay && !isGroup ? (
                   <Pressable
                     onPress={() => {
                       clearError();
@@ -190,6 +243,75 @@ export function LessonDetailSheet({
                   <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
                 )}
               </View>
+              {isGroup ? (
+                <Text style={styles.hint}>
+                  {GROEPSLES_ALLEEN_FACTUUR} Een beurtenkaart en het sponsorbudget gelden
+                  alleen voor een privéles.
+                </Text>
+              ) : null}
+
+              <Text style={styles.price}>{lessonPriceLine(booking, court)}</Text>
+
+              {isGroup && canManage && !isCancelled ? (
+                <>
+                  <Text style={styles.label}>Factuur</Text>
+                  <View style={styles.chipRow}>
+                    <Chip
+                      label="Samen"
+                      selected={splitOf(booking) === 'together'}
+                      onPress={() => {
+                        void setPaymentSplit(booking.id, 'together');
+                      }}
+                    />
+                    <Chip
+                      label="Apart"
+                      selected={splitOf(booking) === 'separate'}
+                      onPress={() => {
+                        void setPaymentSplit(booking.id, 'separate');
+                      }}
+                    />
+                  </View>
+                </>
+              ) : null}
+
+              {canManage && !isCancelled ? (
+                editingPlayers ? (
+                  <>
+                    <Text style={styles.label}>Medespelers</Text>
+                    <ParticipantPicker
+                      players={players}
+                      payerId={booking.player_id}
+                      value={participantIdsOf(booking)}
+                      onChange={(ids) => {
+                        clearError();
+                        void setParticipants(booking.id, ids).then(setNotice);
+                      }}
+                    />
+                    <View style={styles.actions}>
+                      <Button
+                        label="Klaar"
+                        variant="secondary"
+                        fullWidth={false}
+                        onPress={() => setEditingPlayers(false)}
+                      />
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.actions}>
+                    <Button
+                      label={isGroup ? 'Medespelers wijzigen' : 'Medespeler toevoegen'}
+                      variant="secondary"
+                      fullWidth={false}
+                      onPress={() => {
+                        clearError();
+                        setEditingPlayers(true);
+                      }}
+                    />
+                  </View>
+                )
+              ) : null}
+
+              {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
               {booking.notes ? (
                 <>
@@ -222,6 +344,7 @@ export function LessonDetailSheet({
         current={booking.payment_method}
         cardHint={cardHint()}
         sponsorHint={sponsorTekst()}
+        groupLesson={isGroup}
         error={error}
         onPick={(m) => {
           void pickMethod(m);
@@ -272,6 +395,10 @@ const styles = StyleSheet.create({
   // De badge zelf is maar ~22 px hoog; het raakvlak eromheen houdt de app-brede 44 px aan.
   paymentTap: { minHeight: minTapTarget, justifyContent: 'center' },
   label: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted, marginTop: spacing.sm },
+  price: { ...typography.body, fontWeight: '600', color: tennisColors.text, marginTop: spacing.sm },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  notice: { fontSize: 13, color: tennisColors.text, fontStyle: 'italic', marginTop: spacing.sm },
+  hint: { fontSize: 13, color: tennisColors.textMuted, fontStyle: 'italic', marginTop: spacing.xs },
   notes: { ...typography.body, color: tennisColors.text },
   error: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.sm },
   actions: { marginTop: spacing.lg, alignItems: 'flex-start' },

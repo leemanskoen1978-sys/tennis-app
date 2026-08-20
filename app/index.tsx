@@ -14,7 +14,7 @@ import { Screen } from '../components/ui/Screen';
 import { ActionTile, TileGrid } from '../components/ui/ActionTile';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
-import { filterPendingPayment } from '../lib/payments';
+import { bookingsFor, filterPendingPayment } from '../lib/payments';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
 
@@ -36,7 +36,9 @@ export default function Hub() {
   if (!currentUser) return <Redirect href="/login" />;
   const isCoach = currentUser.role === 'coach';
 
-  const myBookings = bookings.filter((b) => b.player_id === currentUser.id);
+  // `bookingsFor` en niet zelf filteren: zo ziet een speler ook de groepslessen waarin
+  // hij meespeelt zonder te betalen.
+  const myBookings = bookingsFor(currentUser, bookings);
   const today = bookingsToday(isCoach ? bookings : myBookings, new Date());
   // Dezelfde definitie van "staat nog open" als Beheer: een geannuleerde of nog niet
   // bevestigde les hoort niet op de badge, anders loopt die juist óp bij een annulering.

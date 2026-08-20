@@ -23,7 +23,7 @@ import { spacing, radius, typography, webCursor, minTapTarget } from '../constan
 import { tennisColors } from '../constants/tennis-colors';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday } from '../lib/hub';
-import { totalCoachPayout } from '../lib/payments';
+import { bookingsFor, totalCoachPayout } from '../lib/payments';
 import { bookingsInPeriod, currentPeriod } from '../lib/period';
 import { formatEuro } from '../lib/csv';
 
@@ -115,7 +115,9 @@ export default function ProfileScreen(): React.JSX.Element {
 
   // Dezelfde twee getallen als op het hoofdscherm, en langs dezelfde weg berekend: een
   // trainer kijkt naar de agenda van de dag, een speler naar zijn eigen lessen.
-  const myBookings = bookings.filter((b) => b.player_id === currentUser.id);
+  // `bookingsFor` en niet zelf filteren: zo ziet een speler ook de groepslessen waarin
+  // hij meespeelt zonder te betalen.
+  const myBookings = bookingsFor(currentUser, bookings);
   const today = bookingsToday(isCoach ? bookings : myBookings, new Date());
 
   // Wat een trainer deze maand verdiende: zijn eigen uurtarief over zijn eigen lessen. Dus

@@ -10,6 +10,7 @@ import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { DetailSheet } from '../../components/ui/DetailSheet';
 import { CoachDetailsModal } from '../../components/CoachDetailsModal';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { groupSize, shortGroupLabel } from '../../lib/groups';
 import { playersForCoach } from '../../lib/relations';
 import { formatWorkingDays } from '../../lib/slots';
 import { tennisColors } from '../../constants/tennis-colors';
@@ -171,7 +172,7 @@ export default function CoachDossier() {
                   <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
                   <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
                 </View>
-                <Text style={styles.rowMeta}>{courtName(b.court_id)} · {playerName(b.player_id)}</Text>
+                <Text style={styles.rowMeta}>{courtName(b.court_id)} · {shortGroupLabel(playerName(b.player_id), groupSize(b))}</Text>
               </Card>
             ))}
             {past.length > 0 ? <Text style={styles.subLabel}>Geweest</Text> : null}
@@ -181,7 +182,7 @@ export default function CoachDossier() {
                   <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
                   <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
                 </View>
-                <Text style={styles.rowMeta}>{courtName(b.court_id)} · {playerName(b.player_id)}</Text>
+                <Text style={styles.rowMeta}>{courtName(b.court_id)} · {shortGroupLabel(playerName(b.player_id), groupSize(b))}</Text>
               </Card>
             ))}
           </>

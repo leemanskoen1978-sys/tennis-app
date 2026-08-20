@@ -3,7 +3,7 @@ import {
   needsPayment, filterPendingPayment, bookingsFor, bookingsByCoach, visibleBookings,
   pendingPaymentsFor, totalRevenue,
   bookingMinutes, bookingPrice, rateForGroup, bookingsBilledTo,
-  splitEvenly, splitOf, lessonShares, bookingPaymentMeta,
+  splitEvenly, splitOf, lessonShares, bookingPaymentMeta, lessonPriceLine, groupRateSteps,
   coachPayout, totalCoachPayout, clubMargin,
   defaultMethodFor, paymentMeta, PAYMENT_METHODS, PAYMENT_LABELS,
 } from './payments';
@@ -513,5 +513,50 @@ describe('samen of apart factureren', () => {
     const apart: Booking = { ...groep, payment_split: 'separate' };
     expect(totalRevenue([apart], [staffelBaan])).toBe(45);
     expect(totalRevenue([groep], [staffelBaan])).toBe(45);
+  });
+});
+
+describe('lessonPriceLine', () => {
+  it('names the amount for a private lesson', () => {
+    expect(lessonPriceLine(base, baan)).toBe('€ 30,00 voor deze les.');
+  });
+
+  it('says how many players make up the group amount', () => {
+    const groep: Booking = { ...base, payment_method: 'invoice', participant_ids: ['p2', 'p3'] };
+    expect(lessonPriceLine(groep, staffelBaan))
+      .toBe('€ 45,00 voor deze les met 3 spelers, op één factuur.');
+    expect(lessonPriceLine({ ...groep, payment_split: 'separate' }, staffelBaan))
+      .toBe('€ 45,00 voor deze les met 3 spelers, apart gefactureerd: € 15,00 per speler.');
+  });
+
+  it('shows a range when the amount does not split evenly', () => {
+    const groep: Booking = {
+      ...base, payment_method: 'invoice', payment_split: 'separate',
+      end_time: '2026-08-20T10:30:00.000Z', participant_ids: ['p2', 'p3', 'p4'],
+    };
+    // € 22,50 over vier spelers: twee betalen € 5,63 en twee € 5,62.
+    expect(lessonPriceLine(groep, staffelBaan)).toContain('€ 5,62 à € 5,63 per speler');
+  });
+});
+
+describe('groupRateSteps', () => {
+  it('is empty without a staffel', () => {
+    expect(groupRateSteps(baan)).toEqual([]);
+    expect(groupRateSteps(undefined)).toEqual([]);
+  });
+
+  it('sorts the steps and leaves out the unusable ones', () => {
+    const rommelig: Court = {
+      ...baan,
+      group_rates: [
+        { max_players: 4, rate: 45 },
+        { max_players: 0, rate: 10 },
+        { max_players: 2, rate: 30 },
+      ],
+    };
+    expect(groupRateSteps(rommelig)).toEqual([
+      { max_players: 2, rate: 30 },
+      { max_players: 4, rate: 45 },
+    ]);
   });
 });

@@ -23,6 +23,7 @@ import {
 } from '../../lib/relations';
 import { filledGoalCount, goalCountLabel } from '../../lib/goals';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
+import { groupSize, groupSizeLabel, isGroupLesson, playsIn } from '../../lib/groups';
 import { parseSponsorBudget, sponsorHint, sponsorState } from '../../lib/sponsor';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
@@ -92,7 +93,20 @@ export default function PlayerDossier() {
     .sort((a, b) => a.name.localeCompare(b.name, 'nl'));
 
   const now = Date.now();
-  const playerBookings = bookings.filter((b) => b.player_id === player.id && b.status !== 'cancelled');
+  // Ook de groepslessen waarin hij meespeelt zonder te betalen: het is zijn les, dus hij
+  // hoort hem in zijn eigen dossier terug te zien.
+  const playerBookings = bookings.filter((b) => playsIn(b, player.id) && b.status !== 'cancelled');
+
+  /**
+   * De regel onder een lesregel. Bij een groepsles staat erbij met hoeveel ze waren en wie
+   * er betaalt — anders leest een deelnemer zijn eigen naam nergens terug en lijkt de les
+   * van iemand anders te zijn.
+   */
+  const lessonMeta = (b: (typeof bookings)[number]): string => {
+    const basis = `${courtName(b.court_id)} · ${nameOf(b.coach_id)}`;
+    if (!isGroupLesson(b)) return basis;
+    return `${basis} · ${groupSizeLabel(groupSize(b))}, ${nameOf(b.player_id)} betaalt`;
+  };
   const upcoming = playerBookings.filter((b) => new Date(b.end_time).getTime() >= now)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
   const past = playerBookings.filter((b) => new Date(b.end_time).getTime() < now)
@@ -247,7 +261,7 @@ export default function PlayerDossier() {
                         <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
                         <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
                       </View>
-                      <Text style={styles.rowMeta}>{courtName(b.court_id)} · {nameOf(b.coach_id)}</Text>
+                      <Text style={styles.rowMeta}>{lessonMeta(b)}</Text>
                     </View>
                   ))}
                 </Card>
@@ -263,7 +277,7 @@ export default function PlayerDossier() {
                         <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
                         <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
                       </View>
-                      <Text style={styles.rowMeta}>{courtName(b.court_id)} · {nameOf(b.coach_id)}</Text>
+                      <Text style={styles.rowMeta}>{lessonMeta(b)}</Text>
                     </View>
                   ))}
                 </Card>

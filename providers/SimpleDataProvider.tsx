@@ -7,11 +7,13 @@ import { loadStore, saveStore, resetStore, newId, type StoreData } from './mockS
 import { upsertGoal, removeGoal } from '../lib/goals';
 import {
   SESSIONS_PER_CARD, useSession, releaseSession, removeManualSession,
-  planMethodChange, planCancel, planCardDeletion,
+  planMethodChange, planCancel, planCardDeletion, planParticipantsChange, planSplitChange,
+  GROEPSLES_METHOD,
 } from '../lib/beurtenkaart';
+import { isGroupLesson } from '../lib/groups';
 import type {
   User, Court, Booking, Lesson, StudentProgress, PlayerGoal, Settings,
-  Beurtenkaart, PaymentMethod,
+  Beurtenkaart, PaymentMethod, PaymentSplit,
 } from '../lib/types';
 
 interface DataShape {
@@ -30,10 +32,24 @@ interface DataShape {
   login: (userId: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  /** Het tarief en de groepstaffel van een baan bijstellen; `id`, naam en nummer blijven. */
+  updateCourt: (id: string, patch: Partial<Omit<Court, 'id'>>) => Promise<void>;
   addBooking: (b: Omit<Booking, 'id'>) => Promise<Booking | null>;
-  /** `payment_method` en `beurtenkaart_id` blijven erbuiten: die lopen uitsluitend
-   *  via `setPaymentMethod`, de enige plek die de beurtenkaart in de pas houdt. */
-  updateBooking: (id: string, patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id'>>) => Promise<void>;
+  /** `payment_method`, `beurtenkaart_id`, `participant_ids` en `payment_split` blijven
+   *  erbuiten: die lopen uitsluitend via `setPaymentMethod`, `setParticipants` en
+   *  `setPaymentSplit` — de plekken die de beurtenkaart en de factuurregel in de pas houden. */
+  updateBooking: (
+    id: string,
+    patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id' | 'participant_ids' | 'payment_split'>>,
+  ) => Promise<void>;
+  /**
+   * De deelnemers van een les zetten. Geeft de melding terug als het geld erdoor veranderde
+   * (een beurt die terugkomt, een les die naar factuur gaat), of `null` als er niets te
+   * melden viel. Zie `planParticipantsChange`.
+   */
+  setParticipants: (bookingId: string, participantIds: string[]) => Promise<string | null>;
+  /** Bij een groepsles: één factuur voor de betaler of ieder zijn deel. */
+  setPaymentSplit: (bookingId: string, split: PaymentSplit) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   /** Zet de betaalwijze en houdt de beurtenkaart in de pas. */
   /** `false` bij een geweigerde keuze: onbekende boeking, geannuleerde les, geen kaart met
@@ -159,6 +175,15 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     await clearCurrentUserId();
   }, []);
 
+  const updateCourt = useCallback(async (id: string, patch: Partial<Omit<Court, 'id'>>) => {
+    const store = storeRef.current;
+    if (!store) return;
+    await commit({
+      ...store,
+      courts: store.courts.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+    });
+  }, [commit]);
+
   const addBooking = useCallback(async (b: Omit<Booking, 'id'>): Promise<Booking | null> => {
     const store = storeRef.current;
     if (!store) return null;
@@ -166,14 +191,21 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       setError('Dit tijdslot is al geboekt bij deze coach.');
       return null;
     }
-    const created: Booking = { ...b, id: newId('b') };
+    // Een groepsles gaat altijd op factuur; hier staat die regel ook voor een nieuwe les,
+    // zodat er geen les op cash of op een beurt kan ontstaan die naderhand geweigerd wordt.
+    const created: Booking = {
+      ...b,
+      payment_method: isGroupLesson(b) ? GROEPSLES_METHOD : b.payment_method,
+      beurtenkaart_id: isGroupLesson(b) ? undefined : b.beurtenkaart_id,
+      id: newId('b'),
+    };
     await commit({ ...store, bookings: [...store.bookings, created] });
     return created;
   }, [commit]);
 
   const updateBooking = useCallback(async (
     id: string,
-    patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id'>>,
+    patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id' | 'participant_ids' | 'payment_split'>>,
   ) => {
     const store = storeRef.current;
     if (!store) return;
@@ -199,6 +231,36 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       ...store,
       beurtenkaarten: releaseCardFor(store, booking),
       bookings: store.bookings.filter((b) => b.id !== id),
+    });
+  }, [commit]);
+
+  const setParticipants = useCallback(async (
+    bookingId: string,
+    participantIds: string[],
+  ): Promise<string | null> => {
+    const store = storeRef.current;
+    if (!store) return null;
+    const booking = store.bookings.find((b) => b.id === bookingId);
+    if (!booking) return null;
+    // De beslissing zelf zit in `planParticipantsChange`; hier wordt hij alleen gecommit.
+    const plan = planParticipantsChange(store.beurtenkaarten, booking, participantIds);
+    await commit({
+      ...store,
+      beurtenkaarten: plan.cards,
+      bookings: store.bookings.map((b) => (b.id === bookingId ? { ...b, ...plan.patch } : b)),
+    });
+    return plan.notice;
+  }, [commit]);
+
+  const setPaymentSplit = useCallback(async (bookingId: string, split: PaymentSplit) => {
+    const store = storeRef.current;
+    if (!store) return;
+    const booking = store.bookings.find((b) => b.id === bookingId);
+    if (!booking) return;
+    const patch = planSplitChange(booking, split);
+    await commit({
+      ...store,
+      bookings: store.bookings.map((b) => (b.id === bookingId ? { ...b, ...patch } : b)),
     });
   }, [commit]);
 
@@ -399,9 +461,12 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     login,
     logout,
     refresh,
+    updateCourt,
     addBooking,
     updateBooking,
     deleteBooking,
+    setParticipants,
+    setPaymentSplit,
     setPaymentMethod,
     addBeurtenkaart,
     updateBeurtenkaart,
@@ -422,7 +487,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     emergencyCleanup,
   }), [
     store, currentUser, loading, error, clearError, login, logout, refresh,
-    addBooking, updateBooking, deleteBooking, setPaymentMethod, addBeurtenkaart,
+    updateCourt, addBooking, updateBooking, deleteBooking, setParticipants, setPaymentSplit,
+    setPaymentMethod, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,

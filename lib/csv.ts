@@ -2,9 +2,13 @@
 // scherm dezelfde rijen kan tonen die het uitvoert.
 
 import { groupSize, shortGroupLabel } from './groups';
+import { formatEuro } from './money';
 import { bookingMinutes, bookingPrice, coachPayout, PAYMENT_LABELS, splitOf } from './payments';
 import { BOOKING_STATUS_LABELS } from './status';
 import type { Booking, Court, User } from './types';
+
+/** Eén bedrag-opmaak voor de hele app; de export houdt zijn eigen ingang. Zie lib/money. */
+export { formatEuro } from './money';
 
 export interface CsvRow {
   id: string;
@@ -25,10 +29,7 @@ export interface CsvRow {
   payment: string;
 }
 
-/** Eén bedrag-opmaak voor de hele export: twee decimalen en een komma. */
-export function formatEuro(n: number): string {
-  return n.toFixed(2).replace('.', ',');
-}
+
 
 export interface CsvColumn {
   label: string;
