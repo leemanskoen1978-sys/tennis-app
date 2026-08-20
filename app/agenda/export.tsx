@@ -1,48 +1,29 @@
 // Maandoverzicht: de lessen van één maand, elk op zijn eigen kaart — zien wat je uitvoert,
-// dan pas uitvoeren, en ondertussen de betaalwijze zetten of de les annuleren.
+// dan pas uitvoeren. De kaart draagt alleen wat je nodig hebt om een les te herkennen;
+// alles erover, en de handelingen erop, staan in het detailblad dat een tik erop opent.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight, Download } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
 
-import { PaymentMethodSheet } from '../../components/PaymentMethodSheet';
+import { LessonDetailSheet, paymentLabelFor } from '../../components/LessonDetailSheet';
 import { Badge } from '../../components/ui/Badge';
-import { Screen } from '../../components/ui/Screen';
+import { Screen, useIsWide } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { bookingsInMonth, monthRows, toCsv, formatEuro } from '../../lib/csv';
-import { cardsFor, remaining } from '../../lib/beurtenkaart';
+import { formatDay, formatTimeRange } from '../../lib/datetime';
 import { bookingsFor, paymentMeta, totalRevenue, type PaymentMeta } from '../../lib/payments';
 import { shareCsv } from '../../lib/share';
-import { BOOKING_STATUS_LABELS } from '../../lib/status';
-import type { Booking, BookingStatus, PaymentMethod } from '../../lib/types';
+import type { Booking } from '../../lib/types';
 import { tennisColors } from '../../constants/tennis-colors';
-import { minTapTarget, spacing, typography, webCursor } from '../../constants/theme';
+import { spacing, typography } from '../../constants/theme';
 
 const MONTH_NAMES = [
   'januari', 'februari', 'maart', 'april', 'mei', 'juni',
   'juli', 'augustus', 'september', 'oktober', 'november', 'december',
 ];
-
-interface BadgeMeta {
-  color: string;
-  label: string;
-  subtle: boolean;
-}
-
-const STATUS_META: Record<BookingStatus, BadgeMeta> = {
-  pending: { color: tennisColors.warning, label: BOOKING_STATUS_LABELS.pending, subtle: false },
-  confirmed: { color: tennisColors.primary, label: BOOKING_STATUS_LABELS.confirmed, subtle: false },
-  cancelled: { color: tennisColors.textMuted, label: BOOKING_STATUS_LABELS.cancelled, subtle: false },
-  completed: { color: tennisColors.court, label: BOOKING_STATUS_LABELS.completed, subtle: false },
-  synchronized: { color: tennisColors.court, label: BOOKING_STATUS_LABELS.synchronized, subtle: false },
-};
-
-function statusMeta(status: BookingStatus): BadgeMeta {
-  return STATUS_META[status];
-}
 
 function startOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -59,18 +40,16 @@ export default function ExportScreen(): React.JSX.Element {
     users,
     courts,
     beurtenkaarten,
-    updateBooking,
-    setPaymentMethod,
     error,
     clearError,
   } = useSimpleData();
-  const router = useRouter();
+  const isWide = useIsWide();
   const [month, setMonth] = useState<Date>(() => startOfMonth(new Date()));
   // Eigen state: een mislukte download is geen opslagfout, dus hij hoort niet in de
   // globale error van de provider thuis.
   const [exportError, setExportError] = useState<string | null>(null);
-  // Welke afspraak zijn betaalwijze laat kiezen; null = blad dicht.
-  const [payingBooking, setPayingBooking] = useState<Booking | null>(null);
+  // Welke les zijn details laat zien; null = blad dicht.
+  const [openBooking, setOpenBooking] = useState<Booking | null>(null);
 
   const isCoach = currentUser?.role === 'coach';
 
@@ -118,53 +97,11 @@ export default function ExportScreen(): React.JSX.Element {
     return user ? user.name : 'Onbekend';
   };
 
-  const canCancel = (status: BookingStatus): boolean =>
-    status !== 'cancelled' && status !== 'completed';
-
-  const handleCancel = (booking: Booking): void => {
-    void updateBooking(booking.id, { status: 'cancelled' });
-  };
-
-  const cardHintFor = (booking: Booking | null): string | undefined => {
-    if (!booking) return undefined;
-    const cards = cardsFor(beurtenkaarten, booking.player_id);
-    if (cards.length === 0) return 'Deze speler heeft nog geen beurtenkaart.';
-    const left = cards.reduce((sum, c) => sum + remaining(c), 0);
-    return left === 1 ? 'Nog 1 beurt over.' : `Nog ${left} beurten over.`;
-  };
-
-  /**
-   * Het label op de betaal-badge. Bij een les die op een beurtenkaart staat hoort het
-   * saldo van die kaart erbij; hangt er geen kaart aan, dan blijft het bij het label.
-   */
-  const paymentLabelFor = (booking: Booking, meta: PaymentMeta): string => {
-    if (booking.payment_method !== 'beurtenkaart' || !booking.beurtenkaart_id) {
-      return meta.label;
-    }
-    const card = beurtenkaarten.find((c) => c.id === booking.beurtenkaart_id);
-    if (!card) return meta.label;
-    return `${meta.label} · nog ${remaining(card)}`;
-  };
-
   // De fout is één globale bak: wis bij binnenkomst wat een ander scherm achterliet.
   // Alleen bij het openen, zodat een melding van dit scherm zelf blijft staan.
   useEffect(() => {
     clearError();
   }, []);
-
-  const pickMethod = async (method: PaymentMethod): Promise<void> => {
-    if (!payingBooking) return;
-    clearError();
-    try {
-      const ok = await setPaymentMethod(payingBooking.id, method);
-      // Bij een geweigerde keuze blijft het blad open: daar, onder de chips die de
-      // trainer net aantikte, staat de melding waar hij kijkt.
-      if (!ok) return;
-      setPayingBooking(null);
-    } catch {
-      // `commit` zette de foutregel al; het blad blijft open zodat die te lezen is.
-    }
-  };
 
   async function onExport(): Promise<void> {
     try {
@@ -177,6 +114,8 @@ export default function ExportScreen(): React.JSX.Element {
 
   return (
     <Screen>
+      {/* De drie delen blijven bij elkaar en staan als groep gecentreerd. Uit elkaar
+          getrokken over de volle breedte oogde dit als drie losse dingen; het is er één. */}
       <View style={styles.monthRow}>
         <Button
           label="Vorige"
@@ -225,80 +164,39 @@ export default function ExportScreen(): React.JSX.Element {
       {monthBookings.length === 0 ? (
         <Text style={styles.muted}>Geen lessen in deze maand.</Text>
       ) : (
-        monthBookings.map((booking) => {
-          const status = statusMeta(booking.status);
-          const payment: PaymentMeta = paymentMeta(booking.payment_method);
-          const paymentLabel = paymentLabelFor(booking, payment);
-          const playerName = nameOf(booking.player_id);
-          const coachName = nameOf(booking.coach_id);
-          return (
-            <Card key={booking.id}>
-              <Text style={styles.cardDate}>
-                {new Date(booking.start_time).toLocaleString('nl-BE')}
-              </Text>
-              <Text style={styles.cardCourt}>{courtName(booking.court_id)}</Text>
-
-              {/* Both names click through: a lesson is the meeting point of the two
-                  sections, so it is the natural jump between Spelers and Trainers. */}
-              <View style={styles.partyRow}>
-                {isCoach ? (
-                  <Pressable
-                    onPress={() => router.push(`/players/${booking.player_id}`)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Open dossier van ${playerName}`}
-                    style={[styles.partyLine, webCursor]}
-                  >
-                    <Text style={styles.cardPartyLink}>Speler: {playerName}</Text>
-                    <ChevronRight size={16} color={tennisColors.textMuted} />
-                  </Pressable>
-                ) : (
-                  <Text style={styles.cardParty}>Speler: {playerName}</Text>
-                )}
-                <Pressable
-                  onPress={() => router.push(`/coaches/${booking.coach_id}`)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open dossier van trainer ${coachName}`}
-                  style={[styles.partyLine, webCursor]}
+        // Boven het omslagpunt twee kolommen: één korte kaart per rij liet op 960 px een
+        // halve rij wit achter. Daaronder blijft het één kolom, zoals op een telefoon.
+        <View style={isWide ? styles.grid : styles.stack}>
+          {monthBookings.map((booking) => {
+            const payment: PaymentMeta = paymentMeta(booking.payment_method);
+            const paymentLabel = paymentLabelFor(booking, payment, beurtenkaarten);
+            // Je eigen naam hoef je niet te lezen: een trainer ziet de speler, een speler
+            // de trainer. Dezelfde regel als de Vandaag-lijst op de agenda, zodat dezelfde
+            // les op beide schermen hetzelfde oogt.
+            const other = isCoach ? nameOf(booking.player_id) : nameOf(booking.coach_id);
+            return (
+              <View key={booking.id} style={isWide ? styles.cell : undefined}>
+                <Card
+                  onPress={() => {
+                    clearError();
+                    setOpenBooking(booking);
+                  }}
+                  accessibilityLabel={`Les van ${formatDay(booking.start_time)} met ${other}, details openen`}
                 >
-                  <Text style={styles.cardPartyLink}>Trainer: {coachName}</Text>
-                  <ChevronRight size={16} color={tennisColors.textMuted} />
-                </Pressable>
-              </View>
-
-              <View style={styles.badgeRow}>
-                <Badge label={status.label} color={status.color} subtle={status.subtle} />
-                {/* Een speler kijkt alleen; een geannuleerde les krijgt geen betaalwijze
-                    meer, dus daar blijft het een gewone badge. */}
-                {isCoach && booking.status !== 'cancelled' ? (
-                  <Pressable
-                    onPress={() => {
-                      clearError();
-                      setPayingBooking(booking);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Betaalwijze wijzigen, nu ${paymentLabel}`}
-                    style={[styles.paymentTap, webCursor]}
-                  >
+                  <Text style={styles.cardDate}>
+                    {formatTimeRange(booking.start_time, booking.end_time)} · {other}
+                  </Text>
+                  <Text style={styles.cardCourt}>
+                    {formatDay(booking.start_time)} · {courtName(booking.court_id)}
+                  </Text>
+                  <View style={styles.badgeRow}>
                     <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
-                  </Pressable>
-                ) : (
-                  <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
-                )}
+                  </View>
+                </Card>
               </View>
-
-              {canCancel(booking.status) ? (
-                <View style={styles.cancelRow}>
-                  <Button
-                    label="Annuleren"
-                    variant="danger"
-                    fullWidth={false}
-                    onPress={() => handleCancel(booking)}
-                  />
-                </View>
-              ) : null}
-            </Card>
-          );
-        })
+            );
+          })}
+        </View>
       )}
 
       {exportError ? <Text style={styles.error}>{exportError}</Text> : null}
@@ -311,17 +209,13 @@ export default function ExportScreen(): React.JSX.Element {
         onPress={() => { void onExport(); }}
       />
 
-      <PaymentMethodSheet
-        visible={payingBooking !== null}
-        current={payingBooking?.payment_method ?? 'open'}
-        cardHint={cardHintFor(payingBooking)}
-        error={error}
-        onPick={(m) => {
-          void pickMethod(m);
-        }}
+      <LessonDetailSheet
+        booking={openBooking}
+        visible={openBooking !== null}
+        canManage={isCoach}
         onClose={() => {
           clearError();
-          setPayingBooking(null);
+          setOpenBooking(null);
         }}
       />
     </Screen>
@@ -329,21 +223,27 @@ export default function ExportScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  month: { ...typography.h3, color: tennisColors.text },
+  // `wrap` als vangnet: op een smalle telefoon zakt het label anders niet netjes af maar
+  // duwt het de knoppen buiten beeld.
+  monthRow: {
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center',
+    justifyContent: 'center', gap: spacing.md,
+  },
+  // Een minimumbreedte voor het label: zonder dat verspringen de knoppen bij elke maand,
+  // want "mei 2026" is korter dan "september 2026".
+  month: { ...typography.h3, color: tennisColors.text, minWidth: 150, textAlign: 'center' },
   summary: { ...typography.body, color: tennisColors.text, fontWeight: '600' },
   summaryNote: { ...typography.body, fontSize: 13, color: tennisColors.textMuted, marginTop: spacing.xs },
   muted: { ...typography.body, color: tennisColors.textMuted },
   todayRow: { alignItems: 'center' },
   error: { color: tennisColors.danger, fontSize: 14 },
+  // Het raster om de leskaarten. `gap` doet het werk; de cellen zelf zijn net onder de
+  // helft breed zodat er op een breed venster twee naast elkaar passen.
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  // Onder het omslagpunt: gewoon onder elkaar, elk over de volle breedte.
+  stack: { gap: spacing.md },
+  cell: { flexGrow: 1, flexBasis: '48%', maxWidth: '49%' },
   cardDate: { ...typography.h3, color: tennisColors.text },
-  cardCourt: { ...typography.body, color: tennisColors.textMuted },
-  partyRow: { marginTop: spacing.xs },
-  partyLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 28 },
-  cardParty: { ...typography.body, color: tennisColors.text },
-  cardPartyLink: { ...typography.body, color: tennisColors.primary, fontWeight: '600' },
+  cardCourt: { fontSize: 13, color: tennisColors.textMuted },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
-  // De badge zelf is maar ~22 px hoog; het raakvlak eromheen houdt de app-brede 44 px aan.
-  paymentTap: { minHeight: minTapTarget, justifyContent: 'center' },
-  cancelRow: { marginTop: spacing.sm, alignItems: 'flex-start' },
 });

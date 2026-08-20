@@ -11,10 +11,11 @@ import {
 
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
-import { Screen, useIsWide } from '../../components/ui/Screen';
+import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
 import { bookingsOnDay } from '../../lib/hub';
+import { formatTimeRange } from '../../lib/datetime';
 import { bookingsFor, paymentMeta } from '../../lib/payments';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
@@ -28,17 +29,10 @@ interface Tile {
   badge?: number;
 }
 
-function timeLabel(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
-}
-
 export default function BookingsScreen(): React.JSX.Element {
   const { currentUser, bookings, users, courts } = useSimpleData();
   const pending = usePendingPaymentBookings();
   const router = useRouter();
-  const isWide = useIsWide();
 
   const isCoach = currentUser?.role === 'coach';
 
@@ -71,11 +65,13 @@ export default function BookingsScreen(): React.JSX.Element {
 
   return (
     <Screen>
-      {/* Op een breed venster naast elkaar (lessen links, tegels rechts), daaronder
-          gewoon onder elkaar: dezelfde inhoud, alleen een andere indeling. */}
-      <View style={isWide ? styles.columns : styles.stack}>
-        {/* Vandaag staat boven (of links van) de tegels: het antwoord op "wat moet ik nu doen". */}
-        <View style={[styles.section, isWide && styles.column]}>
+      {/* Eén kolom, op elk venster: Vandaag boven, de tegels daaronder. Twee kolomen naast
+          elkaar leverde op een rustige dag links één regel met een zee van wit op, en
+          drukte de drie tegels rechts in een scheve 2+1. Over de volle breedte staan ze
+          op een breed venster wél naast elkaar — daar was die bredere kolom voor bedoeld. */}
+      <View style={styles.stack}>
+        {/* Vandaag staat boven de tegels: het antwoord op "wat moet ik nu doen". */}
+        <View style={styles.section}>
           <Text style={styles.sectionLabel}>Vandaag</Text>
           {today.length === 0 ? (
             <Text style={styles.muted}>Geen lessen vandaag.</Text>
@@ -88,7 +84,7 @@ export default function BookingsScreen(): React.JSX.Element {
               return (
                 <Card key={b.id}>
                   <Text style={styles.lessonTime}>
-                    {timeLabel(b.start_time)} · {other}
+                    {formatTimeRange(b.start_time, b.end_time)} · {other}
                   </Text>
                   <Text style={styles.lessonCourt}>{courtName(b.court_id)}</Text>
                   <Badge label={payment.label} color={payment.color} subtle={payment.subtle} />
@@ -98,32 +94,26 @@ export default function BookingsScreen(): React.JSX.Element {
           )}
         </View>
 
-        <View style={isWide ? styles.column : undefined}>
-          <TileGrid>
-            {tiles.map((t) => (
-              <ActionTile
-                key={t.key}
-                title={t.title}
-                subtitle={t.subtitle}
-                icon={t.icon}
-                onPress={t.onPress}
-                badge={t.badge}
-              />
-            ))}
-          </TileGrid>
-        </View>
+        <TileGrid>
+          {tiles.map((t) => (
+            <ActionTile
+              key={t.key}
+              title={t.title}
+              subtitle={t.subtitle}
+              icon={t.icon}
+              onPress={t.onPress}
+              badge={t.badge}
+            />
+          ))}
+        </TileGrid>
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  // Smal venster: de twee blokken onder elkaar met dezelfde tussenruimte als voorheen.
+  // De twee blokken onder elkaar met dezelfde tussenruimte als de rest van het scherm.
   stack: { gap: spacing.lg },
-  // Breed venster: twee even brede kolommen; `alignItems: flex-start` houdt de tegels
-  // bovenaan in plaats van uit te rekken over de hoogte van de lessenlijst.
-  columns: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.lg },
-  column: { flex: 1, minWidth: 300 },
   section: { gap: spacing.md },
   sectionLabel: {
     ...typography.label,
