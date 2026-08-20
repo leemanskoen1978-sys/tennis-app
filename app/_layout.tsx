@@ -3,11 +3,13 @@ import { ThemeProvider, DefaultTheme, type Theme } from '@react-navigation/nativ
 import { View, ActivityIndicator } from 'react-native';
 import { SimpleDataProvider, useSimpleData } from '../providers/SimpleDataProvider';
 import { MenuBar } from '../components/ui/MenuBar';
+import { TabBar } from '../components/ui/TabBar';
 import { AppBackground } from '../components/ui/AppBackground';
 import { tennisColors } from '../constants/tennis-colors';
 
-// One plain stack, no tab bar. A MenuBar sits above the stack on every screen, so the
-// sections are always one tap away; the stack header below it only says where you are.
+// One plain stack. Bovenin staat de MenuBar (naam, terug, profiel), onderin de TabBar met
+// de secties — daar is op een telefoon je duim al. De stack zit ertussen; de stack header
+// zegt alleen waar je bent.
 //
 // The stack's own back arrow is off: it disappears when the history is empty — after a
 // deep link or a page reload on the web — and then the screen had no way out at all. The
@@ -79,22 +81,27 @@ function Root() {
     return <Redirect href="/login" />;
   }
 
-  // Every screen carries the bar except login, which has no navigation to offer yet.
+  // Every screen carries the bars except login, which has no navigation to offer yet.
   const showMenu = segments[0] !== 'login';
 
   return (
     <View style={{ flex: 1, backgroundColor: tennisColors.background }}>
       <AppBackground />
       {showMenu ? <MenuBar /> : null}
-      <ThemeProvider value={transparentTheme}>
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="login" />
-          {SCREENS.map((s) => (
-            <Stack.Screen key={s.name} name={s.name} options={{ ...headerBase, title: s.title }} />
-          ))}
-        </Stack>
-      </ThemeProvider>
+      {/* flex:1 om de stack: zo vult hij precies de hoogte tussen de twee balken en
+          schuift de inhoud niet ónder de tabbalk door. */}
+      <View style={{ flex: 1 }}>
+        <ThemeProvider value={transparentTheme}>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="login" />
+            {SCREENS.map((s) => (
+              <Stack.Screen key={s.name} name={s.name} options={{ ...headerBase, title: s.title }} />
+            ))}
+          </Stack>
+        </ThemeProvider>
+      </View>
+      {showMenu ? <TabBar /> : null}
     </View>
   );
 }

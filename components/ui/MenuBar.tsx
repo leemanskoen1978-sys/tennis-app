@@ -1,47 +1,23 @@
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useRouter, useSegments } from 'expo-router';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { ProfileAvatar } from './ProfileAvatar';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { appConfig } from '../../constants/app-config';
 import { tennisColors } from '../../constants/tennis-colors';
-import { spacing, radius, minTapTarget, webCursor } from '../../constants/theme';
-
-interface MenuItem {
-  label: string;
-  href: string;
-  /** First path segment that marks this item as the one you are in. */
-  segment: string;
-}
-
-// The same split as the hub tiles: a coach navigates sections, a player navigates tasks.
-const COACH_ITEMS: MenuItem[] = [
-  { label: 'Agenda', href: '/agenda', segment: 'agenda' },
-  { label: 'Spelers', href: '/players', segment: 'players' },
-  { label: 'Trainers', href: '/coaches', segment: 'coaches' },
-  { label: 'Beheer', href: '/admin', segment: 'admin' },
-];
-
-const PLAYER_ITEMS: MenuItem[] = [
-  { label: 'Reserveren', href: '/agenda/new', segment: 'agenda' },
-  { label: 'Mijn lessen', href: '/coaches/lessons', segment: 'coaches' },
-  { label: 'Mijn voortgang', href: '/players/progress', segment: 'players' },
-];
+import { spacing, minTapTarget, webCursor } from '../../constants/theme';
 
 /**
- * The bar that never changes. Every screen can be reached by link or reloaded on the web,
- * and the stack's own back arrow disappears when there is no history — which left screens
- * with no way out at all. These links do not depend on history, so there is always one.
+ * De balk bovenin: waar je bent (de naam van de app, die naar het hoofdscherm gaat),
+ * hoe je een stap terug gaat, en wie je bent. De secties zitten in de tabbalk onderaan
+ * het scherm; ze hier herhalen zou twee plekken geven die hetzelfde doen.
  */
 export function MenuBar() {
   const router = useRouter();
-  const segments = useSegments();
   const { currentUser } = useSimpleData();
 
   if (!currentUser) return null;
 
-  const items = currentUser.role === 'coach' ? COACH_ITEMS : PLAYER_ITEMS;
-  const active = segments[0] ?? '';
   const canGoBack = router.canGoBack();
 
   return (
@@ -68,30 +44,8 @@ export function MenuBar() {
         </Pressable>
       ) : null}
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.linksWrap}
-        contentContainerStyle={styles.links}
-      >
-        {items.map((item) => {
-          const selected = active === item.segment;
-          return (
-            <Pressable
-              key={item.href}
-              onPress={() => router.push(item.href)}
-              accessibilityRole="link"
-              accessibilityLabel={item.label}
-              accessibilityState={{ selected }}
-              style={[styles.link, webCursor]}
-            >
-              <Text style={[styles.linkText, selected && styles.linkTextActive]}>
-                {item.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      {/* Duwt de avatar naar rechts, ook als de Terug-knop er niet is. */}
+      <View style={styles.spacer} />
 
       {/* ProfileAvatar is a button already — wrapping it nests one button inside another,
           which is invalid HTML and breaks hydration on the web. */}
@@ -118,13 +72,5 @@ const styles = StyleSheet.create({
     minHeight: minTapTarget, paddingRight: spacing.xs, justifyContent: 'center',
   },
   backText: { fontSize: 14, fontWeight: '600', color: tennisColors.textMuted },
-  // flexShrink lets the links scroll instead of pushing the avatar off a narrow screen.
-  linksWrap: { flexGrow: 1, flexShrink: 1 },
-  links: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  link: {
-    minHeight: minTapTarget, justifyContent: 'center',
-    paddingHorizontal: spacing.md, borderRadius: radius.md,
-  },
-  linkText: { fontSize: 15, fontWeight: '600', color: tennisColors.textMuted },
-  linkTextActive: { color: tennisColors.text, fontWeight: '800' },
+  spacer: { flexGrow: 1, flexShrink: 1 },
 });
