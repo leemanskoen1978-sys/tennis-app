@@ -12,13 +12,7 @@ import { playersForCoach } from '../../lib/relations';
 import { formatWorkingDays } from '../../lib/slots';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
-
-function fmtDay(iso: string): string {
-  return new Date(iso).toLocaleDateString('nl-BE', { weekday: 'short', day: '2-digit', month: 'short' });
-}
-function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
-}
+import { formatDay, formatTimeRange } from '../../lib/datetime';
 
 export default function CoachDossier() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -108,8 +102,8 @@ export default function CoachDossier() {
           {upcoming.map((b) => (
             <Card key={b.id} style={styles.rowCard}>
               <View style={styles.rowLine}>
-                <Text style={styles.rowDay}>{fmtDay(b.start_time)}</Text>
-                <Text style={styles.rowTime}>{fmtTime(b.start_time)}–{fmtTime(b.end_time)}</Text>
+                <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
+                <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
               </View>
               <Text style={styles.rowMeta}>{courtName(b.court_id)} · {playerName(b.player_id)}</Text>
             </Card>
@@ -118,8 +112,8 @@ export default function CoachDossier() {
           {past.slice(0, 6).map((b) => (
             <Card key={b.id} style={styles.rowCard}>
               <View style={styles.rowLine}>
-                <Text style={styles.rowDay}>{fmtDay(b.start_time)}</Text>
-                <Text style={styles.rowTime}>{fmtTime(b.start_time)}–{fmtTime(b.end_time)}</Text>
+                <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
+                <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
               </View>
               <Text style={styles.rowMeta}>{courtName(b.court_id)} · {playerName(b.player_id)}</Text>
             </Card>

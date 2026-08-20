@@ -15,6 +15,7 @@ import type { Court, PaymentMethod } from '../lib/types';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { defaultMethodFor, PAYMENT_LABELS, PAYMENT_METHODS } from '../lib/payments';
 import { cardsFor, remaining } from '../lib/beurtenkaart';
+import { formatDay } from '../lib/datetime';
 
 interface BookingModalProps {
   visible: boolean;
@@ -162,7 +163,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
           <View style={styles.handle} />
           <Text style={styles.title}>Les boeken</Text>
           <Text style={styles.subtitle}>
-            {date.toLocaleDateString('nl-BE')} · {slot} – {slotEndLabel}
+            {formatDay(date)} · {slot}–{slotEndLabel}
           </Text>
           {/* Booking for someone else is easy to do by accident, so name them. */}
           {playerId && playerId !== currentUser?.id ? (

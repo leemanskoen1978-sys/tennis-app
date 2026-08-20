@@ -18,13 +18,7 @@ import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import type { Lesson, PaymentMethod } from '../../lib/types';
-
-function fmtDay(iso: string): string {
-  return new Date(iso).toLocaleDateString('nl-BE', { weekday: 'short', day: '2-digit', month: 'short' });
-}
-function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
-}
+import { formatDay, formatTimeRange } from '../../lib/datetime';
 
 /**
  * Het dossier leest van boven naar onder zoals een trainer eraan denkt: wie is dit en wat
@@ -132,8 +126,8 @@ export default function PlayerDossier() {
                 {upcoming.map((b, i) => (
                   <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
                     <View style={styles.rowLine}>
-                      <Text style={styles.rowDay}>{fmtDay(b.start_time)}</Text>
-                      <Text style={styles.rowTime}>{fmtTime(b.start_time)}–{fmtTime(b.end_time)}</Text>
+                      <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
+                      <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
                     </View>
                     <Text style={styles.rowMeta}>{courtName(b.court_id)} · {nameOf(b.coach_id)}</Text>
                   </View>
@@ -148,8 +142,8 @@ export default function PlayerDossier() {
                 {past.slice(0, 6).map((b, i) => (
                   <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
                     <View style={styles.rowLine}>
-                      <Text style={styles.rowDay}>{fmtDay(b.start_time)}</Text>
-                      <Text style={styles.rowTime}>{fmtTime(b.start_time)}–{fmtTime(b.end_time)}</Text>
+                      <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
+                      <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
                     </View>
                     <Text style={styles.rowMeta}>{courtName(b.court_id)} · {nameOf(b.coach_id)}</Text>
                   </View>

@@ -12,6 +12,7 @@ import { useSimpleData, usePendingPaymentBookings } from '../../providers/Simple
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
+import { formatDayTimeRange } from '../../lib/datetime';
 import type { PaymentMethod } from '../../lib/types';
 
 export default function Payments() {
@@ -34,12 +35,9 @@ export default function Payments() {
   const playerName = player?.name ?? 'Onbekende speler';
   const courtName = courts.find((c) => c.id === b.court_id)?.name ?? 'Onbekende baan';
 
-  let startLabel: string;
-  try {
-    startLabel = new Date(b.start_time).toLocaleString('nl-BE');
-  } catch {
-    startLabel = b.start_time;
-  }
+  // Dag, uur én einduur: bij een betaling wil je de les kunnen herkennen, en de gedeelde
+  // opmaak vangt een onbruikbare tijd zelf al op.
+  const startLabel = formatDayTimeRange(b.start_time, b.end_time);
 
   const run = (fn: () => Promise<unknown>): void => {
     if (busy) return;

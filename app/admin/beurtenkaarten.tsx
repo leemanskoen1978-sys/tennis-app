@@ -12,15 +12,10 @@ import { StudentCombobox } from '../../components/ui/StudentCombobox';
 import { UserManagement } from '../../components/UserManagement';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { remaining, SESSIONS_PER_CARD } from '../../lib/beurtenkaart';
+import { formatDayTime } from '../../lib/datetime';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography } from '../../constants/theme';
 import type { Beurtenkaart, User } from '../../lib/types';
-
-function fmt(iso: string): string {
-  return new Date(iso).toLocaleString('nl-BE', {
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-}
 
 /**
  * Eén kaartrij. Staat apart zodat de opmerking zijn eigen tekst kan bijhouden: met één map in
@@ -58,7 +53,7 @@ function CardRow({
     <Card>
       <Text style={styles.cardName}>{playerName}</Text>
       <Text style={styles.cardMeta}>
-        {used} van {total} gebruikt · nog {left} over · aangemaakt {fmt(card.created_at)}
+        {used} van {total} gebruikt · nog {left} over · aangemaakt {formatDayTime(card.created_at)}
       </Text>
 
       <View
@@ -110,7 +105,7 @@ function CardRow({
           <Text style={styles.subLabel}>Gebruikte beurten</Text>
           {card.uses.map((use, i) => (
             <Text key={`${use.booking_id}-${i}`} style={styles.useLine}>
-              {i + 1}. {fmt(use.date)}{use.booking_id ? '' : ' (handmatig)'}
+              {i + 1}. {formatDayTime(use.date)}{use.booking_id ? '' : ' (handmatig)'}
             </Text>
           ))}
         </>
