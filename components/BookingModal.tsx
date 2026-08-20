@@ -11,9 +11,10 @@ import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow } from '../constants/theme';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
-import type { Court } from '../lib/types';
+import type { Court, PaymentMethod } from '../lib/types';
 import { useSimpleData } from '../providers/SimpleDataProvider';
-import { defaultMethodFor, PAYMENT_LABELS } from '../lib/payments';
+import { defaultMethodFor, PAYMENT_LABELS, PAYMENT_METHODS } from '../lib/payments';
+import { cardsFor, remaining } from '../lib/beurtenkaart';
 
 interface BookingModalProps {
   visible: boolean;
@@ -36,7 +37,8 @@ function parseHour(slot: string): number {
 
 export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const { visible, onClose, coachId, date, slot, courts, playerId } = props;
-  const { currentUser, users, addBooking, setPaymentMethod, error } = useSimpleData();
+  const { currentUser, users, beurtenkaarten, addBooking, setPaymentMethod, error } =
+    useSimpleData();
 
   const [selectedCourtId, setSelectedCourtId] = useState<string>(
     courts[0]?.id ?? '',
@@ -47,6 +49,10 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   // melding erbij; deze id zorgt dat een tweede klik de beurt opnieuw probeert af te boeken
   // in plaats van een tweede les aan te maken.
   const [bookedWithoutBeurt, setBookedWithoutBeurt] = useState<string | null>(null);
+  // Bewust alleen de eigen keuze van de gebruiker, en `null` zolang hij niets aanklikte.
+  // Zo blijft de standaard van de speler leidend — wisselt de trainer van speler, dan
+  // schuift de keuze mee — terwijl een aangeklikte betaalwijze wél blijft staan.
+  const [chosenMethod, setChosenMethod] = useState<PaymentMethod | null>(null);
 
   if (date === null || slot === null) {
     return null;
@@ -72,13 +78,25 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const start_time = startDate.toISOString();
   const end_time = endDate.toISOString();
 
-  const defaultMethod = defaultMethodFor(
-    users.find((u) => u.id === (playerId ?? currentUser?.id)),
-  );
+  const forPlayerId = playerId ?? currentUser?.id;
+  const defaultMethod = defaultMethodFor(users.find((u) => u.id === forPlayerId));
+  // De betaalwijze waarmee geboekt wordt: de eigen keuze, anders de standaard.
+  const method: PaymentMethod = chosenMethod ?? defaultMethod;
+
+  /** Zelfde formulering als het exportscherm: hoeveel beurten heeft deze speler nog. */
+  const beurtenHint = (): string => {
+    const cards = forPlayerId ? cardsFor(beurtenkaarten, forPlayerId) : [];
+    if (cards.length === 0) return 'Deze speler heeft nog geen beurtenkaart.';
+    const left = cards.reduce((sum, c) => sum + remaining(c), 0);
+    return left === 1 ? 'Nog 1 beurt over.' : `Nog ${left} beurten over.`;
+  };
 
   const handleClose = (): void => {
     setBookedWithoutBeurt(null);
     setNotes('');
+    // Het venster blijft gemonteerd; zonder dit begint de volgende boeking met de keuze
+    // van de vorige in plaats van met de standaard van die speler.
+    setChosenMethod(null);
     onClose();
   };
 
@@ -100,8 +118,8 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         handleClose();
         return;
       }
-      // Staat de standaard op beurtenkaart, boek dan open en laat setPaymentMethod
-      // de beurt afboeken — dat is de enige plek die dat bewaakt.
+      // Is de beurtenkaart gekozen, boek dan open en laat setPaymentMethod de beurt
+      // afboeken — dat is de enige plek die dat bewaakt.
       const created = await addBooking({
         player_id: playerId ?? currentUser.id,
         coach_id: coachId,
@@ -109,13 +127,13 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         start_time,
         end_time,
         status: 'confirmed',
-        payment_method: defaultMethod === 'beurtenkaart' ? 'open' : defaultMethod,
+        payment_method: method === 'beurtenkaart' ? 'open' : method,
         notes: notes.trim() ? notes.trim() : undefined,
       });
       if (!created) {
         return;
       }
-      if (defaultMethod === 'beurtenkaart') {
+      if (method === 'beurtenkaart') {
         const paid = await setPaymentMethod(created.id, 'beurtenkaart');
         if (!paid) {
           // Geen kaart met beurten over. De les bestaat wel, op Open: het venster blijft
@@ -181,6 +199,23 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                   ))}
                 </View>
 
+                <Text style={styles.label}>Betaalwijze</Text>
+                <View style={styles.chipRow}>
+                  {PAYMENT_METHODS.map((m) => (
+                    <Chip
+                      key={m}
+                      label={PAYMENT_LABELS[m]}
+                      selected={m === method}
+                      onPress={() => setChosenMethod(m)}
+                    />
+                  ))}
+                </View>
+                {method === 'beurtenkaart' ? (
+                  <Text style={styles.hint}>
+                    Er gaat een beurt af. {beurtenHint()}
+                  </Text>
+                ) : null}
+
                 <Text style={styles.label}>Notities (optioneel)</Text>
                 <TextInput
                   style={styles.input}
@@ -190,10 +225,6 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                   placeholderTextColor={tennisColors.textMuted}
                   multiline
                 />
-                <Text style={styles.hint}>
-                  Betaalwijze: {PAYMENT_LABELS[defaultMethod]}
-                  {defaultMethod === 'beurtenkaart' ? ' (er gaat een beurt af)' : ''}
-                </Text>
               </>
             )}
 
