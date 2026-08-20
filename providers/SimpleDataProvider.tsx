@@ -5,8 +5,12 @@ import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
 import { loadStore, saveStore, resetStore, newId, type StoreData } from './mockStore';
 import { upsertGoal, removeGoal } from '../lib/goals';
+import {
+  SESSIONS_PER_CARD, usableCardFor, useSession, releaseSession, removeManualSession,
+} from '../lib/beurtenkaart';
 import type {
   User, Court, Booking, Lesson, StudentProgress, PlayerGoal, Settings,
+  Beurtenkaart, PaymentMethod,
 } from '../lib/types';
 
 interface DataShape {
@@ -16,6 +20,7 @@ interface DataShape {
   lessons: Lesson[];
   progress: StudentProgress[];
   goals: PlayerGoal[];
+  beurtenkaarten: Beurtenkaart[];
   settings: Settings;
   currentUser: User | null;
   loading: boolean;
@@ -27,6 +32,15 @@ interface DataShape {
   addBooking: (b: Omit<Booking, 'id'>) => Promise<Booking | null>;
   updateBooking: (id: string, patch: Partial<Booking>) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
+  /** Zet de betaalwijze en houdt de beurtenkaart in de pas. */
+  setPaymentMethod: (bookingId: string, method: PaymentMethod) => Promise<void>;
+  addBeurtenkaart: (playerId: string) => Promise<void>;
+  updateBeurtenkaart: (id: string, patch: Pick<Beurtenkaart, 'remarks'>) => Promise<void>;
+  /** Handmatig een beurt af- of bijboeken op het kaartscherm. */
+  addCardSession: (id: string) => Promise<void>;
+  removeCardSession: (id: string) => Promise<void>;
+  /** Verwijdert de kaart; lessen die eraan hingen vallen terug op 'open'. */
+  deleteBeurtenkaart: (id: string) => Promise<void>;
   addUser: (u: Omit<User, 'id'>) => Promise<void>;
   /** `role` blijft erbuiten: van een trainer een speler maken raakt boekingen,
    *  lessen en voortgang, en is geen formulierdetail. */
@@ -56,6 +70,14 @@ function overlaps(a: Pick<Booking, 'coach_id' | 'start_time' | 'end_time' | 'sta
     const bEnd = new Date(b.end_time).getTime();
     return aStart < bEnd && bStart < aEnd;
   });
+}
+
+/** Een geannuleerde of verwijderde les mag geen beurt blijven opeten. */
+function releaseCardFor(data: StoreData, booking: Booking | undefined): Beurtenkaart[] {
+  if (!booking?.beurtenkaart_id) return data.beurtenkaarten;
+  return data.beurtenkaarten.map((c) =>
+    c.id === booking.beurtenkaart_id ? releaseSession(c, booking.id) : c,
+  );
 }
 
 export function SimpleDataProvider({ children }: { children: React.ReactNode }) {
@@ -123,15 +145,121 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
 
   const updateBooking = useCallback(async (id: string, patch: Partial<Booking>) => {
     if (!store) return;
+    const booking = store.bookings.find((b) => b.id === id);
+    const cancelling = patch.status === 'cancelled' && booking?.status !== 'cancelled';
+    const cards = cancelling ? releaseCardFor(store, booking) : store.beurtenkaarten;
     await commit({
       ...store,
-      bookings: store.bookings.map((b) => (b.id === id ? { ...b, ...patch } : b)),
+      beurtenkaarten: cards,
+      bookings: store.bookings.map((b) =>
+        b.id === id
+          ? {
+            ...b,
+            ...patch,
+            ...(cancelling
+              ? { payment_method: 'open' as PaymentMethod, beurtenkaart_id: undefined }
+              : {}),
+          }
+          : b,
+      ),
     });
   }, [store, commit]);
 
   const deleteBooking = useCallback(async (id: string) => {
     if (!store) return;
-    await commit({ ...store, bookings: store.bookings.filter((b) => b.id !== id) });
+    const booking = store.bookings.find((b) => b.id === id);
+    await commit({
+      ...store,
+      beurtenkaarten: releaseCardFor(store, booking),
+      bookings: store.bookings.filter((b) => b.id !== id),
+    });
+  }, [store, commit]);
+
+  const setPaymentMethod = useCallback(async (bookingId: string, method: PaymentMethod) => {
+    if (!store) return;
+    const booking = store.bookings.find((b) => b.id === bookingId);
+    if (!booking) return;
+
+    let cards = store.beurtenkaarten;
+    let cardId = booking.beurtenkaart_id;
+
+    // Weg van de beurtenkaart: de beurt komt terug voor hij ergens anders heen kan.
+    if (cardId && method !== 'beurtenkaart') {
+      cards = cards.map((c) => (c.id === cardId ? releaseSession(c, bookingId) : c));
+      cardId = undefined;
+    }
+
+    // Dezelfde kaart nog eens kiezen kost geen tweede beurt: `cardId` staat er al.
+    if (method === 'beurtenkaart' && !cardId) {
+      const card = usableCardFor(cards, booking.player_id);
+      if (!card) {
+        setError('Geen beurtenkaart met beurten over voor deze speler.');
+        return;
+      }
+      cards = cards.map((c) => (c.id === card.id ? useSession(c, bookingId, booking.start_time) : c));
+      cardId = card.id;
+    }
+
+    setError(null);
+    await commit({
+      ...store,
+      beurtenkaarten: cards,
+      bookings: store.bookings.map((b) =>
+        b.id === bookingId ? { ...b, payment_method: method, beurtenkaart_id: cardId } : b,
+      ),
+    });
+  }, [store, commit]);
+
+  const addBeurtenkaart = useCallback(async (playerId: string) => {
+    if (!store) return;
+    const card: Beurtenkaart = {
+      id: newId('k'),
+      player_id: playerId,
+      total_sessions: SESSIONS_PER_CARD,
+      created_at: nowISO(),
+      uses: [],
+    };
+    await commit({ ...store, beurtenkaarten: [...store.beurtenkaarten, card] });
+  }, [store, commit]);
+
+  const updateBeurtenkaart = useCallback(async (id: string, patch: Pick<Beurtenkaart, 'remarks'>) => {
+    if (!store) return;
+    await commit({
+      ...store,
+      beurtenkaarten: store.beurtenkaarten.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+    });
+  }, [store, commit]);
+
+  const addCardSession = useCallback(async (id: string) => {
+    if (!store) return;
+    await commit({
+      ...store,
+      beurtenkaarten: store.beurtenkaarten.map((c) =>
+        c.id === id ? useSession(c, '', nowISO()) : c,
+      ),
+    });
+  }, [store, commit]);
+
+  const removeCardSession = useCallback(async (id: string) => {
+    if (!store) return;
+    await commit({
+      ...store,
+      beurtenkaarten: store.beurtenkaarten.map((c) => (c.id === id ? removeManualSession(c) : c)),
+    });
+  }, [store, commit]);
+
+  const deleteBeurtenkaart = useCallback(async (id: string) => {
+    if (!store) return;
+    await commit({
+      ...store,
+      beurtenkaarten: store.beurtenkaarten.filter((c) => c.id !== id),
+      // Lessen verliezen hun beurt, dus ze moeten opnieuw afgehandeld worden.
+      bookings: store.bookings.map((b) =>
+        b.beurtenkaart_id === id
+          ? { ...b, payment_method: 'open' as PaymentMethod, beurtenkaart_id: undefined }
+          : b,
+      ),
+    });
   }, [store, commit]);
 
   const addUser = useCallback(async (u: Omit<User, 'id'>) => {
@@ -212,6 +340,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     lessons: store?.lessons ?? [],
     progress: store?.progress ?? [],
     goals: store?.goals ?? [],
+    beurtenkaarten: store?.beurtenkaarten ?? [],
     settings: store?.settings ?? { booking_end_time: '21:00', theme: 'light', language: 'nl' },
     currentUser,
     loading,
@@ -223,6 +352,12 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     addBooking,
     updateBooking,
     deleteBooking,
+    setPaymentMethod,
+    addBeurtenkaart,
+    updateBeurtenkaart,
+    addCardSession,
+    removeCardSession,
+    deleteBeurtenkaart,
     addUser,
     updateUser,
     addLesson,
@@ -235,7 +370,9 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     emergencyCleanup,
   }), [
     store, currentUser, loading, error, clearError, login, logout, refresh,
-    addBooking, updateBooking, deleteBooking, addUser, updateUser, addLesson,
+    addBooking, updateBooking, deleteBooking, setPaymentMethod, addBeurtenkaart,
+    updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
+    addUser, updateUser, addLesson,
     updateLesson, deleteLesson, addProgress, saveGoal, deleteGoal, saveSettings, emergencyCleanup,
   ]);
 
