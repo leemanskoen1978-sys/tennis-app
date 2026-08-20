@@ -56,7 +56,9 @@ export default function CoachDossier() {
     .sort((a, b) => a.name.localeCompare(b.name, 'nl'));
 
   return (
-    <Screen>
+    // `reading`: dit dossier is vooral lopende tekst (doelen, lesplan, notities);
+    // die leest niet op de volle breedte van een breed venster.
+    <Screen reading>
       <Card>
         <Text style={styles.name}>{coach.name}</Text>
         <Badge label="Trainer" color={tennisColors.primary} />

@@ -82,7 +82,9 @@ export default function PlayerDossier() {
     updateLesson(l.id, { status: l.status === 'gegeven' ? 'gepland' : 'gegeven' });
 
   return (
-    <Screen>
+    // `reading`: dit dossier is vooral lopende tekst (doelen, lesplan, notities);
+    // die leest niet op de volle breedte van een breed venster.
+    <Screen reading>
       {/* Wie is dit */}
       <Card>
         <Text style={styles.name}>{player.name}</Text>

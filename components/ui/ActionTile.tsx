@@ -5,6 +5,7 @@
 import { View, Text, StyleSheet } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Card } from './Card';
+import { useIsWide } from './Screen';
 import { Badge } from './Badge';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
@@ -26,11 +27,18 @@ export function ActionTile({
   /** Een aantal dat je aandacht vraagt; 0 laat de badge weg. */
   badge?: number;
 }) {
+  const isWide = useIsWide();
   return (
     <Card
       onPress={onPress}
       accessibilityLabel={title}
-      style={{ ...styles.tile, ...(primary ? styles.tilePrimary : {}) }}
+      style={{
+        ...styles.tile,
+        // De maximumbreedte geldt alleen op een breed venster; op een telefoon zou een
+        // cap juist ruimte weggooien in een rij van twee.
+        ...(isWide && !primary ? styles.tileWide : {}),
+        ...(primary ? styles.tilePrimary : {}),
+      }}
     >
       <View style={styles.tileTop}>
         <View style={[styles.iconWrap, primary && styles.iconWrapPrimary]}>
@@ -46,7 +54,11 @@ export function ActionTile({
   );
 }
 
-/** Het raster eromheen: tegels vullen de rij en breken vanzelf af op een smal scherm. */
+/**
+ * Het raster eromheen: tegels vullen de rij en breken vanzelf af op een smal scherm.
+ * Op een breed venster passen er vanzelf meer naast elkaar; de maximumbreedte per tegel
+ * zorgt dat een laatste, alleenstaande tegel geen brede balk wordt.
+ */
 export function TileGrid({ children }: { children: React.ReactNode }) {
   return <View style={styles.grid}>{children}</View>;
 }
@@ -55,7 +67,11 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   // 132 hoog is ruim boven minTapTarget (44), dus het aanraakgebied is altijd groot genoeg.
   tile: { flexGrow: 1, flexBasis: 150, minHeight: 132, justifyContent: 'flex-start' },
-  tilePrimary: { flexBasis: '100%', backgroundColor: tennisColors.primary },
+  // Alleen boven het omslagpunt: 150 is de smalste tegel waarin titel en ondertitel nog
+  // passen, 260 de breedte waarboven een tegel als een balk gaat ogen.
+  tileWide: { minWidth: 150, maxWidth: 260 },
+  // De primaire tegel is bewust de volle rij breed; die mag de maximumbreedte negeren.
+  tilePrimary: { flexBasis: '100%', maxWidth: '100%', backgroundColor: tennisColors.primary },
   tileTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iconWrap: {
     width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',

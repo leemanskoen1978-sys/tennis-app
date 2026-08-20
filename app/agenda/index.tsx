@@ -11,7 +11,7 @@ import {
 
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
-import { Screen } from '../../components/ui/Screen';
+import { Screen, useIsWide } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
 import { bookingsOnDay } from '../../lib/hub';
@@ -38,6 +38,7 @@ export default function BookingsScreen(): React.JSX.Element {
   const { currentUser, bookings, users, courts } = useSimpleData();
   const pending = usePendingPaymentBookings();
   const router = useRouter();
+  const isWide = useIsWide();
 
   const isCoach = currentUser?.role === 'coach';
 
@@ -70,47 +71,59 @@ export default function BookingsScreen(): React.JSX.Element {
 
   return (
     <Screen>
-      {/* Vandaag staat boven de tegels: het is het antwoord op "wat moet ik nu doen". */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Vandaag</Text>
-        {today.length === 0 ? (
-          <Text style={styles.muted}>Geen lessen vandaag.</Text>
-        ) : (
-          today.map((b) => {
-            const payment = paymentMeta(b.payment_method);
-            // Je hoeft je eigen naam niet te lezen: een trainer ziet de speler,
-            // een speler ziet de trainer.
-            const other = isCoach ? nameOf(b.player_id) : nameOf(b.coach_id);
-            return (
-              <Card key={b.id}>
-                <Text style={styles.lessonTime}>
-                  {timeLabel(b.start_time)} · {other}
-                </Text>
-                <Text style={styles.lessonCourt}>{courtName(b.court_id)}</Text>
-                <Badge label={payment.label} color={payment.color} subtle={payment.subtle} />
-              </Card>
-            );
-          })
-        )}
-      </View>
+      {/* Op een breed venster naast elkaar (lessen links, tegels rechts), daaronder
+          gewoon onder elkaar: dezelfde inhoud, alleen een andere indeling. */}
+      <View style={isWide ? styles.columns : styles.stack}>
+        {/* Vandaag staat boven (of links van) de tegels: het antwoord op "wat moet ik nu doen". */}
+        <View style={[styles.section, isWide && styles.column]}>
+          <Text style={styles.sectionLabel}>Vandaag</Text>
+          {today.length === 0 ? (
+            <Text style={styles.muted}>Geen lessen vandaag.</Text>
+          ) : (
+            today.map((b) => {
+              const payment = paymentMeta(b.payment_method);
+              // Je hoeft je eigen naam niet te lezen: een trainer ziet de speler,
+              // een speler ziet de trainer.
+              const other = isCoach ? nameOf(b.player_id) : nameOf(b.coach_id);
+              return (
+                <Card key={b.id}>
+                  <Text style={styles.lessonTime}>
+                    {timeLabel(b.start_time)} · {other}
+                  </Text>
+                  <Text style={styles.lessonCourt}>{courtName(b.court_id)}</Text>
+                  <Badge label={payment.label} color={payment.color} subtle={payment.subtle} />
+                </Card>
+              );
+            })
+          )}
+        </View>
 
-      <TileGrid>
-        {tiles.map((t) => (
-          <ActionTile
-            key={t.key}
-            title={t.title}
-            subtitle={t.subtitle}
-            icon={t.icon}
-            onPress={t.onPress}
-            badge={t.badge}
-          />
-        ))}
-      </TileGrid>
+        <View style={isWide ? styles.column : undefined}>
+          <TileGrid>
+            {tiles.map((t) => (
+              <ActionTile
+                key={t.key}
+                title={t.title}
+                subtitle={t.subtitle}
+                icon={t.icon}
+                onPress={t.onPress}
+                badge={t.badge}
+              />
+            ))}
+          </TileGrid>
+        </View>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  // Smal venster: de twee blokken onder elkaar met dezelfde tussenruimte als voorheen.
+  stack: { gap: spacing.lg },
+  // Breed venster: twee even brede kolommen; `alignItems: flex-start` houdt de tegels
+  // bovenaan in plaats van uit te rekken over de hoogte van de lessenlijst.
+  columns: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.lg },
+  column: { flex: 1, minWidth: 300 },
   section: { gap: spacing.md },
   sectionLabel: {
     ...typography.label,

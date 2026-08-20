@@ -59,4 +59,19 @@ export const typography = {
 
 // Content width cap so desktop web isn't full-bleed; mobile stays fluid.
 export const contentMaxWidth = 640;
+
+// Breedte-omslagpunt. Onder deze vensterbreedte blijft alles precies zoals op een
+// telefoon: één kolom van contentMaxWidth. 900 is gekozen omdat een tablet staand
+// (768) en een half scherm op een laptop dan nog de telefoon-indeling houden, en pas
+// een echt breed venster naast elkaar gaat werken.
+export const wideBreakpoint = 900;
+
+// Boven het omslagpunt mag de inhoud breder: genoeg voor twee kolommen of vijf
+// tegels naast elkaar, en nog steeds een rustige kolom in een venster van 1500.
+export const wideContentMaxWidth = 960;
+
+// Lopende tekst leest slecht op 960 px. Schermen die vooral tekst tonen (het
+// spelersdossier) vragen daarom `reading` aan bij Screen en blijven op deze maat:
+// ruim genoeg om de winst op een breed venster te merken, smal genoeg om te lezen.
+export const readingMaxWidth = 760;
 export const minTapTarget = 44;
