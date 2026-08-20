@@ -16,6 +16,7 @@ import { appConfig } from '../constants/app-config';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import type { Role, User } from '../lib/types';
+import { isValidEmail, normalizePhone } from '../lib/contact';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 
 interface UserManagementProps {
@@ -76,6 +77,12 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
   const [name, setName] = useState<string>(initialName ?? '');
   const [role, setRole] = useState<Role>(defaultRole);
   const [rate, setRate] = useState<string>('');
+  const [phone, setPhone] = useState<string>('');
+  // Het e-mailadres houden we in twee stukjes bij: wat de gebruiker zelf tikte, en of hij
+  // het veld überhaupt al aanraakte. Zolang hij eraf blijft, loopt het adres mee met de naam;
+  // zodra hij het aanpast, wint zijn tekst en laten we het met rust.
+  const [typedEmail, setTypedEmail] = useState<string>('');
+  const [emailTouched, setEmailTouched] = useState<boolean>(false);
 
   // De modal blijft gemonteerd tussen twee keer openen, dus `useState` pikt een nieuwe
   // `initialName` niet vanzelf op. Bij elk openen zetten we de getypte naam er alsnog in;
@@ -84,8 +91,17 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
     if (visible && initialName !== undefined) setName(initialName);
   }, [visible, initialName]);
 
+  // Bij elk openen beginnen de contactvelden weer blanco: een tweede speler hoort niet te
+  // starten met het adres of het nummer van de vorige, ook niet als de vorige keer werd
+  // weggeklikt zonder te bewaren.
+  useEffect(() => {
+    if (!visible) return;
+    setPhone('');
+    setTypedEmail('');
+    setEmailTouched(false);
+  }, [visible]);
+
   const trimmedName = name.trim();
-  const canSubmit = trimmedName.length > 0;
 
   const generatedEmail = useMemo<string>(() => {
     const slug = slugify(name);
@@ -93,21 +109,37 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
     return `${local}@${appConfig.emailDomain}`;
   }, [name, role]);
 
+  // Wat er in het veld staat. Het afgeleide adres is enkel de startwaarde: één keer zelf
+  // typen en het veld volgt de naam niet meer.
+  const email = emailTouched ? typedEmail : generatedEmail;
+  const emailOk = isValidEmail(email);
+  const canSubmit = trimmedName.length > 0 && emailOk;
+
+  const handleEmailChange = (text: string): void => {
+    setEmailTouched(true);
+    setTypedEmail(text);
+  };
+
   const handleAdd = async (): Promise<void> => {
     if (!canSubmit) {
       return;
     }
     const parsedRate = Number(rate.replace(',', '.'));
+    const trimmedPhone = normalizePhone(phone);
     const created = await addUser({
       name: trimmedName,
-      email: generatedEmail,
+      email: email.trim(),
       role,
+      ...(trimmedPhone ? { phone: trimmedPhone } : {}),
       ...(role === 'coach' && rate.trim() && Number.isFinite(parsedRate)
         ? { hourly_rate: parsedRate }
         : {}),
     });
     setName('');
     setRate('');
+    setPhone('');
+    setTypedEmail('');
+    setEmailTouched(false);
     // Alleen bij een geslaagde aanmaak: het scherm dat hierop wacht mag niets kiezen
     // wanneer het opslaan misliep.
     if (created && onCreated) onCreated(created);
@@ -157,7 +189,35 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
               placeholderTextColor={tennisColors.textMuted}
               style={styles.input}
             />
-            <Text style={styles.helper}>E-mailadres: {generatedEmail}</Text>
+            <Text style={[styles.label, styles.labelSpaced]}>E-mailadres</Text>
+            <TextInput
+              value={email}
+              onChangeText={handleEmailChange}
+              placeholder="naam@club.be"
+              placeholderTextColor={tennisColors.textMuted}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.input}
+            />
+            <Text style={styles.helper}>
+              Wordt afgeleid van de naam. Zelf iets invullen mag: dan blijft dat staan.
+            </Text>
+            {!emailOk ? (
+              <Text style={styles.error}>Dit lijkt geen geldig e-mailadres.</Text>
+            ) : null}
+
+            <Text style={[styles.label, styles.labelSpaced]}>Gsm-nummer (optioneel)</Text>
+            <TextInput
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="0470 12 34 56"
+              placeholderTextColor={tennisColors.textMuted}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.input}
+            />
 
             {role === 'coach' ? (
               <>
@@ -257,6 +317,10 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: tennisColors.textMuted,
     marginBottom: spacing.sm,
+  },
+  // Een label dat op een vorig invulveld volgt heeft wat lucht erboven nodig.
+  labelSpaced: {
+    marginTop: spacing.lg,
   },
   input: {
     backgroundColor: tennisColors.background,
