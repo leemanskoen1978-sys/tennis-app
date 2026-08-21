@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
-  type LucideIcon,
+  Upload, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
@@ -57,6 +57,7 @@ export default function Admin() {
         { key: 'courts', title: t('Banen'), subtitle: t('Namen en uurtarieven'), icon: LayoutGrid, onPress: () => router.push('/admin/courts') },
         { key: 'goals', title: t('Doelen'), subtitle: t('Woordenlijst voor spelersdoelen'), icon: Target, onPress: () => router.push('/admin/goals') },
         { key: 'add', title: t('Speler toevoegen'), subtitle: t('Nieuw lid aanmaken'), icon: UserPlus, onPress: () => setAddOpen(true) },
+        { key: 'import', title: t('Leden importeren'), subtitle: t('Uit een Excel-lijst'), icon: Upload, onPress: () => router.push('/admin/leden-import') },
       ],
     },
     {
