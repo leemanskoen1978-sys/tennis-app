@@ -56,6 +56,18 @@ beurtenkaart toelaat (de laatste lessen horen op "Open" te blijven, met melding)
 - **`clubMargin`** in `lib/payments.ts` is gebouwd en getest maar staat op geen enkel scherm.
 - **Genest venster**: een onbekende speler aanmaken vanuit de spelerskeuzelijst opent een modal
   binnen een modal. Werkt op web; nog niet op een telefoon getest.
+- **De tabel `memos` moet nog in Supabase aangemaakt worden** door het bijgewerkte
+  `supabase-schema.sql` te draaien. Zolang dat niet gebeurd is, werkt de app gewoon maar
+  doen de spraakmemo's niets: `selectAllOptioneel` slikt alleen "die tabel bestaat niet".
+- **Memo's blijven liggen als je ze nooit uitwerkt.** Dat is met opzet (het is een werklijst,
+  geen postvak dat opruimt), maar er staat geen grens op. Een trainer die een half jaar niets
+  uitwerkt, sleept al die audio bij elke start mee. Zodra dat gebeurt is Supabase Storage het
+  antwoord — zie de spec van 22 augustus.
+- **Spraak-naar-tekst** zou het uitwerken van een memo bijna overbodig maken; op web bestaat
+  het in deze app nog niet (`components/SpeechToText.tsx` is een plaatshouder).
+- **De memoknop is nog niet met een echte microfoon doorlopen**: opnemen, te kort loslaten,
+  de aftelling voorbij 50 seconden en de afkap op 60. Dat vraagt een baan met een les erop
+  en toestemming voor de microfoon in de browser.
 
 ### 3. Grotere dingen die nog niet besproken zijn
 
