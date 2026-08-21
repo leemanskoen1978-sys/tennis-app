@@ -693,4 +693,15 @@ export const EN: Record<string, string> = {
   'PDF uploaden — binnenkort (mobiele app)': 'Upload PDF — coming soon (mobile app)',
   'Deze keuzes staan in de comboboxen bij het doel van een speler.':
     'These options appear in the dropdowns on a player’s goal.',
+  // De spelerslijst: drie stapels en een zoekregel.
+  'Alle spelers': 'All players',
+  'Mijn spelers': 'My players',
+  'Spelers vandaag': 'Players today',
+  'geen spelers': 'no players',
+  'Je gaf nog aan niemand les.': 'You have not taught anyone yet.',
+  'Je hebt vandaag geen spelers op de baan.': 'You have no players on court today.',
+  'Zoek een speler': 'Search for a player',
+  'Zoek een speler op naam of e-mail': 'Search a player by name or email',
+  'Zoekregel wissen': 'Clear search',
+  'Geen speler gevonden voor "{q}".': 'No player found for “{q}”.',
 };

@@ -1,9 +1,11 @@
 import {
-  buildLesplan, coachesForPlayer, lesplanSummary, nextBookingFor, noteCountLabel,
-  playerListLine, playersForCoach, type Lesplan,
+  buildLesplan, coachesForPlayer, emptyScopeLine, lesplanSummary, nextBookingFor,
+  noteCountLabel, playerCountLabel, playerListLine, playersForCoach, playersInScope,
+  searchPlayers,
+  type Lesplan,
 } from './relations';
 import { formatDayTime } from './datetime';
-import type { Booking, Lesson, StudentProgress } from './types';
+import type { Booking, Lesson, StudentProgress, User } from './types';
 
 const booking = (player: string, coach: string): Booking => ({
   id: `b-${player}-${coach}`,
@@ -250,5 +252,137 @@ describe('playerListLine', () => {
 
   it('says plainly that nothing is planned', () => {
     expect(playerListLine(null, 0)).toBe('Geen les gepland · geen notities');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// De drie stapels van de spelerslijst
+// ---------------------------------------------------------------------------
+
+const player = (id: string): User => ({ id, email: `${id}@kdt.be`, name: id, role: 'player' });
+
+/** Een les op een gekozen dag, met eventueel meespelers erbij. */
+const at = (start: string, payer: string, coach: string, others: string[] = []): Booking => ({
+  ...booking(payer, coach),
+  id: `b-${start}-${payer}`,
+  start_time: start,
+  end_time: start,
+  participant_ids: others,
+});
+
+const NOW = new Date('2026-08-20T12:00:00');
+const TODAY = '2026-08-20T09:00:00';
+const TOMORROW = '2026-08-21T09:00:00';
+
+const players = [player('mathis'), player('lotte'), player('sam')];
+
+const scope = (
+  which: Parameters<typeof playersInScope>[0],
+  extra: Partial<Parameters<typeof playersInScope>[1]> = {},
+): string[] =>
+  playersInScope(which, {
+    players,
+    coachId: 'koen',
+    bookings: [],
+    lessons: [],
+    progress: [],
+    now: NOW,
+    ...extra,
+  }).map((p) => p.id);
+
+describe('playersInScope', () => {
+  it('geeft bij "iedereen" de hele lijst terug, in dezelfde volgorde', () => {
+    expect(scope('all')).toEqual(['mathis', 'lotte', 'sam']);
+  });
+
+  it('rekent bij "mijn spelers" iedereen mee waar deze trainer al mee werkte', () => {
+    expect(scope('mine', {
+      bookings: [booking('mathis', 'koen'), booking('sam', 'sanne')],
+      lessons: [lesson('lotte', 'koen')],
+    })).toEqual(['mathis', 'lotte']);
+  });
+
+  it('telt bij "mijn spelers" ook een speler die alleen een notitie heeft', () => {
+    expect(scope('mine', { progress: [note('sam', 'koen')] })).toEqual(['sam']);
+  });
+
+  it('houdt bij "vandaag" alleen de lessen van vandaag over', () => {
+    expect(scope('today', {
+      bookings: [at(TODAY, 'mathis', 'koen'), at(TOMORROW, 'lotte', 'koen')],
+    })).toEqual(['mathis']);
+  });
+
+  it('rekent bij "vandaag" de meespelers van een groepsles mee', () => {
+    expect(scope('today', {
+      bookings: [at(TODAY, 'mathis', 'koen', ['sam'])],
+    })).toEqual(['mathis', 'sam']);
+  });
+
+  it('laat bij "vandaag" de lessen van een andere trainer buiten beschouwing', () => {
+    expect(scope('today', { bookings: [at(TODAY, 'lotte', 'sanne')] })).toEqual([]);
+  });
+
+  it('laat een geannuleerde les van vandaag niet meetellen', () => {
+    expect(scope('today', {
+      bookings: [{ ...at(TODAY, 'mathis', 'koen'), status: 'cancelled' }],
+    })).toEqual([]);
+  });
+
+  it('geeft zonder trainer wel iedereen, maar geen eigen of huidige stapel', () => {
+    const noCoach = { coachId: null, bookings: [booking('mathis', 'koen')] };
+    expect(scope('all', noCoach)).toEqual(['mathis', 'lotte', 'sam']);
+    expect(scope('mine', noCoach)).toEqual([]);
+    expect(scope('today', noCoach)).toEqual([]);
+  });
+});
+
+describe('playerCountLabel', () => {
+  it('zegt het in woorden, ook bij geen en bij één', () => {
+    expect(playerCountLabel(0)).toBe('geen spelers');
+    expect(playerCountLabel(1)).toBe('1 speler');
+    expect(playerCountLabel(12)).toBe('12 spelers');
+  });
+});
+
+describe('emptyScopeLine', () => {
+  it('geeft per stapel de reden waarom hij leeg is', () => {
+    expect(emptyScopeLine('all')).toBe('Nog geen spelers.');
+    expect(emptyScopeLine('mine')).not.toBe(emptyScopeLine('all'));
+    expect(emptyScopeLine('today')).not.toBe(emptyScopeLine('mine'));
+  });
+});
+
+describe('searchPlayers', () => {
+  const named = (id: string, name: string, email = `${id}@kdt.be`): User =>
+    ({ ...player(id), name, email });
+  const lijst = [named('1', 'Mathis De Vos'), named('2', 'Noë Peeters'), named('3', 'Lotte Jans', 'lotte@club.be')];
+  const found = (q: string): string[] => searchPlayers(lijst, q).map((p) => p.name);
+
+  it('geeft de hele lijst terug bij een lege zoekregel', () => {
+    expect(found('')).toHaveLength(3);
+    expect(found('   ')).toHaveLength(3);
+  });
+
+  it('vindt op een stuk van de naam, ongeacht hoofdletters', () => {
+    expect(found('mat')).toEqual(['Mathis De Vos']);
+    expect(found('JANS')).toEqual(['Lotte Jans']);
+  });
+
+  it('trekt zich niets aan van accenten', () => {
+    expect(found('noe')).toEqual(['Noë Peeters']);
+    expect(found('Noë')).toEqual(['Noë Peeters']);
+  });
+
+  it('vindt ook op het e-mailadres', () => {
+    expect(found('club.be')).toEqual(['Lotte Jans']);
+  });
+
+  it('laat de woorden in elke volgorde staan', () => {
+    expect(found('vos mathis')).toEqual(['Mathis De Vos']);
+    expect(found('mathis vos')).toEqual(['Mathis De Vos']);
+  });
+
+  it('geeft niets terug als er niets past', () => {
+    expect(found('zzz')).toEqual([]);
   });
 });

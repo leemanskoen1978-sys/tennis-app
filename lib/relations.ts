@@ -7,7 +7,8 @@
 import { t } from './i18n';
 import { formatDayTime } from './datetime';
 import { lessonPlayerIds, playsIn } from './groups';
-import type { Booking, Lesson, StudentProgress } from './types';
+import { bookingsOnDay } from './hub';
+import type { Booking, Lesson, StudentProgress, User } from './types';
 
 /** Every coach that has a booking, lesson or progress note with this player. */
 export function coachesForPlayer(
@@ -162,4 +163,99 @@ export function playerListLine(next: Booking | null, noteCount: number): string 
     ? t('Volgende les {moment}', { moment: formatDayTime(next.start_time) })
     : t('Geen les gepland');
   return `${lesson} · ${noteCountLabel(noteCount)}`;
+}
+
+// ---------------------------------------------------------------------------
+// De drie stapels van de spelerslijst.
+//
+// Een trainer die zijn lijst opent zoekt zelden "iedereen". Hij zoekt de speler die hij
+// straks op de baan heeft, of de speler waar hij vorige week iets over noteerde. Dat zijn
+// drie vragen aan dezelfde lijst, en ze worden hier één keer beantwoord — niet op het
+// scherm, want dan telt de tegel straks anders dan de lijst eronder.
+// ---------------------------------------------------------------------------
+
+/** Welke stapel je bekijkt: iedereen, de jouwe, of wie je vandaag ziet. */
+export type PlayerScope = 'all' | 'mine' | 'today';
+
+/** Alles wat nodig is om die vraag te beantwoorden; de tijd komt van buiten, niet van de klok. */
+export interface PlayerScopeInput {
+  /** De hele spelerslijst, in de volgorde waarin hij op het scherm hoort te staan. */
+  players: User[];
+  /** De trainer die kijkt. Leeg betekent: niemand in het bijzonder — zie hieronder. */
+  coachId?: string | null;
+  bookings: Booking[];
+  lessons: Lesson[];
+  progress: StudentProgress[];
+  /** Eén moment voor alle drie de stapels, zodat ze het over dezelfde dag hebben. */
+  now: Date;
+}
+
+/**
+ * De spelers van één stapel, in de volgorde van de lijst zelf:
+ *
+ *  - 'all'   — iedereen die geen trainer is; de lijst zoals hij er altijd stond.
+ *  - 'mine'  — iedereen waar deze trainer al mee werkte: een les, een boeking of een notitie
+ *              is genoeg. Dezelfde afgeleide relatie als `playersForCoach`, dus er valt niets
+ *              apart bij te houden dat kan gaan afwijken.
+ *  - 'today' — wie deze trainer vandaag op de baan heeft. Deelnemers aan een groepsles tellen
+ *              mee: hij ziet ze vandaag, ook al betaalt iemand anders de les.
+ *
+ * Zonder trainer (een speler of ouder kijkt) zijn 'mine' en 'today' geen vraag die te
+ * beantwoorden valt: ze leveren een lege lijst. Het scherm toont de tegels dan ook niet.
+ */
+export function playersInScope(scope: PlayerScope, input: PlayerScopeInput): User[] {
+  const { players, coachId, bookings, lessons, progress, now } = input;
+  if (scope === 'all') return players;
+  if (!coachId) return [];
+
+  if (scope === 'mine') {
+    const mine = new Set(playersForCoach(coachId, bookings, lessons, progress));
+    return players.filter((p) => mine.has(p.id));
+  }
+
+  const today = new Set<string>();
+  for (const b of bookingsOnDay(bookings, now)) {
+    if (b.coach_id !== coachId) continue;
+    for (const id of lessonPlayerIds(b)) if (id) today.add(id);
+  }
+  return players.filter((p) => today.has(p.id));
+}
+
+/** Hoeveel spelers een stapel telt, in woorden: "geen spelers", "1 speler", "12 spelers". */
+export function playerCountLabel(count: number): string {
+  if (count <= 0) return t('geen spelers');
+  return count === 1 ? t('1 speler') : t('{n} spelers', { n: count });
+}
+
+/** Wat er onder een lege stapel komt te staan — per stapel een andere reden. */
+export function emptyScopeLine(scope: PlayerScope): string {
+  if (scope === 'mine') return t('Je gaf nog aan niemand les.');
+  if (scope === 'today') return t('Je hebt vandaag geen spelers op de baan.');
+  return t('Nog geen spelers.');
+}
+
+/**
+ * Een naam zoals je hem vergelijkt en niet zoals je hem schrijft: kleine letters, zonder
+ * accenten. Anders vindt "noe" de speler Noë niet, terwijl een trainer die accent niet
+ * intypt — en op een telefoon al helemaal niet.
+ */
+function fold(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+/**
+ * Zoeken op naam of e-mailadres, binnen de stapel die je al bekeek.
+ *
+ * Elk woord uit de zoekregel moet ergens terugkomen, maar de volgorde doet er niet toe:
+ * "de mathis" vindt "Mathis De Vos" net zo goed als "vos mathis". Zo hoef je niet te
+ * onthouden hoe een naam in de ledenlijst geschreven staat. Een lege zoekregel verandert
+ * niets — dan krijg je de stapel terug zoals hij was.
+ */
+export function searchPlayers(players: User[], query: string): User[] {
+  const words = fold(query).split(/\s+/).filter((w) => w !== '');
+  if (words.length === 0) return players;
+  return players.filter((p) => {
+    const haystack = fold(`${p.name ?? ''} ${p.email ?? ''}`);
+    return words.every((w) => haystack.includes(w));
+  });
 }
