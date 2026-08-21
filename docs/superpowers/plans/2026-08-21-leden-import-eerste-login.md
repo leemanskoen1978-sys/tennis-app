@@ -580,6 +580,16 @@ describe('planImport', () => {
     ]);
   });
 
+  it('houdt de niet-herkende koppen vast juist als de kopregel niet deugt', () => {
+    // "E-mailadres" kent de import wél; "Tarief/uur" niet. Zou dit lijstje hier wegvallen,
+    // dan leest de trainer "kolom email ontbreekt" zonder te zien wat er dan wél stond.
+    const plan = planImport([['Naam', 'Rijksregisternummer', 'Tarief/uur'], ['Jonas', '', '']], []);
+    expect(plan.fouten).toEqual([
+      { regel: 1, reden: 'De kopregel mist de kolom "naam" of "email".' },
+    ]);
+    expect(plan.nietHerkend).toEqual(['Rijksregisternummer', 'Tarief/uur']);
+  });
+
   it('zegt het als het bestand leeg is', () => {
     expect(planImport([], []).fouten).toEqual([
       { regel: 1, reden: 'Dit bestand is leeg.' },
@@ -625,6 +635,11 @@ export interface ImportPlan {
    * wegvalt kost een trainer alle tarieven zonder dat hij ooit een melding zag.
    */
   nietHerkend: string[];
+  /**
+   * Koppen die we wél herkenden maar niet lezen omdat dezelfde kolom er al was. Een ander
+   * bericht dan `nietHerkend`: "die kolom hebben we al" tegenover "die ken ik niet".
+   */
+  dubbel: string[];
 }
 
 /** Adressen vergelijken zoals de databank het doet: hoofdletterongevoelig. */
@@ -657,19 +672,24 @@ export function planImport(
   rijen: ReadonlyArray<readonly string[]>,
   bestaande: readonly User[],
 ): ImportPlan {
-  const plan: ImportPlan = { nieuw: [], bijgewerkt: [], fouten: [], nietHerkend: [] };
+  const plan: ImportPlan = {
+    nieuw: [], bijgewerkt: [], fouten: [], nietHerkend: [], dubbel: [],
+  };
   if (rijen.length === 0) {
     plan.fouten.push({ regel: 1, reden: 'Dit bestand is leeg.' });
     return plan;
   }
 
+  // Eerst overnemen, dán pas afhaken: juist als de kopregel niet deugt, heeft de trainer
+  // die lijstjes nodig — dat is het geval waarin hij zijn bestand moet aanpassen.
   const kop = leesKopregel(rijen[0]);
-  if (!kop) {
+  plan.nietHerkend = kop.nietHerkend;
+  plan.dubbel = kop.dubbel;
+  const { kolommen } = kop;
+  if (!kolommen) {
     plan.fouten.push({ regel: 1, reden: 'De kopregel mist de kolom "naam" of "email".' });
     return plan;
   }
-  const { kolommen } = kop;
-  plan.nietHerkend = kop.nietHerkend;
 
   const bekend = new Map(bestaande.map((u) => [sleutel(u.email), u]));
   // Waar in het bestand we een adres eerder zagen — voor de melding "staat al op regel 2".
@@ -1056,6 +1076,13 @@ export default function LedenImport(): React.JSX.Element {
               <Text style={styles.nietHerkend}>
                 {t('Deze kolommen herken ik niet en komen niet mee: {koppen}', {
                   koppen: plan.nietHerkend.join(', '),
+                })}
+              </Text>
+            ) : null}
+            {plan.dubbel.length > 0 ? (
+              <Text style={styles.nietHerkend}>
+                {t('Deze kolommen staan er twee keer; ik lees alleen de eerste: {koppen}', {
+                  koppen: plan.dubbel.join(', '),
                 })}
               </Text>
             ) : null}
@@ -1597,6 +1624,8 @@ Onderaan het `EN`-object, vóór de sluitende accolade:
   'Deze regels worden overgeslagen': 'These rows are skipped',
   'Deze kolommen herken ik niet en komen niet mee: {koppen}':
     "I don't recognise these columns, so they are left out: {koppen}",
+  'Deze kolommen staan er twee keer; ik lees alleen de eerste: {koppen}':
+    'These columns appear twice; only the first one is read: {koppen}',
   'Regel {regel}': 'Row {regel}',
   'Importeren': 'Import',
   'Bezig…': 'Working…',
