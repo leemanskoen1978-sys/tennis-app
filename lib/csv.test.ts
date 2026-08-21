@@ -319,12 +319,33 @@ describe('parseCsv', () => {
     ]);
   });
 
-  it('een titelregel boven de kopregel verwart de scheidingsteken-detectie niet', () => {
+  it('een titelregel zonder scheidingsteken erin verwart de detectie niet', () => {
     expect(parseCsv('Ledenlijst 2026\nnaam,email\nJan,jan@x.be')).toEqual([
       ['Ledenlijst 2026'],
       ['naam', 'email'],
       ['Jan', 'jan@x.be'],
     ]);
+  });
+
+  it('een titelregel mét een scheidingsteken erin kaapt de detectie niet', () => {
+    // "Ledenlijst, seizoen 2026" geeft de komma een schijnbare meerderheid op de eerste
+    // regel, maar de twee regels erna zijn het eens over de puntkomma in twee kolommen —
+    // en dat moet winnen.
+    // ';' wordt het scheidingsteken voor het hele bestand, dus de titelregel — die zelf
+    // geen puntkomma heeft — blijft één cel, komma en al.
+    expect(parseCsv('Ledenlijst, seizoen 2026\nnaam;email\nJan;jan@x.be')).toEqual([
+      ['Ledenlijst, seizoen 2026'],
+      ['naam', 'email'],
+      ['Jan', 'jan@x.be'],
+    ]);
+  });
+
+  it('een bestand van één enkele regel valt nog gewoon in kolommen uiteen', () => {
+    expect(parseCsv('naam,email')).toEqual([['naam', 'email']]);
+  });
+
+  it('geen enkel scheidingsteken in het bestand valt terug op de puntkomma', () => {
+    expect(parseCsv('eenkolom\ntweede')).toEqual([['eenkolom'], ['tweede']]);
   });
 
   it('een lege regel bovenaan het bestand verwart de scheidingsteken-detectie niet', () => {
@@ -342,11 +363,24 @@ describe('parseCsv', () => {
     ]);
   });
 
-  it('laat geen dwaal-CR achter in een cel die over meerdere regels loopt', () => {
+  it('een regeleinde binnen aanhalingstekens blijft letterlijk staan, ook een CRLF', () => {
+    // De schrijfkant zet een kale '\r' bewust tussen aanhalingstekens (zie de toCsv-test
+    // hierboven); de leeskant moet dat teken dus niet stilletjes ombouwen tot '\n'.
     expect(parseCsv('naam;adres\r\nJan;"Straat 1\r\nGent"')).toEqual([
       ['naam', 'adres'],
-      ['Jan', 'Straat 1\nGent'],
+      ['Jan', 'Straat 1\r\nGent'],
     ]);
+  });
+
+  it('een kale CR binnen aanhalingstekens blijft ook letterlijk staan', () => {
+    expect(parseCsv('naam;wie\nx;"Koen\rde trainer"')).toEqual([
+      ['naam', 'wie'],
+      ['x', 'Koen\rde trainer'],
+    ]);
+  });
+
+  it('een kale CR buiten aanhalingstekens is een rijeinde, net als een CRLF', () => {
+    expect(parseCsv('a;b\rc;d')).toEqual([['a', 'b'], ['c', 'd']]);
   });
 
   it('een rij met meer of minder kolommen dan de kop komt door zoals hij is', () => {

@@ -201,32 +201,46 @@ export function toXlsx(rows: CsvRow[]): Uint8Array {
 type Scheidingsteken = ';' | ',' | '\t';
 
 /**
- * Welk scheidingsteken gebruikt dit bestand? Bepaald op de eerste regel die er één laat
- * zien: die heeft van elke kolom er precies één, dus het teken dat daar het vaakst staat is
- * het scheidingsteken. Een titelregel of een lege regel boven de kopregel telt niet mee —
- * `parseCsv` gooit lege regels zelf ook al weg, en een titel zonder scheidingsteken erin mag
- * de detectie niet naar de terugval duwen. Wat tussen aanhalingstekens staat telt niet mee —
- * een naam als "De Vries, Jan" hoort de telling niet te kunnen kantelen.
+ * Hoeveel kolommen zou deze ene regel geven bij dit scheidingsteken? Aanhalingstekens
+ * tellen niet mee: een naam als "De Vries, Jan" mag de telling niet laten kantelen.
+ */
+function kolomAantalVoor(regel: string, kandidaat: Scheidingsteken): number {
+  let aantal = 1;
+  let inAanhaling = false;
+  for (const teken of regel) {
+    if (teken === '"') inAanhaling = !inAanhaling;
+    else if (!inAanhaling && teken === kandidaat) aantal++;
+  }
+  return aantal;
+}
+
+/**
+ * Welk scheidingsteken gebruikt dit bestand? Niet simpelweg het teken dat op de eerste
+ * regel het vaakst voorkomt — staat daar een titel met toevallig zelf een komma in
+ * ("Ledenlijst, seizoen 2026"), dan wijst dat de verkeerde kant op. In plaats daarvan: van
+ * de eerste vijf niet-lege regels (of minder, bij een korter bestand) telt elk kandidaat-
+ * scheidingsteken hoeveel kolommen iedere regel zou geven; het kandidaat waarbij de meeste
+ * regels het eens zijn over hetzelfde (meer dan 1) aantal kolommen wint. Een titel zonder
+ * scheidingsteken erin haalt dan nooit de overhand, en een titel mét een scheidingsteken
+ * verliest het van de regels die wél consequent in kolommen uiteenvallen.
+ * Gelijkspel, of geen enkel kandidaat dat ergens op uitkomt: puntkomma, wat de club aanlevert.
  */
 function scheidingstekenVan(text: string): Scheidingsteken {
-  for (const regel of text.split(/\r?\n/)) {
-    const tellingen: Record<Scheidingsteken, number> = { ';': 0, ',': 0, '\t': 0 };
-    let inAanhaling = false;
-    for (const teken of regel) {
-      if (teken === '"') {
-        inAanhaling = !inAanhaling;
-      } else if (!inAanhaling && (teken === ';' || teken === ',' || teken === '\t')) {
-        tellingen[teken]++;
-      }
+  const regels = text.split(/\r\n|\r|\n/).filter((r) => r.trim() !== '').slice(0, 5);
+  const kandidaten: Scheidingsteken[] = [';', ',', '\t'];
+
+  let beste: Scheidingsteken = ';';
+  let besteScore = 0;
+  for (const kandidaat of kandidaten) {
+    const perAantal = new Map<number, number>();
+    for (const regel of regels) {
+      const aantal = kolomAantalVoor(regel, kandidaat);
+      if (aantal > 1) perAantal.set(aantal, (perAantal.get(aantal) ?? 0) + 1);
     }
-    if (tellingen[';'] === 0 && tellingen[','] === 0 && tellingen['\t'] === 0) continue;
-    // Gelijkspel gaat naar de puntkomma: dat is wat de club aanlevert.
-    if (tellingen['\t'] > tellingen[';'] && tellingen['\t'] > tellingen[',']) return '\t';
-    if (tellingen[','] > tellingen[';']) return ',';
-    return ';';
+    const score = Math.max(0, ...perAantal.values());
+    if (score > besteScore) { besteScore = score; beste = kandidaat; }
   }
-  // Geen enkele regel had een scheidingsteken: terugval op de puntkomma.
-  return ';';
+  return beste;
 }
 
 /**
@@ -237,9 +251,8 @@ function scheidingstekenVan(text: string): Scheidingsteken {
  */
 export function parseCsv(text: string): string[][] {
   // De BOM als escape geschreven, net als in lib/share.ts: zo blijft het in elke editor één
-  // onzichtbaar teken en eindigt hij niet per ongeluk als tekst. Regeleindes meteen
-  // normaliseren naar '\n' — anders overleeft een dwaal-'\r' binnen aanhalingstekens.
-  const schoon = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  // onzichtbaar teken en eindigt hij niet per ongeluk als tekst.
+  const schoon = text.replace(/^\uFEFF/, '');
   const scheiding = scheidingstekenVan(schoon);
   const rijen: string[][] = [];
   let rij: string[] = [];
@@ -250,6 +263,9 @@ export function parseCsv(text: string): string[][] {
     const teken = schoon[i];
     if (inAanhaling) {
       if (teken !== '"') {
+        // Ook een '\r' blijft hier gewoon onderdeel van de cel: wat tussen
+        // aanhalingstekens staat is precies wat de schrijfkant er ook weer in zet
+        // (zie de toCsv-test die een kale '\r' bewust bewaart).
         cel += teken;
       } else if (schoon[i + 1] === '"') {
         // Twee aanhalingstekens op rij zijn er samen één, letterlijk in de cel.
@@ -263,12 +279,20 @@ export function parseCsv(text: string): string[][] {
     if (teken === '"') {
       // Een aanhalingsteken heeft alleen aan het begin van een cel zijn betekenis (RFC
       // 4180, en zo schrijft Excel het ook); midden in een cel is het gewoon tekst. Op een
-      // spatie na leeg telt nog als "begin", want de cel wordt toch getrimd.
+      // spatie na leeg telt nog als "begin", want de cel wordt toch getrimd. De ruil: een
+      // strikte `cel === ''` zou een geciteerde cel met een spatie ervoor (`; "De Vries;
+      // Jan"`) in twee stukken breken — en een cel met een puntkomma erin komt vaker voor
+      // dan een aanhalingsteken vlak na een spatie, dus valt de keuze naar `trim()` uit.
       if (cel.trim() === '') { inAanhaling = true; } else { cel += teken; }
       continue;
     }
     if (teken === scheiding) { rij.push(cel); cel = ''; continue; }
-    if (teken === '\n') { rij.push(cel); rijen.push(rij); rij = []; cel = ''; continue; }
+    if (teken === '\r' || teken === '\n') {
+      // Buiten aanhalingstekens is elke regeleinde-vorm een rijeinde; '\r\n' telt als één.
+      if (teken === '\r' && schoon[i + 1] === '\n') i++;
+      rij.push(cel); rijen.push(rij); rij = []; cel = '';
+      continue;
+    }
     cel += teken;
   }
   rij.push(cel);
