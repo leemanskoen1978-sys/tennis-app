@@ -72,9 +72,12 @@ Level Security toelaat. Die regels staan in `supabase-schema.sql` — een traine
 zijn eigen agenda, een speler ziet en doet alleen wat van hemzelf is.
 
 Zet ook **Site URL** en **Redirect URLs** goed (Authentication → URL Configuration). Het adres
-van de website hoort in die lijst te staan, anders weigert Supabase de link uit een
-herstelmail en komt je speler op een foutpagina. Dat is de meest gemaakte fout bij het
-opzetten hiervan, en je merkt hem pas als iemand zijn wachtwoord kwijt is.
+van de website hoort in die lijst te staan, **inclusief het pad** — de site staat in een
+submap (`/tennis-app/`, zie "Online zetten" hieronder), en de kale `origin` zonder die submap
+is dus niet genoeg. Staat het volledige adres er niet, dan weigert Supabase de link uit een
+herstelmail en komt je speler op een foutpagina, met zijn hersteltoken in een URL die de app
+nooit te zien krijgt. Dat is de meest gemaakte fout bij het opzetten hiervan, en je merkt hem
+pas als iemand zijn wachtwoord kwijt is.
 
 Reken bovendien niet op de ingebouwde mail van Supabase: die is streng gelimiteerd. Een club
 met vijftig leden hoort onder Project Settings → Authentication → SMTP zijn eigen mailserver

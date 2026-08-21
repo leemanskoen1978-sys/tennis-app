@@ -14,6 +14,7 @@
 // en een schrijfactie die niet mag, geeft een fout in plaats van stilte. Zie
 // supabase-schema.sql — die regels staan daar en niet alleen in de schermen.
 
+import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { diffStores, type SyncTable } from '../lib/sync';
 import type { StoreData } from './mockStore';
@@ -238,10 +239,22 @@ export function onAuthChange(handler: (wat: AuthGebeurtenis) => void): () => voi
  *
  * `redirectTo` moet in Supabase onder Authentication → URL Configuration bij *Redirect URLs*
  * staan. Staat het er niet, dan weigert Supabase de link en komt de speler op een foutpagina;
- * dat is de meest gemaakte fout bij het opzetten hiervan.
+ * dat is de meest gemaakte fout bij het opzetten hiervan. Het adres moet daar dus mét het pad
+ * van de site staan (bv. `https://club.github.io/tennis-app`), niet de kale `origin` — anders
+ * landt de speler op de 404 van GitHub Pages met zijn hersteltoken in een URL die de app nooit
+ * te zien krijgt.
+ *
+ * Zonder `redirectTo` valt Supabase terug op de Site URL, en dat is precies wat we willen op
+ * een telefoon: `window` bestaat daar wél (React Native zet `global.window = global`), maar
+ * `window.location` niet — die aanroepen zou de knop laten crashen in plaats van de mail te
+ * sturen.
  */
 export async function stuurHerstelmail(email: string): Promise<void> {
-  const terug = typeof window !== 'undefined' ? window.location.origin : undefined;
+  const terug = Platform.OS === 'web' && typeof window !== 'undefined' && window.location
+    // `EXPO_BASE_URL` is de submap uit `app.json` (`experiments.baseUrl`), door Expo zelf
+    // ingebakken bij het bouwen — dezelfde submap die de site online ook gebruikt.
+    ? `${window.location.origin}${process.env.EXPO_BASE_URL ?? ''}`
+    : undefined;
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
     redirectTo: terug,
   });
