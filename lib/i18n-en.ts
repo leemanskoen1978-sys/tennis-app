@@ -806,4 +806,15 @@ export const EN: Record<string, string> = {
   // bestaat zonder Supabase erachter, maar een zin die bestaat om gelezen te worden hoort
   // ook vertaald te zijn (providers/backend.ts) --------------------------------------------
   'Wachtwoorden bestaan alleen met een databank.': 'Passwords only exist with a database.',
+  // De lesdag en de spraakmemo.
+  'Opnemen kan hier niet.': 'Recording is not possible here.',
+  'Opnemen kan hier niet': 'Recording not possible here',
+  'Memo opnemen voor {naam}': 'Record a memo for {naam}',
+  'nog {n}s': '{n}s left',
+  'te kort': 'too short',
+  'niet bewaard — opnieuw': 'not saved — retry',
+  'Nog niet bewaard — opnieuw proberen': 'Not saved yet — try again',
+  'Vandaag geen lessen.': 'No lessons today.',
+  '1 memo uit te werken': '1 memo to write up',
+  '{n} memos uit te werken': '{n} memos to write up',
 };

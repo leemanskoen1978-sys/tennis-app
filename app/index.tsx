@@ -13,6 +13,7 @@ import {
 import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
 import { ActionTile, TileGrid } from '../components/ui/ActionTile';
+import { Lesdag } from '../components/lesdag/Lesdag';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf } from '../lib/inbox';
@@ -106,6 +107,10 @@ export default function Hub() {
           <Text style={styles.q}>{t('Wat wil je doen?')}</Text>
         </View>
       </View>
+
+      {/* De lesdag hoort bovenaan: wat een trainer om vijf voor vijf wil zien, is de les
+          van vijf uur — niet een keuzemenu. De tegels blijven eronder staan. */}
+      {isCoach ? <Lesdag coachId={currentUser.id} /> : null}
 
       {/* Een speler die nog moet afrekenen, ziet dat vóór de tegels — met het bedrag erbij.
           Staat er niets open, dan staat er ook niets: een kaart met "€ 0,00" is ruis. */}
