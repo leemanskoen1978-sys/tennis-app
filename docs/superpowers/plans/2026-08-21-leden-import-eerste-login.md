@@ -471,6 +471,14 @@ git commit -m "feat(import): kolommen, rollen en tarieven uit een ledenbestand l
 >    wint. In de databank kan dat niet (`users.email` is `unique`), op de lokale opslag wel.
 > 5. Een nieuw lid wordt weggeschreven met het genormaliseerde adres, niet met de
 >    schrijfwijze uit het bestand.
+> 6. **De valkuil bij punt 3.** De beslissing "is dit een trainer?" mag niet op `leesRol`
+>    van de cel alleen: een lege rolcel geeft `'player'`, dus een bestand zonder kolom `rol`
+>    zou het tarief van élke bestaande trainer laten wegvallen — mét een waarschuwing die
+>    niet klopt. Bepaal eerst wie het bestaande lid is en gebruik `bestaandLid?.role ?? role`.
+>    Dezelfde les als bij de rol-botsingscontrole, die daarom naar de rúwe cel kijkt.
+>    Zet de waarschuwing bovendien ná alle `continue`-takken, anders draagt een afgekeurde
+>    regel er ook een. De controle op twee clubleden met hetzelfde adres hoort vóór
+>    `gezien.set`: hij hangt aan de club, niet aan de rij.
 >
 > Bewust níét gedaan, en dat staat als zin in de code: meerdere redenen per regel (naam en
 > adres moeten toch eerst kloppen, en een ronde kost niets omdat er nog niets weggeschreven
