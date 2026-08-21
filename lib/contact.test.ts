@@ -1,4 +1,4 @@
-import { isValidEmail, normalizePhone } from './contact';
+import { isValidEmail, normalizePhone, normalizeEmail, normalizePhoneDigits } from './contact';
 
 describe('isValidEmail', () => {
   it('keurt een gewoon adres goed', () => {
@@ -37,5 +37,21 @@ describe('normalizePhone', () => {
   it('laat een leeg veld weg in plaats van een lege string te bewaren', () => {
     expect(normalizePhone('')).toBeUndefined();
     expect(normalizePhone('   ')).toBeUndefined();
+  });
+});
+
+describe('normalizeEmail', () => {
+  it('maakt alles klein en haalt spaties eromheen weg', () => {
+    expect(normalizeEmail('  JONAS@Club.be ')).toBe('jonas@club.be');
+  });
+});
+
+describe('normalizePhoneDigits', () => {
+  it('herkent twee schrijfwijzen van hetzelfde nummer als gelijk', () => {
+    expect(normalizePhoneDigits('0470 12 34 56')).toBe(normalizePhoneDigits('0470123456'));
+  });
+
+  it('houdt alleen de cijfers over', () => {
+    expect(normalizePhoneDigits('+32 470 12 34 56')).toBe('32470123456');
   });
 });

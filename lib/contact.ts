@@ -24,3 +24,23 @@ export function normalizePhone(phone: string): string | undefined {
   const trimmed = phone.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 }
+
+/**
+ * Een e-mailadres zoals we het vergelijken: spaties eraf, alles klein. Een adres bestaat
+ * maar één keer, ongeacht hoofdletters — precies zoals de `unique`-index op deze kolom in de
+ * databank het afdwingt — dus "JONAS@Club.be" en "jonas@club.be" horen hetzelfde lid aan te
+ * wijzen.
+ */
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/**
+ * Een telefoonnummer herleid tot alleen zijn cijfers, om twee schrijfwijzen van hetzelfde
+ * nummer te vergelijken: "0470 12 34 56" en "0470123456" zijn hetzelfde nummer, alleen anders
+ * opgeschreven. Voor het bewáren blijft `normalizePhone` de norm — dit is enkel de vorm om
+ * twee nummers te vergelijken.
+ */
+export function normalizePhoneDigits(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
