@@ -16,6 +16,7 @@ export function ActionTile({
   icon: Icon,
   onPress,
   primary,
+  selected,
   badge,
 }: {
   title: string;
@@ -24,31 +25,41 @@ export function ActionTile({
   onPress: () => void;
   /** Vult de hele breedte en keert de kleuren om: de ene actie die je meestal wilt. */
   primary?: boolean;
+  /**
+   * Voor een rij tegels die samen één keuze zijn: deze staat aan. Hij krijgt dezelfde
+   * omgekeerde kleuren als een primaire tegel, maar niet diens volle breedte — anders
+   * springt een rij van drie uit elkaar zodra je een andere kiest.
+   */
+  selected?: boolean;
   /** Een aantal dat je aandacht vraagt; 0 laat de badge weg. */
   badge?: number;
 }) {
   const isWide = useIsWide();
+  // Eén vraag voor alle kleuren hieronder: staat deze tegel in de omgekeerde stand?
+  const filled = Boolean(primary || selected);
   return (
     <Card
       onPress={onPress}
       accessibilityLabel={title}
+      selected={selected}
       style={{
         ...styles.tile,
         // De maximumbreedte geldt alleen op een breed venster; op een telefoon zou een
         // cap juist ruimte weggooien in een rij van twee.
         ...(isWide && !primary ? styles.tileWide : {}),
+        ...(filled ? styles.tileFilled : {}),
         ...(primary ? styles.tilePrimary : {}),
       }}
     >
       <View style={styles.tileTop}>
-        <View style={[styles.iconWrap, primary && styles.iconWrapPrimary]}>
-          <Icon color={primary ? tennisColors.onFill : tennisColors.primary} size={24} />
+        <View style={[styles.iconWrap, filled && styles.iconWrapPrimary]}>
+          <Icon color={filled ? tennisColors.onFill : tennisColors.primary} size={24} />
         </View>
         {badge && badge > 0 ? <Badge label={String(badge)} color={tennisColors.warningFill} /> : null}
       </View>
-      <Text style={[styles.tileTitle, primary && styles.textOnPrimary]}>{title}</Text>
+      <Text style={[styles.tileTitle, filled && styles.textOnPrimary]}>{title}</Text>
       {subtitle ? (
-        <Text style={[styles.tileSub, primary && styles.subOnPrimary]}>{subtitle}</Text>
+        <Text style={[styles.tileSub, filled && styles.subOnPrimary]}>{subtitle}</Text>
       ) : null}
     </Card>
   );
@@ -70,8 +81,10 @@ const styles = StyleSheet.create({
   // Alleen boven het omslagpunt: 150 is de smalste tegel waarin titel en ondertitel nog
   // passen, 260 de breedte waarboven een tegel als een balk gaat ogen.
   tileWide: { minWidth: 150, maxWidth: 260 },
+  // De omgekeerde stand: primair, of gekozen uit een rij.
+  tileFilled: { backgroundColor: tennisColors.primaryFill },
   // De primaire tegel is bewust de volle rij breed; die mag de maximumbreedte negeren.
-  tilePrimary: { flexBasis: '100%', maxWidth: '100%', backgroundColor: tennisColors.primaryFill },
+  tilePrimary: { flexBasis: '100%', maxWidth: '100%' },
   tileTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iconWrap: {
     width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',

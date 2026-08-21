@@ -8,11 +8,14 @@ export function Card({
   children,
   onPress,
   accessibilityLabel,
+  selected,
   style,
 }: {
   children: React.ReactNode;
   onPress?: () => void;
   accessibilityLabel?: string;
+  /** Voor een kaart die een keuze is: staat hij aan? Een schermlezer zegt het dan mee. */
+  selected?: boolean;
   style?: ViewStyle;
 }) {
   if (onPress) {
@@ -20,6 +23,7 @@ export function Card({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
+        accessibilityState={selected === undefined ? undefined : { selected }}
         onPress={onPress}
         style={(state) => {
           const pressed = state.pressed;
