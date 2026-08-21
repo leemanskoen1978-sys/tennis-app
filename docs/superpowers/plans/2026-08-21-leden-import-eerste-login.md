@@ -42,6 +42,22 @@
 
 ### Task 1: Een CSV lezen
 
+> **Bijgesteld tijdens de uitvoering.** Twee kwaliteitsreviews leverden vier wijzigingen op
+> die in de code hieronder nog niet staan:
+>
+> 1. Een aanhalingsteken opent alleen een geciteerde cel als de cel tot dan toe leeg is
+>    (RFC 4180). Anders slikt één los aanhalingsteken de volgende rij op — dan verdwijnt er
+>    stil een lid.
+> 2. Het scheidingsteken wordt niet op de eerste regel bepaald, maar op wélk teken over de
+>    eerste vijf niet-lege regels het vaakst hetzelfde kolomaantal oplevert. Anders kaapt
+>    een titelregel met een komma erin de detectie.
+> 3. `\r` wordt buiten aanhalingstekens een rijeinde en blijft binnen aanhalingstekens
+>    staan — de schrijfkant van ditzelfde bestand bewaart hem daar bewust.
+> 4. **Lege rijen binnenin het bestand blijven staan**, alleen aan het eind vallen ze weg.
+>    Dat moet, want `planImport` leidt het Excel-regelnummer af uit de index: gooit de lezer
+>    een lege scheidingsregel weg, dan wijst elke foutmelding daarna naar de verkeerde rij.
+>    `parseCsv('')` geeft nog steeds `[]`.
+
 `lib/csv.ts` kan een boekingenoverzicht schrijven maar niets teruglezen. Hier komt de lezer bij. Drie dingen die Excel doet en waar een naïeve `split(',')` op stukloopt: Nederlandse Excel scheidt met een **puntkomma**, het zet een **BOM** vooraan, en een cel met een scheidingsteken erin staat tussen **aanhalingstekens**. Kopiëren-en-plakken uit Excel geeft bovendien **tabs**.
 
 **Files:**
@@ -435,6 +451,30 @@ git commit -m "feat(import): kolommen, rollen en tarieven uit een ledenbestand l
 ---
 
 ### Task 3: Het plan — nieuw, bijgewerkt, fout
+
+> **Bijgesteld tijdens de uitvoering.** De kwaliteitsreview vond één blokkerend probleem en
+> vijf gaten. Wie dit opnieuw uitvoert, bouwt meteen de bijgestelde vorm:
+>
+> 1. Het regelnummer moet het Excel-regelnummer zijn, ook met lege regels in het bestand.
+>    Zie de errata bij taak 1: `parseCsv` bewaart die rijen nu, en `planImport` slaat een
+>    rij waarvan álle cellen leeg zijn stil over — een lege scheidingsregel is geen fout.
+> 2. Namen worden vergeleken met `normalizeName` uit `lib/students.ts`, adressen met een
+>    nieuwe `normalizeEmail` in `lib/contact.ts`, en telefoonnummers op hun cijfers. Anders
+>    levert "JONAS PEETERS" tegenover "Jonas Peeters", of `0470 12 34 56` tegenover
+>    `0470123456`, een voorgestelde wijziging op die niets betekent — bij een export in
+>    kapitalen is dat élke rij.
+> 3. `ImportPlan` krijgt een vierde lijst, `waarschuwingen: ImportFout[]`: wat wel doorgaat
+>    maar de trainer beter even nakijkt. Daarin komen een naam die al in de club bestaat
+>    (`nameExists` bewaakt dat elders juist bewust) en een uurtarief bij een speler
+>    (`hourly_rate` is volgens `lib/types.ts` alleen voor een trainer).
+> 4. Twee bestaande leden met hetzelfde adres worden gemeld in plaats van dat er stil één
+>    wint. In de databank kan dat niet (`users.email` is `unique`), op de lokale opslag wel.
+> 5. Een nieuw lid wordt weggeschreven met het genormaliseerde adres, niet met de
+>    schrijfwijze uit het bestand.
+>
+> Bewust níét gedaan, en dat staat als zin in de code: meerdere redenen per regel (naam en
+> adres moeten toch eerst kloppen, en een ronde kost niets omdat er nog niets weggeschreven
+> is), en het opsplitsen van `planImport` in een aparte `leesRegel`.
 
 Het hart van de import. Eén regel om vooraf te kennen: **de rol van een bestaand lid verandert de import nooit.** `updateUser` in de provider sluit `role` met zoveel woorden uit van zijn type, en dat is met opzet — trainer word je in Beheer, bewust. Zegt het bestand iets anders dan de club, dan wordt die regel afgekeurd mét reden in plaats van half doorgevoerd.
 
@@ -1067,6 +1107,9 @@ export default function LedenImport(): React.JSX.Element {
                 bijgewerkt: plan.bijgewerkt.length,
                 fouten: plan.fouten.length,
               })}
+              {plan.waarschuwingen.length > 0
+                ? t(' — {aantal} om na te kijken', { aantal: plan.waarschuwingen.length })
+                : ''}
             </Text>
 
             {/* Een kolom die we niet thuisbrengen valt stil weg; dat hoort de trainer te
@@ -1098,6 +1141,19 @@ export default function LedenImport(): React.JSX.Element {
               </Text>
             ))}
           </Card>
+
+          {plan.waarschuwingen.length > 0 ? (
+            <Card>
+              {/* Deze regels gaan wél door. Ze staan apart van de fouten omdat ze om een
+                  oordeel van de trainer vragen — is dit dezelfde Jonas of een tweede? */}
+              <Text style={styles.waarschuwKop}>{t('Kijk deze regels even na')}</Text>
+              {plan.waarschuwingen.map((w) => (
+                <Text key={`w-${w.regel}-${w.reden}`} style={styles.waarschuwing}>
+                  {t('Regel {regel}', { regel: w.regel })}: {t(w.reden)}
+                </Text>
+              ))}
+            </Card>
+          ) : null}
 
           {plan.fouten.length > 0 ? (
             <Card>
@@ -1160,6 +1216,8 @@ const styles = StyleSheet.create({
   telling: { ...typography.h3, color: tennisColors.primary, marginBottom: spacing.sm },
   regel: { fontSize: 14, color: tennisColors.text, marginTop: spacing.xs },
   nietHerkend: { fontSize: 14, color: tennisColors.textMuted, marginBottom: spacing.sm },
+  waarschuwKop: { ...typography.h3, color: tennisColors.text },
+  waarschuwing: { fontSize: 14, color: tennisColors.textMuted, marginTop: spacing.xs },
   foutKop: { ...typography.h3, color: tennisColors.danger },
   fout: { fontSize: 14, color: tennisColors.danger, marginTop: spacing.xs },
   resultaat: { fontSize: 14, color: tennisColors.text, marginTop: spacing.md },
@@ -1622,6 +1680,14 @@ Onderaan het `EN`-object, vóór de sluitende accolade:
   'Nieuw': 'New',
   'Bijwerken': 'Update',
   'Deze regels worden overgeslagen': 'These rows are skipped',
+  'Kijk deze regels even na': 'Have a look at these rows',
+  ' — {aantal} om na te kijken': ' — {aantal} to check',
+  'Er staat al een lid met deze naam; kijk even of dit niet dezelfde persoon is.':
+    'There is already a member with this name; check whether this is the same person.',
+  'Een uurtarief hoort bij een trainer; voor een speler laat ik het weg.':
+    'An hourly rate belongs to a coach; for a player it is left out.',
+  'Er staan twee leden met dit adres in de club; los dat eerst op in Beheer.':
+    'Two members in the club share this address; sort that out in Admin first.',
   'Deze kolommen herken ik niet en komen niet mee: {koppen}':
     "I don't recognise these columns, so they are left out: {koppen}",
   'Deze kolommen staan er twee keer; ik lees alleen de eerste: {koppen}':
