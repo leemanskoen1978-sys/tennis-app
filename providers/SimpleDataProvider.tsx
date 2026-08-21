@@ -250,7 +250,17 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     if (merged !== data) {
       // Het boekje is nu ook van deze club: meteen bewaren, anders staat het er de volgende
       // keer weer niet en probeert de app het opnieuw.
-      await backend.save(data, merged);
+      //
+      // Maar het mag het opstarten niet tegenhouden. Dit is een extraatje bij het laden —
+      // een lessenboekje dat meekomt — en geen reden om iedereen op het inlogscherm te
+      // laten staan als de databank die ene schrijfactie weigert. Wat er wél binnenkwam,
+      // gaat gewoon door; de volgende start probeert het opnieuw.
+      try {
+        await backend.save(data, merged);
+      } catch (e: unknown) {
+        console.warn('Lessenboekje niet kunnen bewaren:', e);
+        return data;
+      }
     }
     return merged;
   }, [withCatalogue]);
