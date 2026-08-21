@@ -252,6 +252,30 @@ export interface StudentProgress {
   created_at?: string; // ISO — set when the entry is created (for timelines/reports)
 }
 
+/**
+ * Een opname over één speler, gemaakt tijdens een les.
+ *
+ * Een memo is nadrukkelijk géén voortgangsnotitie: hij telt nergens als notitie mee en
+ * bestaat om uitgewerkt te worden. Zodra dat gebeurt, verdwijnt hij. Juist omdat hij
+ * tijdelijk is, mag de audio hier gewoon in de rij staan — de voorraad blijft klein omdat
+ * de uitwerklijst een wérklijst is en geen archief.
+ */
+export interface Memo {
+  id: string;
+  student_id: string;
+  coach_id: string;
+  /**
+   * De les waarin hij is opgenomen — een `Booking`, niet een `Lesson`. Dat is een andere
+   * vraag dan `StudentProgress.lesson_id`, dat naar het lesmateriaal wijst. Leeg mag: een
+   * memo buiten een les om, of een memo waarvan de les intussen geschrapt is.
+   */
+  booking_id?: string;
+  /** De opname zelf: een data-URL, net als `StudentProgress.voice_memo_uri`. */
+  audio_uri: string;
+  duration_ms: number;
+  created_at: string; // ISO
+}
+
 /** How far ahead a goal looks. Three fixed horizons — the coach picks the content. */
 export type GoalHorizon = 'lessons10' | 'lessons20' | 'season';
 
