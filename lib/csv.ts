@@ -230,7 +230,7 @@ function scheidingstekenVan(text: string): Scheidingsteken {
 export function parseCsv(text: string): string[][] {
   // De BOM als escape geschreven, net als in lib/share.ts: zo blijft het in elke
   // editor één zichtbaar teken in plaats van een onzichtbaar teken in een regex.
-  const schoon = text.replace(/^﻿/, '');
+  const schoon = text.replace(/^\uFEFF/, '');
   const scheiding = scheidingstekenVan(schoon);
   const rijen: string[][] = [];
   let rij: string[] = [];

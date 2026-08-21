@@ -265,7 +265,7 @@ describe('parseCsv', () => {
   });
 
   it('haalt de BOM weg die Excel vooraan zet', () => {
-    expect(parseCsv(`${'﻿'}naam;email`)).toEqual([['naam', 'email']]);
+    expect(parseCsv('\uFEFF' + 'naam;email')).toEqual([['naam', 'email']]);
   });
 
   it('houdt een scheidingsteken binnen aanhalingstekens bij elkaar', () => {
