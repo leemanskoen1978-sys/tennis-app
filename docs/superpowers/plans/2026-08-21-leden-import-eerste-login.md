@@ -1852,3 +1852,338 @@ git commit -m "docs: leden importeren en het wachtwoordscherm staan erop"
 - **Echte `.xlsx` lezen.** Een xlsx is een zip, dus dat vraagt decompressie. "Opslaan als CSV" is één klik voor de trainer.
 - **Verwijderen via de import.** Een naam die uit het bestand valt, verdwijnt niet uit de club. Iemand wissen die lessen en een dossier heeft, is een besluit en geen bijwerking van een bestand.
 - **De rol van een bestaand lid wijzigen.** `updateUser` sluit `role` uit van zijn type, met opzet. De import keurt zo'n regel af met reden; de trainer wijzigt het in Beheer.
+
+---
+
+# Aanvulling — wachtwoord vergeten (taak 14 t/m 16)
+
+Toegevoegd na de eerste reviewronde. Spec: de aanvulling onderaan
+`docs/superpowers/specs/2026-08-21-leden-import-eerste-login-design.md`.
+
+**Waarom:** het loginscherm zegt tegen wie al een wachtwoord heeft "log gewoon in". Zonder
+uitweg is dat een doodlopende straat voor precies de persoon die die melding het vaakst
+leest — iemand die zijn wachtwoord kwijt is.
+
+**Let op bij het uitvoeren:** `providers/supabaseStore.ts`, `providers/backend.ts`,
+`providers/SimpleDataProvider.tsx` en `app/login.tsx` zijn vlak vóór deze taken door andere
+agents gewijzigd. **Lees ze in hun huidige staat** en pas de wijzigingen daarop toe; de
+regelnummers en de exacte omliggende code kunnen afwijken van wat je verwacht.
+
+---
+
+### Task 14: De onderkant van het herstel
+
+**Files:**
+- Modify: `providers/supabaseStore.ts`
+- Modify: `providers/backend.ts`
+- Modify: `providers/SimpleDataProvider.tsx`
+
+- [ ] **Step 1: `onAuthChange` geeft door wát er gebeurde**
+
+`onAuthChange` roept zijn handler nu zonder argumenten aan; het soort gebeurtenis gaat
+verloren. Precies dat soort hebben we nodig: Supabase meldt een herstellink als
+`PASSWORD_RECOVERY`.
+
+Geef de handler het soort mee. Houd het smal — geen sessie-object, alleen wat de app moet
+weten:
+
+```ts
+/** Wat er met de login gebeurde. 'herstel' is de klik op een link uit een herstelmail. */
+export type AuthGebeurtenis = 'herstel' | 'anders';
+
+export function onAuthChange(handler: (wat: AuthGebeurtenis) => void): () => void {
+  const { data } = supabase.auth.onAuthStateChange((event) => {
+    handler(event === 'PASSWORD_RECOVERY' ? 'herstel' : 'anders');
+  });
+  return () => data.subscription.unsubscribe();
+}
+```
+
+Werk het type in `providers/backend.ts` mee om, inclusief de stub van de lokale backend.
+
+- [ ] **Step 2: De twee nieuwe handelingen**
+
+In `providers/supabaseStore.ts`:
+
+```ts
+/**
+ * Een herstelmail sturen. Geeft niets terug over of dit adres bestaat — en dat is met opzet:
+ * wie een adres intypt, hoort niet te weten te komen wie er lid is van de club. Supabase
+ * houdt dezelfde regel aan en meldt een onbekend adres niet als fout.
+ *
+ * `redirectTo` moet in Supabase onder Authentication → URL Configuration bij *Redirect URLs*
+ * staan. Staat het er niet, dan weigert Supabase de link en komt de speler op een foutpagina;
+ * dat is de meest gemaakte fout bij het opzetten hiervan.
+ */
+export async function stuurHerstelmail(email: string): Promise<void> {
+  const terug = typeof window !== 'undefined' ? window.location.origin : undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: terug,
+  });
+  if (error) throw new Error(loginMessage(error.message));
+}
+
+/** Het nieuwe wachtwoord zetten. Kan alleen binnen de sessie die de herstellink opende. */
+export async function zetNieuwWachtwoord(wachtwoord: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password: wachtwoord });
+  if (error) throw new Error(loginMessage(error.message));
+}
+```
+
+Neem beide op in de `Backend`-interface in `providers/backend.ts`. De lokale backend kent geen
+wachtwoorden; laat die stubs gooien met een duidelijke melding
+(`'Wachtwoorden bestaan alleen met een databank.'`) in plaats van stil niets te doen — een
+knop die niets doet is erger dan een knop die zegt waarom.
+
+- [ ] **Step 3: De vlag in de provider**
+
+`providers/SimpleDataProvider.tsx` houdt bij dat er een herstel loopt. Zet hem op `true` als
+`onAuthChange` `'herstel'` meldt, en op `false` zodra het nieuwe wachtwoord gezet is.
+
+Exporteer uit de context: `herstelBezig: boolean`, `stuurHerstelmail(email)` en
+`zetNieuwWachtwoord(wachtwoord)`. Die laatste zet de vlag zelf uit na een gelukte wijziging.
+
+Let op de bestaande `onAuthChange`-luisteraar rond regel 268: die haalt bij elke wisseling de
+gegevens opnieuw op. Dat moet blijven gebeuren, ook bij `'herstel'` — de sessie is dan echt.
+
+- [ ] **Step 4: Controleren en committen**
+
+Run: `npx tsc --noEmit` en `npm test`
+Expected: allebei schoon; er komen geen tests bij (dit is randwerk zonder eigen regelgeving).
+
+```bash
+git add providers/supabaseStore.ts providers/backend.ts providers/SimpleDataProvider.tsx
+git commit -m "feat(login): een herstelmail sturen en een nieuw wachtwoord zetten"
+```
+
+---
+
+### Task 15: De schermen
+
+**Files:**
+- Modify: `app/login.tsx` (een vierde stand)
+- Create: `app/nieuw-wachtwoord.tsx`
+- Modify: `app/_layout.tsx` (de weg ernaartoe, en de kop)
+
+- [ ] **Step 1: De vierde stand op het loginscherm**
+
+`WachtwoordLogin` heeft de standen `inloggen`, `eerste` en `aanmelden`. Er komt `vergeten`
+bij. Die vraagt **alleen een e-mailadres** — geen wachtwoordveld — en de knop heet
+*Herstelmail sturen*.
+
+De link ernaartoe hoort in de stand `inloggen`, onder de andere twee wisselaars:
+`t('Wachtwoord vergeten?')`.
+
+Na het versturen komt er altijd dezelfde melding, of het adres nu bestaat of niet:
+
+```
+t('Als dit adres bij de club bekend is, staat er zo een mail in je mailbox.')
+```
+
+Dat is geen vaagheid maar dezelfde regel die Supabase zelf aanhoudt: wie een adres intypt,
+hoort niet te weten te komen wie er lid is. Zet die reden als zin in het commentaar, anders
+"verbetert" iemand hem later naar "dit adres kennen we niet".
+
+Toon die melding in de gelukt-kleur, niet in de foutkleur.
+
+- [ ] **Step 2: Het scherm voor het nieuwe wachtwoord**
+
+`app/nieuw-wachtwoord.tsx`. Twee wachtwoordvelden, dezelfde controle als bij de eerste keer
+inloggen — `controleerWachtwoord` uit `lib/wachtwoord.ts`, dus geen eigen regels hier.
+
+```tsx
+import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { Screen } from '../components/ui/Screen';
+import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { useSimpleData } from '../providers/SimpleDataProvider';
+import { useT } from '../lib/i18n';
+import { controleerWachtwoord } from '../lib/wachtwoord';
+import { tennisColors } from '../constants/tennis-colors';
+import { spacing, typography } from '../constants/theme';
+
+/**
+ * Kies een nieuw wachtwoord, na een klik op de link uit een herstelmail.
+ *
+ * Dit scherm bestaat apart en niet als vijfde stand op het loginscherm, omdat je hier ál
+ * ingelogd bent: de link opende een sessie. Zonder eigen scherm zou de indeling je meteen
+ * naar de hub sturen en was je de volgende keer weer buiten, zonder ooit een wachtwoord te
+ * hebben gekozen.
+ */
+export default function NieuwWachtwoord(): React.JSX.Element {
+  const t = useT();
+  const { zetNieuwWachtwoord } = useSimpleData();
+  const [wachtwoord, setWachtwoord] = useState<string>('');
+  const [herhaling, setHerhaling] = useState<string>('');
+  const [melding, setMelding] = useState<string | null>(null);
+  const [bezig, setBezig] = useState<boolean>(false);
+
+  const verstuur = async (): Promise<void> => {
+    if (bezig) return;
+    const klacht = controleerWachtwoord(wachtwoord, herhaling);
+    if (klacht) { setMelding(t(klacht)); return; }
+    setBezig(true);
+    setMelding(null);
+    try {
+      // De provider zet de herstelvlag uit; de indeling brengt je daarna vanzelf naar de hub.
+      await zetNieuwWachtwoord(wachtwoord);
+    } catch (e: unknown) {
+      setMelding(e instanceof Error ? e.message : t('Het wachtwoord instellen is mislukt.'));
+    } finally {
+      setBezig(false);
+    }
+  };
+
+  return (
+    <Screen reading>
+      <Card>
+        <Text style={styles.kop}>{t('Kies een nieuw wachtwoord')}</Text>
+        <Text style={styles.uitleg}>
+          {t('Je bent binnen via de link uit je mail. Kies hier je nieuwe wachtwoord.')}
+        </Text>
+
+        <Text style={styles.label}>{t('Nieuw wachtwoord')}</Text>
+        <TextInput
+          style={styles.input}
+          value={wachtwoord}
+          onChangeText={setWachtwoord}
+          placeholder={t('Minstens zes tekens')}
+          placeholderTextColor={tennisColors.textMuted}
+          secureTextEntry
+          autoComplete="new-password"
+        />
+
+        <Text style={styles.label}>{t('Wachtwoord nog eens')}</Text>
+        <TextInput
+          style={styles.input}
+          value={herhaling}
+          onChangeText={setHerhaling}
+          placeholder={t('Dezelfde als hierboven')}
+          placeholderTextColor={tennisColors.textMuted}
+          secureTextEntry
+          autoComplete="new-password"
+          onSubmitEditing={() => { void verstuur(); }}
+        />
+
+        {melding ? <Text style={styles.melding}>{melding}</Text> : null}
+
+        <Button
+          label={bezig ? t('Bezig…') : t('Wachtwoord opslaan')}
+          variant="primary"
+          disabled={bezig || wachtwoord.length === 0 || herhaling.length === 0}
+          onPress={() => { void verstuur(); }}
+          style={styles.knop}
+        />
+      </Card>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  kop: { ...typography.h3, color: tennisColors.text },
+  uitleg: {
+    fontSize: 14,
+    color: tennisColors.textMuted,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: tennisColors.textMuted,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  input: {
+    backgroundColor: tennisColors.background,
+    borderWidth: 1,
+    borderColor: tennisColors.border,
+    borderRadius: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    fontSize: 15,
+    color: tennisColors.text,
+  },
+  melding: { marginTop: spacing.md, fontSize: 14, color: tennisColors.danger },
+  knop: { marginTop: spacing.lg },
+});
+```
+
+- [ ] **Step 3: De weg ernaartoe**
+
+In `app/_layout.tsx`:
+
+- Zet het scherm bij de `Stack.Screen`-lijst met een titel, zoals elk ander scherm:
+  `{ name: 'nieuw-wachtwoord', title: t('Nieuw wachtwoord') }`.
+- Leid ernaartoe zolang het herstel loopt, **vóór** de bestaande controle die iemand zonder
+  login naar `/login` stuurt:
+
+```tsx
+  // Wie via een herstellink binnenkomt, ís ingelogd — maar heeft nog geen wachtwoord gekozen.
+  // Zonder deze omleiding belandt hij in de hub en staat hij de volgende keer weer buiten.
+  if (herstelBezig && segments[0] !== 'nieuw-wachtwoord') {
+    return <Redirect href="/nieuw-wachtwoord" />;
+  }
+```
+
+- Verberg de menubalken op dit scherm, net als op `login`: er valt hier niets te navigeren
+  vóór het wachtwoord gezet is.
+
+- [ ] **Step 4: Controleren en committen**
+
+Run: `npx tsc --noEmit`, `npm test` en `npx expo export --platform web`
+Expected: alle drie schoon.
+
+```bash
+git add app/login.tsx app/nieuw-wachtwoord.tsx app/_layout.tsx
+git commit -m "feat(login): wachtwoord vergeten, en een scherm om een nieuw te kiezen"
+```
+
+---
+
+### Task 16: Taal en README
+
+**Files:**
+- Modify: `lib/i18n-en.ts`
+- Modify: `README.md`
+
+- [ ] **Step 1: De Engelse kant**
+
+Verzamel elke nieuwe zin uit `app/login.tsx` en `app/nieuw-wachtwoord.tsx` die door `t('…')`
+gaat en nog niet in `lib/i18n-en.ts` staat, en vertaal ze. Leid ze uit de code af, niet uit
+dit plan — de schermen kunnen tijdens de uitvoering zijn bijgesteld.
+
+- [ ] **Step 2: De twee instellingen in Supabase**
+
+Voeg aan de Supabase-paragraaf van de README toe, in dezelfde toon als de rest:
+
+```markdown
+Zet ook **Site URL** en **Redirect URLs** goed (Authentication → URL Configuration). Het adres
+van de website hoort in die lijst te staan, anders weigert Supabase de link uit een
+herstelmail en komt je speler op een foutpagina. Dat is de meest gemaakte fout bij het
+opzetten hiervan, en je merkt hem pas als iemand zijn wachtwoord kwijt is.
+
+Reken bovendien niet op de ingebouwde mail van Supabase: die is streng gelimiteerd. Een club
+met vijftig leden hoort onder Project Settings → Authentication → SMTP zijn eigen mailserver
+in te stellen. Zonder werkende mail doen "Confirm email" en "Wachtwoord vergeten" allebei
+niets zichtbaars.
+```
+
+- [ ] **Step 3: Committen**
+
+```bash
+git add lib/i18n-en.ts README.md
+git commit -m "docs(taal): de Engelse kant van het wachtwoordherstel, en wat Supabase nodig heeft"
+```
+
+---
+
+### Wat er in deze aanvulling bewust niet in zit
+
+- **De trainer die een wachtwoord klaarzet voor een lid.** Vraagt een Edge Function met de
+  service-role sleutel, en laat een trainer tijdelijk het wachtwoord van een ander kennen.
+- **Herstel op een telefoon zonder browser.** De link opent de website; dat is dezelfde keuze
+  die `lib/share.ts` en `lib/bestand.ts` al maken.
+- **Tests.** Er komt geen nieuwe regelgeving bij: de wachtwoordcontrole is die van
+  `lib/wachtwoord.ts` en die is al getest. De rest is scherm en koppelwerk.
