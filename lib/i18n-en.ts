@@ -703,4 +703,63 @@ export const EN: Record<string, string> = {
   'Zoek een speler op naam of e-mail': 'Search a player by name or email',
   'Zoekregel wissen': 'Clear search',
   'Geen speler gevonden voor "{q}".': 'No player found for “{q}”.',
+
+  // --- leden importeren ---------------------------------------------------
+  'Leden importeren': 'Import members',
+  'Uit een Excel-lijst': 'From an Excel list',
+  'Sla je Excel-lijst op als CSV en kies hem hier. Kolommen: naam, email, rol, telefoon, uurtarief. Alleen naam en email zijn verplicht.':
+    'Save your Excel list as CSV and pick it here. Columns: naam, email, rol, telefoon, uurtarief. Only naam and email are required.',
+  'Voorbeeldbestand downloaden': 'Download a sample file',
+  'Bestand kiezen': 'Choose a file',
+  'Plak hier de kolommen uit Excel': 'Paste the columns from Excel here',
+  'naam;email;rol': 'naam;email;rol',
+  'Nakijken': 'Check',
+  'Dit gaat er gebeuren': 'This is what will happen',
+  '{nieuw} nieuw, {bijgewerkt} bijgewerkt, {fouten} fout':
+    '{nieuw} new, {bijgewerkt} updated, {fouten} skipped',
+  'Nieuw': 'New',
+  'Bijwerken': 'Update',
+  'Deze regels worden overgeslagen': 'These rows are skipped',
+  'Kijk deze regels even na': 'Have a look at these rows',
+  ' — {aantal} om na te kijken': ' — {aantal} to check',
+  'Er staat al een lid met deze naam; kijk even of dit niet dezelfde persoon is.':
+    'There is already a member with this name; check whether this is the same person.',
+  'Een uurtarief hoort bij een trainer; voor een speler laat ik het weg.':
+    'An hourly rate belongs to a coach; for a player it is left out.',
+  'Er staan twee leden met dit adres in de club; los dat eerst op in Beheer.':
+    'Two members in the club share this address; sort that out in Admin first.',
+  'Deze kolommen herken ik niet en komen niet mee: {koppen}':
+    "I don't recognise these columns, so they are left out: {koppen}",
+  'Deze kolommen staan er twee keer; ik lees alleen de eerste: {koppen}':
+    'These columns appear twice; only the first one is read: {koppen}',
+  'Regel {regel}': 'Row {regel}',
+  'Importeren': 'Import',
+  'Bezig…': 'Working…',
+  'Ander bestand': 'Another file',
+  '{toegevoegd} toegevoegd en {bijgewerkt} bijgewerkt.':
+    '{toegevoegd} added and {bijgewerkt} updated.',
+  '{toegevoegd} toegevoegd, {bijgewerkt} bijgewerkt, {mislukt} mislukt. Probeer het bestand opnieuw — wie er al staat, komt er niet dubbel bij.':
+    '{toegevoegd} added, {bijgewerkt} updated, {mislukt} failed. Try the file again — nobody already there gets added twice.',
+
+  // --- redenen waarom een regel wordt overgeslagen -------------------------
+  'Dit bestand is leeg.': 'This file is empty.',
+  'De kopregel mist de kolom "naam" of "email".':
+    'The header row is missing the "naam" or "email" column.',
+  'Geen naam ingevuld.': 'No name filled in.',
+  'Geen e-mailadres ingevuld.': 'No email address filled in.',
+  'Dit is geen geldig e-mailadres.': 'This is not a valid email address.',
+  'Staat al in de club met een andere rol; dat wijzig je in Beheer.':
+    'Already in the club with a different role; change that in Admin.',
+
+  // --- eerste keer inloggen -----------------------------------------------
+  'Eerste keer hier? Stel je wachtwoord in': 'First time here? Set your password',
+  'Ik sta nog niet bij de club': "I'm not a member yet",
+  'Wachtwoord instellen': 'Set password',
+  'Wachtwoord nog eens': 'Password again',
+  'Dezelfde als hierboven': 'The same as above',
+  'Klaar. Log in met je nieuwe wachtwoord.': 'Done. Log in with your new password.',
+  'Er bestaat al een wachtwoord voor dit adres. Log gewoon in.':
+    'This address already has a password. Just log in.',
+  'Kies een wachtwoord van minstens zes tekens.': 'Choose a password of at least six characters.',
+  'De twee wachtwoorden zijn niet gelijk.': 'The two passwords are not the same.',
 };
