@@ -6,16 +6,19 @@
 // vóór er iets weggeschreven wordt — en waarom die belofte hier te testen valt.
 
 import { isValidEmail, normalizePhone } from './contact';
+import { parseEuro } from './money';
 import type { Role, User } from './types';
-
-/** De koppen van het voorbeeldbestand, in de volgorde waarin ze daar staan. */
-export const LEDEN_KOPPEN = ['naam', 'email', 'rol', 'telefoon', 'uurtarief'] as const;
 
 /**
  * De rolnamen zoals een trainer ze schrijft. Engels staat erbij omdat een export uit deze
  * app of uit een ander systeem ze zo kan opleveren; dat is geen reden om af te keuren.
+ *
+ * `Object.create(null)` in plaats van `{}`: anders levert `ROLNAMEN['constructor']` de
+ * functie `Object` op in plaats van `undefined`, en glipt zo'n kolomwaarde ongemerkt door
+ * de `?? null` heen. Geen trainer noemt een rol zo, maar het is een gratis lek dat we niet
+ * hoeven te hebben.
  */
-const ROLNAMEN: Record<string, Role> = {
+const ROLNAMEN: Record<string, Role> = Object.assign(Object.create(null), {
   speler: 'player',
   player: 'player',
   leerling: 'player',
@@ -23,7 +26,7 @@ const ROLNAMEN: Record<string, Role> = {
   coach: 'coach',
   ouder: 'parent',
   parent: 'parent',
-};
+});
 
 /**
  * De rol uit één cel. Leeg is een speler — dat is verreweg het vaakst waar, en een club die
@@ -38,15 +41,15 @@ export function leesRol(waarde: string): Role | null {
 }
 
 /**
- * Een uurtarief uit één cel. Leeg levert `undefined` op — geen tarief is iets anders dan een
- * tarief van nul, en dat verschil is elders in de app zichtbaar (een trainer zonder tarief
- * krijgt een waarschuwing, een trainer met €0 niet). Onleesbaar levert `null`.
+ * Een uurtarief uit één cel. Leeg is geen tarief en levert `undefined` op — dat verschil is
+ * elders in de app zichtbaar (een trainer zonder tarief krijgt een waarschuwing, een trainer
+ * met €0 niet). Al de rest gaat door `parseEuro`, de ene bedragregel van de app, die ook
+ * negatief en meer dan twee decimalen tegenhoudt (een negatief tarief zou betekenen dat de
+ * club geld toelegt). Wat daar niet doorheen komt, is onleesbaar en levert `null` op.
  */
 export function leesUurtarief(waarde: string): number | undefined | null {
-  const schoon = waarde.replace(/[€\s]/g, '').replace(',', '.');
-  if (!schoon) return undefined;
-  const getal = Number(schoon);
-  return Number.isFinite(getal) ? getal : null;
+  if (!waarde.replace(/[€\s]/g, '')) return undefined;
+  return parseEuro(waarde) ?? null;
 }
 
 /** Waar staat welke kolom? De index per veld; ontbrekende optionele kolommen staan er niet in. */
@@ -58,11 +61,27 @@ export interface Kolommen {
   uurtarief?: number;
 }
 
+// Knoopt LEDEN_KOPPEN vast aan de velden van `Kolommen`: een kop die daar niet in past, is
+// een tikfout in dit bestand en geeft een compilefout in plaats van een stille breuk bij het
+// draaien van de import. Een gewone functie in plaats van `satisfies`, want Jest's
+// Babel-transform (nog) niet overweg kan met dat trefwoord.
+function metKolomvelden<T extends readonly (keyof Kolommen)[]>(koppen: T): T {
+  return koppen;
+}
+
+/** De koppen van het voorbeeldbestand, in de volgorde waarin ze daar staan. */
+export const LEDEN_KOPPEN = metKolomvelden(['naam', 'email', 'rol', 'telefoon', 'uurtarief'] as const);
+
 /**
  * Andere schrijfwijzen die we aannemen. De kop wordt eerst klein gemaakt en van spaties
- * ontdaan, dus hier staan alleen de echt andere woorden.
+ * ontdaan — ook de spaties er middenin, dus "Uur tarief" en "Telefoon nummer" komen hier
+ * ook op uit — dus hier staan alleen de echt andere woorden. Het koppelteken in 'e-mail'
+ * blijft staan: dat is geen spatie.
+ *
+ * `Object.create(null)` om dezelfde reden als bij `ROLNAMEN`: geen ingebouwde
+ * Object-eigenschap mag hier ooit een kolom lijken te zijn.
  */
-const KOPNAMEN: Record<string, keyof Kolommen> = {
+const KOPNAMEN: Record<string, keyof Kolommen> = Object.assign(Object.create(null), {
   naam: 'naam',
   name: 'naam',
   email: 'email',
@@ -76,7 +95,7 @@ const KOPNAMEN: Record<string, keyof Kolommen> = {
   phone: 'telefoon',
   uurtarief: 'uurtarief',
   tarief: 'uurtarief',
-};
+});
 
 /**
  * De kopregel lezen. `null` betekent: hier ontbreekt een kolom die we niet kunnen missen.
@@ -86,10 +105,11 @@ const KOPNAMEN: Record<string, keyof Kolommen> = {
 export function kolomIndexen(kopregel: readonly string[]): Kolommen | null {
   const gevonden: Partial<Record<keyof Kolommen, number>> = {};
   kopregel.forEach((kop, i) => {
-    const veld = KOPNAMEN[kop.trim().toLowerCase()];
+    const veld = KOPNAMEN[kop.trim().toLowerCase().replace(/\s+/g, '')];
     // De eerste kolom met deze naam wint; een tweede is een vergissing en geen overschrijving.
     if (veld && gevonden[veld] === undefined) gevonden[veld] = i;
   });
-  if (gevonden.naam === undefined || gevonden.email === undefined) return null;
-  return { ...gevonden, naam: gevonden.naam, email: gevonden.email };
+  const { naam, email } = gevonden;
+  if (naam === undefined || email === undefined) return null;
+  return { ...gevonden, naam, email };
 }
