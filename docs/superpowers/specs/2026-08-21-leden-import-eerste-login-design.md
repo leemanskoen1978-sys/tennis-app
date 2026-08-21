@@ -168,3 +168,71 @@ De schermen zelf worden met de hand doorlopen op web. `npx tsc --noEmit` en
 - **Verwijderen via de import.** Een naam die uit het bestand valt, verdwijnt niet uit de
   club. Iemand wissen die lessen en een dossier heeft, is een besluit en geen bijwerking
   van een bestand.
+
+---
+
+# Aanvulling — wachtwoord vergeten
+
+21 augustus 2026, na de eerste reviewronde.
+
+## Waarom dit erbij hoort
+
+Het ontwerp hierboven zorgt dat wie al een wachtwoord heeft, de melding *"Er bestaat al een
+wachtwoord voor dit adres. Log gewoon in."* krijgt in plaats van stil een nieuw wachtwoord te
+denken te zetten. Dat is de juiste melding — maar zonder uitweg is het een doodlopende straat
+voor precies de persoon die hem het vaakst zal lezen: iemand die vorig seizoen een wachtwoord
+koos en het kwijt is.
+
+## De weg
+
+**Op het loginscherm** komt een vierde stand: *Wachtwoord vergeten?*. Die vraagt alleen een
+e-mailadres en stuurt een herstelmail via `supabase.auth.resetPasswordForEmail`.
+
+De melding erna is **altijd dezelfde**, of dat adres nu bestaat of niet: *"Als dit adres bij de
+club bekend is, staat er zo een mail in je mailbox."* Dat is geen vaagheid maar dezelfde regel
+die Supabase zelf aanhoudt bij het aanmelden — wie een adres intypt hoort niet te weten te
+komen wie er lid is van de club.
+
+**De link in die mail** opent de app met een herstelsessie. Supabase meldt dat als de
+gebeurtenis `PASSWORD_RECOVERY`. Twee dingen staan dat vandaag in de weg:
+
+1. `onAuthChange` in `providers/supabaseStore.ts` gooit het soort gebeurtenis weg — de
+   handler krijgt niets mee. Dat moet erdoorheen.
+2. `app/_layout.tsx` stuurt iedereen mét een sessie naar de hub. Na een herstellink ís er een
+   sessie, dus die persoon belandt in de app zonder ooit een wachtwoord te kiezen — en de
+   volgende keer staat hij weer buiten.
+
+Daarom houdt de provider een vlag bij: er loopt een wachtwoordherstel. Zolang die aanstaat
+leidt de indeling naar één scherm, en pas als het nieuwe wachtwoord gezet is valt die vlag weg.
+
+**Het scherm `app/nieuw-wachtwoord.tsx`** vraagt tweemaal een nieuw wachtwoord — dezelfde
+controle als bij de eerste keer inloggen, uit `lib/wachtwoord.ts` — en zet het met
+`supabase.auth.updateUser`. Daarna is hij gewoon binnen.
+
+## Alleen op het web, net als de rest
+
+De herstellink werkt op de website. Op een telefoon vraagt dat `detectSessionInUrl` buiten web,
+een `Linking`-luisteraar en een geregistreerd schema — en dat is dezelfde afweging die dit
+project al twee keer eerder maakte (de xlsx-export in `lib/share.ts`, de bestandskiezer in
+`lib/bestand.ts`): geen pakketten en geen extra machinerie voor een weg die op de plek waar de
+club de app gebruikt allang werkt. De knop *stuurt* de mail wel vanaf een telefoon; de link
+erin opent de website, en daar gaat het verder.
+
+## Wat er in Supabase moet staan
+
+Twee dingen, en zonder allebei doet de knop niets zichtbaars:
+
+- **Mailbezorging.** Dezelfde voorwaarde als *Confirm email* uit de README. De ingebouwde
+  mail van Supabase is streng gelimiteerd; een club met vijftig leden hoort een eigen SMTP in
+  te stellen.
+- **De herstel-URL moet toegelaten zijn.** Onder Authentication → URL Configuration staan
+  *Site URL* en *Redirect URLs*. Staat het adres van de website daar niet bij, dan weigert
+  Supabase de link en komt de speler op een foutpagina. Dit is de meest gemaakte fout bij het
+  opzetten hiervan en hoort in de README.
+
+## Wat hier bewust niet in zit
+
+- **De trainer die een wachtwoord voor iemand klaarzet.** Vraagt een Edge Function met de
+  service-role sleutel, en laat een trainer tijdelijk het wachtwoord van een ander kennen.
+  Kan later; dit ontwerp staat het niet in de weg.
+- **Herstel op een telefoon zonder browser.** Zie hierboven.
