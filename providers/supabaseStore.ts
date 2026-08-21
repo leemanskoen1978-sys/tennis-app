@@ -184,10 +184,14 @@ export async function signIn(email: string, password: string): Promise<void> {
  * gebruiker met dit e-mailadres bestond.
  */
 export async function signUp(email: string, password: string, name: string): Promise<void> {
+  const schoon = name.trim();
   const { error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
-    options: { data: { name: name.trim() } },
+    // Geen naam? Dan sturen we het veld helemaal niet mee. Een lege string is voor de
+    // `coalesce` in `link_auth_user` een geldige waarde, en dan heet de nieuwe gebruiker
+    // letterlijk niets in plaats van het deel vóór het apenstaartje.
+    options: schoon ? { data: { name: schoon } } : undefined,
   });
   if (error) throw new Error(loginMessage(error.message));
 }
