@@ -12,6 +12,7 @@ import { supabaseConfigured } from '../lib/supabase';
 import { loadStore, saveStore, resetStore, type StoreData } from './mockStore';
 import {
   currentAppUserId, loadFromSupabase, onAuthChange, saveToSupabase, signIn, signOut, signUp,
+  stuurHerstelmail, zetNieuwWachtwoord, type AuthGebeurtenis,
 } from './supabaseStore';
 import type { AanmeldUitkomst } from '../lib/wachtwoord';
 
@@ -41,7 +42,11 @@ export interface Backend {
   signUp: (email: string, password: string, name: string) => Promise<AanmeldUitkomst>;
   signOut: () => Promise<void>;
   /** Roept terug als de login verandert; geeft de opzegging terug. */
-  onAuthChange: (handler: () => void) => () => void;
+  onAuthChange: (handler: (wat: AuthGebeurtenis) => void) => () => void;
+  /** Een herstelmail sturen. Geeft nooit weg of het adres bestaat. */
+  stuurHerstelmail: (email: string) => Promise<void>;
+  /** Het nieuwe wachtwoord zetten; kan alleen binnen de sessie die de herstellink opende. */
+  zetNieuwWachtwoord: (wachtwoord: string) => Promise<void>;
 }
 
 const localBackend: Backend = {
@@ -61,6 +66,12 @@ const localBackend: Backend = {
   },
   signOut: async () => {},
   onAuthChange: () => () => {},
+  stuurHerstelmail: async () => {
+    throw new Error('Wachtwoorden bestaan alleen met een databank.');
+  },
+  zetNieuwWachtwoord: async () => {
+    throw new Error('Wachtwoorden bestaan alleen met een databank.');
+  },
 };
 
 const supabaseBackend: Backend = {
@@ -78,6 +89,8 @@ const supabaseBackend: Backend = {
   signUp,
   signOut,
   onAuthChange,
+  stuurHerstelmail,
+  zetNieuwWachtwoord,
 };
 
 export const backend: Backend = supabaseConfigured ? supabaseBackend : localBackend;

@@ -67,8 +67,12 @@ export function magVersturen(
 export type AanmeldUitkomst = 'ingelogd' | 'bevestig-je-mail' | 'bestaat-al';
 
 export function aanmeldUitkomst(heeftSessie: boolean, aantalIdentiteiten: number): AanmeldUitkomst {
+  // Een sessie wint altijd: `identities` is in het `User`-type van supabase-js optioneel, en
+  // een antwoord mét sessie maar zonder dat veld zou hier anders "bestaat al" opleveren
+  // terwijl deze persoon feitelijk al binnen is.
+  if (heeftSessie) return 'ingelogd';
   if (aantalIdentiteiten === 0) return 'bestaat-al';
-  return heeftSessie ? 'ingelogd' : 'bevestig-je-mail';
+  return 'bevestig-je-mail';
 }
 
 /** Hoort bij `aanmeldUitkomst`: er bestond al een wachtwoord voor dit adres. */

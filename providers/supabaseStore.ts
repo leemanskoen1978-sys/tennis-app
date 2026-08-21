@@ -208,10 +208,43 @@ export async function signOut(): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-/** Roept terug bij elke wisseling van login, ook bij het herstellen van een oude sessie. */
-export function onAuthChange(handler: () => void): () => void {
-  const { data } = supabase.auth.onAuthStateChange(() => handler());
+/** Wat er met de login gebeurde. 'herstel' is de klik op een link uit een herstelmail. */
+export type AuthGebeurtenis = 'herstel' | 'anders';
+
+/**
+ * Roept terug bij elke wisseling van login, ook bij het herstellen van een oude sessie.
+ *
+ * Geeft het soort gebeurtenis mee — niet de sessie zelf: de app hoeft alleen te weten of
+ * dit een herstellink was, niet wat er precies in die sessie zit.
+ */
+export function onAuthChange(handler: (wat: AuthGebeurtenis) => void): () => void {
+  const { data } = supabase.auth.onAuthStateChange((event) => {
+    handler(event === 'PASSWORD_RECOVERY' ? 'herstel' : 'anders');
+  });
   return () => data.subscription.unsubscribe();
+}
+
+/**
+ * Een herstelmail sturen. Geeft niets terug over of dit adres bestaat — en dat is met opzet:
+ * wie een adres intypt, hoort niet te weten te komen wie er lid is van de club. Supabase
+ * houdt dezelfde regel aan en meldt een onbekend adres niet als fout.
+ *
+ * `redirectTo` moet in Supabase onder Authentication → URL Configuration bij *Redirect URLs*
+ * staan. Staat het er niet, dan weigert Supabase de link en komt de speler op een foutpagina;
+ * dat is de meest gemaakte fout bij het opzetten hiervan.
+ */
+export async function stuurHerstelmail(email: string): Promise<void> {
+  const terug = typeof window !== 'undefined' ? window.location.origin : undefined;
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: terug,
+  });
+  if (error) throw new Error(loginMessage(error.message));
+}
+
+/** Het nieuwe wachtwoord zetten. Kan alleen binnen de sessie die de herstellink opende. */
+export async function zetNieuwWachtwoord(wachtwoord: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password: wachtwoord });
+  if (error) throw new Error(loginMessage(error.message));
 }
 
 /**

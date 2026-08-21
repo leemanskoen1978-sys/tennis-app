@@ -69,7 +69,6 @@ describe('magVersturen', () => {
 
 describe('aanmeldUitkomst', () => {
   it('herkent een bestaand, bevestigd adres aan de lege identiteitenlijst', () => {
-    expect(aanmeldUitkomst(true, 0)).toBe('bestaat-al');
     expect(aanmeldUitkomst(false, 0)).toBe('bestaat-al');
   });
 
@@ -79,6 +78,12 @@ describe('aanmeldUitkomst', () => {
 
   it('moet nog bevestigd worden als er geen sessie meekomt (Confirm email staat aan)', () => {
     expect(aanmeldUitkomst(false, 1)).toBe('bevestig-je-mail');
+  });
+
+  it('laat de sessie winnen: `identities` is optioneel in het User-type, een sessie niet', () => {
+    // Komt er ooit een antwoord mét sessie maar zónder identiteiten, dan is deze persoon
+    // feitelijk al binnen — dat weegt zwaarder dan een lege identiteitenlijst.
+    expect(aanmeldUitkomst(true, 0)).toBe('ingelogd');
   });
 });
 

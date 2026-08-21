@@ -6,6 +6,7 @@ import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './sess
 import { newId, type StoreData } from './mockStore';
 import { backend, type AuthMode } from './backend';
 import type { AanmeldUitkomst } from '../lib/wachtwoord';
+import type { AuthGebeurtenis } from './supabaseStore';
 import { installCatalogue } from '../lib/catalogue';
 import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { upsertGoal, removeGoal } from '../lib/goals';
@@ -47,6 +48,16 @@ interface DataShape {
   signIn: (email: string, password: string) => Promise<void>;
   /** Een account aanmaken. Bestond het e-mailadres al bij de club, dan wordt het gekoppeld. */
   signUp: (email: string, password: string, name: string) => Promise<AanmeldUitkomst>;
+  /**
+   * `true` vanaf de klik op de link uit een herstelmail tot het nieuwe wachtwoord gezet is.
+   * De indeling (`app/_layout.tsx`) leest dit om iemand naar `/nieuw-wachtwoord` te sturen —
+   * die persoon ís al ingelogd, maar heeft nog geen wachtwoord gekozen.
+   */
+  herstelBezig: boolean;
+  /** Een herstelmail sturen. Geeft nooit weg of het adres bestaat bij de club. */
+  stuurHerstelmail: (email: string) => Promise<void>;
+  /** Het nieuwe wachtwoord zetten, en de herstelvlag uitzetten na een gelukte wijziging. */
+  zetNieuwWachtwoord: (wachtwoord: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   /** Het tarief en de groepstaffel van een baan bijstellen; `id`, naam en nummer blijven. */
@@ -159,6 +170,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [herstelBezig, setHerstelBezig] = useState<boolean>(false);
 
   // Elke actie leest hieruit in plaats van uit de snapshot van zijn render: twee snelle
   // klikken achter elkaar schrijven anders allebei dezelfde oude store terug en wist de
@@ -266,7 +278,10 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     };
 
     void start();
-    const unsubscribe = backend.onAuthChange(() => {
+    const unsubscribe = backend.onAuthChange((wat: AuthGebeurtenis) => {
+      // De sessie van een herstellink is een echte sessie: gewoon meenemen in het ophalen
+      // hieronder, net als elke andere wisseling. Alleen de vlag hierboven is nieuw.
+      if (wat === 'herstel') setHerstelBezig(true);
       void start();
     });
 
@@ -291,6 +306,19 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
     setError(null);
     return backend.signUp(email, password, name);
+  }, []);
+
+  const stuurHerstelmail = useCallback(async (email: string) => {
+    setError(null);
+    await backend.stuurHerstelmail(email);
+  }, []);
+
+  const zetNieuwWachtwoord = useCallback(async (wachtwoord: string) => {
+    setError(null);
+    await backend.zetNieuwWachtwoord(wachtwoord);
+    // Gelukt: de vlag mag weer uit, anders blijft de indeling deze gebruiker naar
+    // /nieuw-wachtwoord sturen terwijl hij net een wachtwoord koos.
+    setHerstelBezig(false);
   }, []);
 
   const logout = useCallback(async () => {
@@ -738,6 +766,9 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     login,
     signIn,
     signUp,
+    herstelBezig,
+    stuurHerstelmail,
+    zetNieuwWachtwoord,
     logout,
     refresh,
     updateCourt,
@@ -770,7 +801,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     saveSettings,
     emergencyCleanup,
   }), [
-    store, currentUser, loading, error, clearError, login, signIn, signUp, logout, refresh,
+    store, currentUser, loading, error, clearError, login, signIn, signUp,
+    herstelBezig, stuurHerstelmail, zetNieuwWachtwoord, logout, refresh,
     updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
     updateBooking, deleteBooking, approveBooking, rejectBooking,
     setParticipants, setPaymentSplit,
