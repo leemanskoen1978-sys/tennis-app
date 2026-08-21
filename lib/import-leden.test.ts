@@ -285,11 +285,36 @@ describe('planImport', () => {
     const plan = planImport([
       kop,
       ['Jonas', 'jonas@club.be', '', '', ''],
-      ['', '', '', '', ''],
+      ['Krom', '', '', '', ''],
       ['Sofie', 'sofie@club.be', '', '', ''],
     ], []);
     expect(plan.nieuw).toHaveLength(2);
     expect(plan.fouten).toHaveLength(1);
+  });
+
+  it('slaat een volledig lege regel stil over — een scheidingsregel is geen vergissing', () => {
+    const plan = planImport([
+      kop,
+      ['Jonas', 'jonas@club.be', '', '', ''],
+      ['', '', '', '', ''],
+      ['Sofie', 'sofie@club.be', '', '', ''],
+    ], []);
+    expect(plan.nieuw).toHaveLength(2);
+    expect(plan.fouten).toEqual([]);
+  });
+
+  it('geeft het regelnummer van de trainer, ook als er een lege regel voor stond', () => {
+    // De lege regel op regel 3 mag het foutnummer van de kromme rij erna niet naar
+    // beneden schuiven: dat zou naar de verkeerde regel in Excel wijzen.
+    const plan = planImport([
+      kop,
+      ['Jonas', 'jonas@club.be', '', '', ''],
+      ['', '', '', '', ''],
+      ['Zonder adres', '', '', '', ''],
+    ], []);
+    expect(plan.fouten).toEqual([
+      { regel: 4, reden: 'Geen e-mailadres ingevuld.' },
+    ]);
   });
 
   it('zegt het als de kopregel een verplichte kolom mist', () => {
@@ -313,6 +338,78 @@ describe('planImport', () => {
   it('zegt het als het bestand leeg is', () => {
     expect(planImport([], []).fouten).toEqual([
       { regel: 1, reden: 'Dit bestand is leeg.' },
+    ]);
+  });
+
+  it('ziet een naam die alleen in hoofdletters verschilt niet als een wijziging', () => {
+    const bestaande = [lid('u1', 'jonas@club.be', { name: 'Jonas Peeters' })];
+    const plan = planImport([kop, ['JONAS PEETERS', 'jonas@club.be', 'speler', '', '']], bestaande);
+    expect(plan.bijgewerkt).toEqual([]);
+  });
+
+  it('ziet twee schrijfwijzen van hetzelfde telefoonnummer niet als een wijziging', () => {
+    const bestaande = [lid('u1', 'jonas@club.be', { phone: '0470123456' })];
+    const plan = planImport(
+      [kop, ['Bestaand', 'jonas@club.be', 'speler', '0470 12 34 56', '']],
+      bestaande,
+    );
+    expect(plan.bijgewerkt).toEqual([]);
+  });
+
+  it('waarschuwt voor een nieuw lid met dezelfde naam als een bestaand lid, maar weigert het niet', () => {
+    const bestaande = [lid('u1', 'jonas1@club.be', { name: 'Jonas Peeters' })];
+    const plan = planImport(
+      [kop, ['Jonas Peeters', 'jonas2@club.be', 'speler', '', '']],
+      bestaande,
+    );
+    expect(plan.nieuw).toEqual([
+      { name: 'Jonas Peeters', email: 'jonas2@club.be', role: 'player' },
+    ]);
+    expect(plan.fouten).toEqual([]);
+    expect(plan.waarschuwingen).toEqual([
+      { regel: 2, reden: 'Er staat al een lid met deze naam; kijk even of dit niet dezelfde persoon is.' },
+    ]);
+  });
+
+  it('weigert een adres dat in de club dubbel voorkomt, in plaats van er stilletjes één te kiezen', () => {
+    const bestaande = [
+      lid('u1', 'jonas@club.be', { name: 'Jonas Eén' }),
+      lid('u2', 'jonas@club.be', { name: 'Jonas Twee' }),
+    ];
+    const plan = planImport([kop, ['Jonas', 'jonas@club.be', 'speler', '', '']], bestaande);
+    expect(plan.nieuw).toEqual([]);
+    expect(plan.bijgewerkt).toEqual([]);
+    expect(plan.fouten).toEqual([
+      { regel: 2, reden: 'Er staan twee leden met dit adres in de club; los dat eerst op in Beheer.' },
+    ]);
+  });
+
+  it('neemt een uurtarief niet mee bij een speler, en waarschuwt dat het wegvalt', () => {
+    const plan = planImport([kop, ['Jonas', 'jonas@club.be', 'speler', '', '45']], []);
+    expect(plan.nieuw).toEqual([
+      { name: 'Jonas', email: 'jonas@club.be', role: 'player' },
+    ]);
+    expect(plan.waarschuwingen).toEqual([
+      { regel: 2, reden: 'Een uurtarief hoort bij een trainer; voor een speler laat ik het weg.' },
+    ]);
+  });
+
+  it('schrijft het adres van een nieuw lid genormaliseerd weg, niet zoals het bestand het typte', () => {
+    const plan = planImport([kop, ['Jonas', 'JONAS@Club.be', 'speler', '', '']], []);
+    expect(plan.nieuw[0].email).toBe('jonas@club.be');
+  });
+
+  it('reserveert een adres niet voor een rij die zelf al afgekeurd werd', () => {
+    // De eerste rij strandt op de rol en telt dus niet als "dit adres is al gezien" —
+    // de tweede rij met hetzelfde adres komt daardoor gewoon door als nieuw.
+    const plan = planImport([
+      kop,
+      ['Jonas', 'jonas@club.be', 'hoofdtrainer', '', ''],
+      ['Jonas', 'jonas@club.be', 'speler', '', ''],
+    ], []);
+    expect(plan.fouten).toHaveLength(1);
+    expect(plan.nieuw).toEqual([
+      { name: 'Jonas', email: 'jonas@club.be', role: 'player' },
     ]);
   });
 });

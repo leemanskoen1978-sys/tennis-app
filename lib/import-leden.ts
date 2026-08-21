@@ -5,8 +5,9 @@
 // een plan terug van wat er zou gebeuren. Dat is waarom de trainer het resultaat kan zien
 // vóór er iets weggeschreven wordt — en waarom die belofte hier te testen valt.
 
-import { isValidEmail, normalizePhone } from './contact';
+import { isValidEmail, normalizeEmail, normalizePhone, normalizePhoneDigits } from './contact';
 import { parseEuro } from './money';
+import { nameExists, normalizeName } from './students';
 import type { Role, User } from './types';
 
 /**
@@ -192,24 +193,40 @@ export interface ImportPlan {
    * bericht dan `nietHerkend`: "die kolom hebben we al" tegenover "die ken ik niet".
    */
   dubbel: string[];
-}
-
-/** Adressen vergelijken zoals de databank het doet: hoofdletterongevoelig. */
-function sleutel(email: string): string {
-  return email.trim().toLowerCase();
+  /**
+   * Wat wel doorgaat maar de trainer beter even kan nakijken. Anders dan `fouten`: een
+   * waarschuwing houdt de regel niet tegen — het plan neemt hem gewoon op in `nieuw`.
+   */
+  waarschuwingen: ImportFout[];
 }
 
 /**
  * Wat verandert dit bestand aan een bestaand lid?
  *
- * Alleen velden die in het bestand ingevuld zijn én iets anders zeggen dan wat er staat.
- * Een lege cel betekent "hier weet ik niets van" en nooit "maak dit leeg" — anders wist een
- * bestand met alleen namen erin alle telefoonnummers van de club.
+ * Alleen velden die in het bestand ingevuld zijn én, na normalisatie, iets anders zeggen dan
+ * wat er al staat: "JONAS PEETERS" tegenover "Jonas Peeters" is dezelfde naam in een andere
+ * schrijfwijze, en "0470 12 34 56" tegenover "0470123456" hetzelfde nummer — vergelijk je
+ * letterlijk, dan is bij een export in hoofdletters ineens élke rij "gewijzigd" en verzuipt
+ * de ene échte wijziging in de ruis. Blijft er een échte wijziging over, dan is de
+ * schrijfwijze uit het bestand de voorgestelde waarde. Een lege cel betekent "hier weet ik
+ * niets van" en nooit "maak dit leeg" — anders wist een bestand met alleen namen erin alle
+ * telefoonnummers van de club.
+ *
+ * `name`, `phone` en `hourly_rate` zijn de enige velden die uit een importbestand kunnen
+ * komen — zie `Kolommen` hierboven. Breidt een latere taak `Kolommen` uit met een nieuw
+ * veld, dan hoort deze functie mee te groeien.
  */
 function verschillen(bestaand: User, regel: Omit<User, 'id'>): Partial<Omit<User, 'id' | 'role'>> {
   const wijzigingen: Partial<Omit<User, 'id' | 'role'>> = {};
-  if (regel.name && regel.name !== bestaand.name) wijzigingen.name = regel.name;
-  if (regel.phone && regel.phone !== bestaand.phone) wijzigingen.phone = regel.phone;
+  if (regel.name && normalizeName(regel.name) !== normalizeName(bestaand.name)) {
+    wijzigingen.name = regel.name;
+  }
+  if (
+    regel.phone
+    && normalizePhoneDigits(regel.phone) !== normalizePhoneDigits(bestaand.phone ?? '')
+  ) {
+    wijzigingen.phone = regel.phone;
+  }
   if (regel.hourly_rate !== undefined && regel.hourly_rate !== bestaand.hourly_rate) {
     wijzigingen.hourly_rate = regel.hourly_rate;
   }
@@ -225,7 +242,7 @@ export function planImport(
   bestaande: readonly User[],
 ): ImportPlan {
   const plan: ImportPlan = {
-    nieuw: [], bijgewerkt: [], fouten: [], nietHerkend: [], dubbel: [],
+    nieuw: [], bijgewerkt: [], fouten: [], nietHerkend: [], dubbel: [], waarschuwingen: [],
   };
   if (rijen.length === 0) {
     plan.fouten.push({ regel: 1, reden: 'Dit bestand is leeg.' });
@@ -243,7 +260,16 @@ export function planImport(
     return plan;
   }
 
-  const bekend = new Map(bestaande.map((u) => [sleutel(u.email), u]));
+  // Bestaande leden per adres, mét hun aantal: een lokale opslag kan (anders dan de databank,
+  // waar `users.email` `unique` is) twee leden met hetzelfde adres bevatten. `new Map(...)`
+  // zou daar stilzwijgend de laatste van laten winnen — een import mag zoiets niet zomaar
+  // negeren, en meldt het in plaats daarvan als fout op de regel die het treft.
+  const bekend = new Map<string, User[]>();
+  for (const u of bestaande) {
+    const k = normalizeEmail(u.email);
+    const lijst = bekend.get(k);
+    if (lijst) lijst.push(u); else bekend.set(k, [u]);
+  }
   // Waar in het bestand we een adres eerder zagen — voor de melding "staat al op regel 2".
   const gezien = new Map<string, number>();
 
@@ -253,6 +279,11 @@ export function planImport(
     const cel = (index: number | undefined): string =>
       index === undefined ? '' : (rij[index] ?? '').trim();
 
+    // Een rij waarvan alle cellen leeg zijn, is geen vergissing: een trainer zet weleens
+    // een lege scheidingsregel tussen twee groepen in zijn bestand. Zo'n regel slaan we
+    // stil over, in plaats van er een foutmelding aan te hangen.
+    if (rij.every((c) => !c || !c.trim())) continue;
+
     const naam = cel(kolommen.naam);
     const email = cel(kolommen.email);
     if (!naam) { plan.fouten.push({ regel, reden: 'Geen naam ingevuld.' }); continue; }
@@ -261,8 +292,9 @@ export function planImport(
       plan.fouten.push({ regel, reden: 'Dit is geen geldig e-mailadres.' });
       continue;
     }
+    const key = normalizeEmail(email);
 
-    const eerder = gezien.get(sleutel(email));
+    const eerder = gezien.get(key);
     if (eerder !== undefined) {
       plan.fouten.push({
         regel,
@@ -288,17 +320,48 @@ export function planImport(
       continue;
     }
 
-    gezien.set(sleutel(email), regel);
+    // Pas hier, en niet vóór de controles hierboven, geldt een adres als "gezien": een rij
+    // die op zijn rol of tarief strandt telt niet mee, en een latere rij met hetzelfde adres
+    // komt dan gewoon door als nieuw — de eerste poging is immers nooit doorgegaan.
+    gezien.set(key, regel);
+
+    if (hourly_rate !== undefined && role !== 'coach') {
+      plan.waarschuwingen.push({
+        regel,
+        reden: 'Een uurtarief hoort bij een trainer; voor een speler laat ik het weg.',
+      });
+    }
 
     // Een leeg optioneel veld hoort niet als sleutel met `undefined` in het object te staan:
     // dat is het verschil tussen "niet ingevuld" en "leeggemaakt", en de tests zien het.
-    const lid: Omit<User, 'id'> = { name: naam, email, role };
+    // Het adres komt genormaliseerd binnen: zo niet, dan komt "JONAS@Club.be" in willekeurige
+    // kapitalisatie in de databank terecht, en mist elke latere opzoeker die zelf niet
+    // normaliseert (een Supabase `eq('email', …)`, de koppeling met een login) dit lid.
+    const lid: Omit<User, 'id'> = { name: naam, email: key, role };
     const phone = normalizePhone(cel(kolommen.telefoon));
     if (phone) lid.phone = phone;
-    if (hourly_rate !== undefined) lid.hourly_rate = hourly_rate;
+    if (hourly_rate !== undefined && role === 'coach') lid.hourly_rate = hourly_rate;
 
-    const bestaandLid = bekend.get(sleutel(email));
+    const bestaandeMetDitAdres = bekend.get(key);
+    if (bestaandeMetDitAdres && bestaandeMetDitAdres.length > 1) {
+      plan.fouten.push({
+        regel,
+        reden: 'Er staan twee leden met dit adres in de club; los dat eerst op in Beheer.',
+      });
+      continue;
+    }
+    const bestaandLid = bestaandeMetDitAdres?.[0];
+
     if (!bestaandLid) {
+      // Twee echte naamgenoten kunnen bestaan — dat hard weigeren zou te streng zijn — maar
+      // in elke latere keuzelijst zijn ze niet meer uit elkaar te houden, dus de trainer
+      // krijgt het te zien vóór hij bevestigt, net als bij `canCreateName` in lib/students.
+      if (nameExists(bestaande, naam)) {
+        plan.waarschuwingen.push({
+          regel,
+          reden: 'Er staat al een lid met deze naam; kijk even of dit niet dezelfde persoon is.',
+        });
+      }
       plan.nieuw.push(lid);
       continue;
     }
