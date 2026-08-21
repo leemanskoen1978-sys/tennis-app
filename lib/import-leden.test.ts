@@ -69,6 +69,7 @@ describe('leesKopregel', () => {
     expect(leesKopregel(['Email', 'NAAM'])).toStrictEqual({
       kolommen: { naam: 1, email: 0 },
       nietHerkend: [],
+      dubbel: [],
     });
   });
 
@@ -76,6 +77,7 @@ describe('leesKopregel', () => {
     expect(leesKopregel(['naam', 'e-mail', 'gsm'])).toStrictEqual({
       kolommen: { naam: 0, email: 1, telefoon: 2 },
       nietHerkend: [],
+      dubbel: [],
     });
   });
 
@@ -83,18 +85,51 @@ describe('leesKopregel', () => {
     expect(leesKopregel(['naam', 'E mail', 'Uur tarief', 'Telefoon nummer'])).toStrictEqual({
       kolommen: { naam: 0, email: 1, uurtarief: 2, telefoon: 3 },
       nietHerkend: [],
+      dubbel: [],
     });
   });
 
-  it('geeft null als een verplichte kolom ontbreekt', () => {
-    expect(leesKopregel(['naam', 'telefoon'])).toBeNull();
-    expect(leesKopregel(['email'])).toBeNull();
+  it('neemt de Belgische schrijfwijze "e-mailadres" ook aan', () => {
+    expect(leesKopregel(['naam', 'E-mailadres'])).toStrictEqual({
+      kolommen: { naam: 0, email: 1 },
+      nietHerkend: [],
+      dubbel: [],
+    });
   });
 
-  it('laat de eerste kolom winnen als een naam dubbel voorkomt', () => {
+  it('geeft kolommen: null als een verplichte kolom ontbreekt, maar behoudt wat wél gezien is', () => {
+    expect(leesKopregel(['naam', 'telefoon'])).toStrictEqual({
+      kolommen: null,
+      nietHerkend: [],
+      dubbel: [],
+    });
+    expect(leesKopregel(['email'])).toStrictEqual({
+      kolommen: null,
+      nietHerkend: [],
+      dubbel: [],
+    });
+  });
+
+  it('geeft de niet-herkende koppen ook mee als de verplichte kolom ontbreekt — juist dan is het nuttig', () => {
+    expect(leesKopregel(['Naam', 'E-mailadres', 'Tarief/uur'])).toStrictEqual({
+      // 'E-mailadres' is met punt 1 een herkende schrijfwijze geworden, dus dit voorbeeld
+      // ontbreekt hier niet aan email — de kernvraag is dat nietHerkend niet verdwijnt.
+      kolommen: { naam: 0, email: 1 },
+      nietHerkend: ['Tarief/uur'],
+      dubbel: [],
+    });
+    expect(leesKopregel(['Naam', 'Tarief/uur'])).toStrictEqual({
+      kolommen: null,
+      nietHerkend: ['Tarief/uur'],
+      dubbel: [],
+    });
+  });
+
+  it('laat de eerste kolom winnen als een naam dubbel voorkomt, en meldt de tweede apart', () => {
     expect(leesKopregel(['naam', 'email', 'e-mail'])).toStrictEqual({
       kolommen: { naam: 0, email: 1 },
       nietHerkend: [],
+      dubbel: ['e-mail'],
     });
   });
 
@@ -102,6 +137,7 @@ describe('leesKopregel', () => {
     expect(leesKopregel(['naam', '', 'email'])).toStrictEqual({
       kolommen: { naam: 0, email: 2 },
       nietHerkend: [],
+      dubbel: [],
     });
   });
 
@@ -109,13 +145,15 @@ describe('leesKopregel', () => {
     expect(leesKopregel([...LEDEN_KOPPEN])).toStrictEqual({
       kolommen: { naam: 0, email: 1, rol: 2, telefoon: 3, uurtarief: 4 },
       nietHerkend: [],
+      dubbel: [],
     });
   });
 
-  it('geeft een niet-herkende kop terug zoals hij in het bestand staat', () => {
-    expect(leesKopregel(['naam', 'email', 'Tarief/uur'])).toStrictEqual({
+  it('geeft een niet-herkende kop terug zoals hij in het bestand staat, buitenste spaties eraf', () => {
+    expect(leesKopregel(['naam', 'email', '  Tarief/uur  '])).toStrictEqual({
       kolommen: { naam: 0, email: 1 },
       nietHerkend: ['Tarief/uur'],
+      dubbel: [],
     });
   });
 
@@ -123,6 +161,7 @@ describe('leesKopregel', () => {
     expect(leesKopregel(['naam', 'email', '', '  '])).toStrictEqual({
       kolommen: { naam: 0, email: 1 },
       nietHerkend: [],
+      dubbel: [],
     });
   });
 });
