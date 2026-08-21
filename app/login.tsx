@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect } from 'expo-router';
@@ -11,7 +11,10 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { useT, type Translate } from '../lib/i18n';
-import { controleerWachtwoord, gaatOverEenBestaandAccount } from '../lib/wachtwoord';
+import {
+  controleerWachtwoord, gaatOverEenBestaandAccount, magVersturen, aanmeldMelding,
+  BESTAAT_AL_MELDING, type Stand,
+} from '../lib/wachtwoord';
 
 type Role = 'player' | 'coach' | 'parent';
 
@@ -42,9 +45,12 @@ function roleBadgeProps(t: Translate, role: string): { label: string; color?: st
  * een wachtwoord. "Maak een account aan" is voor hem een leugen en "eerste keer hier" niet.
  * Onder water is het hetzelfde: `signUp` maakt de login, en de trigger `link_auth_user` in
  * de databank hangt hem aan de rij met datzelfde adres.
+ *
+ * `signUp` gooit geen fout meer voor een bestaand adres — dat zou verklappen wie er al lid
+ * is — maar geeft de uitkomst terug (`lib/wachtwoord.ts: aanmeldUitkomst`). Dit scherm kiest
+ * daarop dezelfde melding voor "eerste keer hier" én "ik sta nog niet bij de club", zodat
+ * wie de verkeerde knop koos niet een ander antwoord krijgt dan wie de juiste koos.
  */
-type Stand = 'inloggen' | 'eerste' | 'aanmelden';
-
 function WachtwoordLogin(): React.JSX.Element {
   const t = useT();
   const { signIn, signUp } = useSimpleData();
@@ -53,12 +59,14 @@ function WachtwoordLogin(): React.JSX.Element {
   const [wachtwoord, setWachtwoord] = useState<string>('');
   const [herhaling, setHerhaling] = useState<string>('');
   const [naam, setNaam] = useState<string>('');
-  const [melding, setMelding] = useState<string | null>(null);
+  const [melding, setMelding] = useState<{ tekst: string; soort: 'fout' | 'goed' } | null>(null);
   const [bezig, setBezig] = useState<boolean>(false);
+  // Naast `bezig` (voor de knop): twee Enters vlak na elkaar zien allebei nog de oude
+  // `bezig`-state uit de closure vóór React hem bijwerkt. Deze ref is meteen up-to-date.
+  const bezigRef = useRef<boolean>(false);
+  const herhalingRef = useRef<TextInput>(null);
 
-  const klaar = email.trim().length > 0 && wachtwoord.length > 0
-    && (stand !== 'aanmelden' || naam.trim().length > 0)
-    && (stand !== 'eerste' || herhaling.length > 0);
+  const klaar = magVersturen(stand, { email, wachtwoord, herhaling, naam });
 
   const wissel = (naarStand: Stand): void => {
     setStand(naarStand);
@@ -67,40 +75,47 @@ function WachtwoordLogin(): React.JSX.Element {
   };
 
   const verstuur = async (): Promise<void> => {
-    if (!klaar || bezig) return;
+    if (!klaar || bezigRef.current) return;
     setMelding(null);
 
     if (stand === 'eerste') {
       const klacht = controleerWachtwoord(wachtwoord, herhaling);
-      if (klacht) { setMelding(t(klacht)); return; }
+      if (klacht) { setMelding({ tekst: t(klacht), soort: 'fout' }); return; }
     }
 
+    bezigRef.current = true;
     setBezig(true);
     try {
       if (stand === 'inloggen') {
         await signIn(email, wachtwoord);
-      } else if (stand === 'eerste') {
-        // Geen naam: die staat al in de ledenlijst en hoort van de trainer te blijven.
-        // Is dit adres onbekend, dan valt de databank terug op het deel vóór het apenstaartje.
-        await signUp(email, wachtwoord, '');
-        setMelding(t('Klaar. Log in met je nieuwe wachtwoord.'));
-        setStand('inloggen');
       } else {
-        await signUp(email, wachtwoord, naam);
-        // Staat "bevestig je e-mailadres" aan in Supabase, dan gebeurt er nu nog niets
-        // zichtbaars; zonder dit bericht lijkt de knop kapot.
-        setMelding(t('Account aangemaakt. Kijk in je mailbox als er om bevestiging gevraagd wordt.'));
+        // Geen naam bij "eerste": die staat al in de ledenlijst en hoort van de trainer te
+        // blijven. Is dit adres onbekend, dan valt de databank terug op het deel vóór het
+        // apenstaartje.
+        const uitkomst = await signUp(email, wachtwoord, stand === 'eerste' ? '' : naam);
+        const tekst = aanmeldMelding(uitkomst);
+        if (tekst) setMelding({ tekst: t(tekst), soort: 'goed' });
+        if (uitkomst === 'bestaat-al') setStand('inloggen');
+        // Geen sessie nodig om verder te komen ("bevestig-je-mail"/"bestaat-al"): het
+        // wachtwoord blijft leeg staan, anders levert nog eens klikken een tweede mail op.
+        setWachtwoord('');
+        setHerhaling('');
       }
     } catch (e: unknown) {
       const ruw = e instanceof Error ? e.message : '';
       // De belangrijkste fout van dit scherm: iemand die vorig seizoen al een wachtwoord
-      // koos en dat vergeten is. Die hoort geen Engelse databankmelding te lezen.
-      setMelding(
-        stand !== 'inloggen' && gaatOverEenBestaandAccount(ruw)
-          ? t('Er bestaat al een wachtwoord voor dit adres. Log gewoon in.')
-          : (ruw || t('Inloggen mislukt.')),
-      );
+      // koos en dat vergeten is. Die hoort geen Engelse databankmelding te lezen. Dit is een
+      // vangnet: normaal meldt `signUp` dit via de uitkomst hierboven, niet via een fout.
+      if (stand !== 'inloggen' && gaatOverEenBestaandAccount(ruw)) {
+        setMelding({ tekst: t(BESTAAT_AL_MELDING), soort: 'goed' });
+        setStand('inloggen');
+        setWachtwoord('');
+        setHerhaling('');
+      } else {
+        setMelding({ tekst: ruw || t('Inloggen mislukt.'), soort: 'fout' });
+      }
     } finally {
+      bezigRef.current = false;
       setBezig(false);
     }
   };
@@ -148,7 +163,13 @@ function WachtwoordLogin(): React.JSX.Element {
           secureTextEntry
           autoComplete={stand === 'inloggen' ? 'current-password' : 'new-password'}
           onSubmitEditing={() => {
-            void verstuur();
+            // Bij "eerste" staat de herhaling nog leeg: Enter springt daarheen in plaats
+            // van stil niets te doen (de knop is dan nog grijs, zonder dat te verklaren).
+            if (stand === 'eerste') {
+              herhalingRef.current?.focus();
+            } else {
+              void verstuur();
+            }
           }}
         />
 
@@ -157,6 +178,7 @@ function WachtwoordLogin(): React.JSX.Element {
             {/* Twee keer, want een typefout hier sluit je buiten zonder weg terug. */}
             <Text style={styles.label}>{t('Wachtwoord nog eens')}</Text>
             <TextInput
+              ref={herhalingRef}
               style={styles.input}
               value={herhaling}
               onChangeText={setHerhaling}
@@ -171,7 +193,11 @@ function WachtwoordLogin(): React.JSX.Element {
           </>
         ) : null}
 
-        {melding ? <Text style={styles.melding}>{melding}</Text> : null}
+        {melding ? (
+          <Text style={melding.soort === 'fout' ? styles.melding : styles.meldingGoed}>
+            {melding.tekst}
+          </Text>
+        ) : null}
 
         <Button
           label={knopLabel}
@@ -397,6 +423,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     fontSize: 14,
     color: tennisColors.danger,
+  },
+  // Zelfde plek als `melding`, maar in het groen: "Bijna klaar, kijk in je mailbox" is geen
+  // fout, en hoort niet naast een knop met "Inloggen" te lezen als een mislukking.
+  meldingGoed: {
+    marginTop: spacing.md,
+    fontSize: 14,
+    color: tennisColors.success,
+    fontWeight: '600',
   },
   knop: { marginTop: spacing.lg },
   wissel: {

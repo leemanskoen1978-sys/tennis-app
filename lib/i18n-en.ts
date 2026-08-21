@@ -326,8 +326,6 @@ export const EN: Record<string, string> = {
   'Ik heb nog geen account': 'I do not have an account yet',
   'Nog geen account? Meld je aan': 'No account yet? Sign up',
   'Inloggen mislukt.': 'Log in failed.',
-  'Account aangemaakt. Kijk in je mailbox als er om bevestiging gevraagd wordt.':
-    'Account created. Check your inbox if confirmation is requested.',
   'Voor- en achternaam': 'First and last name',
   'Minstens zes tekens': 'At least six characters',
   'jij@voorbeeld.be': 'you@example.com',
@@ -757,7 +755,8 @@ export const EN: Record<string, string> = {
   'Wachtwoord instellen': 'Set password',
   'Wachtwoord nog eens': 'Password again',
   'Dezelfde als hierboven': 'The same as above',
-  'Klaar. Log in met je nieuwe wachtwoord.': 'Done. Log in with your new password.',
+  'Bijna klaar. Bevestig eerst de mail die we net gestuurd hebben.':
+    'Almost there. Confirm the email we just sent you first.',
   'Er bestaat al een wachtwoord voor dit adres. Log gewoon in.':
     'This address already has a password. Just log in.',
   'Kies een wachtwoord van minstens zes tekens.': 'Choose a password of at least six characters.',
