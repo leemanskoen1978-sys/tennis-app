@@ -16,10 +16,6 @@ import {
   BESTAAT_AL_MELDING, type Stand,
 } from '../lib/wachtwoord';
 
-/** De vier standen van het loginscherm; 'vergeten' bestaat alleen op het scherm zelf (een
- *  e-mailadres versturen kent geen "klaar om te versturen"-regel die getest hoeft te worden). */
-type SchermStand = Stand | 'vergeten';
-
 type Role = 'player' | 'coach' | 'parent';
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -58,7 +54,7 @@ function roleBadgeProps(t: Translate, role: string): { label: string; color?: st
 function WachtwoordLogin(): React.JSX.Element {
   const t = useT();
   const { signIn, signUp, stuurHerstelmail } = useSimpleData();
-  const [stand, setStand] = useState<SchermStand>('inloggen');
+  const [stand, setStand] = useState<Stand>('inloggen');
   const [email, setEmail] = useState<string>('');
   const [wachtwoord, setWachtwoord] = useState<string>('');
   const [herhaling, setHerhaling] = useState<string>('');
@@ -70,15 +66,12 @@ function WachtwoordLogin(): React.JSX.Element {
   const bezigRef = useRef<boolean>(false);
   const herhalingRef = useRef<TextInput>(null);
 
-  // "Vergeten" vraagt alleen een e-mailadres; de wachtwoordregels van `magVersturen` gaan
-  // daar niet over.
-  const klaar = stand === 'vergeten'
-    ? email.trim().length > 0
-    : magVersturen(stand, { email, wachtwoord, herhaling, naam });
+  const klaar = magVersturen(stand, { email, wachtwoord, herhaling, naam });
 
-  const wissel = (naarStand: SchermStand): void => {
+  const wissel = (naarStand: Stand): void => {
     setStand(naarStand);
     setMelding(null);
+    setWachtwoord('');
     setHerhaling('');
   };
 
@@ -96,6 +89,13 @@ function WachtwoordLogin(): React.JSX.Element {
       setBezig(true);
       try {
         await stuurHerstelmail(email);
+        // Dezelfde melding of het adres nu bestaat of niet: dat is geen vaagheid maar
+        // dezelfde regel die Supabase zelf aanhoudt. Wie een adres intypt, hoort niet te
+        // weten te komen wie er lid is van de club.
+        setMelding({
+          tekst: t('Als dit adres bij de club bekend is, staat er zo een mail in je mailbox.'),
+          soort: 'goed',
+        });
       } catch (e: unknown) {
         // Ook een technische misser (geen netwerk, te vaak geprobeerd) krijgt hier zijn
         // eigen melding — alleen "bestaat dit adres" blijft verborgen, niet elke fout.
@@ -103,19 +103,10 @@ function WachtwoordLogin(): React.JSX.Element {
           tekst: e instanceof Error ? t(e.message) : t('Versturen is mislukt.'),
           soort: 'fout',
         });
+      } finally {
         bezigRef.current = false;
         setBezig(false);
-        return;
       }
-      bezigRef.current = false;
-      setBezig(false);
-      // Dezelfde melding of het adres nu bestaat of niet: dat is geen vaagheid maar dezelfde
-      // regel die Supabase zelf aanhoudt. Wie een adres intypt, hoort niet te weten te komen
-      // wie er lid is van de club.
-      setMelding({
-        tekst: t('Als dit adres bij de club bekend is, staat er zo een mail in je mailbox.'),
-        soort: 'goed',
-      });
       return;
     }
 

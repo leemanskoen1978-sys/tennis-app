@@ -37,20 +37,32 @@ export function gaatOverEenBestaandAccount(melding: string): boolean {
   return /already registered|already been registered|already exists/i.test(melding);
 }
 
-/** De drie standen van het loginscherm. Hier en niet in het scherm, want de regels die
+/** De vier standen van het loginscherm. Hier en niet in het scherm, want de regels die
  * erbij horen (wat "klaar om te versturen" betekent, welke uitkomst welke melding krijgt)
  * horen bij deze standen, niet bij de weergave ervan. */
-export type Stand = 'inloggen' | 'eerste' | 'aanmelden';
+export type Stand = 'inloggen' | 'eerste' | 'aanmelden' | 'vergeten';
 
 /** Mag er verstuurd worden? Elke stand heeft haar eigen verplichte velden: alleen `eerste`
- * vraagt een herhaling, alleen `aanmelden` vraagt een naam. */
+ * vraagt een herhaling, alleen `aanmelden` vraagt een naam, en `vergeten` vraagt alleen een
+ * e-mailadres — daar bestaat geen wachtwoordveld om aan te vragen. */
 export function magVersturen(
   stand: Stand,
   velden: { email: string; wachtwoord: string; herhaling: string; naam: string },
 ): boolean {
+  if (stand === 'vergeten') return velden.email.trim().length > 0;
   return velden.email.trim().length > 0 && velden.wachtwoord.length > 0
     && (stand !== 'aanmelden' || velden.naam.trim().length > 0)
     && (stand !== 'eerste' || velden.herhaling.length > 0);
+}
+
+/**
+ * Mag het nieuwe wachtwoord verstuurd worden, op `app/nieuw-wachtwoord.tsx`? Alleen of beide
+ * velden ingevuld zijn — de gelijkheid en de minimale lengte controleert `controleerWachtwoord`
+ * zelf, pas bij het versturen. Een aparte functie en geen vijfde `Stand`: dat scherm kent geen
+ * e-mailadres of naam, dus dezelfde velden als `magVersturen` passen er niet op.
+ */
+export function magNieuwWachtwoordVersturen(wachtwoord: string, herhaling: string): boolean {
+  return wachtwoord.length > 0 && herhaling.length > 0;
 }
 
 /**
@@ -93,4 +105,19 @@ export function aanmeldMelding(uitkomst: AanmeldUitkomst): string | null {
     case 'bevestig-je-mail': return BEVESTIG_MAIL_MELDING;
     case 'ingelogd': return null;
   }
+}
+
+/**
+ * Duidt deze URL-hash op een klik op een herstellink? Supabase zet `type=recovery` in de
+ * hash van de pagina nadat zo'n link geopend is.
+ *
+ * Puur, en dus zonder `window`, zodat dit getest kan worden zonder browser. De aanroeper
+ * (`providers/SimpleDataProvider.tsx`) leest de echte hash en gebruikt dit als opstart-
+ * waarde van de herstelvlag: het `PASSWORD_RECOVERY`-event van `onAuthChange` vuurt maar
+ * één keer, vlak na het openen van de link. Ververst iemand de pagina daarna — vóór hij een
+ * wachtwoord koos — dan is dat event al voorbij, en zonder deze aanvulling zou de vlag dan
+ * ineens weer op `false` staan terwijl de sessie nog steeds een onafgemaakt herstel is.
+ */
+export function isHerstelHash(hash: string): boolean {
+  return hash.includes('type=recovery');
 }

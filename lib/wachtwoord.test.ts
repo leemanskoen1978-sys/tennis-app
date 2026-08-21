@@ -1,6 +1,7 @@
 import {
   controleerWachtwoord, gaatOverEenBestaandAccount, MIN_WACHTWOORD,
-  magVersturen, aanmeldUitkomst, aanmeldMelding, BESTAAT_AL_MELDING, BEVESTIG_MAIL_MELDING,
+  magVersturen, magNieuwWachtwoordVersturen, isHerstelHash,
+  aanmeldUitkomst, aanmeldMelding, BESTAAT_AL_MELDING, BEVESTIG_MAIL_MELDING,
 } from './wachtwoord';
 
 describe('controleerWachtwoord', () => {
@@ -64,6 +65,30 @@ describe('magVersturen', () => {
   it('houdt een leeg e-mailadres of wachtwoord altijd tegen', () => {
     expect(magVersturen('inloggen', { ...velden, email: '  ' })).toBe(false);
     expect(magVersturen('inloggen', { ...velden, wachtwoord: '' })).toBe(false);
+  });
+
+  it('vraagt bij "vergeten" alleen een e-mailadres, geen wachtwoord', () => {
+    expect(magVersturen('vergeten', { ...velden, wachtwoord: '', herhaling: '', naam: '' })).toBe(true);
+    expect(magVersturen('vergeten', { ...velden, email: '  ' })).toBe(false);
+  });
+});
+
+describe('magNieuwWachtwoordVersturen', () => {
+  it('vraagt beide velden ingevuld', () => {
+    expect(magNieuwWachtwoordVersturen('geheim123', 'geheim123')).toBe(true);
+    expect(magNieuwWachtwoordVersturen('', 'geheim123')).toBe(false);
+    expect(magNieuwWachtwoordVersturen('geheim123', '')).toBe(false);
+  });
+});
+
+describe('isHerstelHash', () => {
+  it('herkent de hash die Supabase na een herstellink meegeeft', () => {
+    expect(isHerstelHash('#access_token=abc&type=recovery&expires_in=3600')).toBe(true);
+  });
+
+  it('laat een gewone hash met rust', () => {
+    expect(isHerstelHash('')).toBe(false);
+    expect(isHerstelHash('#access_token=abc&type=signup')).toBe(false);
   });
 });
 
