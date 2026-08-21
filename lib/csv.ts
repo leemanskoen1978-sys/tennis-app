@@ -244,10 +244,15 @@ function scheidingstekenVan(text: string): Scheidingsteken {
 }
 
 /**
- * Een CSV-tekst als rijen cellen. Lege regels vallen weg — een lege cel niet, want die
- * betekent "hier staat niets ingevuld" en dat is iets anders dan een kolom die er niet is.
- * Elke cel wordt getrimd: een trainer typt weleens een spatie na een scheidingsteken, en die
- * hoort niet mee in een naam of een e-mailadres.
+ * Een CSV-tekst als rijen cellen. Een lege cel blijft staan — die betekent "hier staat niets
+ * ingevuld" en dat is iets anders dan een kolom die er niet is. Om diezelfde reden blijft ook
+ * een lege regel middenin het bestand staan (een trainer zet weleens een lege scheidingsregel
+ * tussen twee groepen): schrapte je die stil weg, dan zou de index in dit array niet meer
+ * overeenkomen met het regelnummer dat een trainer in Excel ziet, en zou een latere melding
+ * ("regel 4") naar de verkeerde regel wijzen. Alleen een lege staart — de spookrij die een
+ * regeleinde aan het eind van het bestand oplevert — hoort bij geen enkele echte regel en
+ * valt daarom wél weg. Elke cel wordt getrimd: een trainer typt weleens een spatie na een
+ * scheidingsteken, en die hoort niet mee in een naam of een e-mailadres.
  */
 export function parseCsv(text: string): string[][] {
   // De BOM als escape geschreven, net als in lib/share.ts: zo blijft het in elke editor één
@@ -298,7 +303,10 @@ export function parseCsv(text: string): string[][] {
   rij.push(cel);
   rijen.push(rij);
 
-  return rijen
-    .map((r) => r.map((c) => c.trim()))
-    .filter((r) => r.some((c) => c.length > 0));
+  const getrimd = rijen.map((r) => r.map((c) => c.trim()));
+  // Alleen de staart van louter lege rijen valt weg — de rest blijft staan, zie de reden
+  // hierboven bij de commentaar van deze functie.
+  let eind = getrimd.length;
+  while (eind > 0 && getrimd[eind - 1].every((c) => c.length === 0)) eind--;
+  return getrimd.slice(0, eind);
 }

@@ -279,8 +279,14 @@ describe('parseCsv', () => {
     expect(parseCsv('a;b\r\nc;d')).toEqual([['a', 'b'], ['c', 'd']]);
   });
 
-  it('laat lege regels weg, ook de lege regel onderaan het bestand', () => {
-    expect(parseCsv('a;b\n\nc;d\n')).toEqual([['a', 'b'], ['c', 'd']]);
+  it('houdt een lege regel middenin het bestand, maar laat de lege regel onderaan weg', () => {
+    // De lege regel middenin telt mee voor het regelnummer — precies wat een trainer in
+    // Excel ziet — en blijft daarom staan; de lege staart is geen echte regel en valt weg.
+    expect(parseCsv('a;b\n\nc;d\n')).toEqual([['a', 'b'], [''], ['c', 'd']]);
+  });
+
+  it('laat meerdere lege regels aan het eind allemaal weg', () => {
+    expect(parseCsv('a;b\nc;d\n\n\n')).toEqual([['a', 'b'], ['c', 'd']]);
   });
 
   it('houdt lege cellen staan, want die dragen betekenis', () => {
@@ -349,7 +355,10 @@ describe('parseCsv', () => {
   });
 
   it('een lege regel bovenaan het bestand verwart de scheidingsteken-detectie niet', () => {
+    // De detectie zelf telt lege regels niet mee (zie scheidingstekenVan); het resultaat
+    // houdt de lege regel wél aan, want ook regel 1 telt mee voor het regelnummer.
     expect(parseCsv('\nnaam,email\nJan,jan@x.be')).toEqual([
+      [''],
       ['naam', 'email'],
       ['Jan', 'jan@x.be'],
     ]);
