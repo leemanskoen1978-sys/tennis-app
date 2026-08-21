@@ -1,4 +1,5 @@
-import { leesRol, leesUurtarief, leesKopregel, LEDEN_KOPPEN } from './import-leden';
+import { leesRol, leesUurtarief, leesKopregel, LEDEN_KOPPEN, planImport } from './import-leden';
+import type { User } from './types';
 
 describe('leesRol', () => {
   it('vertaalt de Nederlandse rolnamen naar wat de databank kent', () => {
@@ -163,5 +164,155 @@ describe('leesKopregel', () => {
       nietHerkend: [],
       dubbel: [],
     });
+  });
+});
+
+const lid = (id: string, email: string, extra: Partial<User> = {}): User => ({
+  id, name: 'Bestaand', email, role: 'player', ...extra,
+});
+
+const kop = ['naam', 'email', 'rol', 'telefoon', 'uurtarief'];
+
+describe('planImport', () => {
+  it('zet een onbekend adres bij de nieuwe leden', () => {
+    const plan = planImport([kop, ['Jonas Peeters', 'jonas@club.be', 'speler', '0470123456', '']], []);
+    expect(plan.fouten).toEqual([]);
+    expect(plan.bijgewerkt).toEqual([]);
+    expect(plan.nieuw).toEqual([
+      { name: 'Jonas Peeters', email: 'jonas@club.be', role: 'player', phone: '0470123456' },
+    ]);
+  });
+
+  it('neemt het uurtarief mee bij een trainer', () => {
+    const plan = planImport([kop, ['Sofie Maes', 'sofie@club.be', 'trainer', '', '45']], []);
+    expect(plan.nieuw[0]).toEqual({
+      name: 'Sofie Maes', email: 'sofie@club.be', role: 'coach', hourly_rate: 45,
+    });
+  });
+
+  it('herkent een bestaand lid op adres, ongeacht hoofdletters', () => {
+    const bestaande = [lid('u1', 'jonas@club.be')];
+    const plan = planImport([kop, ['Jonas Peeters', 'JONAS@club.be', 'speler', '0470', '']], bestaande);
+    expect(plan.nieuw).toEqual([]);
+    expect(plan.bijgewerkt).toEqual([
+      { bestaand: bestaande[0], wijzigingen: { name: 'Jonas Peeters', phone: '0470' } },
+    ]);
+  });
+
+  it('laat een bestaand lid dat niets nieuws meebrengt helemaal met rust', () => {
+    const bestaande = [lid('u1', 'jonas@club.be', { name: 'Jonas', phone: '0470' })];
+    const plan = planImport([kop, ['Jonas', 'jonas@club.be', 'speler', '0470', '']], bestaande);
+    expect(plan.bijgewerkt).toEqual([]);
+    expect(plan.nieuw).toEqual([]);
+    expect(plan.fouten).toEqual([]);
+  });
+
+  it('overschrijft een ingevuld veld niet met een lege cel', () => {
+    const bestaande = [lid('u1', 'jonas@club.be', { name: 'Jonas', phone: '0470' })];
+    const plan = planImport([kop, ['Jonas', 'jonas@club.be', '', '', '']], bestaande);
+    expect(plan.bijgewerkt).toEqual([]);
+  });
+
+  it('weigert een regel waarvan de rol niet klopt met wat de club al weet', () => {
+    const bestaande = [lid('u1', 'jonas@club.be')];
+    const plan = planImport([kop, ['Jonas', 'jonas@club.be', 'trainer', '', '']], bestaande);
+    expect(plan.bijgewerkt).toEqual([]);
+    expect(plan.fouten).toEqual([
+      { regel: 2, reden: 'Staat al in de club met een andere rol; dat wijzig je in Beheer.' },
+    ]);
+  });
+
+  it('weigert een regel zonder naam of met een adres dat er geen is', () => {
+    const plan = planImport([
+      kop,
+      ['', 'leeg@club.be', '', '', ''],
+      ['Zonder adres', '', '', '', ''],
+      ['Krom adres', 'jonas apenstaartje club', '', '', ''],
+    ], []);
+    expect(plan.nieuw).toEqual([]);
+    expect(plan.fouten).toEqual([
+      { regel: 2, reden: 'Geen naam ingevuld.' },
+      { regel: 3, reden: 'Geen e-mailadres ingevuld.' },
+      { regel: 4, reden: 'Dit is geen geldig e-mailadres.' },
+    ]);
+  });
+
+  it('weigert een onbekende rol en een onleesbaar tarief, met de regel erbij', () => {
+    const plan = planImport([
+      kop,
+      ['Jonas', 'jonas@club.be', 'hoofdtrainer', '', ''],
+      ['Sofie', 'sofie@club.be', 'trainer', '', 'veel'],
+    ], []);
+    expect(plan.nieuw).toEqual([]);
+    expect(plan.fouten).toEqual([
+      { regel: 2, reden: 'Onbekende rol "hoofdtrainer". Kies speler, trainer of ouder.' },
+      { regel: 3, reden: 'Het uurtarief "veel" is geen geldig bedrag.' },
+    ]);
+  });
+
+  it('weigert een negatief uurtarief, want dan legt de club geld toe', () => {
+    const plan = planImport([kop, ['Sofie', 'sofie@club.be', 'trainer', '', '-45']], []);
+    expect(plan.nieuw).toEqual([]);
+    expect(plan.fouten).toEqual([
+      { regel: 2, reden: 'Het uurtarief "-45" is geen geldig bedrag.' },
+    ]);
+  });
+
+  it('geeft door welke kolomkoppen het niet herkende', () => {
+    const plan = planImport([
+      ['naam', 'email', 'Tarief/uur'],
+      ['Jonas', 'jonas@club.be', '45'],
+    ], []);
+    // De regel zelf gaat gewoon door; alleen die ene kolom komt niet mee.
+    expect(plan.nieuw).toHaveLength(1);
+    expect(plan.nieuw[0].hourly_rate).toBeUndefined();
+    expect(plan.nietHerkend).toEqual(['Tarief/uur']);
+  });
+
+  it('houdt het tweede voorkomen van hetzelfde adres tegen', () => {
+    const plan = planImport([
+      kop,
+      ['Jonas', 'jonas@club.be', '', '', ''],
+      ['Jonas P', 'JONAS@club.be', '', '', ''],
+    ], []);
+    expect(plan.nieuw).toHaveLength(1);
+    expect(plan.fouten).toEqual([
+      { regel: 3, reden: 'Dit adres staat eerder in het bestand, op regel 2.' },
+    ]);
+  });
+
+  it('houdt de goede regels over als er een foute tussen zit', () => {
+    const plan = planImport([
+      kop,
+      ['Jonas', 'jonas@club.be', '', '', ''],
+      ['', '', '', '', ''],
+      ['Sofie', 'sofie@club.be', '', '', ''],
+    ], []);
+    expect(plan.nieuw).toHaveLength(2);
+    expect(plan.fouten).toHaveLength(1);
+  });
+
+  it('zegt het als de kopregel een verplichte kolom mist', () => {
+    const plan = planImport([['naam', 'telefoon'], ['Jonas', '0470']], []);
+    expect(plan.nieuw).toEqual([]);
+    expect(plan.fouten).toEqual([
+      { regel: 1, reden: 'De kopregel mist de kolom "naam" of "email".' },
+    ]);
+  });
+
+  it('houdt de niet-herkende koppen vast juist als de kopregel niet deugt', () => {
+    // "E-mailadres" kent de import wél; "Tarief/uur" niet. Zou dit lijstje hier wegvallen,
+    // dan leest de trainer "kolom email ontbreekt" zonder te zien wat er dan wél stond.
+    const plan = planImport([['Naam', 'Rijksregisternummer', 'Tarief/uur'], ['Jonas', '', '']], []);
+    expect(plan.fouten).toEqual([
+      { regel: 1, reden: 'De kopregel mist de kolom "naam" of "email".' },
+    ]);
+    expect(plan.nietHerkend).toEqual(['Rijksregisternummer', 'Tarief/uur']);
+  });
+
+  it('zegt het als het bestand leeg is', () => {
+    expect(planImport([], []).fouten).toEqual([
+      { regel: 1, reden: 'Dit bestand is leeg.' },
+    ]);
   });
 });

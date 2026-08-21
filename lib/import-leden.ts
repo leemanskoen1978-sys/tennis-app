@@ -159,3 +159,167 @@ export function leesKopregel(kopregel: readonly string[]): Kopregel {
   const kolommen = naam === undefined || email === undefined ? null : { ...gevonden, naam, email };
   return { kolommen, nietHerkend, dubbel };
 }
+
+// ---------------------------------------------------------------------------
+// Het plan
+// ---------------------------------------------------------------------------
+
+/** Eén regel die niet verwerkt wordt, met de reden in gewone taal. */
+export interface ImportFout {
+  /** Het regelnummer zoals de trainer het in Excel ziet: de kopregel is regel 1. */
+  regel: number;
+  reden: string;
+}
+
+/** Eén bestaand lid, en wat dit bestand aan hem verandert. */
+export interface ImportBijwerking {
+  bestaand: User;
+  wijzigingen: Partial<Omit<User, 'id' | 'role'>>;
+}
+
+export interface ImportPlan {
+  nieuw: Omit<User, 'id'>[];
+  bijgewerkt: ImportBijwerking[];
+  fouten: ImportFout[];
+  /**
+   * Kolomkoppen die in het bestand stonden en die we niet thuis konden brengen, in hun
+   * oorspronkelijke schrijfwijze. Het scherm toont ze: een kolom "Tarief/uur" die stil
+   * wegvalt kost een trainer alle tarieven zonder dat hij ooit een melding zag.
+   */
+  nietHerkend: string[];
+  /**
+   * Koppen die we wél herkenden maar niet lezen omdat dezelfde kolom er al was. Een ander
+   * bericht dan `nietHerkend`: "die kolom hebben we al" tegenover "die ken ik niet".
+   */
+  dubbel: string[];
+}
+
+/** Adressen vergelijken zoals de databank het doet: hoofdletterongevoelig. */
+function sleutel(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+/**
+ * Wat verandert dit bestand aan een bestaand lid?
+ *
+ * Alleen velden die in het bestand ingevuld zijn én iets anders zeggen dan wat er staat.
+ * Een lege cel betekent "hier weet ik niets van" en nooit "maak dit leeg" — anders wist een
+ * bestand met alleen namen erin alle telefoonnummers van de club.
+ */
+function verschillen(bestaand: User, regel: Omit<User, 'id'>): Partial<Omit<User, 'id' | 'role'>> {
+  const wijzigingen: Partial<Omit<User, 'id' | 'role'>> = {};
+  if (regel.name && regel.name !== bestaand.name) wijzigingen.name = regel.name;
+  if (regel.phone && regel.phone !== bestaand.phone) wijzigingen.phone = regel.phone;
+  if (regel.hourly_rate !== undefined && regel.hourly_rate !== bestaand.hourly_rate) {
+    wijzigingen.hourly_rate = regel.hourly_rate;
+  }
+  return wijzigingen;
+}
+
+/**
+ * Wat zou dit bestand doen met de club? Schrijft niets weg — dat is het hele punt: het
+ * scherm toont dit plan eerst, en pas als de trainer het herkent gebeurt er iets.
+ */
+export function planImport(
+  rijen: ReadonlyArray<readonly string[]>,
+  bestaande: readonly User[],
+): ImportPlan {
+  const plan: ImportPlan = {
+    nieuw: [], bijgewerkt: [], fouten: [], nietHerkend: [], dubbel: [],
+  };
+  if (rijen.length === 0) {
+    plan.fouten.push({ regel: 1, reden: 'Dit bestand is leeg.' });
+    return plan;
+  }
+
+  // Eerst overnemen, dán pas afhaken: juist als de kopregel niet deugt, heeft de trainer
+  // die lijstjes nodig — dat is het geval waarin hij zijn bestand moet aanpassen.
+  const kop = leesKopregel(rijen[0]);
+  plan.nietHerkend = kop.nietHerkend;
+  plan.dubbel = kop.dubbel;
+  const { kolommen } = kop;
+  if (!kolommen) {
+    plan.fouten.push({ regel: 1, reden: 'De kopregel mist de kolom "naam" of "email".' });
+    return plan;
+  }
+
+  const bekend = new Map(bestaande.map((u) => [sleutel(u.email), u]));
+  // Waar in het bestand we een adres eerder zagen — voor de melding "staat al op regel 2".
+  const gezien = new Map<string, number>();
+
+  for (let i = 1; i < rijen.length; i++) {
+    const rij = rijen[i];
+    const regel = i + 1;
+    const cel = (index: number | undefined): string =>
+      index === undefined ? '' : (rij[index] ?? '').trim();
+
+    const naam = cel(kolommen.naam);
+    const email = cel(kolommen.email);
+    if (!naam) { plan.fouten.push({ regel, reden: 'Geen naam ingevuld.' }); continue; }
+    if (!email) { plan.fouten.push({ regel, reden: 'Geen e-mailadres ingevuld.' }); continue; }
+    if (!isValidEmail(email)) {
+      plan.fouten.push({ regel, reden: 'Dit is geen geldig e-mailadres.' });
+      continue;
+    }
+
+    const eerder = gezien.get(sleutel(email));
+    if (eerder !== undefined) {
+      plan.fouten.push({
+        regel,
+        reden: `Dit adres staat eerder in het bestand, op regel ${eerder}.`,
+      });
+      continue;
+    }
+
+    const rolCel = cel(kolommen.rol);
+    const role = leesRol(rolCel);
+    if (role === null) {
+      plan.fouten.push({
+        regel,
+        reden: `Onbekende rol "${rolCel}". Kies speler, trainer of ouder.`,
+      });
+      continue;
+    }
+
+    const tariefCel = cel(kolommen.uurtarief);
+    const hourly_rate = leesUurtarief(tariefCel);
+    if (hourly_rate === null) {
+      plan.fouten.push({ regel, reden: `Het uurtarief "${tariefCel}" is geen geldig bedrag.` });
+      continue;
+    }
+
+    gezien.set(sleutel(email), regel);
+
+    // Een leeg optioneel veld hoort niet als sleutel met `undefined` in het object te staan:
+    // dat is het verschil tussen "niet ingevuld" en "leeggemaakt", en de tests zien het.
+    const lid: Omit<User, 'id'> = { name: naam, email, role };
+    const phone = normalizePhone(cel(kolommen.telefoon));
+    if (phone) lid.phone = phone;
+    if (hourly_rate !== undefined) lid.hourly_rate = hourly_rate;
+
+    const bestaandLid = bekend.get(sleutel(email));
+    if (!bestaandLid) {
+      plan.nieuw.push(lid);
+      continue;
+    }
+
+    // De rol van iemand die er al is, verandert de import nooit: `updateUser` sluit `role`
+    // uit van zijn type, en dat is met opzet — trainer word je in Beheer, bewust. Een
+    // bestand dat iets anders beweert, wordt afgekeurd en niet half doorgevoerd. De cel is
+    // hier bewust `rolCel` en niet `role`: een lege cel zegt niets en mag niets afkeuren.
+    if (rolCel && role !== bestaandLid.role) {
+      plan.fouten.push({
+        regel,
+        reden: 'Staat al in de club met een andere rol; dat wijzig je in Beheer.',
+      });
+      continue;
+    }
+
+    const wijzigingen = verschillen(bestaandLid, lid);
+    if (Object.keys(wijzigingen).length > 0) {
+      plan.bijgewerkt.push({ bestaand: bestaandLid, wijzigingen });
+    }
+  }
+
+  return plan;
+}
