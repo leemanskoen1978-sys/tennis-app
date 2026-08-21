@@ -27,7 +27,9 @@ const RATINGS = [1, 2, 3, 4, 5] as const;
  * bovenin het blad gekozen. Dat tweede is er voor het Spelers-scherm: daar wil een trainer
  * na zijn lesdag een notitie kwijt zonder eerst het juiste dossier op te zoeken.
  */
-export function ProgressForm({ visible, onClose, studentId, entry = null, canEdit = true }: {
+export function ProgressForm({
+  visible, onClose, studentId, entry = null, canEdit = true, preset, onCreate,
+}: {
   visible: boolean;
   onClose: () => void;
   /** De speler waarover het gaat. Ontbreekt hij, dan kiest het blad zelf een speler. */
@@ -36,6 +38,17 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
   entry?: StudentProgress | null;
   /** Alleen een trainer wijzigt of verwijdert; een speler mag wel lezen wat er staat. */
   canEdit?: boolean;
+  /**
+   * Waarmee een níeuwe notitie begint. De uitwerklijst geeft hier de opname en het
+   * tijdstip van de memo mee: die staan al vast, alleen de tekst moet er nog bij.
+   */
+  preset?: { voice_memo_uri?: string; created_at?: string };
+  /**
+   * Wie de nieuwe notitie wegschrijft. Leeg is `addProgress`, zoals altijd. De
+   * uitwerklijst geeft hier `werkMemoUit` mee, zodat de notitie en het opruimen van de
+   * memo één opslag zijn en niet twee.
+   */
+  onCreate?: (notitie: Omit<StudentProgress, 'id'>) => Promise<void>;
 }) {
   const { currentUser, users, lessons, addProgress, updateProgress, deleteProgress } = useSimpleData();
 
@@ -63,12 +76,12 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
     setRating(entry?.rating ?? 0);
     setNotes(entry?.notes ?? '');
     setHomework(entry?.homework ?? '');
-    setVoiceUri(entry?.voice_memo_uri);
+    setVoiceUri(entry?.voice_memo_uri ?? preset?.voice_memo_uri);
     setLinkLessonId(entry?.lesson_id ?? null);
     setConfirmingDelete(false);
     setPickedId(entry?.student_id ?? null);
     setNewPlayerName(null);
-  }, [visible, entry?.id]);
+  }, [visible, entry?.id, preset?.voice_memo_uri]);
 
   // Wie de notitie krijgt: van buiten meegegeven, anders wat er in het blad gekozen is.
   const targetId = studentId ?? pickedId;
@@ -94,7 +107,19 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
       return;
     }
     if (!currentUser) return;
-    await addProgress({ ...fields(), student_id: targetId, coach_id: currentUser.id });
+    const notitie: Omit<StudentProgress, 'id'> = {
+      ...fields(),
+      student_id: targetId,
+      coach_id: currentUser.id,
+      // Het tijdstip van de opname, niet van het uitwerken: een notitie hoort in het
+      // dossier op de dag te staan waar hij over gaat.
+      created_at: preset?.created_at,
+    };
+    if (onCreate) {
+      await onCreate(notitie);
+      return;
+    }
+    await addProgress(notitie);
   };
 
   const save = async (): Promise<void> => {

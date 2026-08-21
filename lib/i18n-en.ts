@@ -817,4 +817,10 @@ export const EN: Record<string, string> = {
   'Vandaag geen lessen.': 'No lessons today.',
   '1 memo uit te werken': '1 memo to write up',
   '{n} memos uit te werken': '{n} memos to write up',
+  'Nog uit te werken': 'To write up',
+  'Niets meer uit te werken. Netjes.': 'Nothing left to write up. Well done.',
+  'Uitwerken': 'Write up',
+  'Memo weggooien': 'Discard memo',
+  'Weggooien? De opname is niet terug te halen.': 'Discard? The recording cannot be recovered.',
+  'Weggooien': 'Discard',
 };
