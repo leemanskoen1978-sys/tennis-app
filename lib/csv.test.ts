@@ -1,5 +1,5 @@
 import type { Booking, Court, User } from './types';
-import { csvRows, toCsv, formatEuro, CSV_HEADER, CSV_COLUMNS } from './csv';
+import { csvRows, toCsv, formatEuro, CSV_HEADER, CSV_COLUMNS, parseCsv } from './csv';
 import { bookingsInPeriod, monthPeriod } from './period';
 
 const users: User[] = [
@@ -239,5 +239,56 @@ describe('csvRows bij een groepsles', () => {
     expect(row.player).toBe('Mathis');
     expect(row.players).toBe(1);
     expect(row.billing).toBe('Samen');
+  });
+});
+
+describe('parseCsv', () => {
+  it('leest de puntkomma van Nederlandse Excel', () => {
+    expect(parseCsv('naam;email\nJonas;jonas@club.be')).toEqual([
+      ['naam', 'email'],
+      ['Jonas', 'jonas@club.be'],
+    ]);
+  });
+
+  it('leest ook een komma als dat het scheidingsteken is', () => {
+    expect(parseCsv('naam,email\nJonas,jonas@club.be')).toEqual([
+      ['naam', 'email'],
+      ['Jonas', 'jonas@club.be'],
+    ]);
+  });
+
+  it('leest een tab, want zo plakt Excel', () => {
+    expect(parseCsv('naam\temail\nJonas\tjonas@club.be')).toEqual([
+      ['naam', 'email'],
+      ['Jonas', 'jonas@club.be'],
+    ]);
+  });
+
+  it('haalt de BOM weg die Excel vooraan zet', () => {
+    expect(parseCsv(`${'﻿'}naam;email`)).toEqual([['naam', 'email']]);
+  });
+
+  it('houdt een scheidingsteken binnen aanhalingstekens bij elkaar', () => {
+    expect(parseCsv('naam;bio\n"De Vries; Jan";"hij zei ""hallo"""')).toEqual([
+      ['naam', 'bio'],
+      ['De Vries; Jan', 'hij zei "hallo"'],
+    ]);
+  });
+
+  it('leest regeleindes in Windows-stijl', () => {
+    expect(parseCsv('a;b\r\nc;d')).toEqual([['a', 'b'], ['c', 'd']]);
+  });
+
+  it('laat lege regels weg, ook de lege regel onderaan het bestand', () => {
+    expect(parseCsv('a;b\n\nc;d\n')).toEqual([['a', 'b'], ['c', 'd']]);
+  });
+
+  it('houdt lege cellen staan, want die dragen betekenis', () => {
+    expect(parseCsv('a;;c')).toEqual([['a', '', 'c']]);
+  });
+
+  it('geeft niets terug bij een leeg bestand', () => {
+    expect(parseCsv('')).toEqual([]);
+    expect(parseCsv('   \n  ')).toEqual([]);
   });
 });

@@ -186,3 +186,81 @@ export function toXlsx(rows: CsvRow[]): Uint8Array {
     })),
   });
 }
+
+// ---------------------------------------------------------------------------
+// Een CSV lezen
+//
+// De schrijfkant hierboven bepaalt zelf hoe zijn bestand eruitziet; de leeskant krijgt wat
+// een trainer aanlevert en moet dus raden. Drie dingen doet Excel die een `split(';')`
+// meteen laten omvallen: Nederlandse Excel scheidt met een puntkomma en Engelse met een
+// komma, het zet een BOM vooraan, en een cel met een scheidingsteken erin komt tussen
+// aanhalingstekens te staan. Kopiëren-en-plakken uit een blad geeft nog een vierde vorm:
+// tabs. Alle vier worden ze hier herkend.
+// ---------------------------------------------------------------------------
+
+type Scheidingsteken = ';' | ',' | '\t';
+
+/**
+ * Welk scheidingsteken gebruikt dit bestand? Bepaald op de kopregel: die heeft van elke
+ * kolom er precies één, dus het teken dat daar het vaakst staat is het scheidingsteken.
+ * Wat tussen aanhalingstekens staat telt niet mee — een naam als "De Vries, Jan" hoort de
+ * telling niet te kunnen kantelen.
+ */
+function scheidingstekenVan(text: string): Scheidingsteken {
+  const eerste = text.split(/\r?\n/, 1)[0] ?? '';
+  const tellingen: Record<Scheidingsteken, number> = { ';': 0, ',': 0, '\t': 0 };
+  let inAanhaling = false;
+  for (const teken of eerste) {
+    if (teken === '"') {
+      inAanhaling = !inAanhaling;
+    } else if (!inAanhaling && (teken === ';' || teken === ',' || teken === '\t')) {
+      tellingen[teken]++;
+    }
+  }
+  // Gelijkspel (of niets gevonden) gaat naar de puntkomma: dat is wat de club aanlevert.
+  if (tellingen['\t'] > tellingen[';'] && tellingen['\t'] > tellingen[',']) return '\t';
+  if (tellingen[','] > tellingen[';']) return ',';
+  return ';';
+}
+
+/**
+ * Een CSV-tekst als rijen cellen. Lege regels vallen weg — een lege cel niet, want die
+ * betekent "hier staat niets ingevuld" en dat is iets anders dan een kolom die er niet is.
+ */
+export function parseCsv(text: string): string[][] {
+  // De BOM als escape geschreven, net als in lib/share.ts: zo blijft het in elke
+  // editor één zichtbaar teken in plaats van een onzichtbaar teken in een regex.
+  const schoon = text.replace(/^﻿/, '');
+  const scheiding = scheidingstekenVan(schoon);
+  const rijen: string[][] = [];
+  let rij: string[] = [];
+  let cel = '';
+  let inAanhaling = false;
+
+  for (let i = 0; i < schoon.length; i++) {
+    const teken = schoon[i];
+    if (inAanhaling) {
+      if (teken !== '"') {
+        cel += teken;
+      } else if (schoon[i + 1] === '"') {
+        // Twee aanhalingstekens op rij zijn er samen één, letterlijk in de cel.
+        cel += '"';
+        i++;
+      } else {
+        inAanhaling = false;
+      }
+      continue;
+    }
+    if (teken === '"') { inAanhaling = true; continue; }
+    if (teken === scheiding) { rij.push(cel); cel = ''; continue; }
+    if (teken === '\r') continue;
+    if (teken === '\n') { rij.push(cel); rijen.push(rij); rij = []; cel = ''; continue; }
+    cel += teken;
+  }
+  rij.push(cel);
+  rijen.push(rij);
+
+  return rijen
+    .map((r) => r.map((c) => c.trim()))
+    .filter((r) => r.some((c) => c.length > 0));
+}
