@@ -1,11 +1,18 @@
-// Het overzicht als gegevens (csvRows) en als tekst (toCsv), los van elkaar zodat het
-// scherm dezelfde rijen kan tonen die het uitvoert.
+// Het overzicht als gegevens (csvRows), als tekst (toCsv) en als werkblad (toXlsx), los van
+// elkaar zodat het scherm dezelfde rijen kan tonen die het uitvoert.
+//
+// De kolommen staan één keer beschreven en bedienen alle drie. Een kolom zegt hoe zijn cel
+// als tékst luidt (`value`, voor het scherm en de CSV) en, waar dat iets toevoegt, wat de
+// onderliggende waarde is (`getal`, `datum`). Die tweede vorm is waar een xlsx zijn winst
+// haalt: een bedrag is er een bedrag waarmee Excel kan rekenen, geen tekst die er als een
+// bedrag uitziet.
 
 import { groupSize, shortGroupLabel } from './groups';
 import { formatEuro } from './money';
 import { bookingMinutes, bookingPrice, coachPayout, PAYMENT_LABELS, splitOf } from './payments';
 import { bookingStatusLabel } from './status';
 import { t } from './i18n';
+import { buildXlsx, type XlsxCel } from './xlsx';
 import type { Booking, Court, User } from './types';
 
 /** Eén bedrag-opmaak voor de hele app; de export houdt zijn eigen ingang. Zie lib/money. */
@@ -13,6 +20,8 @@ export { formatEuro } from './money';
 
 export interface CsvRow {
   id: string;
+  /** Het begin van de les zoals het is opgeslagen; de xlsx zet hier een echte datum van. */
+  start: string;   // ISO
   date: string;    // dd/mm/jjjj
   time: string;    // HH:MM
   coach: string;
@@ -34,30 +43,45 @@ export interface CsvRow {
 
 export interface CsvColumn {
   label: string;
+  /** De cel als tekst — wat het scherm toont en wat in de CSV komt. */
   value: (row: CsvRow) => string;
+  /** De cel als getal, voor de xlsx. Ontbreekt = het blijft tekst. */
+  getal?: (row: CsvRow) => number;
+  /** Zet de xlsx-cel op een bedrag met twee decimalen. Alleen zinnig samen met `getal`. */
+  geld?: boolean;
+  /** De cel als datum, voor de xlsx. */
+  datum?: (row: CsvRow) => Date;
+  /** Kolombreedte in de xlsx, in tekens. */
+  breedte: number;
 }
 
 // De enige bron van waarheid voor kolommen: kop én cel staan hier naast elkaar, zodat het
 // scherm en het bestand niet uit elkaar kunnen schuiven als de volgorde verandert.
 export const CSV_COLUMNS: readonly CsvColumn[] = [
-  { label: 'Datum', value: (r) => r.date },
-  { label: 'Uur', value: (r) => r.time },
-  { label: 'Trainer', value: (r) => r.coach },
-  { label: 'Speler', value: (r) => r.player },
+  { label: 'Datum', value: (r) => r.date, datum: (r) => new Date(r.start), breedte: 12 },
+  { label: 'Uur', value: (r) => r.time, breedte: 8 },
+  { label: 'Trainer', value: (r) => r.coach, breedte: 18 },
+  { label: 'Speler', value: (r) => r.player, breedte: 18 },
   // Eén regel per LES, ook bij een groepsles die apart gefactureerd wordt. Een export is een
   // lijst lessen — zo telt een trainer zijn maand, en zo sluit hij aan op de omzetkaart. Wie
   // welk deel krijgt, is een zaak van de facturatie en staat in de app bij de les zelf; hier
   // zeggen deze twee kolommen wat er te verdelen valt en of dat gebeurt.
-  { label: 'Spelers', value: (r) => String(r.players) },
-  { label: 'Facturatie', value: (r) => r.billing },
-  { label: 'Terrein', value: (r) => r.court },
-  { label: 'Duur (min)', value: (r) => String(r.minutes) },
+  { label: 'Spelers', value: (r) => String(r.players), getal: (r) => r.players, breedte: 9 },
+  { label: 'Facturatie', value: (r) => r.billing, breedte: 12 },
+  { label: 'Terrein', value: (r) => r.court, breedte: 14 },
+  { label: 'Duur (min)', value: (r) => String(r.minutes), getal: (r) => r.minutes, breedte: 11 },
   // Twee bedragen naast elkaar, en de kop zegt van wie ze zijn: de spelers betalen samen de
   // baan, de trainer krijgt zijn eigen uurtarief. Wat de club overhoudt is het verschil.
-  { label: 'Prijs les (EUR)', value: (r) => formatEuro(r.price) },
-  { label: 'Loon trainer (EUR)', value: (r) => formatEuro(r.coachPay) },
-  { label: 'Status', value: (r) => r.status },
-  { label: 'Betaalwijze', value: (r) => r.payment },
+  {
+    label: 'Prijs les (EUR)', value: (r) => formatEuro(r.price),
+    getal: (r) => r.price, geld: true, breedte: 15,
+  },
+  {
+    label: 'Loon trainer (EUR)', value: (r) => formatEuro(r.coachPay),
+    getal: (r) => r.coachPay, geld: true, breedte: 18,
+  },
+  { label: 'Status', value: (r) => r.status, breedte: 20 },
+  { label: 'Betaalwijze', value: (r) => r.payment, breedte: 16 },
 ];
 
 export const CSV_HEADER: readonly string[] = CSV_COLUMNS.map((c) => c.label);
@@ -101,6 +125,7 @@ export function csvRows(bookings: Booking[], users: User[], courts: Court[]): Cs
       const size = groupSize(b);
       return {
         id: b.id,
+        start: b.start_time,
         date: `${two(start.getDate())}/${two(start.getMonth() + 1)}/${start.getFullYear()}`,
         time: `${two(start.getHours())}:${two(start.getMinutes())}`,
         coach: nameById.get(b.coach_id) ?? t('Onbekend'),
@@ -130,4 +155,34 @@ export function toCsv(rows: CsvRow[]): string {
     lines.push(CSV_COLUMNS.map((c) => cell(c.value(r))).join(';'));
   }
   return lines.join('\n');
+}
+
+/**
+ * Dezelfde rijen als een Excel-werkblad.
+ *
+ * Waar de CSV alles als tekst neerzet, krijgt Excel hier de waarde zelf: het aantal spelers
+ * en de duur als geheel getal, de twee bedragen als bedrag, en de datum als datum. Daarmee
+ * kan een trainer een kolom optellen en op datum sorteren zonder er eerst iets aan te moeten
+ * veranderen — precies het werk dat de CSV hem elke maand opnieuw gaf.
+ *
+ * Een onbruikbare datum (een boeking met een kapotte begintijd) blijft de tekst uit de CSV.
+ * Beter een leesbare cel die niet meesorteert dan een cel met 1899 erin.
+ */
+export function toXlsx(rows: CsvRow[]): Uint8Array {
+  return buildXlsx({
+    naam: t('Lessen'),
+    koppen: csvHeader(),
+    breedtes: CSV_COLUMNS.map((c) => c.breedte),
+    rijen: rows.map((r) => CSV_COLUMNS.map((c): XlsxCel => {
+      if (c.datum) {
+        const d = c.datum(r);
+        if (!Number.isNaN(d.getTime())) return { soort: 'datum', waarde: d };
+      }
+      if (c.getal) {
+        const n = c.getal(r);
+        if (Number.isFinite(n)) return { soort: c.geld ? 'geld' : 'getal', waarde: n };
+      }
+      return { soort: 'tekst', waarde: c.value(r) };
+    })),
+  });
 }

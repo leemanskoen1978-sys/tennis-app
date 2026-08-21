@@ -13,12 +13,12 @@ import { Button } from '../../components/ui/Button';
 import { CoachFilter } from '../../components/ui/CoachFilter';
 import { PeriodPicker } from '../../components/ui/PeriodPicker';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { csvRows, toCsv, formatEuro } from '../../lib/csv';
+import { csvRows, toCsv, toXlsx, formatEuro } from '../../lib/csv';
 import {
   bookingsInPeriod, currentPeriod, pastBookings, periodFilename, periodLabel, type Period,
 } from '../../lib/period';
 import { bookingsByCoach, totalRevenue, visibleBookings } from '../../lib/payments';
-import { shareCsv } from '../../lib/share';
+import { shareCsv, shareXlsx, xlsxWordtOndersteund } from '../../lib/share';
 import type { User } from '../../lib/types';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
@@ -68,7 +68,8 @@ export default function HistoriekScreen(): React.JSX.Element {
   // Afgehandeld: exact wat Beheer → Rapport als omzet toont, uit dezelfde functie.
   const handled = totalRevenue(shown, courts);
 
-  const filename = periodFilename(period);
+  const csvNaam = periodFilename(period, 'csv');
+  const xlsxNaam = periodFilename(period, 'xlsx');
 
   // De fout is één globale bak: wis bij binnenkomst wat een ander scherm achterliet.
   // Alleen bij het openen, zodat een melding van dit scherm zelf blijft staan.
@@ -76,9 +77,10 @@ export default function HistoriekScreen(): React.JSX.Element {
     clearError();
   }, []);
 
-  async function onExport(): Promise<void> {
+  // Twee vormen van dezelfde selectie, dus ook één plek waar het misgaan opgevangen wordt.
+  async function exporteer(maak: () => Promise<void>): Promise<void> {
     try {
-      await shareCsv(filename, toCsv(rows));
+      await maak();
       setExportError(null);
     } catch {
       setExportError(t('Exporteren is niet gelukt. Probeer het opnieuw.'));
@@ -131,13 +133,33 @@ export default function HistoriekScreen(): React.JSX.Element {
       {exportError ? <Text style={styles.error}>{exportError}</Text> : null}
 
       <View style={styles.exportBlock}>
-        <Button
-          label={t('Exporteren')}
-          variant="primary"
-          disabled={rows.length === 0}
-          icon={<Download size={16} color={tennisColors.onFill} />}
-          onPress={() => { void onExport(); }}
-        />
+        {/* Excel voorop: dat is wat een trainer opent. De CSV blijft ernaast staan voor wie
+            het bestand ergens anders in laadt — een boekhoudpakket vraagt er nog vaak om. */}
+        <View style={styles.exportRow}>
+          {xlsxWordtOndersteund ? (
+            <Button
+              label={t('Excel (.xlsx)')}
+              variant="primary"
+              style={styles.exportButton}
+              disabled={rows.length === 0}
+              icon={<Download size={16} color={tennisColors.onFill} />}
+              onPress={() => { void exporteer(() => shareXlsx(xlsxNaam, toXlsx(rows))); }}
+            />
+          ) : null}
+          <Button
+            label={t('CSV')}
+            variant={xlsxWordtOndersteund ? 'secondary' : 'primary'}
+            style={styles.exportButton}
+            disabled={rows.length === 0}
+            icon={(
+              <Download
+                size={16}
+                color={xlsxWordtOndersteund ? tennisColors.text : tennisColors.onFill}
+              />
+            )}
+            onPress={() => { void exporteer(() => shareCsv(csvNaam, toCsv(rows))); }}
+          />
+        </View>
         <Text style={styles.exportNote}>
           {t('Het bestand bevat precies de lessen die je hier ziet: {periode}, {trainer}.', {
             periode: periodLabel(period),
@@ -156,5 +178,9 @@ const styles = StyleSheet.create({
   summaryNote: { ...typography.body, fontSize: 13, color: tennisColors.textMuted, marginTop: spacing.xs },
   error: { color: tennisColors.danger, fontSize: 14 },
   exportBlock: { gap: spacing.xs },
+  exportRow: { flexDirection: 'row', gap: spacing.sm },
+  // Allebei de knoppen even breed: de ene is niet belangrijker dan de andere qua ruimte,
+  // alleen qua nadruk (gevuld tegenover omlijnd).
+  exportButton: { flex: 1 },
   exportNote: { fontSize: 13, color: tennisColors.textMuted, textAlign: 'center' },
 });

@@ -171,19 +171,23 @@ export function periodLabel(p: Period): string {
 /**
  * De bestandsnaam van een export: de periode moet eruit af te lezen zijn, want in een map
  * met downloads is "lessen.csv" naast "lessen (3).csv" niets waard.
+ *
+ * De extensie staat los omdat dezelfde selectie in twee vormen naar buiten kan (csv en
+ * xlsx); de naam ervoor hoort dan gelijk te blijven, zodat de twee bestanden in een map
+ * naast elkaar staan en niet twee losse dingen lijken.
  */
-export function periodFilename(p: Period): string {
+export function periodFilename(p: Period, extensie: 'csv' | 'xlsx' = 'csv'): string {
   const y = p.from.getFullYear();
   switch (p.kind) {
     case 'month':
-      return `lessen-${y}-${two(p.from.getMonth() + 1)}.csv`;
+      return `lessen-${y}-${two(p.from.getMonth() + 1)}.${extensie}`;
     case 'quarter':
-      return `lessen-${y}-K${Math.floor(p.from.getMonth() / 3) + 1}.csv`;
+      return `lessen-${y}-K${Math.floor(p.from.getMonth() / 3) + 1}.${extensie}`;
     case 'year':
-      return `lessen-${y}.csv`;
+      return `lessen-${y}.${extensie}`;
     case 'custom':
       return `lessen-${y}-${two(p.from.getMonth() + 1)}-${two(p.from.getDate())}-tot-`
-        + `${p.to.getFullYear()}-${two(p.to.getMonth() + 1)}-${two(p.to.getDate())}.csv`;
+        + `${p.to.getFullYear()}-${two(p.to.getMonth() + 1)}-${two(p.to.getDate())}.${extensie}`;
   }
 }
 
