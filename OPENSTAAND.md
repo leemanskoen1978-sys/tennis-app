@@ -10,7 +10,7 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 - **Werkbranch `feat/lesoverzicht-historiek`** staat gelijk met main en mag weg
   (`git branch -d feat/lesoverzicht-historiek`).
 - Er is **geen remote**; alles staat lokaal. Pushen kan pas als er een remote is gekoppeld.
-- Testsuite: 483 tests, allemaal in `lib/`. `npx tsc --noEmit` en `npx expo export --platform web` horen bij elke oplevering.
+- Testsuite: 676 tests, allemaal in `lib/`. `npx tsc --noEmit` en `npx expo export --platform web` horen bij elke oplevering.
 
 ## Afspraken over geld — niet zomaar wijzigen
 
@@ -65,13 +65,30 @@ Op volgorde van wat ik als eerste zou doen:
    sleutels lokaal zoals vroeger. Zie README om aan te koppelen.
 2. ~~**Inloggen met wachtwoord.**~~ Gedaan bij de Supabase-opzet, met strikte RLS: een
    speler ziet alleen wat van hemzelf is. Zonder sleutels blijft het de profielkeuze.
-3. **Herinneringen** naar spelers voor hun les, en naar de trainer voor lessen die te lang op
+3. ~~**Leden importeren uit Excel.**~~ Gedaan. Beheer → Leden importeren: een CSV met
+   `naam`, `email`, `rol`, `telefoon`, `uurtarief`, waarvan alleen naam en email verplicht
+   zijn. Het scherm toont eerst wat er gaat gebeuren en schrijft pas weg als de trainer
+   bevestigt. Wie zo is ingevoerd, stelt zijn wachtwoord zelf in op het loginscherm
+   ("Eerste keer hier?"); de bestaande trigger `link_auth_user` koppelt dat aan zijn rij,
+   dus zijn lessen en dossier komen mee. Het schema is niet gewijzigd.
+
+   Wat er bewust níét in zit: uitnodigingsmails (vraagt een Edge Function met de
+   service-role sleutel), echte `.xlsx` lezen (dat is een zip, dus decompressie), en
+   verwijderen via de import — een naam die uit het bestand valt, verdwijnt niet uit de
+   club. De rol van een bestaand lid wijzigen kan alleen met de hand in Beheer, want
+   `updateUser` sluit `role` uit van zijn type. Drie samengestelde foutmeldingen staan nog
+   niet in het Engels; dat kan pas als ze een vorm met plaatshouders krijgen.
+
+   **Zet in Supabase "Confirm email" aan** voordat je importeert — zie README. Zonder die
+   bevestiging kan iemand die het adres van een clublid kent dat account claimen voordat
+   het lid zelf komt.
+4. **Herinneringen** naar spelers voor hun les, en naar de trainer voor lessen die te lang op
    Open staan.
-4. **Annuleringsregels** — te laat afgezegd is nu gratis en wist de betaalwijze.
-5. **Verzetten** in plaats van annuleren en opnieuw boeken (regen, binnenbaan).
-6. **Facturen** — "Factuur" bestaat als betaalwijze, maar er komt geen document uit.
-7. **Voortgang over tijd** — ratings staan er, maar het verloop per speler is nergens te zien.
-8. **Tests op de schermen** — alle 483 tests zitten in `lib/`, geen enkele op een scherm. Twee
+5. **Annuleringsregels** — te laat afgezegd is nu gratis en wist de betaalwijze.
+6. **Verzetten** in plaats van annuleren en opnieuw boeken (regen, binnenbaan).
+7. **Facturen** — "Factuur" bestaat als betaalwijze, maar er komt geen document uit.
+8. **Voortgang over tijd** — ratings staan er, maar het verloop per speler is nergens te zien.
+9. **Tests op de schermen** — alle 676 tests zitten in `lib/`, geen enkele op een scherm. Twee
    echte fouten van vandaag zaten daar: een opslagknop die op web nooit vuurde
    (`onEndEditing` bestaat niet in react-native-web) en een stijl die niet geïmporteerd was.
 
