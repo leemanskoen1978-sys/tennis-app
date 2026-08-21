@@ -8,6 +8,7 @@
 // De betaler (`Booking.player_id`) telt altijd mee als speler. Hij staat niet in
 // `participant_ids`: daar staan de anderen. Zie de toelichting bij `Booking` in lib/types.
 
+import { t } from './i18n';
 import type { Booking } from './types';
 
 /** De velden die een vraag over de groep nodig heeft; meer weet dit bestand niet van een les. */
@@ -77,5 +78,5 @@ export function shortGroupLabel(payerName: string, size: number): string {
 
 /** "3 spelers" / "1 speler" — de telling in woorden, voor onder een titel of in een hint. */
 export function groupSizeLabel(size: number): string {
-  return size === 1 ? '1 speler' : `${size} spelers`;
+  return size === 1 ? t('1 speler') : t('{n} spelers', { n: size });
 }

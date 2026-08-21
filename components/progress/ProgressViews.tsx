@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Star } from 'lucide-react-native';
 import { Card } from '../ui/Card';
+import { useT, currentLocale } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius } from '../../constants/theme';
 import type { StudentProgress, TrainingType } from '../../lib/types';
@@ -16,13 +17,14 @@ export const byDateDesc = (a: StudentProgress, b: StudentProgress) =>
 
 export function formatDate(iso?: string): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString('nl-BE', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString(currentLocale(), { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 export function Stars({ count }: { count: number }) {
+  const t = useT();
   if (!count) return null;
   return (
-    <View style={styles.starsInline} accessibilityRole="image" accessibilityLabel={`${count} sterren`}>
+    <View style={styles.starsInline} accessibilityRole="image" accessibilityLabel={t('{n} sterren', { n: count })}>
       {Array.from({ length: count }).map((_, i) => (
         <Star key={i} size={14} fill={tennisColors.warning} color={tennisColors.warning} />
       ))}
@@ -31,7 +33,8 @@ export function Stars({ count }: { count: number }) {
 }
 
 export function AudioMemo({ uri }: { uri: string }) {
-  if (Platform.OS !== 'web') return <Text style={styles.memoNative}>🔊 Spraakmemo</Text>;
+  const t = useT();
+  if (Platform.OS !== 'web') return <Text style={styles.memoNative}>🔊 {t('Spraakmemo')}</Text>;
   return React.createElement('audio', { src: uri, controls: true, style: { height: 32, width: '100%', marginTop: 4 } });
 }
 
@@ -44,32 +47,43 @@ export function ProgressEntryCard({ p, studentName, showStudent, lessonTitle, co
    *  blad dat erop opengaat. Zonder blad erachter blijft de kaart wat hij was: leesbaar. */
   onPress?: () => void;
 }) {
+  const t = useT();
   return (
     <Card
       style={styles.entryCard}
       onPress={onPress}
-      accessibilityLabel={`${TRAINING_LABELS[p.training_type]}${p.created_at ? ` van ${formatDate(p.created_at)}` : ''}, openen`}
+      accessibilityLabel={t('{soort}{datum}, openen', {
+        soort: t(TRAINING_LABELS[p.training_type]),
+        datum: p.created_at ? t(' van {datum}', { datum: formatDate(p.created_at) }) : '',
+      })}
     >
       <View style={styles.entryHeader}>
-        <Text style={styles.entryType}>{TRAINING_LABELS[p.training_type]}</Text>
+        <Text style={styles.entryType}>{t(TRAINING_LABELS[p.training_type])}</Text>
         <Stars count={p.rating ?? 0} />
       </View>
       {showStudent ? <Text style={styles.entryStudent}>{studentName}</Text> : null}
-      {coachName ? <Text style={styles.entryCoach}>Genoteerd door {coachName}</Text> : null}
+      {coachName
+        ? <Text style={styles.entryCoach}>{t('Genoteerd door {naam}', { naam: coachName })}</Text>
+        : null}
       {p.created_at ? <Text style={styles.entryDate}>{formatDate(p.created_at)}</Text> : null}
-      {lessonTitle ? <Text style={styles.entryLesson}>Les: {lessonTitle}</Text> : null}
+      {lessonTitle
+        ? <Text style={styles.entryLesson}>{t('Les')}: {lessonTitle}</Text>
+        : null}
       {p.notes ? <Text style={styles.entryText}>{p.notes}</Text> : null}
-      {p.homework ? <Text style={styles.entryHomework}>Huiswerk: {p.homework}</Text> : null}
+      {p.homework
+        ? <Text style={styles.entryHomework}>{t('Huiswerk')}: {p.homework}</Text>
+        : null}
       {/* Op een aantikbare kaart blijft het bij een vermelding: op de knopjes van de
           speler drukken zou de kaart eronder openen. Afspelen kan in het blad. */}
       {p.voice_memo_uri
-        ? (onPress ? <Text style={styles.memoNative}>🔊 Spraakmemo</Text> : <AudioMemo uri={p.voice_memo_uri} />)
+        ? (onPress ? <Text style={styles.memoNative}>🔊 {t('Spraakmemo')}</Text> : <AudioMemo uri={p.voice_memo_uri} />)
         : null}
     </Card>
   );
 }
 
 export function ReportSummary({ entries }: { entries: StudentProgress[] }) {
+  const t = useT();
   const rated = entries.filter((e) => (e.rating ?? 0) > 0);
   const avg = rated.length ? rated.reduce((s, e) => s + (e.rating ?? 0), 0) / rated.length : 0;
   const byType = TRAINING_TYPES
@@ -77,12 +91,14 @@ export function ReportSummary({ entries }: { entries: StudentProgress[] }) {
     .filter((x) => x.n > 0);
   return (
     <Card>
-      <Text style={styles.cardTitle}>Samenvatting</Text>
-      <Text style={styles.summaryLine}>Aantal sessies: {entries.length}</Text>
-      <Text style={styles.summaryLine}>Gemiddelde beoordeling: {avg ? `${avg.toFixed(1)} / 5` : '—'}</Text>
+      <Text style={styles.cardTitle}>{t('Samenvatting')}</Text>
+      <Text style={styles.summaryLine}>{t('Aantal sessies')}: {entries.length}</Text>
+      <Text style={styles.summaryLine}>
+        {t('Gemiddelde beoordeling')}: {avg ? `${avg.toFixed(1)} / 5` : '—'}
+      </Text>
       <View style={styles.typeChips}>
         {byType.map((x) => (
-          <View key={x.t} style={styles.typePill}><Text style={styles.typePillText}>{TRAINING_LABELS[x.t]}: {x.n}</Text></View>
+          <View key={x.t} style={styles.typePill}><Text style={styles.typePillText}>{t(TRAINING_LABELS[x.t])}: {x.n}</Text></View>
         ))}
       </View>
     </Card>

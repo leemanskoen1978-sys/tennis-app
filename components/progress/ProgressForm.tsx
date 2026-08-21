@@ -8,6 +8,7 @@ import { UserManagement } from '../UserManagement';
 import { VoiceRecorder } from '../VoiceRecorder';
 import { AudioMemo, Stars, TRAINING_TYPES, TRAINING_LABELS, formatDate } from './ProgressViews';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, shadow, webCursor, contentMaxWidth } from '../../constants/theme';
 import type { StudentProgress, TrainingType } from '../../lib/types';
@@ -51,6 +52,7 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
   const [voiceUri, setVoiceUri] = useState<string | undefined>(entry?.voice_memo_uri);
   const [linkLessonId, setLinkLessonId] = useState<string | null>(entry?.lesson_id ?? null);
   // Verwijderen is onomkeerbaar, dus het gebeurt nooit met één tik: eerst deze vraag.
+  const t = useT();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   // Een blad dat opengaat begint bij wat er is opgeslagen. Zonder dit zou een tweede
@@ -113,7 +115,7 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
     onClose();
   };
 
-  const title = entry ? 'Voortgang bewerken' : 'Nieuwe voortgang';
+  const title = entry ? t('Voortgang bewerken') : t('Nieuwe voortgang');
   const lessonTitle = entry?.lesson_id
     ? lessons.find((l) => l.id === entry.lesson_id)?.title
     : undefined;
@@ -123,8 +125,8 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>{canEdit ? title : 'Voortgang'}</Text>
-            <Pressable onPress={closeAndSave} style={webCursor} accessibilityRole="button" accessibilityLabel="Sluiten">
+            <Text style={styles.sheetTitle}>{canEdit ? title : t('Voortgang')}</Text>
+            <Pressable onPress={closeAndSave} style={webCursor} accessibilityRole="button" accessibilityLabel={t('Sluiten')}>
               <X size={22} color={tennisColors.textMuted} />
             </Pressable>
           </View>
@@ -133,25 +135,25 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
               bij de doelen, waar het blad ook opengaat maar de velden dichtblijven. */}
           {!canEdit && entry ? (
             <ScrollView contentContainerStyle={styles.sheetBody}>
-              <Text style={styles.readType}>{TRAINING_LABELS[entry.training_type]}</Text>
+              <Text style={styles.readType}>{t(TRAINING_LABELS[entry.training_type])}</Text>
               <Stars count={entry.rating ?? 0} />
               {entry.created_at ? <Text style={styles.readMuted}>{formatDate(entry.created_at)}</Text> : null}
-              {lessonTitle ? <Text style={styles.readMuted}>Les: {lessonTitle}</Text> : null}
+              {lessonTitle ? <Text style={styles.readMuted}>{t('Les')}: {lessonTitle}</Text> : null}
               {entry.notes ? (
                 <>
-                  <Text style={styles.label}>Notities</Text>
+                  <Text style={styles.label}>{t('Notities')}</Text>
                   <Text style={styles.readValue}>{entry.notes}</Text>
                 </>
               ) : null}
               {entry.homework ? (
                 <>
-                  <Text style={styles.label}>Huiswerk</Text>
+                  <Text style={styles.label}>{t('Huiswerk')}</Text>
                   <Text style={styles.readValue}>{entry.homework}</Text>
                 </>
               ) : null}
               {entry.voice_memo_uri ? (
                 <>
-                  <Text style={styles.label}>Spraakmemo</Text>
+                  <Text style={styles.label}>{t('Spraakmemo')}</Text>
                   <AudioMemo uri={entry.voice_memo_uri} />
                 </>
               ) : null}
@@ -163,7 +165,7 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
                     gemaakt en zou een keuzeveld alleen maar uitnodigen om hem te verzetten. */}
                 {studentId === undefined ? (
                   <>
-                    <Text style={styles.label}>Speler</Text>
+                    <Text style={styles.label}>{t('Speler')}</Text>
                     <StudentCombobox
                       students={players}
                       value={pickedId}
@@ -172,25 +174,30 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
                         // Een les van de vorige speler hoort niet aan deze notitie te blijven hangen.
                         setLinkLessonId(null);
                       }}
-                      placeholder="Typ de naam van de speler…"
+                      placeholder={t('Typ de naam van de speler…')}
                       onRequestCreate={setNewPlayerName}
                     />
                   </>
                 ) : null}
 
-                <Text style={styles.label}>Type training</Text>
+                <Text style={styles.label}>{t('Type training')}</Text>
                 <View style={styles.chipRow}>
-                  {TRAINING_TYPES.map((t) => (
-                    <Chip key={t} label={TRAINING_LABELS[t]} selected={t === type} onPress={() => setType(t)} />
+                  {TRAINING_TYPES.map((soort) => (
+                    <Chip
+                      key={soort}
+                      label={t(TRAINING_LABELS[soort])}
+                      selected={soort === type}
+                      onPress={() => setType(soort)}
+                    />
                   ))}
                 </View>
 
-                <Text style={styles.label}>Beoordeling</Text>
+                <Text style={styles.label}>{t('Beoordeling')}</Text>
                 <View style={styles.starRow}>
                   {RATINGS.map((r) => {
                     const active = r <= rating;
                     return (
-                      <Pressable key={r} onPress={() => setRating(r === rating ? 0 : r)} style={styles.star} accessibilityRole="button" accessibilityLabel={`${r} sterren`}>
+                      <Pressable key={r} onPress={() => setRating(r === rating ? 0 : r)} style={styles.star} accessibilityRole="button" accessibilityLabel={t('{n} sterren', { n: r })}>
                         <Star size={28} fill={active ? tennisColors.warning : 'transparent'} color={active ? tennisColors.warning : tennisColors.border} />
                       </Pressable>
                     );
@@ -199,9 +206,9 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
 
                 {playerLessons.length > 0 ? (
                   <>
-                    <Text style={styles.label}>Koppel aan les (optioneel)</Text>
+                    <Text style={styles.label}>{t('Koppel aan les (optioneel)')}</Text>
                     <View style={styles.chipRow}>
-                      <Chip label="Geen" selected={linkLessonId === null} onPress={() => setLinkLessonId(null)} />
+                      <Chip label={t('Geen')} selected={linkLessonId === null} onPress={() => setLinkLessonId(null)} />
                       {playerLessons.map((l) => (
                         <Chip key={l.id} label={l.title} selected={linkLessonId === l.id} onPress={() => setLinkLessonId(l.id)} />
                       ))}
@@ -209,13 +216,13 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
                   </>
                 ) : null}
 
-                <Text style={styles.label}>Notities</Text>
+                <Text style={styles.label}>{t('Notities')}</Text>
                 {/* De voorbeeldtekst zegt wát er verwacht wordt; "Notities" alleen liet een
                     trainer raden of hier de les of de speler beschreven moet worden. */}
-                <TextInput style={[styles.input, styles.multiline]} value={notes} onChangeText={setNotes} placeholder="Beschrijf waar jullie deze les aan gewerkt hebben…" placeholderTextColor={tennisColors.textMuted} accessibilityLabel="Notities" multiline />
-                <Text style={styles.label}>Huiswerk</Text>
-                <TextInput style={styles.input} value={homework} onChangeText={setHomework} placeholder="Huiswerk" placeholderTextColor={tennisColors.textMuted} accessibilityLabel="Huiswerk" />
-                <Text style={styles.label}>Spraakmemo</Text>
+                <TextInput style={[styles.input, styles.multiline]} value={notes} onChangeText={setNotes} placeholder={t('Beschrijf waar jullie deze les aan gewerkt hebben…')} placeholderTextColor={tennisColors.textMuted} accessibilityLabel={t('Notities')} multiline />
+                <Text style={styles.label}>{t('Huiswerk')}</Text>
+                <TextInput style={styles.input} value={homework} onChangeText={setHomework} placeholder={t('Huiswerk')} placeholderTextColor={tennisColors.textMuted} accessibilityLabel={t('Huiswerk')} />
+                <Text style={styles.label}>{t('Spraakmemo')}</Text>
                 <VoiceRecorder value={voiceUri} onRecorded={setVoiceUri} onClear={() => setVoiceUri(undefined)} />
 
                 {/* Verwijderen staat onderaan en achter een vraag: het is het einde van
@@ -224,11 +231,11 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
                   confirmingDelete ? (
                     <View style={styles.confirmBox}>
                       <Text style={styles.confirmText}>
-                        Deze voortgangsnotitie verwijderen? Dat kan niet ongedaan gemaakt worden.
+                        {t('Deze voortgangsnotitie verwijderen? Dat kan niet ongedaan gemaakt worden.')}
                       </Text>
                       <View style={styles.confirmRow}>
                         <Button
-                          label="Ja, verwijderen"
+                          label={t('Ja, verwijderen')}
                           variant="danger"
                           fullWidth={false}
                           onPress={() => {
@@ -238,7 +245,7 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
                           }}
                         />
                         <Button
-                          label="Nee"
+                          label={t('Nee')}
                           variant="secondary"
                           fullWidth={false}
                           onPress={() => setConfirmingDelete(false)}
@@ -248,7 +255,7 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
                   ) : (
                     <View style={styles.confirmRow}>
                       <Button
-                        label="Verwijderen"
+                        label={t('Verwijderen')}
                         variant="danger"
                         fullWidth={false}
                         onPress={() => setConfirmingDelete(true)}
@@ -267,14 +274,14 @@ export function ProgressForm({ visible, onClose, studentId, entry = null, canEdi
                   closeAndSave), dus daar klopt "Annuleren" wél en doet hij hetzelfde. */}
               <View style={styles.footer}>
                 <Button
-                  label={entry ? 'Sluiten' : 'Annuleren'}
+                  label={entry ? t('Sluiten') : t('Annuleren')}
                   variant="secondary"
                   fullWidth={false}
                   onPress={closeAndSave}
                   style={styles.footerBtn}
                 />
                 <Button
-                  label="Opslaan"
+                  label={t('Opslaan')}
                   variant="primary"
                   fullWidth={false}
                   // Zonder speler is er niets om de notitie aan te hangen.

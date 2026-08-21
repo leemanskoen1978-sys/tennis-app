@@ -4,6 +4,7 @@
 // progress note exists between them. That makes the relation many-to-many for free
 // and it can never go stale: book Mathis with Sanne and Mathis is in Sanne's list.
 
+import { t } from './i18n';
 import { formatDayTime } from './datetime';
 import { lessonPlayerIds, playsIn } from './groups';
 import type { Booking, Lesson, StudentProgress } from './types';
@@ -117,14 +118,16 @@ export function buildLesplan(
  * bijvoorbeeld "2 te doen · 3 notities".
  */
 export function lesplanSummary(plan: Lesplan): string {
-  const todo = plan.planned.length > 0 ? `${plan.planned.length} te doen` : 'niets te doen';
+  const todo = plan.planned.length > 0
+    ? t('{n} te doen', { n: plan.planned.length })
+    : t('niets te doen');
   return `${todo} · ${noteCountLabel(plan.entryCount)}`;
 }
 
 /** Hoeveel notities er zijn, in woorden: "geen notities", "1 notitie", "3 notities". */
 export function noteCountLabel(count: number): string {
-  if (count <= 0) return 'geen notities';
-  return count === 1 ? '1 notitie' : `${count} notities`;
+  if (count <= 0) return t('geen notities');
+  return count === 1 ? t('1 notitie') : t('{n} notities', { n: count });
 }
 
 /**
@@ -155,6 +158,8 @@ export function nextBookingFor(
  * van een keuzelijst een rapport.
  */
 export function playerListLine(next: Booking | null, noteCount: number): string {
-  const lesson = next ? `Volgende les ${formatDayTime(next.start_time)}` : 'Geen les gepland';
+  const lesson = next
+    ? t('Volgende les {moment}', { moment: formatDayTime(next.start_time) })
+    : t('Geen les gepland');
   return `${lesson} · ${noteCountLabel(noteCount)}`;
 }

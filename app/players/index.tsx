@@ -10,6 +10,7 @@ import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { nextBookingFor, playerListLine } from '../../lib/relations';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
+import { useT } from '../../lib/i18n';
 
 /**
  * De spelerslijst is ook de plek waar een trainer na zijn lesdag zijn notities kwijt kan:
@@ -20,6 +21,7 @@ import { spacing, typography } from '../../constants/theme';
  * hem genoteerd is. Dat is wat je nodig hebt om te kiezen; de rest staat in zijn dossier.
  */
 export default function Players() {
+  const t = useT();
   const router = useRouter();
   const { currentUser, users, bookings, progress } = useSimpleData();
   const players = users.filter((u) => u.role !== 'coach');
@@ -36,8 +38,8 @@ export default function Players() {
       {isCoach ? (
         <TileGrid>
           <ActionTile
-            title="Voortgang toevoegen"
-            subtitle="Notitie na de les, voor eender welke speler"
+            title={t('Voortgang toevoegen')}
+            subtitle={t('Notitie na de les, voor eender welke speler')}
             icon={NotebookPen}
             primary
             onPress={() => setProgressOpen(true)}
@@ -46,7 +48,7 @@ export default function Players() {
       ) : null}
 
       {players.length === 0 ? (
-        <Text style={styles.muted}>Nog geen spelers.</Text>
+        <Text style={styles.muted}>{t('Nog geen spelers.')}</Text>
       ) : (
         players.map((p) => (
           <Card key={p.id} onPress={() => router.push(`/players/${p.id}`)} accessibilityLabel={p.name} style={styles.row}>

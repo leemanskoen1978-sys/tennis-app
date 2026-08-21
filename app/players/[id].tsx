@@ -25,6 +25,7 @@ import { filledGoalCount, goalCountLabel } from '../../lib/goals';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
 import { groupSize, groupSizeLabel, isGroupLesson, playsIn } from '../../lib/groups';
 import { parseSponsorBudget, sponsorHint, sponsorState } from '../../lib/sponsor';
+import { useT, type Translate } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
 import type { GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
@@ -51,6 +52,7 @@ import { formatDay, formatTimeRange } from '../../lib/datetime';
 type SectionKey = 'lesdagen' | 'lesplan' | 'doelen' | 'administratie';
 
 export default function PlayerDossier() {
+  const t = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const {
@@ -78,13 +80,13 @@ export default function PlayerDossier() {
   if (!player) {
     return (
       <Screen scroll={false}>
-        <Text style={styles.muted}>Speler niet gevonden.</Text>
+        <Text style={styles.muted}>{t('Speler niet gevonden.')}</Text>
       </Screen>
     );
   }
 
   const courtName = (cid: string) => courts.find((c) => c.id === cid)?.name ?? '';
-  const nameOf = (uid?: string) => users.find((u) => u.id === uid)?.name ?? 'Onbekend';
+  const nameOf = (uid?: string) => users.find((u) => u.id === uid)?.name ?? t('Onbekend');
 
   // The dossier is shared between every coach who works with this player. The relation is
   // derived from bookings/lessons/progress — there is no assignment screen to keep in sync.
@@ -105,7 +107,10 @@ export default function PlayerDossier() {
   const lessonMeta = (b: (typeof bookings)[number]): string => {
     const basis = `${courtName(b.court_id)} · ${nameOf(b.coach_id)}`;
     if (!isGroupLesson(b)) return basis;
-    return `${basis} · ${groupSizeLabel(groupSize(b))}, ${nameOf(b.player_id)} betaalt`;
+    return `${basis} · ${t('{groep}, {betaler} betaalt', {
+      groep: groupSizeLabel(groupSize(b)),
+      betaler: nameOf(b.player_id),
+    })}`;
   };
   const upcoming = playerBookings.filter((b) => new Date(b.end_time).getTime() >= now)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
@@ -121,12 +126,12 @@ export default function PlayerDossier() {
   // Wat er op de tegel staat. De tellingen komen uit precies dezelfde lijsten als de inhoud
   // van het blad, zodat een tegel nooit iets anders belooft dan wat je erachter vindt.
   const lesdagenSummary = upcoming.length > 0
-    ? `${upcoming.length} aankomend`
-    : past.length > 0 ? 'niets aankomend' : 'geen afspraken';
+    ? t('{n} aankomend', { n: upcoming.length })
+    : past.length > 0 ? t('niets aankomend') : t('geen afspraken');
   // Zelfde telling als de badges bij de horizonnen zelf: een leeg doel telt niet mee.
   const goalCount = filledGoalCount(goals.filter((g) => g.student_id === player.id));
-  const doelenSummary = goalCount === 0 ? 'nog geen doel' : goalCountLabel(goalCount);
-  const betaalwijze = PAYMENT_LABELS[player.default_payment_method ?? 'open'];
+  const doelenSummary = goalCount === 0 ? t('nog geen doel') : goalCountLabel(goalCount);
+  const betaalwijze = t(PAYMENT_LABELS[player.default_payment_method ?? 'open']);
 
   // Het sponsorbudget: wat er in het contract staat en wat er nog van over is. De rest
   // rekent lib/sponsor uit de gesponsorde lessen — er is geen tweede saldo dat kan gaan
@@ -186,12 +191,12 @@ export default function PlayerDossier() {
     // de roos van Doelen (ook op de tegel in Beheer) en de schuifjes van Beheer. Geen
     // badges: een badge vraagt aandacht voor iets wat af moet (openstaande betalingen in
     // Beheer), en in een dossier is niets dringend.
-    { key: 'lesdagen', title: 'Lesdagen', subtitle: lesdagenSummary, icon: CalendarDays },
-    { key: 'lesplan', title: 'Lesplan & voortgang', subtitle: lesplanSummary(plan), icon: BookOpen },
-    { key: 'doelen', title: 'Doelen', subtitle: doelenSummary, icon: Target },
+    { key: 'lesdagen', title: t('Lesdagen'), subtitle: lesdagenSummary, icon: CalendarDays },
+    { key: 'lesplan', title: t('Lesplan & voortgang'), subtitle: lesplanSummary(plan), icon: BookOpen },
+    { key: 'doelen', title: t('Doelen'), subtitle: doelenSummary, icon: Target },
   ];
   if (isCoach) {
-    tiles.push({ key: 'administratie', title: 'Administratie', subtitle: betaalwijze, icon: SlidersHorizontal });
+    tiles.push({ key: 'administratie', title: t('Administratie'), subtitle: betaalwijze, icon: SlidersHorizontal });
   }
 
   return (
@@ -202,12 +207,12 @@ export default function PlayerDossier() {
       {/* Wie is dit */}
       <Card>
         <Text style={styles.name}>{player.name}</Text>
-        <Badge label={player.role === 'coach' ? 'Coach' : player.role === 'parent' ? 'Ouder' : 'Speler'} color={tennisColors.primaryFill} />
+        <Badge label={player.role === 'coach' ? t('Coach') : player.role === 'parent' ? t('Ouder') : t('Speler')} color={tennisColors.primaryFill} />
         {player.email ? <Text style={styles.contact}>{player.email}</Text> : null}
         {player.phone ? <Text style={styles.contact}>{player.phone}</Text> : null}
         {playerCoaches.length > 0 ? (
           <View style={styles.coachRow}>
-            <Text style={styles.coachRowLabel}>Trainers: </Text>
+            <Text style={styles.coachRowLabel}>{t('Trainers')}: </Text>
             {playerCoaches.map((c, i) => (
               <View key={c.id} style={styles.coachRowItem}>
                 {i > 0 ? <Text style={styles.coachRowLabel}> · </Text> : null}
@@ -215,7 +220,7 @@ export default function PlayerDossier() {
                   onPress={() => router.push(`/coaches/${c.id}`)}
                   style={webCursor}
                   accessibilityRole="button"
-                  accessibilityLabel={`Open dossier van trainer ${c.name}`}
+                  accessibilityLabel={t('Open dossier van trainer {naam}', { naam: c.name })}
                 >
                   <Text style={styles.coachLink}>{c.name}</Text>
                 </Pressable>
@@ -226,34 +231,34 @@ export default function PlayerDossier() {
       </Card>
 
       <TileGrid>
-        {tiles.map((t) => (
+        {tiles.map((tile) => (
           <ActionTile
-            key={t.key}
-            title={t.title}
-            subtitle={t.subtitle}
-            icon={t.icon}
-            onPress={() => setOpenSection(t.key)}
+            key={tile.key}
+            title={tile.title}
+            subtitle={tile.subtitle}
+            icon={tile.icon}
+            onPress={() => setOpenSection(tile.key)}
           />
         ))}
       </TileGrid>
 
       {/* Wat staat er gepland */}
-      <DetailSheet title="Lesdagen" visible={sheetOpen('lesdagen')} onClose={closeSheet}>
+      <DetailSheet title={t('Lesdagen')} visible={sheetOpen('lesdagen')} onClose={closeSheet}>
         {isCoach ? (
           <SheetAction
             icon={<CalendarPlus size={16} color={tennisColors.primaryFill} />}
-            label="Nieuwe afspraak"
-            accessibilityLabel={`Nieuwe afspraak met ${player.name}`}
+            label={t('Nieuwe afspraak')}
+            accessibilityLabel={t('Nieuwe afspraak met {naam}', { naam: player.name })}
             onPress={() => goTo(`/agenda/new?playerId=${player.id}`)}
           />
         ) : null}
         {upcoming.length === 0 && past.length === 0 ? (
-          <Text style={styles.muted}>Nog geen afspraken.</Text>
+          <Text style={styles.muted}>{t('Nog geen afspraken.')}</Text>
         ) : (
           <>
             {upcoming.length > 0 ? (
               <>
-                <Text style={styles.subLabel}>Aankomend</Text>
+                <Text style={styles.subLabel}>{t('Aankomend')}</Text>
                 <Card style={styles.listCard}>
                   {upcoming.map((b, i) => (
                     <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
@@ -269,7 +274,7 @@ export default function PlayerDossier() {
             ) : null}
             {past.length > 0 ? (
               <>
-                <Text style={styles.subLabel}>Geweest</Text>
+                <Text style={styles.subLabel}>{t('Geweest')}</Text>
                 <Card style={styles.listCard}>
                   {past.slice(0, 6).map((b, i) => (
                     <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
@@ -288,24 +293,24 @@ export default function PlayerDossier() {
       </DetailSheet>
 
       {/* Het werk: waar het naartoe gaat */}
-      <DetailSheet title="Doelen" visible={sheetOpen('doelen')} onClose={closeSheet}>
+      <DetailSheet title={t('Doelen')} visible={sheetOpen('doelen')} onClose={closeSheet}>
         <GoalHorizonRows studentId={player.id} onOpen={setOpenHorizon} />
       </DetailSheet>
 
       {/* Het materiaal en wat het opleverde: één lijst, notities onder hun les */}
-      <DetailSheet title="Lesplan & voortgang" visible={sheetOpen('lesplan')} onClose={closeSheet}>
+      <DetailSheet title={t('Lesplan & voortgang')} visible={sheetOpen('lesplan')} onClose={closeSheet}>
         {isCoach && currentUser ? (
           <View style={styles.actionRow}>
             <SheetAction
               icon={<Plus size={16} color={tennisColors.primaryFill} />}
-              label="Les toewijzen"
-              accessibilityLabel="Les toewijzen"
+              label={t('Les toewijzen')}
+              accessibilityLabel={t('Les toewijzen')}
               onPress={() => setAssignOpen(true)}
             />
             <SheetAction
               icon={<Plus size={16} color={tennisColors.primaryFill} />}
-              label="Voortgang toevoegen"
-              accessibilityLabel={`Voortgang toevoegen voor ${player.name}`}
+              label={t('Voortgang toevoegen')}
+              accessibilityLabel={t('Voortgang toevoegen voor {naam}', { naam: player.name })}
               onPress={() => setProgressOpen(true)}
             />
           </View>
@@ -313,18 +318,18 @@ export default function PlayerDossier() {
 
         {/* Eén rustige regel als er in het geheel nog niets is. Per les geen "geen
             notities"-regel: dat maakt de lijst alleen maar langer. */}
-        {nothingYet ? <Text style={styles.muted}>Nog geen lessen of notities.</Text> : null}
+        {nothingYet ? <Text style={styles.muted}>{t('Nog geen lessen of notities.')}</Text> : null}
 
         {plan.planned.length > 0 ? (
           <>
-            <Text style={styles.subLabel}>Te doen</Text>
+            <Text style={styles.subLabel}>{t('Te doen')}</Text>
             {plan.planned.map((item) => lessonBlock(item, false))}
           </>
         ) : null}
 
         {plan.given.length > 0 ? (
           <>
-            <Text style={styles.subLabel}>Gegeven</Text>
+            <Text style={styles.subLabel}>{t('Gegeven')}</Text>
             {plan.given.map((item) => lessonBlock(item, true))}
           </>
         ) : null}
@@ -333,7 +338,7 @@ export default function PlayerDossier() {
             hoort nergens onder, maar mag ook niet van het scherm vallen. */}
         {plan.loose.length > 0 ? (
           <>
-            <Text style={styles.subLabel}>Losse notities</Text>
+            <Text style={styles.subLabel}>{t('Losse notities')}</Text>
             {plan.loose.map((p) => (
               <ProgressEntryCard key={p.id} p={p} studentName={player.name} showStudent={false} lessonTitle={lessonTitle(p.lesson_id)} coachName={nameOf(p.coach_id)} onPress={() => setOpenEntry(p)} />
             ))}
@@ -343,16 +348,16 @@ export default function PlayerDossier() {
 
       {/* De administratie: één keer instellen, daarna vergeten */}
       {isCoach ? (
-        <DetailSheet title="Administratie" visible={sheetOpen('administratie')} onClose={closeSheet}>
-          <Text style={styles.cardTitle}>Standaard betaalwijze</Text>
+        <DetailSheet title={t('Administratie')} visible={sheetOpen('administratie')} onClose={closeSheet}>
+          <Text style={styles.cardTitle}>{t('Standaard betaalwijze')}</Text>
           <Text style={styles.muted}>
-            Een nieuwe les van {player.name} krijgt deze betaalwijze meteen.
+            {t('Een nieuwe les van {naam} krijgt deze betaalwijze meteen.', { naam: player.name })}
           </Text>
           <View style={styles.chipRow}>
             {PAYMENT_METHODS.map((method) => (
               <Chip
                 key={method}
-                label={PAYMENT_LABELS[method]}
+                label={t(PAYMENT_LABELS[method])}
                 selected={(player.default_payment_method ?? 'open') === method}
                 onPress={() => {
                   void updateUser(player.id, {
@@ -363,11 +368,11 @@ export default function PlayerDossier() {
             ))}
           </View>
 
-          <Text style={[styles.cardTitle, styles.blockTop]}>Sponsorbudget</Text>
+          <Text style={[styles.cardTitle, styles.blockTop]}>{t('Sponsorbudget')}</Text>
           <Text style={styles.muted}>
-            Het bedrag uit het sponsorcontract van {player.name}. Elke gesponsorde les gaat
-            hier vanaf; is het budget op, dan kan een les niet meer op “Sponsor”. Laat het
-            veld leeg als er geen sponsorcontract is.
+            {t('Het bedrag uit het sponsorcontract van {naam}. Elke gesponsorde les gaat hier '
+              + 'vanaf; is het budget op, dan kan een les niet meer op “Sponsor”. Laat het veld '
+              + 'leeg als er geen sponsorcontract is.', { naam: player.name })}
           </Text>
           <TextInput
             style={styles.input}
@@ -377,11 +382,11 @@ export default function PlayerDossier() {
             // maakt van "500" onderweg een budget van 5 en daarna van 50.
             onBlur={saveBudget}
             onSubmitEditing={saveBudget}
-            placeholder="Bijvoorbeeld 500"
+            placeholder={t('Bijvoorbeeld 500')}
             placeholderTextColor={tennisColors.textMuted}
             keyboardType="decimal-pad"
             inputMode="decimal"
-            accessibilityLabel={`Sponsorbudget van ${player.name} in euro`}
+            accessibilityLabel={t('Sponsorbudget van {naam} in euro', { naam: player.name })}
           />
           <Text style={styles.muted}>{sponsorHint(budget)}</Text>
         </DetailSheet>
@@ -426,17 +431,18 @@ function PlanRow({ lesson, onOpen, onToggle, canEdit, given, ownerName, divided 
   lesson: Lesson; onOpen: () => void; onToggle: () => void; canEdit: boolean; given: boolean;
   ownerName?: string; divided: boolean;
 }) {
+  const t = useT();
   return (
     <View style={[styles.planRow, styles.listRow, divided && styles.divided]}>
       <Pressable onPress={onOpen} style={[styles.planOpen, webCursor]} accessibilityRole="button" accessibilityLabel={lesson.title}>
         <BookOpen size={18} color={tennisColors.primaryFill} />
         <View style={styles.planTitleWrap}>
           <Text style={styles.planTitle} numberOfLines={1}>{lesson.title}</Text>
-          {ownerName ? <Text style={styles.planOwner}>van {ownerName}</Text> : null}
+          {ownerName ? <Text style={styles.planOwner}>{t('van {naam}', { naam: ownerName })}</Text> : null}
         </View>
       </Pressable>
       {canEdit ? (
-        <Pressable onPress={onToggle} style={[styles.toggle, webCursor]} accessibilityRole="button" accessibilityLabel={given ? 'Terug naar gepland' : 'Markeer als gegeven'}>
+        <Pressable onPress={onToggle} style={[styles.toggle, webCursor]} accessibilityRole="button" accessibilityLabel={given ? t('Terug naar gepland') : t('Markeer als gegeven')}>
           {given ? <CheckCircle2 size={22} color={tennisColors.success} /> : <Circle size={22} color={tennisColors.textMuted} />}
         </Pressable>
       ) : null}

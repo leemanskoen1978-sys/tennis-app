@@ -15,6 +15,7 @@ import { isEmptyDrawing, rescaleDrawing } from '../../lib/drawing';
 import type {
   CourtDrawing, CourtObject, CourtObjectType, CourtOrientation, CourtStroke,
 } from '../../lib/types';
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, minTapTarget, webCursor } from '../../constants/theme';
 
@@ -39,6 +40,7 @@ const PEN_COLORS = [
 ] as const;
 
 export default function Drawing() {
+  const t = useT();
   const router = useRouter();
   const { currentUser, users, lessons, addLesson, updateLesson } = useSimpleData();
 
@@ -191,21 +193,23 @@ export default function Drawing() {
   return (
     <View style={styles.container}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.toolbarWrap} contentContainerStyle={styles.toolbar}>
-        <ToolButton label="Tekenen" active={tool === 'pen'} onPress={() => setTool('pen')} icon={<Pencil size={18} color={tool === 'pen' ? tennisColors.onFill : tennisColors.text} />} />
-        <ToolButton label="Kegel" active={tool === 'cone'} onPress={() => setTool('cone')} icon={<Cone size={18} color={tool === 'cone' ? tennisColors.onFill : tennisColors.text} />} />
-        <ToolButton label="Speler" active={tool === 'player'} onPress={() => setTool('player')} icon={<PersonStanding size={18} color={tool === 'player' ? tennisColors.onFill : tennisColors.text} />} />
-        <ToolButton label="Racket" active={tool === 'racket'} onPress={() => setTool('racket')} icon={<Text style={{ fontSize: 15 }}>🎾</Text>} />
+        <ToolButton label={t('Tekenen')} active={tool === 'pen'} onPress={() => setTool('pen')} icon={<Pencil size={18} color={tool === 'pen' ? tennisColors.onFill : tennisColors.text} />} />
+        <ToolButton label={t('Kegel')} active={tool === 'cone'} onPress={() => setTool('cone')} icon={<Cone size={18} color={tool === 'cone' ? tennisColors.onFill : tennisColors.text} />} />
+        <ToolButton label={t('Speler')} active={tool === 'player'} onPress={() => setTool('player')} icon={<PersonStanding size={18} color={tool === 'player' ? tennisColors.onFill : tennisColors.text} />} />
+        <ToolButton label={t('Racket')} active={tool === 'racket'} onPress={() => setTool('racket')} icon={<Text style={{ fontSize: 15 }}>🎾</Text>} />
         <ToolButton
-          label={orientation === 'vertical' ? 'Horizontaal' : 'Verticaal'}
+          label={orientation === 'vertical' ? t('Horizontaal') : t('Verticaal')}
           active={false}
           onPress={() => setOrientation((o) => (o === 'vertical' ? 'horizontal' : 'vertical'))}
           icon={<RotateCw size={18} color={tennisColors.text} />}
         />
-        <ToolButton label="Ongedaan" active={false} onPress={undo} icon={<Undo2 size={18} color={tennisColors.text} />} />
-        <ToolButton label="Wissen" active={false} onPress={clearAll} danger icon={<Trash2 size={18} color={tennisColors.danger} />} />
+        <ToolButton label={t('Ongedaan')} active={false} onPress={undo} icon={<Undo2 size={18} color={tennisColors.text} />} />
+        <ToolButton label={t('Wissen')} active={false} onPress={clearAll} danger icon={<Trash2 size={18} color={tennisColors.danger} />} />
         {isCoach ? (
           <ToolButton
-            label={forLesson ? `Bewaren bij "${forLesson.title}"` : 'Bewaren als lesmateriaal'}
+            label={forLesson
+              ? t('Bewaren bij "{titel}"', { titel: forLesson.title })
+              : t('Bewaren als lesmateriaal')}
             active={false}
             disabled={nothingDrawn}
             onPress={() => { if (forLesson) void saveToLesson(); else setSaveOpen(true); }}
@@ -220,12 +224,12 @@ export default function Drawing() {
             <Pressable
               key={c.value}
               accessibilityRole="button"
-              accessibilityLabel={`Kleur ${c.label}`}
+              accessibilityLabel={t('Kleur {kleur}', { kleur: t(c.label) })}
               onPress={() => setColor(c.value)}
               style={[styles.swatch, { backgroundColor: c.value }, color === c.value && styles.swatchActive, webCursor]}
             />
           ))}
-          <Text style={styles.hint}>Teken met je vinger. Kies een object om het op het veld te zetten.</Text>
+          <Text style={styles.hint}>{t('Teken met je vinger. Kies een object om het op het veld te zetten.')}</Text>
         </View>
       ) : (
         <View style={styles.swatches}>
@@ -261,11 +265,11 @@ export default function Drawing() {
         <View style={styles.backdrop}>
           <View style={styles.sheet}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Bewaren als lesmateriaal</Text>
+              <Text style={styles.sheetTitle}>{t('Bewaren als lesmateriaal')}</Text>
               <Pressable
                 onPress={() => setSaveOpen(false)}
                 accessibilityRole="button"
-                accessibilityLabel="Sluiten"
+                accessibilityLabel={t('Sluiten')}
                 style={webCursor}
               >
                 <X size={22} color={tennisColors.textMuted} />
@@ -275,35 +279,35 @@ export default function Drawing() {
               De oefening komt in de bibliotheek. Je kunt hem later aan een speler toewijzen.
             </Text>
 
-            <Text style={styles.sheetLabel}>Titel</Text>
+            <Text style={styles.sheetLabel}>{t('Titel')}</Text>
             <TextInput
               style={styles.input}
               value={saveTitle}
               onChangeText={setSaveTitle}
-              placeholder="bv. Kruisoefening met kegels"
+              placeholder={t('bv. Kruisoefening met kegels')}
               placeholderTextColor={tennisColors.textMuted}
             />
 
-            <Text style={styles.sheetLabel}>Beschrijving (optioneel)</Text>
+            <Text style={styles.sheetLabel}>{t('Beschrijving (optioneel)')}</Text>
             <TextInput
               style={[styles.input, styles.multiline]}
               value={saveDescription}
               onChangeText={setSaveDescription}
-              placeholder="Wat oefen je hiermee?"
+              placeholder={t('Wat oefen je hiermee?')}
               placeholderTextColor={tennisColors.textMuted}
               multiline
             />
 
-            <Text style={styles.sheetLabel}>Meteen toewijzen (optioneel)</Text>
+            <Text style={styles.sheetLabel}>{t('Meteen toewijzen (optioneel)')}</Text>
             <StudentCombobox
               students={students}
               value={savePlayerId}
               onChange={setSavePlayerId}
-              placeholder="Typ de naam van de speler…"
+              placeholder={t('Typ de naam van de speler…')}
             />
 
             <Button
-              label="Bewaren"
+              label={t('Bewaren')}
               variant="primary"
               disabled={!saveTitle.trim()}
               onPress={() => { void saveAsLesson(); }}

@@ -8,6 +8,7 @@
 // in lokale tijd: een les van 's avonds laat hoort bij de dag zoals je hem op de klok ziet.
 // Dezelfde keuze als `bookingsOnDay` in lib/hub.
 
+import { t, currentLocale } from './i18n';
 import type { Booking } from './types';
 
 /** De soorten periode die je kunt kiezen; de soort bepaalt hoe je vooruit- en achteruitbladert. */
@@ -21,18 +22,18 @@ export interface Period {
   to: Date;
 }
 
-const MONTH_NAMES = [
-  'januari', 'februari', 'maart', 'april', 'mei', 'juni',
-  'juli', 'augustus', 'september', 'oktober', 'november', 'december',
-];
-
-const MONTH_SHORT = [
-  'jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec',
-];
+// De maandnamen komen van de browser en staan niet meer als tabel in dit bestand: die
+// tabel had er in het Engels een tweede naast gekregen, en dan zijn er twee lijsten die uit
+// elkaar kunnen lopen. Een vaste dag (de 15e) omdat de 1e in sommige tijdzones nog in de
+// vorige maand valt.
+function monthName(monthIndex: number, style: 'long' | 'short'): string {
+  const i = ((monthIndex % 12) + 12) % 12;
+  return new Date(2000, i, 15).toLocaleDateString(currentLocale(), { month: style });
+}
 
 /** De korte naam van een maand ("jan", "mrt"), voor plekken waar het volle woord niet past. */
 export function shortMonthName(monthIndex: number): string {
-  return MONTH_SHORT[((monthIndex % 12) + 12) % 12];
+  return monthName(monthIndex, 'short');
 }
 
 /** Het begin van de dag waarop `d` valt, lokale tijd. */
@@ -139,7 +140,7 @@ export function shiftPeriod(p: Period, delta: number): Period {
 
 /** Eén dag als "1 aug" of, als het jaar erbij moet, "1 aug 2026". */
 function shortDay(d: Date, withYear: boolean): string {
-  const base = `${d.getDate()} ${MONTH_SHORT[d.getMonth()]}`;
+  const base = `${d.getDate()} ${shortMonthName(d.getMonth())}`;
   return withYear ? `${base} ${d.getFullYear()}` : base;
 }
 
@@ -147,9 +148,12 @@ function shortDay(d: Date, withYear: boolean): string {
 export function periodLabel(p: Period): string {
   switch (p.kind) {
     case 'month':
-      return `${MONTH_NAMES[p.from.getMonth()]} ${p.from.getFullYear()}`;
+      return `${monthName(p.from.getMonth(), 'long')} ${p.from.getFullYear()}`;
     case 'quarter':
-      return `${Math.floor(p.from.getMonth() / 3) + 1}e kwartaal ${p.from.getFullYear()}`;
+      return t('{n}e kwartaal {jaar}', {
+        n: Math.floor(p.from.getMonth() / 3) + 1,
+        jaar: p.from.getFullYear(),
+      });
     case 'year':
       return String(p.from.getFullYear());
     case 'custom': {

@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
+import { useT, t as tr } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow } from '../constants/theme';
 import { Button } from './ui/Button';
@@ -60,13 +61,14 @@ function dayKey(d: Date): string {
 
 /** "1 les" / "5 lessen" — komt in meerdere meldingen hieronder terug. */
 function lessons(n: number): string {
-  return n === 1 ? '1 les' : `${n} lessen`;
+  return n === 1 ? tr('1 les') : tr('{n} lessen', { n });
 }
 
 /** Hoeveel dagen er tussen twee lessen van een reeks zitten. */
 const STEP_DAYS: Record<RecurrenceFrequency, number> = { weekly: 7, biweekly: 14 };
 
 export function BookingModal(props: BookingModalProps): JSX.Element | null {
+  const t = useT();
   const { visible, onClose, coachId, date, slot, courts, playerId } = props;
   // `courts` is een prop (de terreinen waaruit je hier kiest); voor de prijs van een les
   // is de hele lijst nodig, dus die komt uit de opslag onder een eigen naam.
@@ -171,9 +173,9 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   /** Zelfde formulering als het exportscherm: hoeveel beurten heeft deze speler nog. */
   const beurtenHint = (): string => {
     const cards = forPlayerId ? cardsFor(beurtenkaarten, forPlayerId) : [];
-    if (cards.length === 0) return 'Deze speler heeft nog geen beurtenkaart.';
+    if (cards.length === 0) return t('Deze speler heeft nog geen beurtenkaart.');
     const left = cards.reduce((sum, c) => sum + remaining(c), 0);
-    return left === 1 ? 'Nog 1 beurt over.' : `Nog ${left} beurten over.`;
+    return left === 1 ? t('Nog 1 beurt over.') : t('Nog {n} beurten over.', { n: left });
   };
 
   /** Hetzelfde in euro's: wat heeft deze speler nog van zijn sponsorcontract over. */
@@ -313,14 +315,16 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         <View style={styles.backdrop}>
           <View style={styles.sheet}>
             <View style={styles.handle} />
-            <Text style={styles.title}>Les boeken</Text>
+            <Text style={styles.title}>{t('Les boeken')}</Text>
             <Text style={styles.subtitle}>
               {formatDay(date)} · {slot}–{slotEndLabel}
             </Text>
             {/* Booking for someone else is easy to do by accident, so name them. */}
             {playerId && playerId !== currentUser?.id ? (
               <Text style={styles.forWhom}>
-                Voor {users.find((u) => u.id === playerId)?.name ?? 'onbekende speler'}
+                {t('Voor {naam}', {
+                  naam: users.find((u) => u.id === playerId)?.name ?? t('onbekende speler'),
+                })}
               </Text>
             ) : null}
 
@@ -337,14 +341,16 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                 // De les staat er al. De velden zijn niet meer van toepassing: wat hier nog
                 // ontbreekt is de beurt, niet de boeking.
                 <Text style={styles.notice}>
-                  De les is geboekt, maar “{PAYMENT_LABELS[method]}” ging er niet op: de
-                  betaalwijze staat nog op “{PAYMENT_LABELS.open}”. Bevestigen probeert het
-                  alsnog — er komt geen tweede les bij. Sluiten mag ook; je kunt de betaalwijze
-                  later bij de les zelf zetten.
+                  {t('De les is geboekt, maar “{gekozen}” ging er niet op: de betaalwijze staat '
+                    + 'nog op “{open}”. Bevestigen probeert het alsnog — er komt geen tweede les '
+                    + 'bij. Sluiten mag ook; je kunt de betaalwijze later bij de les zelf zetten.', {
+                    gekozen: t(PAYMENT_LABELS[method]),
+                    open: t(PAYMENT_LABELS.open),
+                  })}
                 </Text>
               ) : (
                 <>
-                  <Text style={styles.label}>Terrein</Text>
+                  <Text style={styles.label}>{t('Terrein')}</Text>
                   <View style={styles.chipRow}>
                     {courts.map((court) => (
                       <Chip
@@ -356,7 +362,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                     ))}
                   </View>
 
-                  <Text style={styles.label}>Medespelers (optioneel)</Text>
+                  <Text style={styles.label}>{t('Medespelers (optioneel)')}</Text>
                   <ParticipantPicker
                     players={players}
                     payerId={forPlayerId}
@@ -371,34 +377,39 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
 
                   {isGroup ? (
                     <>
-                      <Text style={styles.label}>Factuur</Text>
+                      <Text style={styles.label}>{t('Factuur')}</Text>
                       <View style={styles.chipRow}>
                         <Chip
-                          label="Samen"
+                          label={t('Samen')}
                           selected={split === 'together'}
                           onPress={() => setSplit('together')}
                         />
                         <Chip
-                          label="Apart"
+                          label={t('Apart')}
                           selected={split === 'separate'}
                           onPress={() => setSplit('separate')}
                         />
                       </View>
                       <Text style={styles.hint}>
                         {split === 'together'
-                          ? `Het hele bedrag gaat naar ${users.find((u) => u.id === forPlayerId)?.name ?? 'de betaler'}.`
-                          : 'Elke speler krijgt zijn eigen deel gefactureerd.'}
+                          ? t('Het hele bedrag gaat naar {naam}.', {
+                            naam: users.find((u) => u.id === forPlayerId)?.name ?? t('de betaler'),
+                          })
+                          : t('Elke speler krijgt zijn eigen deel gefactureerd.')}
                       </Text>
                     </>
                   ) : null}
 
-                  <Text style={styles.label}>Betaalwijze</Text>
+                  <Text style={styles.label}>{t('Betaalwijze')}</Text>
                   {isGroup ? (
                     // Bij een groepsles valt er niets te kiezen; een rij chips die allemaal
                     // weigeren is erger dan geen rij.
                     <Text style={styles.hint}>
-                      {PAYMENT_LABELS[GROEPSLES_METHOD]}. {GROEPSLES_ALLEEN_FACTUUR} Een
-                      beurtenkaart en het sponsorbudget gelden alleen voor een privéles.
+                      {t('{factuur}. {regel} Een beurtenkaart en het sponsorbudget gelden '
+                        + 'alleen voor een privéles.', {
+                        factuur: t(PAYMENT_LABELS[GROEPSLES_METHOD]),
+                        regel: t(GROEPSLES_ALLEEN_FACTUUR),
+                      })}
                     </Text>
                   ) : (
                     <>
@@ -406,7 +417,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                         {PAYMENT_METHODS.map((m) => (
                           <Chip
                             key={m}
-                            label={PAYMENT_LABELS[m]}
+                            label={t(PAYMENT_LABELS[m])}
                             selected={m === method}
                             onPress={() => setChosenMethod(m)}
                           />
@@ -414,41 +425,41 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                       </View>
                       {method === 'beurtenkaart' ? (
                         <Text style={styles.hint}>
-                          Er gaat een beurt af. {beurtenHint()}
+                          {t('Er gaat een beurt af.')} {beurtenHint()}
                         </Text>
                       ) : null}
                       {method === 'sponsor' ? (
                         <Text style={styles.hint}>
-                          De les gaat van het sponsorcontract af. {sponsorTekst()}
+                          {t('De les gaat van het sponsorcontract af.')} {sponsorTekst()}
                         </Text>
                       ) : null}
                     </>
                   )}
 
-                  <Text style={styles.label}>Notities (optioneel)</Text>
+                  <Text style={styles.label}>{t('Notities (optioneel)')}</Text>
                   <TextInput
                     style={styles.input}
                     value={notes}
                     onChangeText={setNotes}
-                    placeholder="Voeg een notitie toe…"
+                    placeholder={t('Voeg een notitie toe…')}
                     placeholderTextColor={tennisColors.textMuted}
                     multiline
                   />
 
-                  <Text style={styles.label}>Herhalen</Text>
+                  <Text style={styles.label}>{t('Herhalen')}</Text>
                   <View style={styles.chipRow}>
                     <Chip
-                      label="Niet herhalen"
+                      label={t('Niet herhalen')}
                       selected={repeat === null}
                       onPress={() => kiesHerhaling(null)}
                     />
                     <Chip
-                      label="Wekelijks"
+                      label={t('Wekelijks')}
                       selected={repeat === 'weekly'}
                       onPress={() => kiesHerhaling('weekly')}
                     />
                     <Chip
-                      label="Tweewekelijks"
+                      label={t('Tweewekelijks')}
                       selected={repeat === 'biweekly'}
                       onPress={() => kiesHerhaling('biweekly')}
                     />
@@ -456,18 +467,18 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
 
                   {repeat ? (
                     <>
-                      <Text style={styles.fieldLabel}>Tot en met</Text>
+                      <Text style={styles.fieldLabel}>{t('Tot en met')}</Text>
                       <TextInput
                         style={styles.dayInput}
                         value={untilText}
                         onChangeText={setUntilText}
-                        placeholder="dd/mm/jjjj"
+                        placeholder={t('dd/mm/jjjj')}
                         placeholderTextColor={tennisColors.textMuted}
-                        accessibilityLabel="Laatste dag van de reeks"
+                        accessibilityLabel={t('Laatste dag van de reeks')}
                         inputMode="numeric"
                       />
                       {!untilDate ? (
-                        <Text style={styles.hint}>Vul de laatste dag in als dd/mm/jjjj.</Text>
+                        <Text style={styles.hint}>{t('Vul de laatste dag in als dd/mm/jjjj.')}</Text>
                       ) : null}
 
                       {/* Wat er gaat gebeuren, vóór het bevestigen. De overgeslagen dagen
@@ -478,20 +489,20 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                           <Text style={styles.price}>{seriesSummary(plan, rule)}</Text>
                           {plan.skipped.length > 0 ? (
                             <Text style={styles.hint}>
-                              {lessons(plan.skipped.length)} overgeslagen omdat de trainer dan
-                              al bezet is: {plan.skipped.map((s) => formatDay(s.start_time)).join(', ')}.
+                              {t('{lessen} overgeslagen omdat de trainer dan al bezet is: {dagen}.', {
+                                lessen: lessons(plan.skipped.length),
+                                dagen: plan.skipped.map((s) => formatDay(s.start_time)).join(', '),
+                              })}
                             </Text>
                           ) : null}
                           {plan.usable.length === 0 ? (
                             <Text style={styles.error}>
-                              Geen enkel moment van deze reeks is nog vrij; er valt niets te
-                              boeken.
+                              {t('Geen enkel moment van deze reeks is nog vrij; er valt niets te boeken.')}
                             </Text>
                           ) : null}
                           {plan.usable.length + plan.skipped.length >= MAX_LESSONS ? (
                             <Text style={styles.hint}>
-                              Een reeks gaat tot {MAX_LESSONS} lessen; wat daarna komt valt
-                              erbuiten.
+                              {t('Een reeks gaat tot {n} lessen; wat daarna komt valt erbuiten.', { n: MAX_LESSONS })}
                             </Text>
                           ) : null}
                         </>
@@ -505,8 +516,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                   foutregel van de provider zou dat woord voor woord herhalen. */}
               {isAanvraag && !seriesNotice ? (
                 <Text style={styles.hint}>
-                  Je trainer moet deze les nog goedkeuren. Het uur blijft zolang voor je
-                  vrijgehouden.
+                  {t('Je trainer moet deze les nog goedkeuren. Het uur blijft zolang voor je vrijgehouden.')}
                 </Text>
               ) : null}
 
@@ -516,11 +526,11 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
             <View style={styles.actions}>
               {seriesNotice ? (
                 // Er valt hier niets meer te bevestigen: de lessen staan er al.
-                <Button label="Sluiten" variant="primary" onPress={handleClose} fullWidth />
+                <Button label={t('Sluiten')} variant="primary" onPress={handleClose} fullWidth />
               ) : (
                 <>
                   <Button
-                    label={bookedWithoutBeurt ? 'Sluiten' : 'Annuleren'}
+                    label={bookedWithoutBeurt ? t('Sluiten') : t('Annuleren')}
                     variant="secondary"
                     onPress={handleClose}
                     disabled={submitting}
@@ -528,8 +538,8 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                   />
                   <Button
                     label={bookedWithoutBeurt
-                      ? 'Betaalwijze opnieuw proberen'
-                      : isAanvraag ? 'Aanvragen' : 'Bevestigen'}
+                      ? t('Betaalwijze opnieuw proberen')
+                      : isAanvraag ? t('Aanvragen') : t('Bevestigen')}
                     variant="primary"
                     onPress={handleConfirm}
                     disabled={submitting || blockedSeries}

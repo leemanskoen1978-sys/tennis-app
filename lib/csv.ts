@@ -4,7 +4,8 @@
 import { groupSize, shortGroupLabel } from './groups';
 import { formatEuro } from './money';
 import { bookingMinutes, bookingPrice, coachPayout, PAYMENT_LABELS, splitOf } from './payments';
-import { BOOKING_STATUS_LABELS } from './status';
+import { bookingStatusLabel } from './status';
+import { t } from './i18n';
 import type { Booking, Court, User } from './types';
 
 /** Eén bedrag-opmaak voor de hele app; de export houdt zijn eigen ingang. Zie lib/money. */
@@ -61,6 +62,17 @@ export const CSV_COLUMNS: readonly CsvColumn[] = [
 
 export const CSV_HEADER: readonly string[] = CSV_COLUMNS.map((c) => c.label);
 
+/**
+ * De koppenrij zoals hij in het bestand komt, in de gekozen taal.
+ *
+ * Een functie en geen constante: `CSV_COLUMNS` staat op het hoogste niveau van deze module
+ * en wordt dus één keer gemaakt, bij het opstarten. Had de vertaling daar gestaan, dan was
+ * de taal van dat ene moment voor de rest van de sessie vastgelegd.
+ */
+export function csvHeader(): string[] {
+  return CSV_COLUMNS.map((c) => t(c.label));
+}
+
 function two(n: number): string {
   return String(n).padStart(2, '0');
 }
@@ -91,18 +103,18 @@ export function csvRows(bookings: Booking[], users: User[], courts: Court[]): Cs
         id: b.id,
         date: `${two(start.getDate())}/${two(start.getMonth() + 1)}/${start.getFullYear()}`,
         time: `${two(start.getHours())}:${two(start.getMinutes())}`,
-        coach: nameById.get(b.coach_id) ?? 'Onbekend',
-        player: shortGroupLabel(nameById.get(b.player_id) ?? 'Onbekend', size),
+        coach: nameById.get(b.coach_id) ?? t('Onbekend'),
+        player: shortGroupLabel(nameById.get(b.player_id) ?? t('Onbekend'), size),
         players: size,
-        billing: splitOf(b) === 'separate' ? 'Apart' : 'Samen',
-        court: court?.name ?? 'Onbekend terrein',
+        billing: splitOf(b) === 'separate' ? t('Apart') : t('Samen'),
+        court: court?.name ?? t('Onbekend terrein'),
         minutes,
         price: bookingPrice(b, court),
         // Wat de trainer krijgt, op zijn eigen uurtarief. Nog geen tarief ingevuld (of een
         // trainer die niet meer bestaat) geeft 0 — zichtbaar nul in plaats van een leeg vak.
         coachPay: coachPayout(b, rateById.get(b.coach_id)),
-        status: BOOKING_STATUS_LABELS[b.status],
-        payment: PAYMENT_LABELS[b.payment_method],
+        status: bookingStatusLabel(b.status),
+        payment: t(PAYMENT_LABELS[b.payment_method]),
       };
     });
 }
@@ -113,7 +125,7 @@ function cell(value: string): string {
 }
 
 export function toCsv(rows: CsvRow[]): string {
-  const lines = [CSV_COLUMNS.map((c) => c.label).map(cell).join(';')];
+  const lines = [csvHeader().map(cell).join(';')];
   for (const r of rows) {
     lines.push(CSV_COLUMNS.map((c) => cell(c.value(r))).join(';'));
   }

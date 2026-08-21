@@ -10,16 +10,18 @@ import { useSimpleData } from '../../providers/SimpleDataProvider';
 import {
   shotTypeOptions, changeTypeOptions, addOption, removeOption,
 } from '../../lib/goals';
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, minTapTarget, webCursor } from '../../constants/theme';
 
 export default function GoalOptions(): React.JSX.Element {
+  const t = useT();
   const { currentUser, settings, saveSettings } = useSimpleData();
 
   if (currentUser?.role !== 'coach') {
     return (
       <Screen scroll={false}>
-        <Text style={styles.muted}>Beheer is alleen voor trainers.</Text>
+        <Text style={styles.muted}>{t('Beheer is alleen voor trainers.')}</Text>
       </Screen>
     );
   }
@@ -27,20 +29,20 @@ export default function GoalOptions(): React.JSX.Element {
   return (
     <Screen>
       <Text style={styles.intro}>
-        Deze keuzes staan in de comboboxen bij het doel van een speler.
+        {t('Deze keuzes staan in de comboboxen bij het doel van een speler.')}
       </Text>
 
       <OptionList
-        title="Type slag"
+        title={t('Type slag')}
         options={shotTypeOptions(settings)}
-        placeholder="bv. Lob"
+        placeholder={t('bv. Lob')}
         onChange={(shot_types) => void saveSettings({ ...settings, shot_types })}
       />
 
       <OptionList
-        title="Type wijziging"
+        title={t('Type wijziging')}
         options={changeTypeOptions(settings)}
-        placeholder="bv. Beenwerk"
+        placeholder={t('bv. Beenwerk')}
         onChange={(change_types) => void saveSettings({ ...settings, change_types })}
       />
 
@@ -60,6 +62,7 @@ function OptionList({
   placeholder: string;
   onChange: (options: string[]) => void;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState('');
 
   const add = () => {
@@ -73,7 +76,7 @@ function OptionList({
       <Text style={styles.title}>{title}</Text>
 
       {options.length === 0 ? (
-        <Text style={styles.muted}>Geen keuzes. Voeg er minstens één toe.</Text>
+        <Text style={styles.muted}>{t('Geen keuzes. Voeg er minstens één toe.')}</Text>
       ) : (
         options.map((option) => (
           <View key={option} style={styles.row}>
@@ -81,7 +84,7 @@ function OptionList({
             <Pressable
               onPress={() => onChange(removeOption(options, option))}
               accessibilityRole="button"
-              accessibilityLabel={`${option} verwijderen uit ${title}`}
+              accessibilityLabel={t('{keuze} verwijderen uit {lijst}', { keuze: option, lijst: title })}
               style={[styles.iconBtn, webCursor]}
             >
               <Trash2 size={16} color={tennisColors.danger} />
@@ -97,7 +100,7 @@ function OptionList({
           onChangeText={setDraft}
           placeholder={placeholder}
           placeholderTextColor={tennisColors.textMuted}
-          accessibilityLabel={`Nieuwe keuze voor ${title}`}
+          accessibilityLabel={t('Nieuwe keuze voor {lijst}', { lijst: title })}
           onSubmitEditing={add}
           returnKeyType="done"
         />
@@ -105,7 +108,7 @@ function OptionList({
           onPress={add}
           disabled={draft.trim().length === 0}
           accessibilityRole="button"
-          accessibilityLabel={`Toevoegen aan ${title}`}
+          accessibilityLabel={t('Toevoegen aan {lijst}', { lijst: title })}
           accessibilityState={{ disabled: draft.trim().length === 0 }}
           style={[styles.addBtn, draft.trim().length === 0 && styles.addBtnOff, webCursor]}
         >

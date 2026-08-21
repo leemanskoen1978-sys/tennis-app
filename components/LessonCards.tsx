@@ -16,6 +16,7 @@ import { bookingPaymentMeta, type PaymentMeta } from '../lib/payments';
 import { isAwaitingApproval } from '../lib/inbox';
 import { BOOKING_STATUS_LABELS } from '../lib/status';
 import type { Booking } from '../lib/types';
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
 
@@ -27,6 +28,7 @@ export function LessonCards({
   /** Wat er staat als er niets te tonen valt. */
   empty: string;
 }): React.JSX.Element {
+  const t = useT();
   const { currentUser, users, courts, beurtenkaarten, clearError } = useSimpleData();
   const isWide = useIsWide();
   // Welke les zijn details laat zien; null = blad dicht.
@@ -34,9 +36,9 @@ export function LessonCards({
 
   const isCoach = currentUser?.role === 'coach';
 
-  const nameOf = (id?: string): string => users.find((u) => u.id === id)?.name ?? 'Onbekend';
+  const nameOf = (id?: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
   const courtName = (id: string): string =>
-    courts.find((c) => c.id === id)?.name ?? 'Onbekend terrein';
+    courts.find((c) => c.id === id)?.name ?? t('Onbekend terrein');
 
   if (bookings.length === 0) {
     return <Text style={styles.muted}>{empty}</Text>;

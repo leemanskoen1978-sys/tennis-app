@@ -7,6 +7,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { X } from 'lucide-react-native';
 
 import { StudentCombobox } from './ui/StudentCombobox';
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, minTapTarget, webCursor } from '../constants/theme';
 import type { User } from '../lib/types';
@@ -27,8 +28,9 @@ export function ParticipantPicker({
   /** De trainer wil een nog onbekende naam toevoegen; het scherm opent het invulscherm. */
   onRequestCreate?: (name: string) => void;
 }): React.JSX.Element {
+  const t = useT();
   const nameOf = (id: string): string =>
-    players.find((p) => p.id === id)?.name ?? 'Onbekende speler';
+    players.find((p) => p.id === id)?.name ?? t('Onbekende speler');
 
   // Wie al meedoet en de betaler zelf vallen weg uit de keuzelijst: een naam twee keer op de
   // baan zetten kan niet, en zou de les een tariefstap duurder lijken te maken.
@@ -62,7 +64,7 @@ export function ParticipantPicker({
         onChange={(id) => {
           if (id) onChange([...value, id]);
         }}
-        placeholder="Naam van een medespeler…"
+        placeholder={t('Naam van een medespeler…')}
         onRequestCreate={onRequestCreate}
       />
     </View>

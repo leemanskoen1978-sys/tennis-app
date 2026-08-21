@@ -13,6 +13,7 @@ import { UserManagement } from '../../components/UserManagement';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { remaining, SESSIONS_PER_CARD } from '../../lib/beurtenkaart';
 import { formatDayTime } from '../../lib/datetime';
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography } from '../../constants/theme';
 import type { Beurtenkaart, User } from '../../lib/types';
@@ -35,6 +36,7 @@ function CardRow({
   onRemoveSession: () => void;
   onDelete: () => void;
 }): React.JSX.Element {
+  const t = useT();
   // Het opmerkingenveld houdt zijn eigen tekst bij, zodat typen niet vecht met de bewaarde waarde.
   const [remarks, setRemarks] = useState(card.remarks ?? '');
 
@@ -47,13 +49,17 @@ function CardRow({
   const hasManual = card.uses.some((u) => !u.booking_id);
   // Op een volle kaart doet "Beurt af" niets: dan hoort de knop ook uit te staan.
   const isFull = left === 0;
-  const progressLabel = `${used} van ${total} beurten gebruikt, nog ${left} over`;
+  const progressLabel = t('{gebruikt} van {totaal} beurten gebruikt, nog {rest} over', {
+    gebruikt: used, totaal: total, rest: left,
+  });
 
   return (
     <Card>
       <Text style={styles.cardName}>{playerName}</Text>
       <Text style={styles.cardMeta}>
-        {used} van {total} gebruikt · nog {left} over · aangemaakt {formatDayTime(card.created_at)}
+        {t('{gebruikt} van {totaal} gebruikt · nog {rest} over · aangemaakt {moment}', {
+          gebruikt: used, totaal: total, rest: left, moment: formatDayTime(card.created_at),
+        })}
       </Text>
 
       <View
@@ -67,7 +73,7 @@ function CardRow({
 
       <View style={styles.stepRow}>
         <Button
-          label="Beurt af"
+          label={t('Beurt af')}
           variant="secondary"
           fullWidth={false}
           disabled={isFull}
@@ -75,7 +81,7 @@ function CardRow({
           onPress={onAddSession}
         />
         <Button
-          label="Beurt terug"
+          label={t('Beurt terug')}
           variant="secondary"
           fullWidth={false}
           disabled={!hasManual}
@@ -84,28 +90,28 @@ function CardRow({
         />
       </View>
       <Text style={styles.hint}>
-        Handmatig bijstellen raakt alleen beurten zonder les; een beurt van een les komt
-        terug door die les op een andere betaalwijze te zetten.
+        {t('Handmatig bijstellen raakt alleen beurten zonder les; een beurt van een les komt '
+          + 'terug door die les op een andere betaalwijze te zetten.')}
       </Text>
 
-      <Text style={styles.subLabel}>Opmerking</Text>
+      <Text style={styles.subLabel}>{t('Opmerking')}</Text>
       <TextInput
         style={[styles.input, styles.multiline]}
         value={remarks}
         onChangeText={setRemarks}
         onBlur={() => { onSaveRemarks(remarks.trim() || undefined); }}
-        placeholder="Bijvoorbeeld: betaald op 3 september"
+        placeholder={t('Bijvoorbeeld: betaald op 3 september')}
         placeholderTextColor={tennisColors.textMuted}
-        accessibilityLabel={`Opmerking bij de kaart van ${playerName}`}
+        accessibilityLabel={t('Opmerking bij de kaart van {naam}', { naam: playerName })}
         multiline
       />
 
       {card.uses.length > 0 ? (
         <>
-          <Text style={styles.subLabel}>Gebruikte beurten</Text>
+          <Text style={styles.subLabel}>{t('Gebruikte beurten')}</Text>
           {card.uses.map((use, i) => (
             <Text key={`${use.booking_id}-${i}`} style={styles.useLine}>
-              {i + 1}. {formatDayTime(use.date)}{use.booking_id ? '' : ' (handmatig)'}
+              {i + 1}. {formatDayTime(use.date)}{use.booking_id ? '' : ` (${t('handmatig')})`}
             </Text>
           ))}
         </>
@@ -114,18 +120,19 @@ function CardRow({
       {confirming ? (
         <View style={styles.confirmBox}>
           <Text style={styles.confirmText}>
-            Kaart verwijderen? {card.uses.filter((u) => u.booking_id).length} les(sen)
-            verliezen hun beurt en komen terug op Open.
+            {t('Kaart verwijderen? {n} les(sen) verliezen hun beurt en komen terug op Open.', {
+              n: card.uses.filter((u) => u.booking_id).length,
+            })}
           </Text>
           <View style={styles.stepRow}>
             <Button
-              label="Ja, verwijderen"
+              label={t('Ja, verwijderen')}
               variant="danger"
               fullWidth={false}
               onPress={onDelete}
             />
             <Button
-              label="Nee"
+              label={t('Nee')}
               variant="secondary"
               fullWidth={false}
               onPress={onCancelConfirm}
@@ -135,7 +142,7 @@ function CardRow({
       ) : (
         <View style={styles.stepRow}>
           <Button
-            label="Verwijderen"
+            label={t('Verwijderen')}
             variant="danger"
             fullWidth={false}
             onPress={onConfirm}
@@ -147,6 +154,7 @@ function CardRow({
 }
 
 export default function BeurtenkaartenScreen(): React.JSX.Element {
+  const t = useT();
   const {
     currentUser, users, beurtenkaarten, error,
     addBeurtenkaart, updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
@@ -164,7 +172,7 @@ export default function BeurtenkaartenScreen(): React.JSX.Element {
   if (currentUser?.role !== 'coach') {
     return (
       <Screen scroll={false}>
-        <Text style={styles.muted}>Alleen een trainer beheert de beurtenkaarten.</Text>
+        <Text style={styles.muted}>{t('Alleen een trainer beheert de beurtenkaarten.')}</Text>
       </Screen>
     );
   }
@@ -173,20 +181,20 @@ export default function BeurtenkaartenScreen(): React.JSX.Element {
     b.created_at.localeCompare(a.created_at),
   );
 
-  const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? 'Onbekende speler';
+  const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekende speler');
 
   return (
     <Screen>
-      <Text style={styles.sectionLabel}>Nieuwe kaart</Text>
+      <Text style={styles.sectionLabel}>{t('Nieuwe kaart')}</Text>
       <StudentCombobox
         students={players}
         value={newPlayerId}
         onChange={setNewPlayerId}
-        placeholder="Typ de naam van de speler…"
+        placeholder={t('Typ de naam van de speler…')}
         onRequestCreate={setNewPlayerName}
       />
       <Button
-        label={`Kaart van ${SESSIONS_PER_CARD} beurten aanmaken`}
+        label={t('Kaart van {n} beurten aanmaken', { n: SESSIONS_PER_CARD })}
         variant="primary"
         disabled={newPlayerId === null}
         onPress={() => {
@@ -199,7 +207,7 @@ export default function BeurtenkaartenScreen(): React.JSX.Element {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {sorted.length === 0 ? (
-        <Text style={styles.muted}>Nog geen beurtenkaarten.</Text>
+        <Text style={styles.muted}>{t('Nog geen beurtenkaarten.')}</Text>
       ) : null}
 
       {sorted.map((card) => (

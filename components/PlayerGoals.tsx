@@ -6,9 +6,10 @@ import { Badge } from './ui/Badge';
 import { GoalHorizonSheet } from './GoalHorizonSheet';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import {
-  GOAL_HORIZONS, HORIZON_LABELS, goalsFor, horizonSummary, filledGoalCount, goalCountLabel,
+  GOAL_HORIZONS, horizonLabel, goalsFor, horizonSummary, filledGoalCount, goalCountLabel,
   newGoalId, shotTypeOptions, changeTypeOptions,
 } from '../lib/goals';
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, minTapTarget } from '../constants/theme';
 import type { GoalHorizon } from '../lib/types';
@@ -31,6 +32,7 @@ export function GoalHorizonRows({ studentId, onOpen }: {
   studentId: string;
   onOpen: (horizon: GoalHorizon) => void;
 }): React.JSX.Element {
+  const t = useT();
   const { goals } = useSimpleData();
 
   return (
@@ -49,20 +51,24 @@ export function GoalHorizonRows({ studentId, onOpen }: {
             onPress={() => onOpen(horizon)}
             accessibilityLabel={
               filled
-                ? `${HORIZON_LABELS[horizon]}: ${goalCountLabel(count)}, ${summary}, doelen openen`
-                : `${HORIZON_LABELS[horizon]}: nog geen doel, doelen openen`
+                ? t('{horizon}: {aantal}, {samenvatting}, doelen openen', {
+                  horizon: horizonLabel(horizon),
+                  aantal: goalCountLabel(count),
+                  samenvatting: summary,
+                })
+                : t('{horizon}: nog geen doel, doelen openen', { horizon: horizonLabel(horizon) })
             }
           >
             <View style={styles.row}>
               <View style={styles.rowText}>
                 <View style={styles.horizonRow}>
-                  <Text style={styles.horizon}>{HORIZON_LABELS[horizon]}</Text>
+                  <Text style={styles.horizon}>{horizonLabel(horizon)}</Text>
                   {/* Het aantal staat als badge naast de naam: dat leest rustiger dan een cijfer
                       vooraan de zin, en houdt de samenvatting zelf bij het eerste doel. */}
                   {filled ? <Badge label={goalCountLabel(count)} subtle /> : null}
                 </View>
                 <Text style={filled ? styles.summary : styles.empty} numberOfLines={1}>
-                  {filled ? summary : 'Nog geen doel afgesproken.'}
+                  {filled ? summary : t('Nog geen doel afgesproken.')}
                 </Text>
               </View>
               <ChevronRight size={18} color={tennisColors.textMuted} />

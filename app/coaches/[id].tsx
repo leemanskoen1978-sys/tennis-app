@@ -13,6 +13,7 @@ import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { groupSize, shortGroupLabel } from '../../lib/groups';
 import { playersForCoach } from '../../lib/relations';
 import { formatWorkingDays } from '../../lib/slots';
+import { useT, useLanguage } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
@@ -30,6 +31,8 @@ import { formatEuro } from '../../lib/csv';
 /** De onderdelen van het trainersdossier; elk krijgt een tegel en een blad. */
 type SectionKey = 'agenda' | 'spelers';
 export default function CoachDossier() {
+  const t = useT();
+  const lang = useLanguage();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { users, bookings, courts, lessons, progress, currentUser } = useSimpleData();
@@ -43,7 +46,7 @@ export default function CoachDossier() {
   if (!coach) {
     return (
       <Screen scroll={false}>
-        <Text style={styles.muted}>Trainer niet gevonden.</Text>
+        <Text style={styles.muted}>{t('Trainer niet gevonden.')}</Text>
       </Screen>
     );
   }
@@ -60,7 +63,7 @@ export default function CoachDossier() {
     .filter((b) => new Date(b.end_time).getTime() < now)
     .sort((a, b) => b.start_time.localeCompare(a.start_time));
 
-  const playerName = (pid: string) => users.find((u) => u.id === pid)?.name ?? 'Onbekend';
+  const playerName = (pid: string) => users.find((u) => u.id === pid)?.name ?? t('Onbekend');
 
   // Wat deze trainer deze maand verdient: zijn eigen uurtarief over zijn eigen lessen, langs
   // dezelfde weg als op zijn profiel. Geen tarief ingevuld geeft 0, met een melding erbij.
@@ -73,19 +76,19 @@ export default function CoachDossier() {
   // Derived from bookings/lessons/progress — see lib/relations.ts. No assignment screen.
   const players = playersForCoach(coach.id, bookings, lessons, progress)
     .map((pid) => ({ id: pid, name: playerName(pid) }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'nl'));
+    .sort((a, b) => a.name.localeCompare(b.name, lang));
 
   // Wat er op de tegel staat, geteld op dezelfde lijsten als de inhoud van het blad.
   const agendaSummary = upcoming.length > 0
-    ? `${upcoming.length} aankomend`
-    : past.length > 0 ? 'niets aankomend' : 'geen afspraken';
+    ? t('{n} aankomend', { n: upcoming.length })
+    : past.length > 0 ? t('niets aankomend') : t('geen afspraken');
   const spelersSummary = players.length === 0
-    ? 'nog geen'
-    : players.length === 1 ? '1 speler' : `${players.length} spelers`;
+    ? t('nog geen')
+    : players.length === 1 ? t('1 speler') : t('{n} spelers', { n: players.length });
 
   const tiles: Array<{ key: SectionKey; title: string; subtitle: string; icon: LucideIcon }> = [
-    { key: 'agenda', title: 'Agenda', subtitle: agendaSummary, icon: CalendarDays },
-    { key: 'spelers', title: 'Spelers', subtitle: spelersSummary, icon: Users },
+    { key: 'agenda', title: t('Agenda'), subtitle: agendaSummary, icon: CalendarDays },
+    { key: 'spelers', title: t('Spelers'), subtitle: spelersSummary, icon: Users },
   ];
 
   const closeSheet = () => setOpenSection(null);
@@ -99,31 +102,31 @@ export default function CoachDossier() {
     <Screen>
       <Card>
         <Text style={styles.name}>{coach.name}</Text>
-        <Badge label="Trainer" color={tennisColors.primaryFill} />
+        <Badge label={t('Trainer')} color={tennisColors.primaryFill} />
         {coach.email ? <Text style={styles.contact}>{coach.email}</Text> : null}
         {coach.phone ? <Text style={styles.contact}>{coach.phone}</Text> : null}
 
-        <Text style={styles.fieldLabel}>Geeft les</Text>
+        <Text style={styles.fieldLabel}>{t('Geeft les')}</Text>
         <Text style={styles.fieldValue}>{formatWorkingDays(coach)}</Text>
         <Text style={styles.fieldValue}>
           {coach.working_hours
             ? `${coach.working_hours.start} – ${coach.working_hours.end}`
-            : 'De hele dag'}
+            : t('De hele dag')}
         </Text>
 
         {/* Het uurtarief van de trainer is wat híj krijgt; wat de speler betaalt loopt op het
             uurtarief van de baan. Twee verschillende bedragen — zie lib/payments. */}
-        <Text style={styles.fieldLabel}>Uurtarief</Text>
+        <Text style={styles.fieldLabel}>{t('Uurtarief')}</Text>
         <Text style={rateMissing ? styles.warnValue : styles.fieldValue}>
-          {rateMissing ? 'Nog niet ingesteld' : `€${coach.hourly_rate} per uur`}
+          {rateMissing ? t('Nog niet ingesteld') : t('€{bedrag} per uur', { bedrag: coach.hourly_rate ?? 0 })}
         </Text>
 
-        <Text style={styles.fieldLabel}>Verdiend deze maand</Text>
+        <Text style={styles.fieldLabel}>{t('Verdiend deze maand')}</Text>
         <Text style={styles.fieldValue}>€{formatEuro(earnedThisMonth)}</Text>
         {/* Zonder tarief is dat bedrag nul, en dat mag niet als een gewone nul overkomen. */}
         {rateMissing ? (
           <Text style={styles.warnValue}>
-            Zolang het uurtarief leeg is, blijft dit op €0,00 staan.
+            {t('Zolang het uurtarief leeg is, blijft dit op €0,00 staan.')}
           </Text>
         ) : null}
 
@@ -131,7 +134,7 @@ export default function CoachDossier() {
             you may never use should not be sitting there greyed out. */}
         {currentUser?.id === coach.id ? (
           <Button
-            label="Bewerken"
+            label={t('Bewerken')}
             variant="secondary"
             icon={<Pencil size={16} color={tennisColors.text} />}
             onPress={() => setEditOpen(true)}
@@ -149,23 +152,23 @@ export default function CoachDossier() {
       ) : null}
 
       <TileGrid>
-        {tiles.map((t) => (
+        {tiles.map((tile) => (
           <ActionTile
-            key={t.key}
-            title={t.title}
-            subtitle={t.subtitle}
-            icon={t.icon}
-            onPress={() => setOpenSection(t.key)}
+            key={tile.key}
+            title={tile.title}
+            subtitle={tile.subtitle}
+            icon={tile.icon}
+            onPress={() => setOpenSection(tile.key)}
           />
         ))}
       </TileGrid>
 
-      <DetailSheet title="Agenda" visible={openSection === 'agenda'} onClose={closeSheet}>
+      <DetailSheet title={t('Agenda')} visible={openSection === 'agenda'} onClose={closeSheet}>
         {upcoming.length === 0 && past.length === 0 ? (
-          <Text style={styles.muted}>Nog geen afspraken.</Text>
+          <Text style={styles.muted}>{t('Nog geen afspraken.')}</Text>
         ) : (
           <>
-            {upcoming.length > 0 ? <Text style={styles.subLabel}>Aankomend</Text> : null}
+            {upcoming.length > 0 ? <Text style={styles.subLabel}>{t('Aankomend')}</Text> : null}
             {upcoming.map((b) => (
               <Card key={b.id} style={styles.rowCard}>
                 <View style={styles.rowLine}>
@@ -175,7 +178,7 @@ export default function CoachDossier() {
                 <Text style={styles.rowMeta}>{courtName(b.court_id)} · {shortGroupLabel(playerName(b.player_id), groupSize(b))}</Text>
               </Card>
             ))}
-            {past.length > 0 ? <Text style={styles.subLabel}>Geweest</Text> : null}
+            {past.length > 0 ? <Text style={styles.subLabel}>{t('Geweest')}</Text> : null}
             {past.slice(0, 6).map((b) => (
               <Card key={b.id} style={styles.rowCard}>
                 <View style={styles.rowLine}>
@@ -189,9 +192,9 @@ export default function CoachDossier() {
         )}
       </DetailSheet>
 
-      <DetailSheet title="Spelers" visible={openSection === 'spelers'} onClose={closeSheet}>
+      <DetailSheet title={t('Spelers')} visible={openSection === 'spelers'} onClose={closeSheet}>
         {players.length === 0 ? (
-          <Text style={styles.muted}>Nog geen spelers.</Text>
+          <Text style={styles.muted}>{t('Nog geen spelers.')}</Text>
         ) : (
           players.map((p) => (
             <Card key={p.id} style={styles.rowCard}>

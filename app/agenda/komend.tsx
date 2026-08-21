@@ -14,8 +14,10 @@ import { bookingsByCoach, visibleBookings } from '../../lib/payments';
 import type { User } from '../../lib/types';
 import { tennisColors } from '../../constants/tennis-colors';
 import { typography } from '../../constants/theme';
+import { useT } from '../../lib/i18n';
 
 export default function KomendScreen(): React.JSX.Element {
+  const t = useT();
   const { currentUser, bookings, users, error, clearError } = useSimpleData();
 
   // Dezelfde beginstand als de historiek: een trainer bij zichzelf, een speler bij alle
@@ -44,13 +46,13 @@ export default function KomendScreen(): React.JSX.Element {
 
       {shown.length === 0 ? null : (
         <Text style={styles.count}>
-          {shown.length === 1 ? '1 geplande les' : `${shown.length} geplande lessen`}
+          {shown.length === 1 ? t('1 geplande les') : t('{n} geplande lessen', { n: shown.length })}
         </Text>
       )}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <LessonCards bookings={shown} empty="Er staan geen lessen meer gepland." />
+      <LessonCards bookings={shown} empty={t('Er staan geen lessen meer gepland.')} />
     </Screen>
   );
 }

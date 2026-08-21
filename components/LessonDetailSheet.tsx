@@ -23,9 +23,10 @@ import {
 import { formatEuro } from '../lib/money';
 import { seriesFrom } from '../lib/series';
 import { sponsorHint, sponsorState } from '../lib/sponsor';
-import { BOOKING_STATUS_LABELS } from '../lib/status';
+import { bookingStatusLabel } from '../lib/status';
 import { isAwaitingApproval } from '../lib/inbox';
 import type { Beurtenkaart, Booking, BookingStatus, PaymentMethod } from '../lib/types';
+import { useT, t as tr } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow, minTapTarget, webCursor, contentMaxWidth } from '../constants/theme';
 
@@ -57,14 +58,14 @@ function seriesName(sameSeries: ReadonlyArray<{ start_time: string }>): string {
     smallest = Math.min(smallest, times[i] - times[i - 1]);
   }
   const days = Math.round(smallest / 86_400_000);
-  if (days === 7) return 'een wekelijkse reeks';
-  if (days === 14) return 'een tweewekelijkse reeks';
-  return 'een reeks';
+  if (days === 7) return tr('een wekelijkse reeks');
+  if (days === 14) return tr('een tweewekelijkse reeks');
+  return tr('een reeks');
 }
 
 /** "1 les" / "5 lessen", voor de vraag hoeveel er meegaan. */
 function lessons(n: number): string {
-  return n === 1 ? '1 les' : `${n} lessen`;
+  return n === 1 ? tr('1 les') : tr('{n} lessen', { n });
 }
 
 export function paymentLabelFor(
@@ -75,7 +76,7 @@ export function paymentLabelFor(
   if (booking.payment_method !== 'beurtenkaart' || !booking.beurtenkaart_id) return meta.label;
   const card = cards.find((c) => c.id === booking.beurtenkaart_id);
   if (!card) return meta.label;
-  return `${meta.label} · nog ${remaining(card)}`;
+  return `${meta.label} · ${tr('nog {n}', { n: remaining(card) })}`;
 }
 
 export function LessonDetailSheet({
@@ -90,6 +91,7 @@ export function LessonDetailSheet({
   /** Alleen een trainer wijzigt of annuleert; een speler mag wel kijken. */
   canManage: boolean;
 }): React.JSX.Element | null {
+  const t = useT();
   const router = useRouter();
   const {
     bookings, users, courts, beurtenkaarten,
@@ -118,8 +120,8 @@ export function LessonDetailSheet({
   const booking = selected ? (bookings.find((b) => b.id === selected.id) ?? selected) : null;
   if (!booking) return null;
 
-  const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? 'Onbekend';
-  const courtName = courts.find((c) => c.id === booking.court_id)?.name ?? 'Onbekend terrein';
+  const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
+  const courtName = courts.find((c) => c.id === booking.court_id)?.name ?? t('Onbekend terrein');
   const playerName = nameOf(booking.player_id);
   const coachName = nameOf(booking.coach_id);
 
@@ -150,9 +152,9 @@ export function LessonDetailSheet({
 
   const cardHint = (): string | undefined => {
     const cards = cardsFor(beurtenkaarten, booking.player_id);
-    if (cards.length === 0) return 'Deze speler heeft nog geen beurtenkaart.';
+    if (cards.length === 0) return t('Deze speler heeft nog geen beurtenkaart.');
     const left = cards.reduce((sum, c) => sum + remaining(c), 0);
-    return left === 1 ? 'Nog 1 beurt over.' : `Nog ${left} beurten over.`;
+    return left === 1 ? t('Nog 1 beurt over.') : t('Nog {n} beurten over.', { n: left });
   };
 
   /**
@@ -211,7 +213,7 @@ export function LessonDetailSheet({
               <Pressable
                 onPress={close}
                 accessibilityRole="button"
-                accessibilityLabel="Sluiten"
+                accessibilityLabel={t('Sluiten')}
                 style={[styles.close, webCursor]}
               >
                 <X size={20} color={tennisColors.textMuted} />
@@ -224,7 +226,10 @@ export function LessonDetailSheet({
                   vóór iemand hem annuleert in de veronderstelling dat het er één was. */}
               {inSeries ? (
                 <Text style={styles.hint}>
-                  Onderdeel van {seriesName(sameSeries)} · {lessons(tail.length)} vanaf deze.
+                  {t('Onderdeel van {reeks} · {lessen} vanaf deze.', {
+                    reeks: seriesName(sameSeries),
+                    lessen: lessons(tail.length),
+                  })}
                 </Text>
               ) : null}
 
@@ -233,24 +238,24 @@ export function LessonDetailSheet({
               <Pressable
                 onPress={() => goTo(`/players/${booking.player_id}`)}
                 accessibilityRole="button"
-                accessibilityLabel={`Open dossier van ${playerName}`}
+                accessibilityLabel={t('Open dossier van {naam}', { naam: playerName })}
                 style={[styles.partyLine, webCursor]}
               >
                 <Text style={styles.partyLink}>
-                  {isGroup ? 'Betaalt' : 'Speler'}: {playerName}
+                  {isGroup ? t('Betaalt') : t('Speler')}: {playerName}
                   {isGroup ? ` · € ${formatEuro(amountOf(booking.player_id) ?? 0)}` : ''}
                 </Text>
                 <ChevronRight size={16} color={tennisColors.textMuted} />
               </Pressable>
               {isGroup ? (
                 <>
-                  <Text style={styles.label}>Medespelers</Text>
+                  <Text style={styles.label}>{t('Medespelers')}</Text>
                   {participantIdsOf(booking).map((id) => (
                     <Pressable
                       key={id}
                       onPress={() => goTo(`/players/${id}`)}
                       accessibilityRole="button"
-                      accessibilityLabel={`Open dossier van ${nameOf(id)}`}
+                      accessibilityLabel={t('Open dossier van {naam}', { naam: nameOf(id) })}
                       style={[styles.partyLine, webCursor]}
                     >
                       <Text style={styles.partyLink}>
@@ -266,15 +271,15 @@ export function LessonDetailSheet({
               <Pressable
                 onPress={() => goTo(`/coaches/${booking.coach_id}`)}
                 accessibilityRole="button"
-                accessibilityLabel={`Open dossier van trainer ${coachName}`}
+                accessibilityLabel={t('Open dossier van trainer {naam}', { naam: coachName })}
                 style={[styles.partyLine, webCursor]}
               >
-                <Text style={styles.partyLink}>Trainer: {coachName}</Text>
+                <Text style={styles.partyLink}>{t('Trainer')}: {coachName}</Text>
                 <ChevronRight size={16} color={tennisColors.textMuted} />
               </Pressable>
 
               <View style={styles.badgeRow}>
-                <Badge label={BOOKING_STATUS_LABELS[booking.status]} color={STATUS_COLORS[booking.status]} />
+                <Badge label={bookingStatusLabel(booking.status)} color={STATUS_COLORS[booking.status]} />
                 {canPay && !isGroup ? (
                   <Pressable
                     onPress={() => {
@@ -282,7 +287,7 @@ export function LessonDetailSheet({
                       setChoosing(true);
                     }}
                     accessibilityRole="button"
-                    accessibilityLabel={`Betaalwijze wijzigen, nu ${paymentLabel}`}
+                    accessibilityLabel={t('Betaalwijze wijzigen, nu {wijze}', { wijze: paymentLabel })}
                     style={[styles.paymentTap, webCursor]}
                   >
                     <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
@@ -293,8 +298,8 @@ export function LessonDetailSheet({
               </View>
               {isGroup ? (
                 <Text style={styles.hint}>
-                  {GROEPSLES_ALLEEN_FACTUUR} Een beurtenkaart en het sponsorbudget gelden
-                  alleen voor een privéles.
+                  {t('{regel} Een beurtenkaart en het sponsorbudget gelden alleen voor een '
+                    + 'privéles.', { regel: t(GROEPSLES_ALLEEN_FACTUUR) })}
                 </Text>
               ) : null}
 
@@ -302,17 +307,17 @@ export function LessonDetailSheet({
 
               {isGroup && canManage && !isCancelled ? (
                 <>
-                  <Text style={styles.label}>Factuur</Text>
+                  <Text style={styles.label}>{t('Factuur')}</Text>
                   <View style={styles.chipRow}>
                     <Chip
-                      label="Samen"
+                      label={t('Samen')}
                       selected={splitOf(booking) === 'together'}
                       onPress={() => {
                         void setPaymentSplit(booking.id, 'together');
                       }}
                     />
                     <Chip
-                      label="Apart"
+                      label={t('Apart')}
                       selected={splitOf(booking) === 'separate'}
                       onPress={() => {
                         void setPaymentSplit(booking.id, 'separate');
@@ -325,7 +330,7 @@ export function LessonDetailSheet({
               {canManage && !isCancelled ? (
                 editingPlayers ? (
                   <>
-                    <Text style={styles.label}>Medespelers</Text>
+                    <Text style={styles.label}>{t('Medespelers')}</Text>
                     <ParticipantPicker
                       players={players}
                       payerId={booking.player_id}
@@ -337,7 +342,7 @@ export function LessonDetailSheet({
                     />
                     <View style={styles.actions}>
                       <Button
-                        label="Klaar"
+                        label={t('Klaar')}
                         variant="secondary"
                         fullWidth={false}
                         onPress={() => setEditingPlayers(false)}
@@ -347,7 +352,7 @@ export function LessonDetailSheet({
                 ) : (
                   <View style={styles.actions}>
                     <Button
-                      label={isGroup ? 'Medespelers wijzigen' : 'Medespeler toevoegen'}
+                      label={isGroup ? t('Medespelers wijzigen') : t('Medespeler toevoegen')}
                       variant="secondary"
                       fullWidth={false}
                       onPress={() => {
@@ -363,7 +368,7 @@ export function LessonDetailSheet({
 
               {booking.notes ? (
                 <>
-                  <Text style={styles.label}>Notitie</Text>
+                  <Text style={styles.label}>{t('Notitie')}</Text>
                   <Text style={styles.notes}>{booking.notes}</Text>
                 </>
               ) : null}
@@ -376,7 +381,7 @@ export function LessonDetailSheet({
               {canManage && isAwaitingApproval(booking) ? (
                 <View style={styles.actions}>
                   <Button
-                    label="Goedkeuren"
+                    label={t('Goedkeuren')}
                     variant="primary"
                     fullWidth={false}
                     onPress={() => {
@@ -384,7 +389,7 @@ export function LessonDetailSheet({
                     }}
                   />
                   <Button
-                    label="Weigeren"
+                    label={t('Weigeren')}
                     variant="secondary"
                     fullWidth={false}
                     onPress={() => {
@@ -400,7 +405,7 @@ export function LessonDetailSheet({
               {canManage && canCancel && !inSeries ? (
                 <View style={styles.actions}>
                   <Button
-                    label="Annuleren"
+                    label={t('Annuleren')}
                     variant="danger"
                     fullWidth={false}
                     onPress={() => {
@@ -414,15 +419,17 @@ export function LessonDetailSheet({
                 confirming ? (
                   <View style={styles.confirmBox}>
                     <Text style={styles.confirmText}>
-                      {confirming === 'cancel' ? 'Annuleren' : 'Verwijderen'}:{' '}
+                      {confirming === 'cancel' ? t('Annuleren') : t('Verwijderen')}:{' '}
                       {tailOnlyThis
-                        ? 'dit is de laatste les van de reeks.'
-                        : `alleen deze les, of deze en alle volgende (${lessons(tail.length)})?`}
-                      {confirming === 'delete' ? ' Weg is weg.' : ''}
+                        ? t('dit is de laatste les van de reeks.')
+                        : t('alleen deze les, of deze en alle volgende ({lessen})?', {
+                          lessen: lessons(tail.length),
+                        })}
+                      {confirming === 'delete' ? ` ${t('Weg is weg.')}` : ''}
                     </Text>
                     <View style={styles.confirmRow}>
                       <Button
-                        label={tailOnlyThis ? 'Ja, deze les' : 'Alleen deze les'}
+                        label={tailOnlyThis ? t('Ja, deze les') : t('Alleen deze les')}
                         variant="danger"
                         fullWidth={false}
                         onPress={() => {
@@ -439,7 +446,7 @@ export function LessonDetailSheet({
                       />
                       {tailOnlyThis ? null : (
                         <Button
-                          label={`Deze en alle volgende (${tail.length})`}
+                          label={t('Deze en alle volgende ({n})', { n: tail.length })}
                           variant="danger"
                           fullWidth={false}
                           onPress={() => {
@@ -454,7 +461,7 @@ export function LessonDetailSheet({
                         />
                       )}
                       <Button
-                        label="Nee"
+                        label={t('Nee')}
                         variant="secondary"
                         fullWidth={false}
                         onPress={() => setConfirming(null)}
@@ -465,7 +472,7 @@ export function LessonDetailSheet({
                   <View style={[styles.actions, styles.confirmRow]}>
                     {canCancel ? (
                       <Button
-                        label="Annuleren"
+                        label={t('Annuleren')}
                         variant="danger"
                         fullWidth={false}
                         onPress={() => {
@@ -475,7 +482,7 @@ export function LessonDetailSheet({
                       />
                     ) : null}
                     <Button
-                      label="Verwijderen"
+                      label={t('Verwijderen')}
                       variant="danger"
                       fullWidth={false}
                       onPress={() => {

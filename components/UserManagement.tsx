@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { UserPlus, X } from 'lucide-react-native';
 import { Chip } from './ui/Chip';
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, radius } from '../constants/theme';
 import { appConfig } from '../constants/app-config';
@@ -71,6 +72,7 @@ function slugify(name: string): string {
 }
 
 export function UserManagement(props: UserManagementProps): JSX.Element {
+  const t = useT();
   const { visible, onClose, defaultRole = 'player', initialName, onCreated } = props;
   const { users, addUser, error } = useSimpleData();
 
@@ -156,12 +158,12 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
         <View style={styles.sheet}>
           <View style={styles.header}>
             <Text style={styles.title}>
-              {role === 'coach' ? 'Trainer toevoegen' : 'Speler toevoegen'}
+              {role === 'coach' ? t('Trainer toevoegen') : t('Speler toevoegen')}
             </Text>
             <Pressable
               onPress={onClose}
               style={styles.closeButton}
-              accessibilityLabel="Sluiten"
+              accessibilityLabel={t('Sluiten')}
               accessibilityRole="button"
             >
               <X size={22} color={tennisColors.text} />
@@ -169,31 +171,31 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
           </View>
 
           <View style={styles.form}>
-            <Text style={styles.label}>Rol</Text>
+            <Text style={styles.label}>{t('Rol')}</Text>
             <View style={styles.roleRow}>
               {(['player', 'coach', 'parent'] as Role[]).map((r) => (
                 <Chip
                   key={r}
-                  label={ROLE_LABELS[r]}
+                  label={t(ROLE_LABELS[r])}
                   selected={role === r}
                   onPress={() => setRole(r)}
                 />
               ))}
             </View>
 
-            <Text style={styles.label}>Naam</Text>
+            <Text style={styles.label}>{t('Naam')}</Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="Naam"
+              placeholder={t('Naam')}
               placeholderTextColor={tennisColors.textMuted}
               style={styles.input}
             />
-            <Text style={[styles.label, styles.labelSpaced]}>E-mailadres</Text>
+            <Text style={[styles.label, styles.labelSpaced]}>{t('E-mailadres')}</Text>
             <TextInput
               value={email}
               onChangeText={handleEmailChange}
-              placeholder="naam@club.be"
+              placeholder={t('naam@club.be')}
               placeholderTextColor={tennisColors.textMuted}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -201,17 +203,17 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
               style={styles.input}
             />
             <Text style={styles.helper}>
-              Wordt afgeleid van de naam. Zelf iets invullen mag: dan blijft dat staan.
+              {t('Wordt afgeleid van de naam. Zelf iets invullen mag: dan blijft dat staan.')}
             </Text>
             {!emailOk ? (
-              <Text style={styles.error}>Dit lijkt geen geldig e-mailadres.</Text>
+              <Text style={styles.error}>{t('Dit lijkt geen geldig e-mailadres.')}</Text>
             ) : null}
 
-            <Text style={[styles.label, styles.labelSpaced]}>Gsm-nummer (optioneel)</Text>
+            <Text style={[styles.label, styles.labelSpaced]}>{t('Gsm-nummer (optioneel)')}</Text>
             <TextInput
               value={phone}
               onChangeText={setPhone}
-              placeholder="0470 12 34 56"
+              placeholder={t('0470 12 34 56')}
               placeholderTextColor={tennisColors.textMuted}
               keyboardType="phone-pad"
               autoCapitalize="none"
@@ -221,17 +223,17 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
 
             {role === 'coach' ? (
               <>
-                <Text style={styles.label}>Uurtarief (optioneel)</Text>
+                <Text style={styles.label}>{t('Uurtarief (optioneel)')}</Text>
                 <TextInput
                   value={rate}
                   onChangeText={setRate}
-                  placeholder="bv. 45"
+                  placeholder={t('bv. 45')}
                   placeholderTextColor={tennisColors.textMuted}
                   keyboardType="numeric"
                   style={styles.input}
                 />
                 <Text style={styles.helper}>
-                  Alleen ter informatie — de omzet loopt op het baantarief.
+                  {t('Alleen ter informatie — de omzet loopt op het baantarief.')}
                 </Text>
               </>
             ) : null}
@@ -239,7 +241,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <Button
-              label={role === 'coach' ? 'Trainer toevoegen' : 'Toevoegen'}
+              label={role === 'coach' ? t('Trainer toevoegen') : t('Toevoegen')}
               onPress={handleAdd}
               disabled={!canSubmit}
               icon={<UserPlus size={18} color={tennisColors.onFill} />}
@@ -254,7 +256,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
             contentContainerStyle={styles.listContent}
           >
             {users.length === 0 ? (
-              <Text style={styles.empty}>Nog geen gebruikers.</Text>
+              <Text style={styles.empty}>{t('Nog geen gebruikers.')}</Text>
             ) : (
               users.map((user) => (
                 <View key={user.id} style={styles.userRow}>
@@ -262,7 +264,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
                     {user.name}
                   </Text>
                   <Badge
-                    label={ROLE_LABELS[user.role]}
+                    label={t(ROLE_LABELS[user.role])}
                     color={ROLE_BADGE_COLORS[user.role]}
                     subtle={isSubtleRole(user.role)}
                   />

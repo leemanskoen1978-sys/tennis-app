@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react-native';
 import { useSimpleData } from '../providers/SimpleDataProvider';
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, webCursor } from '../constants/theme';
 import type { ExplanationPoint } from '../lib/types';
@@ -24,6 +25,7 @@ export function LessonExplanation({
   points: ExplanationPoint[];
   canEdit: boolean;
 }) {
+  const t = useT();
   const { updateLesson } = useSimpleData();
   const [draft, setDraft] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -55,10 +57,10 @@ export function LessonExplanation({
 
   return (
     <>
-      <Text style={styles.label}>Uitleg bij de veldsituatie</Text>
+      <Text style={styles.label}>{t('Uitleg bij de veldsituatie')}</Text>
 
       {points.length === 0 ? (
-        <Text style={styles.empty}>Nog geen uitleg.</Text>
+        <Text style={styles.empty}>{t('Nog geen uitleg.')}</Text>
       ) : (
         points.map((point) =>
           editingId === point.id ? (
@@ -73,7 +75,7 @@ export function LessonExplanation({
               <Pressable
                 onPress={saveEdit}
                 accessibilityRole="button"
-                accessibilityLabel="Punt opslaan"
+                accessibilityLabel={t('Punt opslaan')}
                 style={[styles.iconBtn, webCursor]}
               >
                 <Check size={18} color={tennisColors.primary} />
@@ -81,7 +83,7 @@ export function LessonExplanation({
               <Pressable
                 onPress={() => setEditingId(null)}
                 accessibilityRole="button"
-                accessibilityLabel="Wijziging annuleren"
+                accessibilityLabel={t('Wijziging annuleren')}
                 style={[styles.iconBtn, webCursor]}
               >
                 <X size={18} color={tennisColors.textMuted} />
@@ -122,7 +124,7 @@ export function LessonExplanation({
             style={[styles.input, styles.grow]}
             value={draft}
             onChangeText={setDraft}
-            placeholder="Nog een punt…"
+            placeholder={t('Nog een punt…')}
             placeholderTextColor={tennisColors.textMuted}
             onSubmitEditing={add}
             returnKeyType="done"
@@ -131,7 +133,7 @@ export function LessonExplanation({
             onPress={add}
             disabled={draft.trim().length === 0}
             accessibilityRole="button"
-            accessibilityLabel="Uitleg toevoegen"
+            accessibilityLabel={t('Uitleg toevoegen')}
             accessibilityState={{ disabled: draft.trim().length === 0 }}
             style={[styles.addBtn, draft.trim().length === 0 && styles.addBtnOff, webCursor]}
           >

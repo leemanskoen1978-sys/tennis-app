@@ -1,5 +1,6 @@
 import { tennisColors } from '../constants/tennis-colors';
 import { groupSize, groupSizeLabel, isGroupLesson, lessonPlayerIds, playsIn } from './groups';
+import { t } from './i18n';
 import { formatEuro } from './money';
 import type {
   Booking, Court, CourtGroupRate, PaymentMethod, PaymentSplit, User,
@@ -26,7 +27,7 @@ export interface PaymentMeta {
 
 /** Kleur en label voor de badge. 'open' is bewust ingetogen: het is nog geen keuze. */
 export function paymentMeta(method: PaymentMethod): PaymentMeta {
-  const label = PAYMENT_LABELS[method];
+  const label = t(PAYMENT_LABELS[method]);
   switch (method) {
     case 'cash':
       return { color: tennisColors.successFill, label, subtle: false };
@@ -143,7 +144,7 @@ export function lessonShares(
 export function bookingPaymentMeta(b: SplitBooking): PaymentMeta {
   const meta = paymentMeta(b.payment_method);
   if (splitOf(b) === 'together') return meta;
-  return { ...meta, label: `${meta.label} · apart` };
+  return { ...meta, label: `${meta.label} · ${t('apart')}` };
 }
 
 /**
@@ -161,16 +162,19 @@ export function lessonPriceLine(
 ): string {
   const total = bookingPrice(b, court);
   const size = groupSize(b);
-  if (size === 1) return `€ ${formatEuro(total)} voor deze les.`;
-  const samen = `€ ${formatEuro(total)} voor deze les met ${groupSizeLabel(size)}`;
-  if (splitOf(b) === 'together') return `${samen}, op één factuur.`;
+  if (size === 1) return t('€ {bedrag} voor deze les.', { bedrag: formatEuro(total) });
+  const samen = t('€ {bedrag} voor deze les met {groep}', {
+    bedrag: formatEuro(total),
+    groep: groupSizeLabel(size),
+  });
+  if (splitOf(b) === 'together') return t('{samen}, op één factuur.', { samen });
   const amounts = lessonShares(b, court).map((share) => share.amount);
   const low = Math.min(...amounts);
   const high = Math.max(...amounts);
   const ieder = low === high
-    ? `€ ${formatEuro(low)} per speler`
-    : `€ ${formatEuro(low)} à € ${formatEuro(high)} per speler`;
-  return `${samen}, apart gefactureerd: ${ieder}.`;
+    ? t('€ {bedrag} per speler', { bedrag: formatEuro(low) })
+    : t('€ {laag} à € {hoog} per speler', { laag: formatEuro(low), hoog: formatEuro(high) });
+  return t('{samen}, apart gefactureerd: {ieder}.', { samen, ieder });
 }
 
 /** Een les vraagt nog om afhandeling zolang er iemand op 'open' staat. */

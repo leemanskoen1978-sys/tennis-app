@@ -8,6 +8,7 @@ import {
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, minTapTarget, webCursor, contentMaxWidth } from '../../constants/theme';
+import { useT, type Translate } from '../../lib/i18n';
 
 interface TabItem {
   label: string;
@@ -20,21 +21,21 @@ interface TabItem {
 // Dezelfde rolsplitsing als de tegels op het hoofdscherm, met Home ervoor: een trainer
 // navigeert langs secties, een speler langs taken. Iconen zijn gelijk aan die van de
 // tegels, zodat tegel en tab hetzelfde beeld oproepen.
-const COACH_TABS: TabItem[] = [
-  { label: 'Home', href: '/', icon: Home, segment: '' },
-  { label: 'Agenda', href: '/agenda', icon: CalendarDays, segment: 'agenda' },
-  { label: 'Spelers', href: '/players', icon: Users, segment: 'players' },
-  { label: 'Trainers', href: '/coaches', icon: GraduationCap, segment: 'coaches' },
-  { label: 'Beheer', href: '/admin', icon: SlidersHorizontal, segment: 'admin' },
+const coachTabs = (t: Translate): TabItem[] => [
+  { label: t('Home'), href: '/', icon: Home, segment: '' },
+  { label: t('Agenda'), href: '/agenda', icon: CalendarDays, segment: 'agenda' },
+  { label: t('Spelers'), href: '/players', icon: Users, segment: 'players' },
+  { label: t('Trainers'), href: '/coaches', icon: GraduationCap, segment: 'coaches' },
+  { label: t('Beheer'), href: '/admin', icon: SlidersHorizontal, segment: 'admin' },
 ];
 
-const PLAYER_TABS: TabItem[] = [
-  { label: 'Home', href: '/', icon: Home, segment: '' },
-  { label: 'Reserveren', href: '/agenda/new', icon: CalendarPlus, segment: 'agenda' },
-  { label: 'Mijn lessen', href: '/coaches/lessons', icon: BookOpen, segment: 'coaches' },
+const playerTabs = (t: Translate): TabItem[] => [
+  { label: t('Home'), href: '/', icon: Home, segment: '' },
+  { label: t('Reserveren'), href: '/agenda/new', icon: CalendarPlus, segment: 'agenda' },
+  { label: t('Mijn lessen'), href: '/coaches/lessons', icon: BookOpen, segment: 'coaches' },
   // Zelfde tekst als de tegel op het hoofdscherm: een tab die anders heet dan de tegel
   // waar hij naartoe gaat, laat je twijfelen of het wel dezelfde plek is.
-  { label: 'Voortgang', href: '/players/progress', icon: TrendingUp, segment: 'players' },
+  { label: t('Voortgang'), href: '/players/progress', icon: TrendingUp, segment: 'players' },
 ];
 
 /**
@@ -44,6 +45,7 @@ const PLAYER_TABS: TabItem[] = [
  * altijd nog een weg terug naar elke sectie.
  */
 export function TabBar() {
+  const t = useT();
   const router = useRouter();
   const segments = useSegments();
   const insets = useSafeAreaInsets();
@@ -51,7 +53,7 @@ export function TabBar() {
 
   if (!currentUser) return null;
 
-  const tabs = currentUser.role === 'coach' ? COACH_TABS : PLAYER_TABS;
+  const tabs = currentUser.role === 'coach' ? coachTabs(t) : playerTabs(t);
   const active = segments[0] ?? '';
 
   return (

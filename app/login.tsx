@@ -10,6 +10,7 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { useSimpleData } from '../providers/SimpleDataProvider';
+import { useT, type Translate } from '../lib/i18n';
 
 type Role = 'player' | 'coach' | 'parent';
 
@@ -20,15 +21,15 @@ const ROLE_LABELS: Record<Role, string> = {
 };
 
 /** Role badge props: coach = primary, player = subtle, parent = court. */
-function roleBadgeProps(role: string): { label: string; color?: string; subtle?: boolean } {
+function roleBadgeProps(t: Translate, role: string): { label: string; color?: string; subtle?: boolean } {
   switch (role) {
     case 'coach':
-      return { label: ROLE_LABELS.coach, color: tennisColors.primaryFill };
+      return { label: t(ROLE_LABELS.coach), color: tennisColors.primaryFill };
     case 'parent':
-      return { label: ROLE_LABELS.parent, color: tennisColors.courtFill };
+      return { label: t(ROLE_LABELS.parent), color: tennisColors.courtFill };
     case 'player':
     default:
-      return { label: ROLE_LABELS.player ?? role, subtle: true };
+      return { label: t(ROLE_LABELS.player ?? role), subtle: true };
   }
 }
 
@@ -41,6 +42,7 @@ function roleBadgeProps(role: string): { label: string; color?: string; subtle?:
  * diens bestaande lessen en dossier mee — dat koppelen gebeurt in de databank.
  */
 function WachtwoordLogin(): React.JSX.Element {
+  const t = useT();
   const { signIn, signUp } = useSimpleData();
   const [aanmelden, setAanmelden] = useState<boolean>(false);
   const [email, setEmail] = useState<string>('');
@@ -61,12 +63,12 @@ function WachtwoordLogin(): React.JSX.Element {
         await signUp(email, wachtwoord, naam);
         // Staat "bevestig je e-mailadres" aan in Supabase, dan gebeurt er nu nog niets
         // zichtbaars; zonder dit bericht lijkt de knop kapot.
-        setMelding('Account aangemaakt. Kijk in je mailbox als er om bevestiging gevraagd wordt.');
+        setMelding(t('Account aangemaakt. Kijk in je mailbox als er om bevestiging gevraagd wordt.'));
       } else {
         await signIn(email, wachtwoord);
       }
     } catch (e: unknown) {
-      setMelding(e instanceof Error ? e.message : 'Inloggen mislukt.');
+      setMelding(e instanceof Error ? e.message : t('Inloggen mislukt.'));
     } finally {
       setBezig(false);
     }
@@ -77,36 +79,36 @@ function WachtwoordLogin(): React.JSX.Element {
       <Card>
         {aanmelden ? (
           <>
-            <Text style={styles.label}>Naam</Text>
+            <Text style={styles.label}>{t('Naam')}</Text>
             <TextInput
               style={styles.input}
               value={naam}
               onChangeText={setNaam}
-              placeholder="Voor- en achternaam"
+              placeholder={t('Voor- en achternaam')}
               placeholderTextColor={tennisColors.textMuted}
               autoComplete="name"
             />
           </>
         ) : null}
 
-        <Text style={styles.label}>E-mailadres</Text>
+        <Text style={styles.label}>{t('E-mailadres')}</Text>
         <TextInput
           style={styles.input}
           value={email}
           onChangeText={setEmail}
-          placeholder="jij@voorbeeld.be"
+          placeholder={t('jij@voorbeeld.be')}
           placeholderTextColor={tennisColors.textMuted}
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
         />
 
-        <Text style={styles.label}>Wachtwoord</Text>
+        <Text style={styles.label}>{t('Wachtwoord')}</Text>
         <TextInput
           style={styles.input}
           value={wachtwoord}
           onChangeText={setWachtwoord}
-          placeholder="Minstens zes tekens"
+          placeholder={t('Minstens zes tekens')}
           placeholderTextColor={tennisColors.textMuted}
           secureTextEntry
           autoComplete={aanmelden ? 'new-password' : 'current-password'}
@@ -118,7 +120,7 @@ function WachtwoordLogin(): React.JSX.Element {
         {melding ? <Text style={styles.melding}>{melding}</Text> : null}
 
         <Button
-          label={aanmelden ? 'Account aanmaken' : 'Inloggen'}
+          label={aanmelden ? t('Account aanmaken') : t('Inloggen')}
           variant="primary"
           disabled={!klaar || bezig}
           onPress={() => {
@@ -129,13 +131,13 @@ function WachtwoordLogin(): React.JSX.Element {
         <Text
           style={styles.wissel}
           accessibilityRole="button"
-          accessibilityLabel={aanmelden ? 'Ik heb al een account' : 'Ik heb nog geen account'}
+          accessibilityLabel={aanmelden ? t('Ik heb al een account') : t('Ik heb nog geen account')}
           onPress={() => {
             setAanmelden((aan) => !aan);
             setMelding(null);
           }}
         >
-          {aanmelden ? 'Ik heb al een account' : 'Nog geen account? Meld je aan'}
+          {aanmelden ? t('Ik heb al een account') : t('Nog geen account? Meld je aan')}
         </Text>
       </Card>
     </View>
@@ -143,6 +145,7 @@ function WachtwoordLogin(): React.JSX.Element {
 }
 
 export default function Login(): React.JSX.Element {
+  const t = useT();
   const { users, login, error, currentUser, authMode } = useSimpleData();
 
   // Once logged in, leave the login screen for the hub.
@@ -163,7 +166,7 @@ export default function Login(): React.JSX.Element {
       >
         <Text style={styles.title}>{appConfig.name}</Text>
         <Text style={styles.subtitle}>
-          {authMode === 'wachtwoord' ? 'Log in om verder te gaan' : 'Kies je profiel om te starten'}
+          {authMode === 'wachtwoord' ? t('Log in om verder te gaan') : t('Kies je profiel om te starten')}
         </Text>
       </LinearGradient>
 
@@ -182,16 +185,16 @@ export default function Login(): React.JSX.Element {
         <View style={styles.listInner}>
           {users.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>Geen gebruikers gevonden.</Text>
+              <Text style={styles.emptyText}>{t('Geen gebruikers gevonden.')}</Text>
             </View>
           ) : (
             users.map((u) => {
-              const badge = roleBadgeProps(u.role);
+              const badge = roleBadgeProps(t, u.role);
               return (
                 <Card
                   key={u.id}
                   onPress={() => handleLogin(u.id)}
-                  accessibilityLabel={`Log in als ${u.name}`}
+                  accessibilityLabel={t('Log in als {naam}', { naam: u.name })}
                   style={styles.row}
                 >
                   <View style={styles.rowContent}>

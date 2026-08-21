@@ -19,12 +19,9 @@ import { Chip } from '../../components/ui/Chip';
 import { BookingModal } from '../../components/BookingModal';
 import { StudentCombobox } from '../../components/ui/StudentCombobox';
 import { UserManagement } from '../../components/UserManagement';
+import { useT } from '../../lib/i18n';
+import { shortMonthName } from '../../lib/period';
 import type { User } from '../../lib/types';
-
-const MONTH_NAMES = [
-  'jan', 'feb', 'mrt', 'apr', 'mei', 'jun',
-  'jul', 'aug', 'sep', 'okt', 'nov', 'dec',
-];
 
 /** True when the ISO timestamp falls on the same calendar day as d. */
 function sameDay(iso: string, d: Date): boolean {
@@ -55,6 +52,7 @@ function next14Days(from: Date = new Date()): Date[] {
 }
 
 export default function HomeScreen(): JSX.Element {
+  const t = useT();
   const { currentUser, courts, bookings, users, settings, refresh } = useSimpleData();
   // Prefilled when you arrive from a player's dossier.
   const { playerId } = useLocalSearchParams<{ playerId?: string }>();
@@ -145,7 +143,7 @@ export default function HomeScreen(): JSX.Element {
     <Screen>
       <View style={styles.headerRow}>
         <Button
-          label="Vernieuwen"
+          label={t('Vernieuwen')}
           variant="secondary"
           fullWidth={false}
           icon={<RefreshCw size={16} color={tennisColors.text} />}
@@ -157,12 +155,12 @@ export default function HomeScreen(): JSX.Element {
 
       {isCoach ? (
         <>
-          <Text style={styles.sectionLabel}>Speler</Text>
+          <Text style={styles.sectionLabel}>{t('Speler')}</Text>
           <StudentCombobox
             students={players}
             value={selectedPlayerId}
             onChange={setSelectedPlayerId}
-            placeholder="Typ de naam van de speler…"
+            placeholder={t('Typ de naam van de speler…')}
             onRequestCreate={setNewPlayerName}
           />
         </>
@@ -170,11 +168,11 @@ export default function HomeScreen(): JSX.Element {
 
       {/* Dezelfde rij coaches voor iedereen. Alleen een speler kan hem op "Alle coaches"
           zetten om te bladeren; een trainer boekt altijd bij een concrete collega. */}
-      <Text style={styles.sectionLabel}>Coach</Text>
+      <Text style={styles.sectionLabel}>{t('Coach')}</Text>
       <View style={styles.chipRow}>
         {!isCoach && (
           <Chip
-            label="Alle coaches"
+            label={t('Alle coaches')}
             selected={selectedCoachId === null}
             onPress={() => setSelectedCoachId(null)}
           />
@@ -192,13 +190,15 @@ export default function HomeScreen(): JSX.Element {
       {isCoach && (
         <Text style={styles.hint}>
           {bookingCoachId === currentUser?.id
-            ? 'De les komt op jouw agenda.'
-            : `De les komt op de agenda van ${bookingCoach?.name ?? 'je collega'}.`}
+            ? t('De les komt op jouw agenda.')
+            : t('De les komt op de agenda van {trainer}.', {
+              trainer: bookingCoach?.name ?? t('je collega'),
+            })}
         </Text>
       )}
 
       {/* Date strip */}
-      <Text style={styles.sectionLabel}>Datum</Text>
+      <Text style={styles.sectionLabel}>{t('Datum')}</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -212,7 +212,7 @@ export default function HomeScreen(): JSX.Element {
             selectedDate.getFullYear() === day.getFullYear() &&
             selectedDate.getMonth() === day.getMonth() &&
             selectedDate.getDate() === day.getDate();
-          const dayLabel = `${DAY_LABELS[day.getDay()]} ${day.getDate()} ${MONTH_NAMES[day.getMonth()]}`;
+          const dayLabel = `${t(DAY_LABELS[day.getDay()])} ${day.getDate()} ${shortMonthName(day.getMonth())}`;
           return (
             <Pressable
               key={day.toISOString()}
@@ -225,7 +225,12 @@ export default function HomeScreen(): JSX.Element {
               onPress={() => setSelectedDate(day)}
               accessibilityRole="button"
               accessibilityLabel={
-                worked ? dayLabel : `${dayLabel}, ${bookingCoach?.name ?? ''} geeft dan geen les`
+                worked
+                  ? dayLabel
+                  : t('{dag}, {trainer} geeft dan geen les', {
+                    dag: dayLabel,
+                    trainer: bookingCoach?.name ?? '',
+                  })
               }
               accessibilityState={{ selected: active, disabled: !bookable }}
             >
@@ -236,7 +241,7 @@ export default function HomeScreen(): JSX.Element {
                   !bookable && styles.dayTextDisabled,
                 ]}
               >
-                {DAY_LABELS[day.getDay()]}
+                {t(DAY_LABELS[day.getDay()])}
               </Text>
               <Text
                 style={[
@@ -254,7 +259,7 @@ export default function HomeScreen(): JSX.Element {
                   !bookable && styles.dayTextDisabled,
                 ]}
               >
-                {MONTH_NAMES[day.getMonth()]}
+                {shortMonthName(day.getMonth())}
               </Text>
             </Pressable>
           );
@@ -263,27 +268,29 @@ export default function HomeScreen(): JSX.Element {
 
       {bookingCoach ? (
         <Text style={styles.hint}>
-          {bookingCoach.name} geeft les op {formatWorkingDays(bookingCoach)}
-          {bookingCoach.working_hours
-            ? `, ${bookingCoach.working_hours.start}–${bookingCoach.working_hours.end}`
-            : ''}
-          .
+          {t('{trainer} geeft les op {dagen}{uren}.', {
+            trainer: bookingCoach.name,
+            dagen: formatWorkingDays(bookingCoach),
+            uren: bookingCoach.working_hours
+              ? `, ${bookingCoach.working_hours.start}–${bookingCoach.working_hours.end}`
+              : '',
+          })}
         </Text>
       ) : null}
 
       {/* Slot grid */}
-      <Text style={styles.sectionLabel}>Tijdslot</Text>
+      <Text style={styles.sectionLabel}>{t('Tijdslot')}</Text>
       {selectedDate === null && (
-        <Text style={styles.hint}>Kies eerst een datum.</Text>
+        <Text style={styles.hint}>{t('Kies eerst een datum.')}</Text>
       )}
       {!canBook && (
         <Text style={styles.hint}>
-          {isCoach ? 'Kies eerst een speler om te boeken.' : 'Kies eerst een coach om te boeken.'}
+          {isCoach ? t('Kies eerst een speler om te boeken.') : t('Kies eerst een coach om te boeken.')}
         </Text>
       )}
       {!dayIsWorked && (
         <Text style={styles.hint}>
-          {bookingCoach?.name} geeft geen les op deze dag.
+          {t('{trainer} geeft geen les op deze dag.', { trainer: bookingCoach?.name ?? '' })}
         </Text>
       )}
       <View style={styles.slotGrid}>
@@ -292,10 +299,10 @@ export default function HomeScreen(): JSX.Element {
           // Bookable only with a date AND a specific coach, and not already taken.
           const disabled = selectedDate === null || !canBook || isTaken || !dayIsWorked;
           const stateLabel = isTaken
-            ? 'bezet'
+            ? t('bezet')
             : disabled
-              ? 'niet beschikbaar'
-              : 'beschikbaar';
+              ? t('niet beschikbaar')
+              : t('beschikbaar');
           return (
             <Pressable
               key={slot}
@@ -307,7 +314,7 @@ export default function HomeScreen(): JSX.Element {
               ]}
               onPress={() => openSlot(slot)}
               accessibilityRole="button"
-              accessibilityLabel={`Tijdslot ${slot}, ${stateLabel}`}
+              accessibilityLabel={t('Tijdslot {tijd}, {stand}', { tijd: slot, stand: stateLabel })}
               accessibilityState={{ disabled }}
             >
               <Text
@@ -319,7 +326,7 @@ export default function HomeScreen(): JSX.Element {
               >
                 {slot}
               </Text>
-              {isTaken && <Text style={styles.slotBezet}>bezet</Text>}
+              {isTaken && <Text style={styles.slotBezet}>{t('bezet')}</Text>}
             </Pressable>
           );
         })}

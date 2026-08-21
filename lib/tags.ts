@@ -12,6 +12,7 @@
 //
 // Een trainer kan er zelf tags bij zetten (`Lesson.tags`); die tellen even zwaar mee.
 
+import { t } from './i18n';
 import type { Lesson, TrainingExercise } from './types';
 
 /**
@@ -35,6 +36,11 @@ export const TAG_GROUP_LABELS: Record<TagGroup, string> = {
   spel: 'Spelsituatie',
   thema: 'Thema',
 };
+
+/** Hetzelfde label, in de taal die de gebruiker gekozen heeft. */
+export function tagGroupLabel(group: TagGroup): string {
+  return t(TAG_GROUP_LABELS[group]);
+}
 
 /**
  * De woordenlijst. Nederlands én de termen uit het boekje (dat schrijft "T2", "bal 4",

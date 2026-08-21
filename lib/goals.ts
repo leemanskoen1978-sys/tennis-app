@@ -1,5 +1,6 @@
 // Goals per player: one per horizon, with the choices the club maintains itself.
 
+import { t } from './i18n';
 import type { GoalHorizon, PlayerGoal, Settings } from './types';
 
 /** The three horizons, in the order a coach thinks about them. */
@@ -10,6 +11,11 @@ export const HORIZON_LABELS: Record<GoalHorizon, string> = {
   lessons20: 'Binnen 20 lessen',
   season: 'Einde seizoen',
 };
+
+/** Hetzelfde label, in de taal die de gebruiker gekozen heeft. */
+export function horizonLabel(horizon: GoalHorizon): string {
+  return t(HORIZON_LABELS[horizon]);
+}
 
 /** Starting choices. The club adds its own in Beheer; these are only the first ones. */
 export const DEFAULT_SHOT_TYPES: readonly string[] = [
@@ -88,7 +94,7 @@ export function filledGoalCount(goals: PlayerGoal[]): number {
 
 /** "1 doel" tegenover "3 doelen" — het label op die badge. */
 export function goalCountLabel(count: number): string {
-  return count === 1 ? '1 doel' : `${count} doelen`;
+  return count === 1 ? t('1 doel') : t('{n} doelen', { n: count });
 }
 
 export function newGoalId(): string {

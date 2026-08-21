@@ -8,6 +8,7 @@ import { View, Text, StyleSheet } from 'react-native';
 
 import { Chip } from './Chip';
 import type { User } from '../../lib/types';
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 
@@ -21,11 +22,12 @@ export function CoachFilter({
   value: string | null;
   onChange: (coachId: string | null) => void;
 }): React.JSX.Element {
+  const t = useT();
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>Trainer</Text>
+      <Text style={styles.label}>{t('Trainer')}</Text>
       <View style={styles.chipRow}>
-        <Chip label="Alle trainers" selected={value === null} onPress={() => onChange(null)} />
+        <Chip label={t('Alle trainers')} selected={value === null} onPress={() => onChange(null)} />
         {coaches.map((coach) => (
           <Chip
             key={coach.id}

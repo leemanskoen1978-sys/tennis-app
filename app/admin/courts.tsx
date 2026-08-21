@@ -17,6 +17,7 @@ import { Badge } from '../../components/ui/Badge';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { groupRateSteps } from '../../lib/payments';
 import { formatEuro, parseEuro } from '../../lib/money';
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, minTapTarget, webCursor } from '../../constants/theme';
 import type { Court, CourtGroupRate } from '../../lib/types';
@@ -34,6 +35,7 @@ function parsePlayers(text: string): number | undefined {
  * staffel achter kan laten, en die rekent dan mee.
  */
 function CourtCard({ court }: { court: Court }): React.JSX.Element {
+  const t = useT();
   const { updateCourt } = useSimpleData();
   // Wat er in de velden staat terwijl er getypt wordt. Zonder dit springt "4" tijdens het
   // wissen van "45" even naar het opgeslagen bedrag terug.
@@ -73,13 +75,13 @@ function CourtCard({ court }: { court: Court }): React.JSX.Element {
       <View style={styles.row}>
         <Text style={styles.name}>{court.name}</Text>
         <Badge
-          label={court.indoor ? 'Binnen' : 'Buiten'}
+          label={court.indoor ? t('Binnen') : t('Buiten')}
           color={court.indoor ? tennisColors.courtFill : tennisColors.primaryFill}
           subtle={!court.indoor}
         />
       </View>
 
-      <Text style={styles.label}>Uurtarief privéles</Text>
+      <Text style={styles.label}>{t('Uurtarief privéles')}</Text>
       <View style={styles.field}>
         <Text style={styles.euro}>€</Text>
         <TextInput
@@ -92,22 +94,22 @@ function CourtCard({ court }: { court: Court }): React.JSX.Element {
           }}
           onBlur={() => setTyped({})}
           keyboardType="decimal-pad"
-          accessibilityLabel={`Uurtarief van ${court.name}`}
+          accessibilityLabel={t('Uurtarief van {baan}', { baan: court.name })}
           placeholderTextColor={tennisColors.textMuted}
         />
-        <Text style={styles.perHour}>per uur</Text>
+        <Text style={styles.perHour}>{t('per uur')}</Text>
       </View>
 
-      <Text style={styles.label}>Groepstarief</Text>
+      <Text style={styles.label}>{t('Groepstarief')}</Text>
       {steps.length === 0 ? (
         <Text style={styles.help}>
-          Geen staffel: ook een groepsles rekent dan het uurtarief hierboven.
+          {t('Geen staffel: ook een groepsles rekent dan het uurtarief hierboven.')}
         </Text>
       ) : null}
 
       {steps.map((step, index) => (
         <View key={`${court.id}-${index}`} style={styles.stepRow}>
-          <Text style={styles.stepText}>tot</Text>
+          <Text style={styles.stepText}>{t('tot')}</Text>
           <TextInput
             style={[styles.input, styles.small]}
             value={value(`p-${court.id}-${index}`, String(step.max_players))}
@@ -118,9 +120,9 @@ function CourtCard({ court }: { court: Court }): React.JSX.Element {
             }}
             onBlur={() => setTyped({})}
             keyboardType="number-pad"
-            accessibilityLabel={`Tot hoeveel spelers, stap ${index + 1} van ${court.name}`}
+            accessibilityLabel={t('Tot hoeveel spelers, stap {nr} van {baan}', { nr: index + 1, baan: court.name })}
           />
-          <Text style={styles.stepText}>spelers · €</Text>
+          <Text style={styles.stepText}>{t('spelers')} · €</Text>
           <TextInput
             style={[styles.input, styles.small]}
             value={value(`r-${court.id}-${index}`, formatEuro(step.rate))}
@@ -131,11 +133,11 @@ function CourtCard({ court }: { court: Court }): React.JSX.Element {
             }}
             onBlur={() => setTyped({})}
             keyboardType="decimal-pad"
-            accessibilityLabel={`Bedrag van stap ${index + 1} van ${court.name}`}
+            accessibilityLabel={t('Bedrag van stap {nr} van {baan}', { nr: index + 1, baan: court.name })}
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Stap ${index + 1} van ${court.name} verwijderen`}
+            accessibilityLabel={t('Stap {nr} van {baan} verwijderen', { nr: index + 1, baan: court.name })}
             onPress={() => saveSteps(steps.filter((_, i) => i !== index))}
             style={[styles.remove, webCursor]}
           >
@@ -146,7 +148,7 @@ function CourtCard({ court }: { court: Court }): React.JSX.Element {
 
       <View style={styles.addRow}>
         <Button
-          label="Stap toevoegen"
+          label={t('Stap toevoegen')}
           variant="secondary"
           fullWidth={false}
           icon={<Plus size={16} color={tennisColors.text} />}
@@ -158,21 +160,22 @@ function CourtCard({ court }: { court: Court }): React.JSX.Element {
 }
 
 export default function Courts(): React.JSX.Element {
+  const t = useT();
   const { courts } = useSimpleData();
   const sorted = [...courts].sort((a, b) => a.number - b.number);
 
   return (
     <Screen>
       {sorted.length === 0 ? (
-        <Text style={styles.muted}>Nog geen banen.</Text>
+        <Text style={styles.muted}>{t('Nog geen banen.')}</Text>
       ) : (
         sorted.map((c) => <CourtCard key={c.id} court={c} />)
       )}
       <Text style={styles.help}>
-        Elk bedrag is het totaal voor de hele les, niet per speler: "tot 4 spelers € 45"
-        betekent dat een les met vier spelers samen € 45 per uur kost. Een groepsles gaat
-        altijd op factuur — een beurtenkaart en het sponsorbudget gelden alleen voor een
-        privéles. Deze tarieven bepalen de omzetberekening.
+        {t('Elk bedrag is het totaal voor de hele les, niet per speler: "tot 4 spelers € 45" '
+          + 'betekent dat een les met vier spelers samen € 45 per uur kost. Een groepsles gaat '
+          + 'altijd op factuur — een beurtenkaart en het sponsorbudget gelden alleen voor een '
+          + 'privéles. Deze tarieven bepalen de omzetberekening.')}
       </Text>
     </Screen>
   );

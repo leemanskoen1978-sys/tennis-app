@@ -9,8 +9,9 @@ import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 
 import { Plus, Trash2, X } from 'lucide-react-native';
 
 import { OptionCombobox } from './ui/OptionCombobox';
-import { HORIZON_LABELS, isEmptyGoal } from '../lib/goals';
+import { horizonLabel, HORIZON_LABELS, isEmptyGoal } from '../lib/goals';
 import type { GoalHorizon, PlayerGoal } from '../lib/types';
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow, minTapTarget, webCursor, contentMaxWidth } from '../constants/theme';
 
@@ -29,6 +30,7 @@ export function GoalHorizonSheet({
   onDelete: (id: string) => void;
   onAdd: () => void;
 }): React.JSX.Element {
+  const t = useT();
   // De opmerkingen houden hier hun eigen tekst bij, per doel, zodat typen niet vecht met de
   // opgeslagen waarde. Ze staan met opzet in het blad en niet in het veld zelf: bij het
   // sluiten moet wat er getypt is nog bewaard kunnen worden, en dan bestaat het veld niet meer.
@@ -72,11 +74,11 @@ export function GoalHorizonSheet({
         <View style={styles.sheet}>
           <View style={styles.handle} />
           <View style={styles.header}>
-            <Text style={styles.title}>{HORIZON_LABELS[horizon]}</Text>
+            <Text style={styles.title}>{horizonLabel(horizon)}</Text>
             <Pressable
               onPress={closeAndSave}
               accessibilityRole="button"
-              accessibilityLabel="Sluiten"
+              accessibilityLabel={t('Sluiten')}
               style={[styles.close, webCursor]}
             >
               <X size={20} color={tennisColors.textMuted} />
@@ -85,20 +87,20 @@ export function GoalHorizonSheet({
 
           <ScrollView contentContainerStyle={styles.body}>
             {shown.length === 0 ? (
-              <Text style={styles.muted}>Nog geen doel afgesproken.</Text>
+              <Text style={styles.muted}>{t('Nog geen doel afgesproken.')}</Text>
             ) : null}
 
             {shown.map((goal, i) => {
-              const where = `doel ${i + 1} — ${HORIZON_LABELS[horizon]}`;
+              const where = t('doel {nr} — {horizon}', { nr: i + 1, horizon: horizonLabel(horizon) });
               if (!canEdit) {
                 return (
                   <View key={goal.id} style={styles.goal}>
-                    <Text style={styles.goalNr}>Doel {i + 1}</Text>
+                    <Text style={styles.goalNr}>{t('Doel {nr}', { nr: i + 1 })}</Text>
                     {goal.shot_type ? (
-                      <Text style={styles.readValue}>Slag: {goal.shot_type}</Text>
+                      <Text style={styles.readValue}>{t('Slag')}: {goal.shot_type}</Text>
                     ) : null}
                     {goal.change_type ? (
-                      <Text style={styles.readValue}>Wijziging: {goal.change_type}</Text>
+                      <Text style={styles.readValue}>{t('Wijziging')}: {goal.change_type}</Text>
                     ) : null}
                     {goal.notes ? <Text style={styles.readNotes}>{goal.notes}</Text> : null}
                   </View>
@@ -107,45 +109,45 @@ export function GoalHorizonSheet({
               return (
                 <View key={goal.id} style={styles.goal}>
                   <View style={styles.goalHead}>
-                    <Text style={styles.goalNr}>Doel {i + 1}</Text>
+                    <Text style={styles.goalNr}>{t('Doel {nr}', { nr: i + 1 })}</Text>
                     <Pressable
                       onPress={() => onDelete(goal.id)}
                       accessibilityRole="button"
-                      accessibilityLabel={`Verwijder ${where}`}
+                      accessibilityLabel={t('Verwijder {wat}', { wat: where })}
                       style={[styles.removeBtn, webCursor]}
                     >
                       <Trash2 size={16} color={tennisColors.danger} />
-                      <Text style={styles.removeText}>Verwijderen</Text>
+                      <Text style={styles.removeText}>{t('Verwijderen')}</Text>
                     </Pressable>
                   </View>
 
-                  <Text style={styles.label}>Type slag</Text>
+                  <Text style={styles.label}>{t('Type slag')}</Text>
                   <OptionCombobox
-                    label={`Type slag — ${where}`}
+                    label={t('Type slag — {wat}', { wat: where })}
                     options={shots}
                     value={goal.shot_type ?? null}
                     onChange={(v) => onSave({ ...goal, shot_type: v ?? undefined })}
-                    placeholder="Forehand, Backhand…"
+                    placeholder={t('Forehand, Backhand…')}
                   />
 
-                  <Text style={styles.label}>Type wijziging</Text>
+                  <Text style={styles.label}>{t('Type wijziging')}</Text>
                   <OptionCombobox
-                    label={`Type wijziging — ${where}`}
+                    label={t('Type wijziging — {wat}', { wat: where })}
                     options={changes}
                     value={goal.change_type ?? null}
                     onChange={(v) => onSave({ ...goal, change_type: v ?? undefined })}
-                    placeholder="Greepwissel, Regelmaat…"
+                    placeholder={t('Greepwissel, Regelmaat…')}
                   />
 
-                  <Text style={styles.label}>Opmerkingen</Text>
+                  <Text style={styles.label}>{t('Opmerkingen')}</Text>
                   <TextInput
                     style={[styles.input, styles.multiline]}
                     value={notesOf(goal)}
                     onChangeText={(t) => setDrafts((d) => ({ ...d, [goal.id]: t }))}
                     onBlur={() => saveNotes(goal, notesOf(goal))}
-                    placeholder="Wat spreek je af?"
+                    placeholder={t('Wat spreek je af?')}
                     placeholderTextColor={tennisColors.textMuted}
-                    accessibilityLabel={`Opmerkingen — ${where}`}
+                    accessibilityLabel={t('Opmerkingen — {wat}', { wat: where })}
                     multiline
                   />
                 </View>
@@ -156,11 +158,11 @@ export function GoalHorizonSheet({
               <Pressable
                 onPress={onAdd}
                 accessibilityRole="button"
-                accessibilityLabel={`Doel toevoegen — ${HORIZON_LABELS[horizon]}`}
+                accessibilityLabel={t('Doel toevoegen — {horizon}', { horizon: horizonLabel(horizon) })}
                 style={[styles.addBtn, webCursor]}
               >
                 <Plus size={18} color={tennisColors.primary} />
-                <Text style={styles.addText}>Doel toevoegen</Text>
+                <Text style={styles.addText}>{t('Doel toevoegen')}</Text>
               </Pressable>
             ) : null}
           </ScrollView>

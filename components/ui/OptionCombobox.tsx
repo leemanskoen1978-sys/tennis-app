@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { X, Check, ChevronDown } from 'lucide-react-native';
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, minTapTarget, webCursor } from '../../constants/theme';
 
@@ -13,7 +14,7 @@ import { spacing, radius, minTapTarget, webCursor } from '../../constants/theme'
  * not blank out what a coach already agreed with a player.
  */
 export function OptionCombobox({
-  options, value, onChange, placeholder = 'Kies…', label,
+  options, value, onChange, placeholder, label,
 }: {
   options: string[];
   value: string | null;
@@ -22,6 +23,7 @@ export function OptionCombobox({
   /** Used for the accessibility label, so two comboboxes in a row stay tellable apart. */
   label: string;
 }) {
+  const t = useT();
   const [query, setQuery] = useState(value ?? '');
   const [open, setOpen] = useState(false);
 
@@ -95,7 +97,7 @@ export function OptionCombobox({
       ) : null}
 
       {open && matches.length === 0 ? (
-        <Text style={styles.none}>Geen keuze gevonden. Voeg hem toe bij Beheer → Doelen.</Text>
+        <Text style={styles.none}>{t('Geen keuze gevonden. Voeg hem toe bij Beheer → Doelen.')}</Text>
       ) : null}
     </View>
   );

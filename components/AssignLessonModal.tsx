@@ -3,6 +3,7 @@ import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 
 import { X } from 'lucide-react-native';
 import { Button } from './ui/Button';
 import { useSimpleData } from '../providers/SimpleDataProvider';
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow, webCursor, contentMaxWidth } from '../constants/theme';
 
@@ -12,8 +13,9 @@ export function AssignLessonModal({ visible, onClose, playerId }: {
   onClose: () => void;
   playerId: string;
 }) {
+  const t = useT();
   const { currentUser, users, lessons, addLesson, updateLesson } = useSimpleData();
-  const ownerName = (uid?: string) => users.find((u) => u.id === uid)?.name ?? 'Onbekend';
+  const ownerName = (uid?: string) => users.find((u) => u.id === uid)?.name ?? t('Onbekend');
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
 
@@ -42,25 +44,25 @@ export function AssignLessonModal({ visible, onClose, playerId }: {
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Les toewijzen</Text>
-            <Pressable onPress={onClose} style={webCursor} accessibilityRole="button" accessibilityLabel="Sluiten"><X size={22} color={tennisColors.textMuted} /></Pressable>
+            <Text style={styles.sheetTitle}>{t('Les toewijzen')}</Text>
+            <Pressable onPress={onClose} style={webCursor} accessibilityRole="button" accessibilityLabel={t('Sluiten')}><X size={22} color={tennisColors.textMuted} /></Pressable>
           </View>
           <ScrollView contentContainerStyle={styles.sheetBody}>
-            <Text style={styles.label}>Nieuwe les</Text>
-            <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Titel" placeholderTextColor={tennisColors.textMuted} />
-            <TextInput style={styles.input} value={url} onChangeText={setUrl} placeholder="Video-URL (optioneel)" placeholderTextColor={tennisColors.textMuted} autoCapitalize="none" />
-            <Button label="Aanmaken & toewijzen" variant="primary" onPress={create} disabled={!title.trim()} />
+            <Text style={styles.label}>{t('Nieuwe les')}</Text>
+            <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder={t('Titel')} placeholderTextColor={tennisColors.textMuted} />
+            <TextInput style={styles.input} value={url} onChangeText={setUrl} placeholder={t('Video-URL (optioneel)')} placeholderTextColor={tennisColors.textMuted} autoCapitalize="none" />
+            <Button label={t('Aanmaken & toewijzen')} variant="primary" onPress={create} disabled={!title.trim()} />
 
             {library.length > 0 ? (
               <>
-                <Text style={[styles.label, { marginTop: spacing.lg }]}>Uit bibliotheek</Text>
+                <Text style={[styles.label, { marginTop: spacing.lg }]}>{t('Uit bibliotheek')}</Text>
                 {library.map((l) => (
                   <View key={l.id} style={styles.libRow}>
                     <View style={styles.libTitleWrap}>
                       <Text style={styles.libTitle} numberOfLines={1}>{l.title}</Text>
                       <Text style={styles.libOwner}>van {ownerName(l.coach_id ?? l.uploaded_by)}</Text>
                     </View>
-                    <Button label="Toewijzen" variant="secondary" fullWidth={false} onPress={() => { assign(l.id); onClose(); }} />
+                    <Button label={t('Toewijzen')} variant="secondary" fullWidth={false} onPress={() => { assign(l.id); onClose(); }} />
                   </View>
                 ))}
               </>

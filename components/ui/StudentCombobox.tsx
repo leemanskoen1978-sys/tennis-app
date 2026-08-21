@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { X, Check, Plus } from 'lucide-react-native';
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, minTapTarget, webCursor } from '../../constants/theme';
 import { canCreateName } from '../../lib/students';
@@ -19,7 +20,7 @@ export function StudentCombobox({
   students,
   value,
   onChange,
-  placeholder = 'Typ een naam…',
+  placeholder,
   onRequestCreate,
 }: {
   students: User[];
@@ -29,6 +30,7 @@ export function StudentCombobox({
   /** De trainer wil deze (nog onbekende) naam toevoegen; het scherm opent het invulscherm. */
   onRequestCreate?: (name: string) => void;
 }) {
+  const t = useT();
   const selected = students.find((s) => s.id === value) ?? null;
   const [query, setQuery] = useState(selected ? selected.name : '');
   const [open, setOpen] = useState(false);
@@ -92,11 +94,11 @@ export function StudentCombobox({
             if (value) onChange(null); // editing invalidates the previous pick
           }}
           onFocus={() => setOpen(true)}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('Typ een naam…')}
           placeholderTextColor={tennisColors.textMuted}
         />
         {query.length > 0 ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Wissen" onPress={clear} style={[styles.clear, webCursor]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('Wissen')} onPress={clear} style={[styles.clear, webCursor]}>
             <X size={18} color={tennisColors.textMuted} />
           </Pressable>
         ) : null}
@@ -131,9 +133,9 @@ export function StudentCombobox({
       ) : null}
 
       {selected ? (
-        <Text style={styles.selectedHint}>Gekozen: {selected.name}</Text>
+        <Text style={styles.selectedHint}>{t('Gekozen')}: {selected.name}</Text>
       ) : (
-        <Text style={styles.selectedHint}>Geen speler gekozen (algemeen)</Text>
+        <Text style={styles.selectedHint}>{t('Geen speler gekozen (algemeen)')}</Text>
       )}
     </View>
   );

@@ -13,6 +13,7 @@
 //     van de baan (wat de speler betaalt), het trainersloon op het uurtarief van de trainer
 //     (wat hij krijgt). Ze mogen nooit in elkaar geschoven worden.
 
+import { t } from './i18n';
 import { bookingPrice, coachPayout, countsAsRevenue, lessonShares } from './payments';
 import { shortMonthName } from './period';
 import type { Booking, Court, PaymentMethod, User } from './types';
@@ -107,7 +108,7 @@ export function totalsByPlayer(
     for (const share of sharesOf(b, rates)) {
       const row = totals.get(share.playerId) ?? {
         playerId: share.playerId,
-        name: nameById.get(share.playerId) ?? 'Onbekend',
+        name: nameById.get(share.playerId) ?? t('Onbekend'),
         lessons: 0,
         paid: 0,
         open: 0,
@@ -160,7 +161,7 @@ export function payoutsByCoach(bookings: Booking[], users: User[]): CoachTotal[]
     const coach = byId.get(b.coach_id);
     const row = totals.get(b.coach_id) ?? {
       coachId: b.coach_id,
-      name: coach?.name ?? 'Onbekend',
+      name: coach?.name ?? t('Onbekend'),
       lessons: 0,
       amount: 0,
       // Een tarief van 0 is een ingevuld tarief; alleen "niets ingevuld" is de melding waard.

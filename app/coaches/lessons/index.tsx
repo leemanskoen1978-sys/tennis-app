@@ -13,10 +13,12 @@ import { ActionTile, TileGrid } from '../../../components/ui/ActionTile';
 import { LessonDatabase } from '../../../components/LessonDatabase';
 import { useSimpleData } from '../../../providers/SimpleDataProvider';
 import { visibleLessonsFor } from '../../../lib/lessons';
+import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
 import { spacing, typography } from '../../../constants/theme';
 
 export default function LessonsScreen(): React.JSX.Element {
+  const t = useT();
   const router = useRouter();
   const { currentUser, lessons, error } = useSimpleData();
   const isCoach = currentUser?.role === 'coach';
@@ -30,7 +32,7 @@ export default function LessonsScreen(): React.JSX.Element {
         <LessonDatabase
           lessons={visibleLessonsFor(lessons, currentUser)}
           canEdit={false}
-          emptyLabel="Je trainer heeft nog geen lesmateriaal voor je klaargezet."
+          emptyLabel={t('Je trainer heeft nog geen lesmateriaal voor je klaargezet.')}
         />
       </Screen>
     );
@@ -45,22 +47,22 @@ export default function LessonsScreen(): React.JSX.Element {
       ) : null}
 
       <Text style={styles.intro}>
-        Materiaal maken of terugvinden — de databank doorzoekt elke oefening op tags.
+        {t('Materiaal maken of terugvinden — de databank doorzoekt elke oefening op tags.')}
       </Text>
 
       <TileGrid>
         <ActionTile
-          title="Nieuw lesmateriaal"
-          subtitle="Titel, link, PDF of veldsituatie"
+          title={t('Nieuw lesmateriaal')}
+          subtitle={t('Titel, link, PDF of veldsituatie')}
           icon={Plus}
           onPress={() => router.push('/coaches/lessons/new')}
         />
         <ActionTile
-          title="Databank"
+          title={t('Databank')}
           subtitle={
             exercises > 0
-              ? `${exercises} oefeningen doorzoeken`
-              : `${lessons.length} stuks lesmateriaal`
+              ? t('{n} oefeningen doorzoeken', { n: exercises })
+              : t('{n} stuks lesmateriaal', { n: lessons.length })
           }
           icon={Library}
           onPress={() => router.push('/coaches/lessons/databank')}

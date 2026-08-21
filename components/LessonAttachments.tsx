@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FileText, Paperclip, Trash2 } from 'lucide-react-native';
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, webCursor } from '../constants/theme';
 import type { LessonAttachment } from '../lib/types';
@@ -52,8 +53,9 @@ export function openAttachment(att: LessonAttachment): void {
 
 /** Read-only list — used in the lesson details view. */
 export function AttachmentList({ attachments }: { attachments?: LessonAttachment[] }) {
+  const t = useT();
   if (!attachments || attachments.length === 0) {
-    return <Text style={styles.muted}>Geen PDF-bijlagen.</Text>;
+    return <Text style={styles.muted}>{t('Geen PDF-bijlagen.')}</Text>;
   }
   return (
     <View style={styles.list}>
@@ -86,6 +88,7 @@ export function LessonAttachments({
   attachments: LessonAttachment[];
   onChange: (next: LessonAttachment[]) => void;
 }) {
+  const t = useT();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -101,7 +104,7 @@ export function LessonAttachments({
     const chosen = Array.from(files);
     chosen.forEach((file) => {
       if (file.type !== 'application/pdf') {
-        setErrorMsg('Alleen PDF-bestanden kunnen worden geüpload.');
+        setErrorMsg(t('Alleen PDF-bestanden kunnen worden geüpload.'));
         return;
       }
       if (file.size > MAX_ATTACHMENT_BYTES) {
@@ -166,10 +169,10 @@ export function LessonAttachments({
             onPress={pick}
             style={[styles.pickBtn, webCursor]}
             accessibilityRole="button"
-            accessibilityLabel="PDF uploaden"
+            accessibilityLabel={t('PDF uploaden')}
           >
             <Paperclip size={18} color={tennisColors.primary} />
-            <Text style={styles.pickText}>PDF uploaden</Text>
+            <Text style={styles.pickText}>{t('PDF uploaden')}</Text>
           </Pressable>
           {/* Hidden native file input (web only). */}
           {React.createElement('input', {
@@ -180,12 +183,12 @@ export function LessonAttachments({
             style: { display: 'none' },
             onChange: (e: { target: { files: FileList | null } }) => handleFiles(e.target.files),
           })}
-          <Text style={styles.hint}>Max {formatBytes(MAX_ATTACHMENT_BYTES)} per bestand.</Text>
+          <Text style={styles.hint}>{t('Max {maat} per bestand.', { maat: formatBytes(MAX_ATTACHMENT_BYTES) })}</Text>
         </>
       ) : (
         <View style={styles.placeholder}>
           <Paperclip size={20} color={tennisColors.textMuted} />
-          <Text style={styles.placeholderText}>PDF uploaden — binnenkort (mobiele app)</Text>
+          <Text style={styles.placeholderText}>{t('PDF uploaden — binnenkort (mobiele app)')}</Text>
         </View>
       )}
 

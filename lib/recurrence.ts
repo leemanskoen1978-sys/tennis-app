@@ -10,6 +10,7 @@
 // 10:00 blijven staan, en dat lukt alleen als je met dag-, uur- en minuutvelden rekent
 // en niet met "168 uur erbij".
 
+import { t } from './i18n';
 import type { Booking } from './types';
 import { endOfDay } from './period';
 import { formatDay } from './datetime';
@@ -158,6 +159,10 @@ export function seriesSummary(plan: SeriesPlan, rule: RecurrenceRule): string {
   // Dezelfde dagopmaak als overal elders in de app; geen eigen variant erbij.
   const day = until ? formatDay(until) : formatDay(rule.until);
   const n = plan.usable.length;
-  const lessons = n === 0 ? 'geen lessen' : n === 1 ? '1 les' : `${n} lessen`;
-  return `${FREQUENCY_LABELS[rule.frequency]} tot en met ${day} · ${lessons}`;
+  const lessons = n === 0 ? t('geen lessen') : n === 1 ? t('1 les') : t('{n} lessen', { n });
+  return t('{frequentie} tot en met {dag} · {lessen}', {
+    frequentie: t(FREQUENCY_LABELS[rule.frequency]),
+    dag: day,
+    lessen: lessons,
+  });
 }

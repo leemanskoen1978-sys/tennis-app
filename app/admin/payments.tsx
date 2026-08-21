@@ -9,6 +9,7 @@ import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
@@ -17,6 +18,7 @@ import type { PaymentMethod } from '../../lib/types';
 
 export default function Payments() {
   const router = useRouter();
+  const t = useT();
   const pending = usePendingPaymentBookings();
   const { setPaymentMethod, deleteBooking, users, courts, error } = useSimpleData();
   const [busy, setBusy] = React.useState<boolean>(false);
@@ -26,14 +28,14 @@ export default function Payments() {
   if (!b) {
     return (
       <Screen scroll={false}>
-        <Text style={styles.done}>Geen openstaande betalingen.</Text>
+        <Text style={styles.done}>{t('Geen openstaande betalingen.')}</Text>
       </Screen>
     );
   }
 
   const player = users.find((u) => u.id === b.player_id);
-  const playerName = player?.name ?? 'Onbekende speler';
-  const courtName = courts.find((c) => c.id === b.court_id)?.name ?? 'Onbekende baan';
+  const playerName = player?.name ?? t('Onbekende speler');
+  const courtName = courts.find((c) => c.id === b.court_id)?.name ?? t('Onbekende baan');
 
   // Dag, uur én einduur: bij een betaling wil je de les kunnen herkennen, en de gedeelde
   // opmaak vangt een onbruikbare tijd zelf al op.
@@ -52,14 +54,16 @@ export default function Payments() {
   return (
     <Screen>
       <Text style={styles.counter}>
-        {pending.length === 1 ? '1 openstaande betaling' : `${pending.length} openstaande betalingen`}
+        {pending.length === 1
+          ? t('1 openstaande betaling')
+          : t('{n} openstaande betalingen', { n: pending.length })}
       </Text>
 
       <Card>
         <Pressable
           onPress={() => router.push(`/players/${b.player_id}`)}
           accessibilityRole="button"
-          accessibilityLabel={`Open dossier van ${playerName}`}
+          accessibilityLabel={t('Open dossier van {naam}', { naam: playerName })}
           style={[styles.playerRow, webCursor]}
         >
           <Text style={styles.playerName}>{playerName}</Text>
@@ -67,11 +71,11 @@ export default function Payments() {
         </Pressable>
 
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Baan</Text>
+          <Text style={styles.detailLabel}>{t('Baan')}</Text>
           <Text style={styles.detailValue}>{courtName}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Tijdstip</Text>
+          <Text style={styles.detailLabel}>{t('Tijdstip')}</Text>
           <Text style={styles.detailValue}>{startLabel}</Text>
         </View>
       </Card>
@@ -83,13 +87,13 @@ export default function Payments() {
         {PAYMENT_METHODS.filter((m) => m !== 'open').map((method) => (
           <Button
             key={method}
-            label={PAYMENT_LABELS[method]}
+            label={t(PAYMENT_LABELS[method])}
             variant={method === 'cash' ? 'primary' : 'secondary'}
             disabled={busy}
             onPress={() => setMethod(method)}
           />
         ))}
-        <Button label="Verwijderen" variant="danger" disabled={busy} onPress={() => run(() => deleteBooking(b.id))} />
+        <Button label={t('Verwijderen')} variant="danger" disabled={busy} onPress={() => run(() => deleteBooking(b.id))} />
       </View>
 
       {busy ? <ActivityIndicator color={tennisColors.primary} /> : null}

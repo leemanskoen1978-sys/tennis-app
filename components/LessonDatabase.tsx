@@ -22,6 +22,7 @@ import {
   availableExerciseTags, availableTags, exerciseTags, filterExercises, filterLessons,
   lessonTags, type ExerciseHit,
 } from '../lib/tags';
+import { useT, type Translate } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, minTapTarget, webCursor } from '../constants/theme';
 import type { Lesson } from '../lib/types';
@@ -74,17 +75,17 @@ function TagBar({
  * als kop van een kaart begint die eerste letter hier wél groot, verder blijft de tekst
  * zoals de trainer hem kent.
  */
-function exerciseHeading(hit: ExerciseHit): string {
+function exerciseHeading(t: Translate, hit: ExerciseHit): string {
   const parts = [hit.exercise.situation, hit.exercise.purpose]
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
-  if (parts.length === 0) return 'Oefening';
+  if (parts.length === 0) return t('Oefening');
   const line = parts.join(' · ');
   return line.charAt(0).toUpperCase() + line.slice(1);
 }
 
 export function LessonDatabase({
-  lessons, canEdit, emptyLabel = 'Nog geen lesmateriaal.',
+  lessons, canEdit, emptyLabel,
 }: {
   lessons: Lesson[];
   canEdit: boolean;
@@ -92,6 +93,8 @@ export function LessonDatabase({
    *  dan voor een trainer: hij kan er zelf niets aan doen. */
   emptyLabel?: string;
 }): React.JSX.Element {
+  const t = useT();
+  const leeg = emptyLabel ?? t('Nog geen lesmateriaal.');
   const [mode, setMode] = useState<Mode>('oefening');
   const [query, setQuery] = useState<string>('');
   const [tags, setTags] = useState<string[]>([]);
@@ -142,10 +145,10 @@ export function LessonDatabase({
   // "3 trainingen" klopt voor het boekje van de club, maar niet voor de PDF die een speler
   // van zijn trainer kreeg. Zonder oefeningen erin heet het gewoon een les.
   const noun = view === 'oefening'
-    ? (count === 1 ? 'oefening' : 'oefeningen')
+    ? (count === 1 ? t('oefening') : t('oefeningen'))
     : hasExercises
-      ? (count === 1 ? 'training' : 'trainingen')
-      : (count === 1 ? 'les' : 'lessen');
+      ? (count === 1 ? t('training') : t('trainingen'))
+      : (count === 1 ? t('les') : t('lessen'));
 
   return (
     <View style={styles.wrap}>
@@ -153,12 +156,12 @@ export function LessonDatabase({
       {hasExercises ? (
         <View style={styles.modes}>
           <Chip
-            label="Oefeningen"
+            label={t('Oefeningen')}
             selected={view === 'oefening'}
             onPress={() => switchMode('oefening')}
           />
           <Chip
-            label="Trainingen"
+            label={t('Trainingen')}
             selected={view === 'training'}
             onPress={() => switchMode('training')}
           />
@@ -175,16 +178,16 @@ export function LessonDatabase({
             style={styles.search}
             value={query}
             onChangeText={setQuery}
-            placeholder={view === 'oefening' ? 'Zoek een oefening…' : 'Zoek lesmateriaal…'}
+            placeholder={view === 'oefening' ? t('Zoek een oefening…') : t('Zoek lesmateriaal…')}
             placeholderTextColor={tennisColors.textMuted}
             autoCapitalize="none"
-            accessibilityLabel="Zoeken"
+            accessibilityLabel={t('Zoeken')}
           />
           {query.length > 0 ? (
             <Text
               style={styles.clear}
               accessibilityRole="button"
-              accessibilityLabel="Zoekterm wissen"
+              accessibilityLabel={t('Zoekterm wissen')}
               onPress={() => setQuery('')}
             >
               <X size={18} color={tennisColors.textMuted} />
@@ -200,19 +203,21 @@ export function LessonDatabase({
 
         <View style={styles.countRow}>
           <Text style={styles.count}>
-            {filtering ? `${count} van ${total} ${noun}` : `${total} ${noun}`}
+            {filtering
+              ? t('{aantal} van {totaal} {soort}', { aantal: count, totaal: total, soort: noun })
+              : `${total} ${noun}`}
           </Text>
           {filtering ? (
             <Text
               style={styles.reset}
               accessibilityRole="button"
-              accessibilityLabel="Filters wissen"
+              accessibilityLabel={t('Filters wissen')}
               onPress={() => {
                 setQuery('');
                 setTags([]);
               }}
             >
-              Wis filters
+              {t('Wis filters')}
             </Text>
           ) : null}
         </View>
@@ -221,7 +226,7 @@ export function LessonDatabase({
 
       {count === 0 ? (
         <Text style={styles.empty}>
-          {total === 0 ? emptyLabel : 'Niets gevonden. Probeer een andere tag of zoekterm.'}
+          {total === 0 ? leeg : t('Niets gevonden. Probeer een andere tag of zoekterm.')}
         </Text>
       ) : null}
 
@@ -230,10 +235,10 @@ export function LessonDatabase({
             <Card
               key={`${hit.lesson.id}-${hit.exercise.nr}-${hit.exercise.description.slice(0, 12)}`}
               onPress={() => setOpenHit(hit)}
-              accessibilityLabel={exerciseHeading(hit)}
+              accessibilityLabel={exerciseHeading(t, hit)}
             >
               <View style={styles.cardHead}>
-                <Text style={styles.cardTitle}>{exerciseHeading(hit)}</Text>
+                <Text style={styles.cardTitle}>{exerciseHeading(t, hit)}</Text>
                 {hit.exercise.duration.trim().length > 0 ? (
                   <Text style={styles.duration}>{hit.exercise.duration}</Text>
                 ) : null}
@@ -276,14 +281,14 @@ export function LessonDatabase({
                   <Text style={styles.source}>
                     {lesson.duration_minutes !== undefined
                       ? formatDuration(lesson.duration_minutes)
-                      : 'Lesmateriaal'}
+                      : t('Lesmateriaal')}
                     {lesson.exercises !== undefined && lesson.exercises.length > 0
-                      ? ` · ${lesson.exercises.length} oefeningen`
+                      ? ` · ${t('{n} oefeningen', { n: lesson.exercises.length })}`
                       : ''}
                     {lesson.attachments !== undefined && lesson.attachments.length > 0
                       ? ` · ${lesson.attachments.length} PDF`
                       : ''}
-                    {lesson.drawing ? ' · veldsituatie' : ''}
+                    {lesson.drawing ? ` · ${t('veldsituatie')}` : ''}
                   </Text>
                   {own.length > 0 ? (
                     <View style={styles.pills}>
@@ -301,7 +306,7 @@ export function LessonDatabase({
 
       {/* De oefening zelf: alle kolommen van het boekje, plus de weg naar de hele training. */}
       <DetailSheet
-        title={openHit ? exerciseHeading(openHit) : ''}
+        title={openHit ? exerciseHeading(t, openHit) : ''}
         visible={openHit !== null}
         onClose={() => setOpenHit(null)}
       >
@@ -309,7 +314,10 @@ export function LessonDatabase({
           <View style={styles.sheetBody}>
             <Text style={styles.source}>
               {openHit.lesson.training_number !== undefined
-                ? `Training ${openHit.lesson.training_number} · ${openHit.lesson.title}`
+                ? t('Training {nr} · {titel}', {
+                  nr: openHit.lesson.training_number,
+                  titel: openHit.lesson.title,
+                })
                 : openHit.lesson.title}
               {openHit.exercise.duration.trim().length > 0 ? ` · ${openHit.exercise.duration}` : ''}
             </Text>
@@ -320,11 +328,11 @@ export function LessonDatabase({
                 ))}
               </View>
             ) : null}
-            <Field label="Omschrijving" value={openHit.exercise.description} />
-            <Field label="Kwaliteit" value={openHit.exercise.quality} />
-            <Field label="Organisatie / materiaal" value={openHit.exercise.organisation} />
+            <Field label={t('Omschrijving')} value={openHit.exercise.description} />
+            <Field label={t('Kwaliteit')} value={openHit.exercise.quality} />
+            <Field label={t('Organisatie / materiaal')} value={openHit.exercise.organisation} />
             <Button
-              label="Hele training openen"
+              label={t('Hele training openen')}
               variant="secondary"
               onPress={() => {
                 const lesson = openHit.lesson;

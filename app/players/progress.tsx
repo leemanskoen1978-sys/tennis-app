@@ -15,11 +15,13 @@ import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { UserManagement } from '../../components/UserManagement';
 import { VoiceRecorder } from '../../components/VoiceRecorder';
+import { useT } from '../../lib/i18n';
 import type { TrainingType } from '../../lib/types';
 
 const RATINGS: readonly number[] = [1, 2, 3, 4, 5] as const;
 
 export default function ProgressScreen(): React.JSX.Element {
+  const t = useT();
   const router = useRouter();
   const { currentUser, progress, users, addProgress, error } = useSimpleData();
   const { playerId } = useLocalSearchParams<{ playerId?: string }>();
@@ -36,8 +38,8 @@ export default function ProgressScreen(): React.JSX.Element {
 
   const isCoach = currentUser?.role === 'coach';
   const students = users.filter((u) => u.role !== 'coach');
-  const studentName = (id: string): string => users.find((x) => x.id === id)?.name ?? 'Onbekend';
-  const coachName = (id?: string): string => users.find((x) => x.id === id)?.name ?? 'Onbekend';
+  const studentName = (id: string): string => users.find((x) => x.id === id)?.name ?? t('Onbekend');
+  const coachName = (id?: string): string => users.find((x) => x.id === id)?.name ?? t('Onbekend');
 
   const resetForm = (): void => {
     setSelectedStudentId(null);
@@ -77,65 +79,70 @@ export default function ProgressScreen(): React.JSX.Element {
       {isCoach && currentUser ? (
         <>
           <Card style={styles.formCard}>
-            <Text style={styles.cardTitle}>Nieuwe voortgang</Text>
+            <Text style={styles.cardTitle}>{t('Nieuwe voortgang')}</Text>
 
             <View style={styles.labelRow}>
-              <Text style={styles.label}>Speler</Text>
-              <Pressable onPress={() => setAddPlayerOpen(true)} style={[styles.addLink, webCursor]} accessibilityRole="button" accessibilityLabel="Speler toevoegen">
+              <Text style={styles.label}>{t('Speler')}</Text>
+              <Pressable onPress={() => setAddPlayerOpen(true)} style={[styles.addLink, webCursor]} accessibilityRole="button" accessibilityLabel={t('Speler toevoegen')}>
                 <UserPlus size={16} color={tennisColors.primary} />
-                <Text style={styles.addLinkText}>Speler toevoegen</Text>
+                <Text style={styles.addLinkText}>{t('Speler toevoegen')}</Text>
               </Pressable>
             </View>
-            <StudentCombobox students={students} value={selectedStudentId} onChange={setSelectedStudentId} placeholder="Typ de naam van de speler…" />
+            <StudentCombobox students={students} value={selectedStudentId} onChange={setSelectedStudentId} placeholder={t('Typ de naam van de speler…')} />
 
-            <Text style={styles.label}>Type training</Text>
+            <Text style={styles.label}>{t('Type training')}</Text>
             <View style={styles.chipRow}>
-              {TRAINING_TYPES.map((t) => (
-                <Chip key={t} label={TRAINING_LABELS[t]} selected={t === selectedType} onPress={() => setSelectedType(t)} />
+              {TRAINING_TYPES.map((type) => (
+                <Chip
+                  key={type}
+                  label={t(TRAINING_LABELS[type])}
+                  selected={type === selectedType}
+                  onPress={() => setSelectedType(type)}
+                />
               ))}
             </View>
 
-            <Text style={styles.label}>Beoordeling</Text>
+            <Text style={styles.label}>{t('Beoordeling')}</Text>
             <View style={styles.starRow}>
               {RATINGS.map((r) => {
                 const active = r <= rating;
                 return (
-                  <Pressable key={r} onPress={() => setRating(r === rating ? 0 : r)} style={styles.star} accessibilityRole="button" accessibilityLabel={`${r} sterren`}>
+                  <Pressable key={r} onPress={() => setRating(r === rating ? 0 : r)} style={styles.star} accessibilityRole="button" accessibilityLabel={t('{n} sterren', { n: r })}>
                     <Star size={28} fill={active ? tennisColors.warning : 'transparent'} color={active ? tennisColors.warning : tennisColors.border} />
                   </Pressable>
                 );
               })}
             </View>
 
-            <Text style={styles.label}>Notities</Text>
-            <TextInput style={[styles.input, styles.multiline]} value={notes} onChangeText={setNotes} placeholder="Notities over de training" placeholderTextColor={tennisColors.textMuted} multiline />
+            <Text style={styles.label}>{t('Notities')}</Text>
+            <TextInput style={[styles.input, styles.multiline]} value={notes} onChangeText={setNotes} placeholder={t('Notities over de training')} placeholderTextColor={tennisColors.textMuted} multiline />
 
-            <Text style={styles.label}>Huiswerk</Text>
-            <TextInput style={styles.input} value={homework} onChangeText={setHomework} placeholder="Huiswerk voor de speler" placeholderTextColor={tennisColors.textMuted} />
+            <Text style={styles.label}>{t('Huiswerk')}</Text>
+            <TextInput style={styles.input} value={homework} onChangeText={setHomework} placeholder={t('Huiswerk voor de speler')} placeholderTextColor={tennisColors.textMuted} />
 
-            <Text style={styles.label}>Spraakmemo</Text>
+            <Text style={styles.label}>{t('Spraakmemo')}</Text>
             <VoiceRecorder value={voiceUri} onRecorded={setVoiceUri} onClear={() => setVoiceUri(undefined)} />
 
-            <Button label="Opslaan" variant="primary" onPress={handleSave} disabled={!selectedStudentId} style={styles.saveBtn} />
+            <Button label={t('Opslaan')} variant="primary" onPress={handleSave} disabled={!selectedStudentId} style={styles.saveBtn} />
           </Card>
 
-          <Text style={styles.sectionTitle}>Waar je mee bezig bent</Text>
+          <Text style={styles.sectionTitle}>{t('Waar je mee bezig bent')}</Text>
           {recent.length === 0 ? (
-            <Text style={styles.muted}>Nog geen recente activiteit.</Text>
+            <Text style={styles.muted}>{t('Nog geen recente activiteit.')}</Text>
           ) : (
             recent.map((p) => <ProgressEntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent coachName={coachName(p.coach_id)} />)
           )}
 
-          <Text style={styles.sectionTitle}>Rapport per speler</Text>
-          <StudentCombobox students={students} value={reportStudentId} onChange={setReportStudentId} placeholder="Kies een speler voor het rapport…" />
+          <Text style={styles.sectionTitle}>{t('Rapport per speler')}</Text>
+          <StudentCombobox students={students} value={reportStudentId} onChange={setReportStudentId} placeholder={t('Kies een speler voor het rapport…')} />
           {reportStudentId ? (
             <>
               <View style={styles.reportHeader}>
                 <Text style={styles.reportName}>{studentName(reportStudentId)}</Text>
-                <Button label="Open dossier" variant="secondary" fullWidth={false} onPress={() => router.push(`/players/${reportStudentId}`)} />
+                <Button label={t('Open dossier')} variant="secondary" fullWidth={false} onPress={() => router.push(`/players/${reportStudentId}`)} />
               </View>
               {reportEntries(reportStudentId).length === 0 ? (
-                <Text style={styles.muted}>Nog geen voortgang voor deze speler.</Text>
+                <Text style={styles.muted}>{t('Nog geen voortgang voor deze speler.')}</Text>
               ) : (
                 <>
                   <ReportSummary entries={reportEntries(reportStudentId)} />
@@ -151,9 +158,9 @@ export default function ProgressScreen(): React.JSX.Element {
         </>
       ) : (
         <>
-          <Text style={styles.sectionTitle}>Mijn rapport</Text>
+          <Text style={styles.sectionTitle}>{t('Mijn rapport')}</Text>
           {ownEntries.length === 0 ? (
-            <Text style={styles.muted}>Nog geen voortgang.</Text>
+            <Text style={styles.muted}>{t('Nog geen voortgang.')}</Text>
           ) : (
             <>
               <ReportSummary entries={ownEntries} />

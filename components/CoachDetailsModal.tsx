@@ -5,6 +5,7 @@ import {
 import { X, Save } from 'lucide-react-native';
 import { Chip } from './ui/Chip';
 import { Button } from './ui/Button';
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, radius, webCursor, contentMaxWidth } from '../constants/theme';
 import { useSimpleData } from '../providers/SimpleDataProvider';
@@ -25,6 +26,7 @@ export function CoachDetailsModal({
   visible: boolean;
   onClose: () => void;
 }) {
+  const t = useT();
   const { updateUser, settings } = useSimpleData();
 
   const [email, setEmail] = useState('');
@@ -86,11 +88,11 @@ export function CoachDetailsModal({
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <View style={styles.header}>
-            <Text style={styles.title}>Mijn gegevens</Text>
+            <Text style={styles.title}>{t('Mijn gegevens')}</Text>
             <Pressable
               onPress={onClose}
               accessibilityRole="button"
-              accessibilityLabel="Sluiten"
+              accessibilityLabel={t('Sluiten')}
               style={[styles.closeButton, webCursor]}
             >
               <X size={22} color={tennisColors.textMuted} />
@@ -98,33 +100,33 @@ export function CoachDetailsModal({
           </View>
 
           <ScrollView contentContainerStyle={styles.body}>
-            <Text style={styles.label}>E-mailadres</Text>
+            <Text style={styles.label}>{t('E-mailadres')}</Text>
             <TextInput
               style={styles.input}
               value={email}
               onChangeText={setEmail}
-              placeholder="naam@club.be"
+              placeholder={t('naam@club.be')}
               placeholderTextColor={tennisColors.textMuted}
               autoCapitalize="none"
               keyboardType="email-address"
             />
 
-            <Text style={styles.label}>Gsm</Text>
+            <Text style={styles.label}>{t('Gsm')}</Text>
             <TextInput
               style={styles.input}
               value={phone}
               onChangeText={setPhone}
-              placeholder="0470 12 34 56"
+              placeholder={t('0470 12 34 56')}
               placeholderTextColor={tennisColors.textMuted}
               keyboardType="phone-pad"
             />
 
-            <Text style={styles.label}>Lesdagen</Text>
+            <Text style={styles.label}>{t('Lesdagen')}</Text>
             <View style={styles.chipRow}>
               {DAY_ORDER.map((d) => (
                 <Chip
                   key={d}
-                  label={DAY_LABELS[d]}
+                  label={t(DAY_LABELS[d])}
                   selected={days.includes(d)}
                   onPress={() => toggleDay(d)}
                 />
@@ -134,11 +136,11 @@ export function CoachDetailsModal({
               Niets aangevinkt betekent: elke dag beschikbaar.
             </Text>
 
-            <Text style={styles.label}>Lesuren</Text>
+            <Text style={styles.label}>{t('Lesuren')}</Text>
             <View style={styles.chipRow}>
-              <Chip label="Hele dag" selected={start === null} onPress={clearHours} />
+              <Chip label={t('Hele dag')} selected={start === null} onPress={clearHours} />
             </View>
-            <Text style={styles.subLabel}>Van</Text>
+            <Text style={styles.subLabel}>{t('Van')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.chipRow}>
                 {startOptions.map((h) => (
@@ -146,7 +148,7 @@ export function CoachDetailsModal({
                 ))}
               </View>
             </ScrollView>
-            <Text style={styles.subLabel}>Tot</Text>
+            <Text style={styles.subLabel}>{t('Tot')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.chipRow}>
                 {endOptions.map((h) => (
@@ -160,7 +162,7 @@ export function CoachDetailsModal({
               </Text>
             ) : null}
 
-            <Text style={styles.label}>Uurtarief (€)</Text>
+            <Text style={styles.label}>{t('Uurtarief (€)')}</Text>
             <TextInput
               style={styles.input}
               value={rate}
@@ -169,10 +171,10 @@ export function CoachDetailsModal({
               placeholderTextColor={tennisColors.textMuted}
               keyboardType="decimal-pad"
             />
-            {!rateOk ? <Text style={styles.error}>Vul een getal in, of laat leeg.</Text> : null}
+            {!rateOk ? <Text style={styles.error}>{t('Vul een getal in, of laat leeg.')}</Text> : null}
 
             <Button
-              label="Opslaan"
+              label={t('Opslaan')}
               variant="primary"
               icon={<Save size={18} color={tennisColors.onFill} />}
               disabled={!canSave}

@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { User } from './types';
 
 /**
@@ -56,8 +57,8 @@ export function slotsForCoach(
 /** "Ma · Wo · Vr" for the profile card, or "Elke dag" when nothing is set. */
 export function formatWorkingDays(coach: Pick<User, 'working_days'>): string {
   const days = coach.working_days;
-  if (days === undefined || days.length === 0) return 'Elke dag';
+  if (days === undefined || days.length === 0) return t('Elke dag');
   return DISPLAY_DAY_ORDER.filter((d) => days.includes(d))
-    .map((d) => DAY_LABELS[d])
+    .map((d) => t(DAY_LABELS[d]))
     .join(' · ');
 }

@@ -10,36 +10,39 @@ import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { playersForCoach } from '../../lib/relations';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
+import { useT, useLanguage } from '../../lib/i18n';
 
 export default function Coaches() {
+  const t = useT();
+  const lang = useLanguage();
   const router = useRouter();
   const { users, bookings, lessons, progress } = useSimpleData();
   const [addOpen, setAddOpen] = useState(false);
 
   const coaches = users
     .filter((u) => u.role === 'coach')
-    .sort((a, b) => a.name.localeCompare(b.name, 'nl'));
+    .sort((a, b) => a.name.localeCompare(b.name, lang));
 
   return (
     <Screen>
       {/* A coach's tools belong with Trainers, not as separate main entrances. */}
-      <Text style={styles.section}>Gereedschap</Text>
-      <Card onPress={() => router.push('/coaches/lessons')} accessibilityLabel="Lesmateriaal" style={styles.row}>
+      <Text style={styles.section}>{t('Gereedschap')}</Text>
+      <Card onPress={() => router.push('/coaches/lessons')} accessibilityLabel={t('Lesmateriaal')} style={styles.row}>
         <View style={styles.rowContent}>
           <View style={styles.icon}><BookOpen size={20} color={tennisColors.primary} /></View>
-          <Text style={styles.rowLabel}>Lesmateriaal</Text>
+          <Text style={styles.rowLabel}>{t('Lesmateriaal')}</Text>
           <ChevronRight size={20} color={tennisColors.textMuted} />
         </View>
       </Card>
-      <Card onPress={() => router.push('/coaches/drawing')} accessibilityLabel="Tekenveld" style={styles.row}>
+      <Card onPress={() => router.push('/coaches/drawing')} accessibilityLabel={t('Tekenveld')} style={styles.row}>
         <View style={styles.rowContent}>
           <View style={styles.icon}><Pencil size={20} color={tennisColors.primary} /></View>
-          <Text style={styles.rowLabel}>Tekenveld</Text>
+          <Text style={styles.rowLabel}>{t('Tekenveld')}</Text>
           <ChevronRight size={20} color={tennisColors.textMuted} />
         </View>
       </Card>
 
-      <Text style={styles.section}>Trainers</Text>
+      <Text style={styles.section}>{t('Trainers')}</Text>
       {coaches.map((c) => {
         const n = playersForCoach(c.id, bookings, lessons, progress).length;
         return (
@@ -49,8 +52,8 @@ export default function Coaches() {
               <View style={styles.info}>
                 <Text style={styles.name}>{c.name}</Text>
                 <Text style={styles.meta}>
-                  {n === 1 ? '1 speler' : `${n} spelers`}
-                  {c.hourly_rate ? ` · €${c.hourly_rate}/uur` : ''}
+                  {n === 1 ? t('1 speler') : t('{n} spelers', { n })}
+                  {c.hourly_rate ? ` · ${t('€{bedrag}/uur', { bedrag: c.hourly_rate })}` : ''}
                 </Text>
               </View>
               <ChevronRight size={20} color={tennisColors.textMuted} />
@@ -60,7 +63,7 @@ export default function Coaches() {
       })}
 
       <Button
-        label="Trainer toevoegen"
+        label={t('Trainer toevoegen')}
         variant="secondary"
         icon={<UserPlus size={18} color={tennisColors.text} />}
         onPress={() => setAddOpen(true)}

@@ -6,6 +6,7 @@ import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { appConfig } from '../../constants/app-config';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, minTapTarget, webCursor } from '../../constants/theme';
+import { useT } from '../../lib/i18n';
 
 /**
  * De balk bovenin: waar je bent (de naam van de app, die naar het hoofdscherm gaat),
@@ -13,6 +14,7 @@ import { spacing, minTapTarget, webCursor } from '../../constants/theme';
  * het scherm; ze hier herhalen zou twee plekken geven die hetzelfde doen.
  */
 export function MenuBar() {
+  const t = useT();
   const router = useRouter();
   const { currentUser } = useSimpleData();
 
@@ -26,7 +28,7 @@ export function MenuBar() {
         // Replace rather than push: going home ends the trip, it does not extend it.
         onPress={() => router.replace('/')}
         accessibilityRole="button"
-        accessibilityLabel="Naar het hoofdscherm"
+        accessibilityLabel={t('Naar het hoofdscherm')}
         style={[styles.brandBtn, webCursor]}
       >
         <Text style={styles.brand}>{appConfig.name}</Text>
@@ -36,11 +38,11 @@ export function MenuBar() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Terug"
+          accessibilityLabel={t('Terug')}
           style={[styles.backBtn, webCursor]}
         >
           <ChevronLeft size={18} color={tennisColors.textMuted} />
-          <Text style={styles.backText}>Terug</Text>
+          <Text style={styles.backText}>{t('Terug')}</Text>
         </Pressable>
       ) : null}
 

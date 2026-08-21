@@ -9,6 +9,7 @@ import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AlertCircle, CalendarDays, Euro, Wallet } from 'lucide-react-native';
 
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { Screen } from '../../components/ui/Screen';
@@ -44,6 +45,7 @@ import type { User } from '../../lib/types';
 const CHART_MONTHS = 6;
 
 export default function ReportsScreen(): React.JSX.Element {
+  const t = useT();
   const { currentUser, bookings, users, courts } = useSimpleData();
 
   const isCoach = currentUser?.role === 'coach';
@@ -102,8 +104,13 @@ export default function ReportsScreen(): React.JSX.Element {
     caption: p.amount > 0 ? `€${formatEuro(p.amount)}` : '',
   }));
 
-  const chartLabel = `Omzet per maand. ${series
-    .map((p) => `${p.label} ${p.year}: ${formatEuro(p.amount)} euro uit ${p.lessons} ${p.lessons === 1 ? 'les' : 'lessen'}`)
+  const chartLabel = `${t('Omzet per maand.')} ${series
+    .map((p) => t('{maand} {jaar}: {bedrag} euro uit {lessen}', {
+      maand: p.label,
+      jaar: p.year,
+      bedrag: formatEuro(p.amount),
+      lessen: p.lessons === 1 ? t('1 les') : t('{n} lessen', { n: p.lessons }),
+    }))
     .join('. ')}.`;
 
   const firstMonth = series.length > 0 ? series[0] : null;
@@ -112,8 +119,8 @@ export default function ReportsScreen(): React.JSX.Element {
   if (!currentUser) {
     return (
       <Screen scroll={false} contentStyle={styles.emptyInner}>
-        <Text style={styles.emptyTitle}>Rapport</Text>
-        <Text style={styles.emptyText}>Log in om je rapport te bekijken.</Text>
+        <Text style={styles.emptyTitle}>{t('Rapport')}</Text>
+        <Text style={styles.emptyText}>{t('Log in om je rapport te bekijken.')}</Text>
       </Screen>
     );
   }
@@ -129,35 +136,35 @@ export default function ReportsScreen(): React.JSX.Element {
       <StatCardRow>
         {isCoach ? (
           <>
-            <StatCard icon={Euro} value={`€${formatEuro(revenue)}`} label="Omzet" />
+            <StatCard icon={Euro} value={`€${formatEuro(revenue)}`} label={t('Omzet')} />
             {/* Naast de omzet, niet erin: dit is wat er weer uitgaat naar de trainers. */}
-            <StatCard icon={Wallet} value={`€${formatEuro(payout)}`} label="Trainersloon" />
+            <StatCard icon={Wallet} value={`€${formatEuro(payout)}`} label={t('Trainersloon')} />
           </>
         ) : null}
-        <StatCard icon={CalendarDays} value={lessons} label="Lessen" />
-        <StatCard icon={AlertCircle} value={pending} label="Openstaand" tone="warning" />
+        <StatCard icon={CalendarDays} value={lessons} label={t('Lessen')} />
+        <StatCard icon={AlertCircle} value={pending} label={t('Openstaand')} tone="warning" />
       </StatCardRow>
 
       {isCoach ? (
         <Card>
-          <Text style={styles.cardTitle}>Per speler</Text>
+          <Text style={styles.cardTitle}>{t('Per speler')}</Text>
           {perPlayer.length === 0 ? (
-            <Text style={styles.emptyLine}>Geen lessen in {periodLabel(period)}.</Text>
+            <Text style={styles.emptyLine}>{t('Geen lessen in {periode}.', { periode: periodLabel(period) })}</Text>
           ) : (
             <>
               {/* Een kop, anders is niet te zien welk bedrag welk is. Hij hoort bij de
                   kolommen eronder, dus hij krijgt exact dezelfde breedtes. */}
               <View style={styles.playerHead}>
-                <Text style={[styles.nameCol, styles.colHead]}>Speler</Text>
-                <Text style={[styles.amountCol, styles.colHead]}>Betaald</Text>
-                <Text style={[styles.amountCol, styles.colHead]}>Openstaand</Text>
+                <Text style={[styles.nameCol, styles.colHead]}>{t('Speler')}</Text>
+                <Text style={[styles.amountCol, styles.colHead]}>{t('Betaald')}</Text>
+                <Text style={[styles.amountCol, styles.colHead]}>{t('Openstaand')}</Text>
               </View>
               {perPlayer.map((row) => (
                 <View key={row.playerId} style={styles.playerRow}>
                   <View style={styles.playerNameWrap}>
                     <Text style={styles.statLabel}>{row.name}</Text>
                     <Text style={styles.playerLessons}>
-                      {row.lessons === 1 ? '1 les' : `${row.lessons} lessen`}
+                      {row.lessons === 1 ? t('1 les') : t('{n} lessen', { n: row.lessons })}
                     </Text>
                   </View>
                   <Text style={[styles.amountCol, styles.playerAmount]}>
@@ -179,37 +186,37 @@ export default function ReportsScreen(): React.JSX.Element {
             </>
           )}
           <Text style={styles.note}>
-            Op totaal aflopend. Betaald is het geld dat afgesproken is, openstaand zijn de
-            lessen waarvoor nog niets gekozen is. Geannuleerde lessen tellen nergens mee, en
-            een gesponsorde les staat bij betaald: het sponsorcontract is betaald geld.
+            {t('Op totaal aflopend. Betaald is het geld dat afgesproken is, openstaand zijn de '
+              + 'lessen waarvoor nog niets gekozen is. Geannuleerde lessen tellen nergens mee, en '
+              + 'een gesponsorde les staat bij betaald: het sponsorcontract is betaald geld.')}
           </Text>
         </Card>
       ) : null}
 
       {isCoach ? (
         <Card>
-          <Text style={styles.cardTitle}>Per trainer</Text>
+          <Text style={styles.cardTitle}>{t('Per trainer')}</Text>
           {perCoach.length === 0 ? (
-            <Text style={styles.emptyLine}>Geen lessen in {periodLabel(period)}.</Text>
+            <Text style={styles.emptyLine}>{t('Geen lessen in {periode}.', { periode: periodLabel(period) })}</Text>
           ) : (
             <>
               {/* Dezelfde kolommenopzet als "Per speler", zodat de twee kaarten zich op
                   dezelfde manier laten lezen. Hier staat één bedrag, dus één kolom rechts. */}
               <View style={styles.playerHead}>
-                <Text style={[styles.nameCol, styles.colHead]}>Trainer</Text>
-                <Text style={[styles.amountCol, styles.colHead]}>Loon</Text>
+                <Text style={[styles.nameCol, styles.colHead]}>{t('Trainer')}</Text>
+                <Text style={[styles.amountCol, styles.colHead]}>{t('Loon')}</Text>
               </View>
               {perCoach.map((row) => (
                 <View key={row.coachId} style={styles.playerRow}>
                   <View style={styles.playerNameWrap}>
                     <Text style={styles.statLabel}>{row.name}</Text>
                     <Text style={styles.playerLessons}>
-                      {row.lessons === 1 ? '1 les' : `${row.lessons} lessen`}
+                      {row.lessons === 1 ? t('1 les') : t('{n} lessen', { n: row.lessons })}
                     </Text>
                     {/* Een vergeten uurtarief mag niet als een stille nul voorbijgaan: het
                         bedrag klopt pas als iemand het tarief invult. */}
                     {row.missingRate ? (
-                      <Text style={styles.warnLine}>Uurtarief nog niet ingesteld</Text>
+                      <Text style={styles.warnLine}>{t('Uurtarief nog niet ingesteld')}</Text>
                     ) : null}
                   </View>
                   <Text
@@ -226,39 +233,44 @@ export default function ReportsScreen(): React.JSX.Element {
             </>
           )}
           <Text style={styles.note}>
-            Op bedrag aflopend. Dit is wat de trainer krijgt: zijn eigen uurtarief naar rato
-            van de duur, ongeacht de betaalwijze — het uur is gegeven. De omzet hierboven
-            loopt op het uurtarief van de baan; het verschil houdt de club over. Geannuleerde
-            lessen tellen nergens mee.
+            {t('Op bedrag aflopend. Dit is wat de trainer krijgt: zijn eigen uurtarief naar rato '
+              + 'van de duur, ongeacht de betaalwijze — het uur is gegeven. De omzet hierboven '
+              + 'loopt op het uurtarief van de baan; het verschil houdt de club over. Geannuleerde '
+              + 'lessen tellen nergens mee.')}
           </Text>
         </Card>
       ) : null}
 
       <Card>
-        <Text style={styles.cardTitle}>Per betaalwijze</Text>
+        <Text style={styles.cardTitle}>{t('Per betaalwijze')}</Text>
         {PAYMENT_METHODS.map((method) => (
           <StatRow
             key={method}
-            label={PAYMENT_LABELS[method]}
+            label={t(PAYMENT_LABELS[method])}
             value={breakdown[method]}
             color={paymentMeta(method).color}
           />
         ))}
-        <Text style={styles.note}>Lessen in {periodLabel(period)}.</Text>
+        <Text style={styles.note}>{t('Lessen in {periode}.', { periode: periodLabel(period) })}</Text>
       </Card>
 
       {isCoach ? (
         <Card>
-          <Text style={styles.cardTitle}>Verloop</Text>
+          <Text style={styles.cardTitle}>{t('Verloop')}</Text>
           <BarChart bars={bars} accessibilityLabel={chartLabel} />
           <Text style={styles.note}>
-            Omzet per maand
-            {firstMonth && lastMonth
-              ? `, ${shortMonthName(firstMonth.month)} ${firstMonth.year} tot en met `
-                + `${shortMonthName(lastMonth.month)} ${lastMonth.year}`
-              : ''}
-            . Het verloop kijkt altijd {CHART_MONTHS} maanden terug, ook als je een kortere
-            periode koos — één maand zegt niets zonder de maanden ervoor.
+            {t('Omzet per maand{bereik}. Het verloop kijkt altijd {n} maanden terug, ook als je '
+              + 'een kortere periode koos — één maand zegt niets zonder de maanden ervoor.', {
+              bereik: firstMonth && lastMonth
+                ? t(', {van} {vanJaar} tot en met {tot} {totJaar}', {
+                  van: shortMonthName(firstMonth.month),
+                  vanJaar: firstMonth.year,
+                  tot: shortMonthName(lastMonth.month),
+                  totJaar: lastMonth.year,
+                })
+                : '',
+              n: CHART_MONTHS,
+            })}
           </Text>
         </Card>
       ) : null}

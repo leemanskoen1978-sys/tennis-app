@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, View, Text, StyleSheet } from 'react-native';
 
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow, contentMaxWidth } from '../constants/theme';
 import { Button } from './ui/Button';
@@ -38,18 +39,19 @@ export function PaymentMethodSheet({
   onPick,
   onClose,
 }: Props): React.JSX.Element {
+  const t = useT();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.title}>Betaalwijze</Text>
+          <Text style={styles.title}>{t('Betaalwijze')}</Text>
 
           <View style={styles.chipRow}>
             {PAYMENT_METHODS.map((method) => (
               <Chip
                 key={method}
-                label={PAYMENT_LABELS[method]}
+                label={t(PAYMENT_LABELS[method])}
                 selected={method === current}
                 disabled={groupLesson && method !== GROEPSLES_METHOD}
                 onPress={() => onPick(method)}
@@ -59,8 +61,8 @@ export function PaymentMethodSheet({
 
           {groupLesson ? (
             <Text style={styles.hint}>
-              {GROEPSLES_ALLEEN_FACTUUR} Een beurtenkaart en het sponsorbudget gelden alleen
-              voor een privéles.
+              {t('{regel} Een beurtenkaart en het sponsorbudget gelden alleen voor een '
+                + 'privéles.', { regel: t(GROEPSLES_ALLEEN_FACTUUR) })}
             </Text>
           ) : null}
           {!groupLesson && cardHint ? <Text style={styles.hint}>{cardHint}</Text> : null}
@@ -69,7 +71,7 @@ export function PaymentMethodSheet({
           {!groupLesson && sponsorHint ? <Text style={styles.hint}>{sponsorHint}</Text> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <Button label="Sluiten" variant="secondary" onPress={onClose} />
+          <Button label={t('Sluiten')} variant="secondary" onPress={onClose} />
         </View>
       </View>
     </Modal>

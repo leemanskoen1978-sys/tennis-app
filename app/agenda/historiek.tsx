@@ -22,8 +22,10 @@ import { shareCsv } from '../../lib/share';
 import type { User } from '../../lib/types';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
+import { useT } from '../../lib/i18n';
 
 export default function HistoriekScreen(): React.JSX.Element {
+  const t = useT();
   const { currentUser, bookings, users, courts, error, clearError } = useSimpleData();
 
   const isCoach = currentUser?.role === 'coach';
@@ -79,7 +81,7 @@ export default function HistoriekScreen(): React.JSX.Element {
       await shareCsv(filename, toCsv(rows));
       setExportError(null);
     } catch {
-      setExportError('Exporteren is niet gelukt. Probeer het opnieuw.');
+      setExportError(t('Exporteren is niet gelukt. Probeer het opnieuw.'));
     }
   }
 
@@ -92,26 +94,28 @@ export default function HistoriekScreen(): React.JSX.Element {
       {shown.length === 0 ? null : (
         <Card>
           <Text style={styles.summary}>
-            {shown.length === 1 ? '1 les' : `${shown.length} lessen`}
+            {shown.length === 1 ? t('1 les') : t('{n} lessen', { n: shown.length })}
             {/* De bedragen gaan over geld dat binnenkomt; dat is het verhaal van de trainer.
                 Een speler krijgt de telling, niet de omzet. */}
             {isCoach ? (
               <>
-                {' · € '}{formatEuro(booked)} geboekt
-                {' · € '}{formatEuro(handled)} afgehandeld
+                {' · '}{t('€ {bedrag} geboekt', { bedrag: formatEuro(booked) })}
+                {' · '}{t('€ {bedrag} afgehandeld', { bedrag: formatEuro(handled) })}
               </>
             ) : null}
           </Text>
           {isCoach ? (
             <Text style={styles.summaryNote}>
-              Geannuleerde lessen tellen in geen van beide bedragen mee. “Afgehandeld” is
-              hetzelfde bedrag als de omzet in Beheer → Rapport.
+              {t('Geannuleerde lessen tellen in geen van beide bedragen mee. “Afgehandeld” is '
+                + 'hetzelfde bedrag als de omzet in Beheer → Rapport.')}
               {/* Bij "Alle trainers" gaat het bedrag niet meer over de trainer zelf maar over de
                   hele club; dat mag niet stilzwijgend gebeuren. */}
               {' '}
               {coachId === null
-                ? 'Dit zijn de bedragen van de hele club.'
-                : `Dit zijn de bedragen van ${coaches.find((c) => c.id === coachId)?.name ?? 'deze trainer'}.`}
+                ? t('Dit zijn de bedragen van de hele club.')
+                : t('Dit zijn de bedragen van {trainer}.', {
+                  trainer: coaches.find((c) => c.id === coachId)?.name ?? t('deze trainer'),
+                })}
             </Text>
           ) : null}
         </Card>
@@ -121,22 +125,26 @@ export default function HistoriekScreen(): React.JSX.Element {
 
       <LessonCards
         bookings={shown}
-        empty={`Geen lessen die geweest zijn in ${periodLabel(period)}.`}
+        empty={t('Geen lessen die geweest zijn in {periode}.', { periode: periodLabel(period) })}
       />
 
       {exportError ? <Text style={styles.error}>{exportError}</Text> : null}
 
       <View style={styles.exportBlock}>
         <Button
-          label="Exporteren"
+          label={t('Exporteren')}
           variant="primary"
           disabled={rows.length === 0}
           icon={<Download size={16} color={tennisColors.onFill} />}
           onPress={() => { void onExport(); }}
         />
         <Text style={styles.exportNote}>
-          Het bestand bevat precies de lessen die je hier ziet: {periodLabel(period)}
-          {coachId === null ? ', alle trainers' : `, ${coaches.find((c) => c.id === coachId)?.name ?? 'één trainer'}`}.
+          {t('Het bestand bevat precies de lessen die je hier ziet: {periode}, {trainer}.', {
+            periode: periodLabel(period),
+            trainer: coachId === null
+              ? t('alle trainers')
+              : coaches.find((c) => c.id === coachId)?.name ?? t('één trainer'),
+          })}
         </Text>
       </View>
     </Screen>

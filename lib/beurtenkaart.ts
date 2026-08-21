@@ -1,5 +1,6 @@
 // Rekenwerk rond de 10-beurtenkaart. Puur: elke functie geeft een nieuwe kaart terug.
 
+import { t } from './i18n';
 import { isGroupLesson } from './groups';
 import { sponsorRefusal, type SponsorContext } from './sponsor';
 import type { Beurtenkaart, Booking, PaymentMethod } from './types';
@@ -95,13 +96,13 @@ export function planMethodChange(
 
   // Een geannuleerde les mag geen beurt opeten en hoort geen betaalwijze te krijgen.
   if (booking.status === 'cancelled') {
-    return { ...unchanged, error: 'Een geannuleerde les krijgt geen betaalwijze.' };
+    return { ...unchanged, error: t('Een geannuleerde les krijgt geen betaalwijze.') };
   }
 
   // Een groepsles kent maar één betaalwijze. Dit vangt de beurtenkaart én het sponsorbudget
   // af: allebei zijn ze er voor een privéles.
   if (isGroupLesson(booking) && method !== GROEPSLES_METHOD) {
-    return { ...unchanged, error: GROEPSLES_ALLEEN_FACTUUR };
+    return { ...unchanged, error: t(GROEPSLES_ALLEEN_FACTUUR) };
   }
 
   // Sponsor is de beurtenkaart in euro's: het contract heeft een bodem. Past de les er niet
@@ -131,7 +132,7 @@ export function planMethodChange(
   if (method === 'beurtenkaart' && !booked) {
     const card = usableCardFor(next, booking.player_id);
     if (!card) {
-      return { ...unchanged, error: 'Geen beurtenkaart met beurten over voor deze speler.' };
+      return { ...unchanged, error: t('Geen beurtenkaart met beurten over voor deze speler.') };
     }
     next = next.map((c) => (c.id === card.id ? useSession(c, booking.id, booking.start_time) : c));
     cardId = card.id;
@@ -185,16 +186,16 @@ export function planParticipantsChange(
     patch.payment_method = GROEPSLES_METHOD;
     patch.beurtenkaart_id = undefined;
     const extra = previous === 'beurtenkaart'
-      ? ' De beurt is teruggegeven op de kaart.'
+      ? ` ${t('De beurt is teruggegeven op de kaart.')}`
       : previous === 'sponsor'
-        ? ' Het sponsorbudget komt weer vrij.'
+        ? ` ${t('Het sponsorbudget komt weer vrij.')}`
         : '';
     return {
       cards: cardId ? cards.map((c) => (c.id === cardId ? releaseSession(c, booking.id) : c)) : cards,
       patch,
       notice: previous === GROEPSLES_METHOD
         ? null
-        : `${GROEPSLES_ALLEEN_FACTUUR}${extra} De betaalwijze staat nu op “Factuur”.`,
+        : `${t(GROEPSLES_ALLEEN_FACTUUR)}${extra} ${t('De betaalwijze staat nu op “Factuur”.')}`,
     };
   }
 
@@ -205,8 +206,8 @@ export function planParticipantsChange(
     return {
       cards,
       patch,
-      notice: 'Dit is weer een privéles. De betaalwijze staat op “Open”, zodat er opnieuw '
-        + 'gekozen kan worden — beurtenkaart en sponsor kunnen nu weer.',
+      notice: t('Dit is weer een privéles. De betaalwijze staat op “Open”, zodat er opnieuw '
+        + 'gekozen kan worden — beurtenkaart en sponsor kunnen nu weer.'),
     };
   }
 

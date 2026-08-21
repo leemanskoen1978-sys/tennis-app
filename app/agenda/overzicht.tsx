@@ -14,8 +14,10 @@ import {
   bookingsInPeriod, currentPeriod, pastBookings, periodLabel, upcomingBookings,
 } from '../../lib/period';
 import { bookingsByCoach, visibleBookings } from '../../lib/payments';
+import { useT } from '../../lib/i18n';
 
 export default function OverzichtScreen(): React.JSX.Element {
+  const t = useT();
   const { currentUser, bookings, clearError } = useSimpleData();
   const router = useRouter();
 
@@ -45,16 +47,19 @@ export default function OverzichtScreen(): React.JSX.Element {
     <Screen>
       <TileGrid>
         <ActionTile
-          title="Historiek"
+          title={t('Historiek')}
           // De telling zegt erbij waar hij over gaat: de tegel opent op deze maand, dus dat
           // is ook het aantal dat je hier leest.
-          subtitle={`${pastCount} geweest in ${periodLabel(thisMonth)} · ook andere periodes`}
+          subtitle={t('{n} geweest in {periode} · ook andere periodes', {
+            n: pastCount,
+            periode: periodLabel(thisMonth),
+          })}
           icon={History}
           onPress={() => router.push('/agenda/historiek')}
         />
         <ActionTile
-          title="Nog te komen"
-          subtitle={upcomingCount === 1 ? '1 geplande les' : `${upcomingCount} geplande lessen`}
+          title={t('Nog te komen')}
+          subtitle={upcomingCount === 1 ? t('1 geplande les') : t('{n} geplande lessen', { n: upcomingCount })}
           icon={CalendarClock}
           onPress={() => router.push('/agenda/komend')}
         />

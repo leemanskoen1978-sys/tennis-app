@@ -9,6 +9,7 @@ import React from 'react';
 import { Modal, View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { X } from 'lucide-react-native';
 
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import {
   spacing, radius, typography, shadow, minTapTarget, webCursor, contentMaxWidth,
@@ -20,6 +21,7 @@ export function DetailSheet({ title, visible, onClose, children }: {
   onClose: () => void;
   children: React.ReactNode;
 }): React.JSX.Element {
+  const t = useT();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -30,7 +32,7 @@ export function DetailSheet({ title, visible, onClose, children }: {
             <Pressable
               onPress={onClose}
               accessibilityRole="button"
-              accessibilityLabel="Sluiten"
+              accessibilityLabel={t('Sluiten')}
               style={[styles.close, webCursor]}
             >
               <X size={20} color={tennisColors.textMuted} />

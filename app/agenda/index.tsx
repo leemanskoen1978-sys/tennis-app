@@ -23,6 +23,7 @@ import { groupSize, shortGroupLabel } from '../../lib/groups';
 import { bookingsFor, bookingPaymentMeta } from '../../lib/payments';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
+import { useT } from '../../lib/i18n';
 
 interface Tile {
   key: string;
@@ -34,6 +35,7 @@ interface Tile {
 }
 
 export default function BookingsScreen(): React.JSX.Element {
+  const t = useT();
   const { currentUser, bookings, users, courts, approveBooking, rejectBooking } =
     useSimpleData();
   const pending = usePendingPaymentBookings();
@@ -60,22 +62,22 @@ export default function BookingsScreen(): React.JSX.Element {
     [isCoach, bookings, currentUser],
   );
 
-  const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? 'Onbekend';
-  const courtName = (id: string): string => courts.find((c) => c.id === id)?.name ?? 'Onbekende baan';
+  const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
+  const courtName = (id: string): string => courts.find((c) => c.id === id)?.name ?? t('Onbekende baan');
 
   const tiles: Tile[] = [];
   if (isCoach) {
     tiles.push(
-      { key: 'new', title: 'Nieuwe afspraak', subtitle: 'Les inplannen voor een speler', icon: CalendarPlus, onPress: () => router.push('/agenda/new') },
-      { key: 'pay', title: 'Betalingen', subtitle: 'Openstaande lessen afhandelen', icon: CreditCard, onPress: () => router.push('/admin/payments'), badge: pending.length },
+      { key: 'new', title: t('Nieuwe afspraak'), subtitle: t('Les inplannen voor een speler'), icon: CalendarPlus, onPress: () => router.push('/agenda/new') },
+      { key: 'pay', title: t('Betalingen'), subtitle: t('Openstaande lessen afhandelen'), icon: CreditCard, onPress: () => router.push('/admin/payments'), badge: pending.length },
     );
   }
   // Voor iedereen, want dit is sinds de verhuizing de enige plek waar een speler zijn
   // eigen lessen terugvindt — die van vroeger én die van straks.
   tiles.push({
     key: 'overview',
-    title: 'Overzicht',
-    subtitle: 'Historiek en wat er nog komt',
+    title: t('Overzicht'),
+    subtitle: t('Historiek en wat er nog komt'),
     icon: CalendarDays,
     onPress: () => router.push('/agenda/overzicht'),
   });
@@ -89,7 +91,7 @@ export default function BookingsScreen(): React.JSX.Element {
       <View style={styles.stack}>
         {teKeuren.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Goed te keuren</Text>
+            <Text style={styles.sectionLabel}>{t('Goed te keuren')}</Text>
             {teKeuren.map((b) => (
               <Card key={b.id} style={styles.newCard}>
                 <View style={styles.newRow}>
@@ -98,7 +100,9 @@ export default function BookingsScreen(): React.JSX.Element {
                   </View>
                   <View style={styles.newBody}>
                     <Text style={styles.lessonTime}>
-                      {shortGroupLabel(nameOf(b.player_id), groupSize(b))} vraagt een les
+                      {t('{naam} vraagt een les', {
+                        naam: shortGroupLabel(nameOf(b.player_id), groupSize(b)),
+                      })}
                     </Text>
                     <Text style={styles.lessonCourt}>
                       {formatDayTime(b.start_time)} · {courtName(b.court_id)}
@@ -109,7 +113,7 @@ export default function BookingsScreen(): React.JSX.Element {
                     weigeren annuleert de les en geeft het uur weer vrij. */}
                 <View style={styles.decide}>
                   <Button
-                    label="Goedkeuren"
+                    label={t('Goedkeuren')}
                     variant="primary"
                     style={styles.decideButton}
                     onPress={() => {
@@ -117,7 +121,7 @@ export default function BookingsScreen(): React.JSX.Element {
                     }}
                   />
                   <Button
-                    label="Weigeren"
+                    label={t('Weigeren')}
                     variant="secondary"
                     style={styles.decideButton}
                     onPress={() => {
@@ -132,14 +136,16 @@ export default function BookingsScreen(): React.JSX.Element {
 
         {gevraagd.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Wacht op goedkeuring</Text>
+            <Text style={styles.sectionLabel}>{t('Wacht op goedkeuring')}</Text>
             {gevraagd.map((b) => (
               <Card key={b.id} style={styles.newCard}>
                 <Text style={styles.lessonTime}>
                   {formatDayTime(b.start_time)} · {nameOf(b.coach_id)}
                 </Text>
                 <Text style={styles.lessonCourt}>
-                  {courtName(b.court_id)} — je trainer moet deze les nog bevestigen.
+                  {t('{baan} — je trainer moet deze les nog bevestigen.', {
+                    baan: courtName(b.court_id),
+                  })}
                 </Text>
               </Card>
             ))}
@@ -148,9 +154,9 @@ export default function BookingsScreen(): React.JSX.Element {
 
         {/* Vandaag staat boven de tegels: het antwoord op "wat moet ik nu doen". */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Vandaag</Text>
+          <Text style={styles.sectionLabel}>{t('Vandaag')}</Text>
           {today.length === 0 ? (
-            <Text style={styles.muted}>Geen lessen vandaag.</Text>
+            <Text style={styles.muted}>{t('Geen lessen vandaag.')}</Text>
           ) : (
             today.map((b) => {
               const payment = bookingPaymentMeta(b);
@@ -174,14 +180,14 @@ export default function BookingsScreen(): React.JSX.Element {
         </View>
 
         <TileGrid>
-          {tiles.map((t) => (
+          {tiles.map((tile) => (
             <ActionTile
-              key={t.key}
-              title={t.title}
-              subtitle={t.subtitle}
-              icon={t.icon}
-              onPress={t.onPress}
-              badge={t.badge}
+              key={tile.key}
+              title={tile.title}
+              subtitle={tile.subtitle}
+              icon={tile.icon}
+              onPress={tile.onPress}
+              badge={tile.badge}
             />
           ))}
         </TileGrid>

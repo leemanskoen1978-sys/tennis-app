@@ -20,6 +20,7 @@ import { bookingsFor, filterPendingPayment, openBalanceFor } from '../lib/paymen
 import { formatEuro } from '../lib/money';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
+import { useT } from '../lib/i18n';
 
 interface Tile {
   key: string;
@@ -32,6 +33,7 @@ interface Tile {
 }
 
 export default function Hub() {
+  const t = useT();
   const router = useRouter();
   const { currentUser, users, bookings, courts } = useSimpleData();
   const pending = usePendingPaymentBookings();
@@ -56,12 +58,12 @@ export default function Hub() {
   // En andersom: waar de speler zelf nog op wacht.
   const gevraagd = isCoach ? 0 : awaitingApprovalOf(bookings, currentUser.id).length;
 
-  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? t(one) : t(many)}`;
 
   const coachTiles: Tile[] = [
     {
       key: 'agenda',
-      title: 'Agenda',
+      title: t('Agenda'),
       subtitle: teKeuren > 0
         ? plural(teKeuren, 'les goed te keuren', 'lessen goed te keuren')
         : plural(today, 'vandaag', 'vandaag'),
@@ -69,16 +71,16 @@ export default function Hub() {
       onPress: () => router.push('/agenda'),
       badge: teKeuren,
     },
-    { key: 'spelers', title: 'Spelers', subtitle: plural(countPlayers(users), 'actief', 'actief'), icon: Users, onPress: () => router.push('/players') },
-    { key: 'trainers', title: 'Trainers', subtitle: plural(countCoaches(users), 'trainer', 'trainers'), icon: GraduationCap, onPress: () => router.push('/coaches') },
-    { key: 'beheer', title: 'Beheer', subtitle: plural(pending.length, 'openstaand', 'openstaand'), icon: SlidersHorizontal, onPress: () => router.push('/admin'), badge: pending.length },
+    { key: 'spelers', title: t('Spelers'), subtitle: plural(countPlayers(users), 'actief', 'actief'), icon: Users, onPress: () => router.push('/players') },
+    { key: 'trainers', title: t('Trainers'), subtitle: plural(countCoaches(users), 'trainer', 'trainers'), icon: GraduationCap, onPress: () => router.push('/coaches') },
+    { key: 'beheer', title: t('Beheer'), subtitle: plural(pending.length, 'openstaand', 'openstaand'), icon: SlidersHorizontal, onPress: () => router.push('/admin'), badge: pending.length },
   ];
 
   const playerTiles: Tile[] = [
-    { key: 'book', title: 'Reserveren', subtitle: 'Boek je volgende les', icon: CalendarPlus, onPress: () => router.push('/agenda/new'), primary: true },
+    { key: 'book', title: t('Reserveren'), subtitle: t('Boek je volgende les'), icon: CalendarPlus, onPress: () => router.push('/agenda/new'), primary: true },
     {
       key: 'mine',
-      title: 'Mijn agenda',
+      title: t('Mijn agenda'),
       // Wacht er nog een aanvraag op zijn trainer, dan is dát wat hij wil weten — niet
       // hoeveel lessen hij vandaag heeft.
       subtitle: gevraagd > 0
@@ -88,10 +90,10 @@ export default function Hub() {
       onPress: () => router.push('/agenda'),
       badge: myOpen,
     },
-    { key: 'les', title: 'Mijn lessen', subtitle: 'Lesmateriaal van je trainers', icon: BookOpen, onPress: () => router.push('/coaches/lessons') },
+    { key: 'les', title: t('Mijn lessen'), subtitle: t('Lesmateriaal van je trainers'), icon: BookOpen, onPress: () => router.push('/coaches/lessons') },
     // "Voortgang" en niet "Mijn voortgang": de tab onderaan heet zo, want daar past de
     // langere tekst niet op een telefoon. Tegel en tab moeten hetzelfde heten.
-    { key: 'prog', title: 'Voortgang', subtitle: 'Jouw beoordelingen', icon: TrendingUp, onPress: () => router.push('/players/progress') },
+    { key: 'prog', title: t('Voortgang'), subtitle: t('Jouw beoordelingen'), icon: TrendingUp, onPress: () => router.push('/players/progress') },
   ];
 
   const tiles = isCoach ? coachTiles : playerTiles;
@@ -100,8 +102,8 @@ export default function Hub() {
     <Screen>
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text style={styles.hi}>Hoi {currentUser.name} 👋</Text>
-          <Text style={styles.q}>Wat wil je doen?</Text>
+          <Text style={styles.hi}>{t('Hoi {naam} 👋', { naam: currentUser.name })}</Text>
+          <Text style={styles.q}>{t('Wat wil je doen?')}</Text>
         </View>
       </View>
 
@@ -110,7 +112,7 @@ export default function Hub() {
       {!isCoach && balance.amount > 0 ? (
         <Card
           onPress={() => router.push('/agenda/overzicht')}
-          accessibilityLabel={`Openstaand saldo € ${formatEuro(balance.amount)}`}
+          accessibilityLabel={t('Openstaand saldo € {bedrag}', { bedrag: formatEuro(balance.amount) })}
           style={styles.balance}
         >
           <View style={styles.balanceRow}>
@@ -118,12 +120,12 @@ export default function Hub() {
               <Wallet size={22} color={tennisColors.warning} />
             </View>
             <View style={styles.balanceText}>
-              <Text style={styles.balanceLabel}>Openstaand saldo</Text>
+              <Text style={styles.balanceLabel}>{t('Openstaand saldo')}</Text>
               <Text style={styles.balanceAmount}>€ {formatEuro(balance.amount)}</Text>
               <Text style={styles.balanceSub}>
                 {balance.lessons === 1
-                  ? '1 les nog niet afgerekend'
-                  : `${balance.lessons} lessen nog niet afgerekend`}
+                  ? t('1 les nog niet afgerekend')
+                  : t('{n} lessen nog niet afgerekend', { n: balance.lessons })}
               </Text>
             </View>
             <ChevronRight size={20} color={tennisColors.textMuted} />
@@ -132,15 +134,15 @@ export default function Hub() {
       ) : null}
 
       <TileGrid>
-        {tiles.map((t) => (
+        {tiles.map((tile) => (
           <ActionTile
-            key={t.key}
-            title={t.title}
-            subtitle={t.subtitle}
-            icon={t.icon}
-            onPress={t.onPress}
-            primary={t.primary}
-            badge={t.badge}
+            key={tile.key}
+            title={tile.title}
+            subtitle={tile.subtitle}
+            icon={tile.icon}
+            onPress={tile.onPress}
+            primary={tile.primary}
+            badge={tile.badge}
           />
         ))}
       </TileGrid>

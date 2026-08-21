@@ -12,6 +12,7 @@
 // `planMethodChange` (lib/beurtenkaart); hier is het alleen de reden dat het verbruik nooit
 // een groepsbedrag kan bevatten.
 
+import { t } from './i18n';
 import { formatEuro } from './money';
 import { bookingPrice, lessonShares } from './payments';
 import type { Booking, Court, User } from './types';
@@ -150,6 +151,9 @@ export function sponsorRefusal(booking: PricedBooking, ctx: SponsorContext): str
  * noemt het budget bij naam: naast de beurtenregel moet een bedrag zichzelf verklaren.
  */
 export function sponsorHint(state: SponsorState): string {
-  if (!state.hasBudget) return 'Deze speler heeft geen sponsorbudget.';
-  return `Sponsorbudget: nog € ${formatEuro(state.left)} van € ${formatEuro(state.budget)} over.`;
+  if (!state.hasBudget) return t('Deze speler heeft geen sponsorbudget.');
+  return t('Sponsorbudget: nog € {rest} van € {totaal} over.', {
+    rest: formatEuro(state.left),
+    totaal: formatEuro(state.budget),
+  });
 }

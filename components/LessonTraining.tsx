@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { Plus, Trash2 } from 'lucide-react-native';
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, webCursor } from '../constants/theme';
 import type { TrainingExercise } from '../lib/types';
@@ -65,6 +66,7 @@ const toLines = (text: string): string[] =>
  * are the vocabulary the coach reads on court, so flattening them into prose would lose it.
  */
 export function ExerciseCard({ exercise }: { exercise: TrainingExercise }) {
+  const t = useT();
   return (
     <View style={styles.exercise}>
       <View style={styles.exerciseHead}>
@@ -78,13 +80,13 @@ export function ExerciseCard({ exercise }: { exercise: TrainingExercise }) {
       ) : null}
       {exercise.quality ? (
         <>
-          <Text style={styles.exerciseLabel}>Kwaliteit</Text>
+          <Text style={styles.exerciseLabel}>{t('Kwaliteit')}</Text>
           <Text style={styles.exerciseText}>{exercise.quality}</Text>
         </>
       ) : null}
       {exercise.organisation ? (
         <>
-          <Text style={styles.exerciseLabel}>Organisatie / materiaal</Text>
+          <Text style={styles.exerciseLabel}>{t('Organisatie / materiaal')}</Text>
           <Text style={styles.exerciseText}>{exercise.organisation}</Text>
         </>
       ) : null}
@@ -93,15 +95,16 @@ export function ExerciseCard({ exercise }: { exercise: TrainingExercise }) {
 }
 
 export function TrainingPlanView({ plan }: { plan: TrainingPlan }) {
+  const t = useT();
   return (
     <>
       {plan.duration_minutes !== undefined ? (
-        <Text style={styles.meta}>Duur: {formatDuration(plan.duration_minutes)}</Text>
+        <Text style={styles.meta}>{t('Duur: {duur}', { duur: formatDuration(plan.duration_minutes) })}</Text>
       ) : null}
 
       {plan.focus_points.length > 0 ? (
         <>
-          <Text style={styles.label}>Aandachtspunten training</Text>
+          <Text style={styles.label}>{t('Aandachtspunten training')}</Text>
           {plan.focus_points.map((point) => (
             <Text key={point} style={styles.bullet}>• {point}</Text>
           ))}
@@ -110,7 +113,7 @@ export function TrainingPlanView({ plan }: { plan: TrainingPlan }) {
 
       {plan.materials.length > 0 ? (
         <>
-          <Text style={styles.label}>Materiaal per terrein</Text>
+          <Text style={styles.label}>{t('Materiaal per terrein')}</Text>
           {plan.materials.map((item) => (
             <Text key={item} style={styles.bullet}>• {item}</Text>
           ))}
@@ -119,7 +122,7 @@ export function TrainingPlanView({ plan }: { plan: TrainingPlan }) {
 
       {plan.exercises.length > 0 ? (
         <>
-          <Text style={styles.label}>Oefeningen</Text>
+          <Text style={styles.label}>{t('Oefeningen')}</Text>
           {plan.exercises.map((exercise, i) => (
             <ExerciseCard key={`${exercise.nr}-${i}`} exercise={exercise} />
           ))}
@@ -142,6 +145,7 @@ export function TrainingPlanEditor({
   value: TrainingPlan;
   onChange: (plan: TrainingPlan) => void;
 }) {
+  const t = useT();
   const [durationText, setDurationText] = useState(
     value.duration_minutes !== undefined ? String(value.duration_minutes) : '',
   );
@@ -168,7 +172,7 @@ export function TrainingPlanEditor({
 
   return (
     <>
-      <Text style={styles.label}>Duur (minuten)</Text>
+      <Text style={styles.label}>{t('Duur (minuten)')}</Text>
       <TextInput
         style={styles.input}
         value={durationText}
@@ -185,8 +189,8 @@ export function TrainingPlanEditor({
         keyboardType="number-pad"
       />
 
-      <Text style={styles.label}>Aandachtspunten training</Text>
-      <Text style={styles.helper}>Eén per regel.</Text>
+      <Text style={styles.label}>{t('Aandachtspunten training')}</Text>
+      <Text style={styles.helper}>{t('Eén per regel.')}</Text>
       <TextInput
         style={[styles.input, styles.tall]}
         value={focusText}
@@ -194,13 +198,13 @@ export function TrainingPlanEditor({
           setFocusText(text);
           onChange({ ...value, focus_points: toLines(text) });
         }}
-        placeholder={'Drukvol uitwisselen met hoog tempo\nSterk starten vanuit opslag 1'}
+        placeholder={t('Drukvol uitwisselen met hoog tempo\nSterk starten vanuit opslag 1')}
         placeholderTextColor={tennisColors.textMuted}
         multiline
       />
 
-      <Text style={styles.label}>Materiaal per terrein</Text>
-      <Text style={styles.helper}>Eén per regel.</Text>
+      <Text style={styles.label}>{t('Materiaal per terrein')}</Text>
+      <Text style={styles.helper}>{t('Eén per regel.')}</Text>
       <TextInput
         style={[styles.input, styles.tall]}
         value={materialsText}
@@ -213,9 +217,9 @@ export function TrainingPlanEditor({
         multiline
       />
 
-      <Text style={styles.label}>Oefeningen</Text>
+      <Text style={styles.label}>{t('Oefeningen')}</Text>
       {value.exercises.length === 0 ? (
-        <Text style={styles.helper}>Nog geen oefeningen.</Text>
+        <Text style={styles.helper}>{t('Nog geen oefeningen.')}</Text>
       ) : null}
 
       {value.exercises.map((exercise, i) => (
@@ -225,11 +229,11 @@ export function TrainingPlanEditor({
             <Pressable
               onPress={() => removeExercise(i)}
               accessibilityRole="button"
-              accessibilityLabel={`Oefening ${i + 1} verwijderen`}
+              accessibilityLabel={t('Oefening {nr} verwijderen', { nr: i + 1 })}
               style={[styles.removeBtn, webCursor]}
             >
               <Trash2 size={16} color={tennisColors.danger} />
-              <Text style={styles.removeText}>Verwijderen</Text>
+              <Text style={styles.removeText}>{t('Verwijderen')}</Text>
             </Pressable>
           </View>
 
@@ -245,7 +249,7 @@ export function TrainingPlanEditor({
               />
             </View>
             <View style={styles.fieldSmall}>
-              <Text style={styles.fieldLabel}>Duur</Text>
+              <Text style={styles.fieldLabel}>{t('Duur')}</Text>
               <TextInput
                 style={styles.input}
                 value={exercise.duration}
@@ -256,50 +260,50 @@ export function TrainingPlanEditor({
             </View>
           </View>
 
-          <Text style={styles.fieldLabel}>Situatie</Text>
+          <Text style={styles.fieldLabel}>{t('Situatie')}</Text>
           <TextInput
             style={styles.input}
             value={exercise.situation}
             onChangeText={(t) => setExercise(i, { situation: t })}
-            placeholder="basislijnspel"
+            placeholder={t('basislijnspel')}
             placeholderTextColor={tennisColors.textMuted}
           />
 
-          <Text style={styles.fieldLabel}>Bedoeling</Text>
+          <Text style={styles.fieldLabel}>{t('Bedoeling')}</Text>
           <TextInput
             style={styles.input}
             value={exercise.purpose}
             onChangeText={(t) => setExercise(i, { purpose: t })}
-            placeholder="AANVALLEN"
+            placeholder={t('AANVALLEN')}
             placeholderTextColor={tennisColors.textMuted}
           />
 
-          <Text style={styles.fieldLabel}>Omschrijving</Text>
+          <Text style={styles.fieldLabel}>{t('Omschrijving')}</Text>
           <TextInput
             style={[styles.input, styles.tall]}
             value={exercise.description}
             onChangeText={(t) => setExercise(i, { description: t })}
-            placeholder="Wat doen de spelers?"
+            placeholder={t('Wat doen de spelers?')}
             placeholderTextColor={tennisColors.textMuted}
             multiline
           />
 
-          <Text style={styles.fieldLabel}>Kwaliteit</Text>
+          <Text style={styles.fieldLabel}>{t('Kwaliteit')}</Text>
           <TextInput
             style={[styles.input, styles.medium]}
             value={exercise.quality}
             onChangeText={(t) => setExercise(i, { quality: t })}
-            placeholder="Waar let je op?"
+            placeholder={t('Waar let je op?')}
             placeholderTextColor={tennisColors.textMuted}
             multiline
           />
 
-          <Text style={styles.fieldLabel}>Organisatie / materiaal</Text>
+          <Text style={styles.fieldLabel}>{t('Organisatie / materiaal')}</Text>
           <TextInput
             style={[styles.input, styles.medium]}
             value={exercise.organisation}
             onChangeText={(t) => setExercise(i, { organisation: t })}
-            placeholder="4 markeerschijven voor de speelbasis"
+            placeholder={t('4 markeerschijven voor de speelbasis')}
             placeholderTextColor={tennisColors.textMuted}
             multiline
           />
@@ -309,11 +313,11 @@ export function TrainingPlanEditor({
       <Pressable
         onPress={addExercise}
         accessibilityRole="button"
-        accessibilityLabel="Oefening toevoegen"
+        accessibilityLabel={t('Oefening toevoegen')}
         style={[styles.addBtn, webCursor]}
       >
         <Plus size={18} color={tennisColors.primary} />
-        <Text style={styles.addText}>Oefening toevoegen</Text>
+        <Text style={styles.addText}>{t('Oefening toevoegen')}</Text>
       </Pressable>
     </>
   );

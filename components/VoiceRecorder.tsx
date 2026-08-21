@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Mic, Square, Trash2, Play } from 'lucide-react-native';
+import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, webCursor } from '../constants/theme';
 
@@ -22,11 +23,12 @@ export function VoiceRecorder({
   onRecorded?: (uri: string) => void;
   onClear?: () => void;
 }) {
+  const t = useT();
   if (Platform.OS !== 'web') {
     return (
       <View style={styles.placeholder}>
         <Mic size={20} color={tennisColors.textMuted} />
-        <Text style={styles.placeholderText}>Spraakopname — binnenkort (mobiele app)</Text>
+        <Text style={styles.placeholderText}>{t('Spraakopname — binnenkort (mobiele app)')}</Text>
       </View>
     );
   }
@@ -36,6 +38,7 @@ export function VoiceRecorder({
 function WebVoiceRecorder({
   value, onRecorded, onClear,
 }: { value?: string; onRecorded?: (uri: string) => void; onClear?: () => void }) {
+  const t = useT();
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -68,7 +71,7 @@ function WebVoiceRecorder({
       setSeconds(0);
       timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
     } catch {
-      setErrorMsg('Microfoon niet beschikbaar of geweigerd.');
+      setErrorMsg(t('Microfoon niet beschikbaar of geweigerd.'));
     }
   };
 
@@ -83,14 +86,14 @@ function WebVoiceRecorder({
   return (
     <View style={styles.box}>
       {recording ? (
-        <Pressable onPress={stop} style={[styles.btn, styles.stopBtn, webCursor]} accessibilityRole="button" accessibilityLabel="Stop opname">
+        <Pressable onPress={stop} style={[styles.btn, styles.stopBtn, webCursor]} accessibilityRole="button" accessibilityLabel={t('Stop opname')}>
           <Square size={18} color={tennisColors.onFill} />
-          <Text style={styles.btnTextLight}>Stop • {mmss}</Text>
+          <Text style={styles.btnTextLight}>{t('Stop')} • {mmss}</Text>
         </Pressable>
       ) : (
-        <Pressable onPress={start} style={[styles.btn, styles.recBtn, webCursor]} accessibilityRole="button" accessibilityLabel="Start opname">
+        <Pressable onPress={start} style={[styles.btn, styles.recBtn, webCursor]} accessibilityRole="button" accessibilityLabel={t('Start opname')}>
           <Mic size={18} color={tennisColors.onFill} />
-          <Text style={styles.btnTextLight}>{value ? 'Opnieuw opnemen' : 'Opnemen'}</Text>
+          <Text style={styles.btnTextLight}>{value ? t('Opnieuw opnemen') : t('Opnemen')}</Text>
         </Pressable>
       )}
 
@@ -98,14 +101,14 @@ function WebVoiceRecorder({
         <>
           {/* Native <audio> element (web only). */}
           {React.createElement('audio', { src: value, controls: true, style: { height: 32 } })}
-          <Pressable onPress={() => onClear?.()} style={[styles.iconBtn, webCursor]} accessibilityRole="button" accessibilityLabel="Verwijder opname">
+          <Pressable onPress={() => onClear?.()} style={[styles.iconBtn, webCursor]} accessibilityRole="button" accessibilityLabel={t('Verwijder opname')}>
             <Trash2 size={18} color={tennisColors.danger} />
           </Pressable>
         </>
       ) : null}
 
       {value && !recording ? null : (
-        <View style={styles.hintWrap}><Play size={14} color={tennisColors.textMuted} /><Text style={styles.hint}>Neem een korte memo op</Text></View>
+        <View style={styles.hintWrap}><Play size={14} color={tennisColors.textMuted} /><Text style={styles.hint}>{t('Neem een korte memo op')}</Text></View>
       )}
 
       {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}

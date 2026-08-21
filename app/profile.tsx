@@ -26,6 +26,7 @@ import { bookingsToday } from '../lib/hub';
 import { bookingsFor, openBalanceFor, totalCoachPayout } from '../lib/payments';
 import { bookingsInPeriod, currentPeriod } from '../lib/period';
 import { formatEuro } from '../lib/csv';
+import { useT } from '../lib/i18n';
 
 const ROLE_LABELS: Record<string, string> = {
   player: 'Speler',
@@ -95,6 +96,7 @@ function InfoRow({ row, first }: { row: Row; first: boolean }) {
 }
 
 export default function ProfileScreen(): React.JSX.Element {
+  const t = useT();
   const router = useRouter();
   const { currentUser, logout, bookings, courts } = useSimpleData();
   const pending = usePendingPaymentBookings();
@@ -104,14 +106,14 @@ export default function ProfileScreen(): React.JSX.Element {
     return (
       <Screen>
         <Card>
-          <Text style={styles.rowSub}>Niet ingelogd</Text>
+          <Text style={styles.rowSub}>{t('Niet ingelogd')}</Text>
         </Card>
       </Screen>
     );
   }
 
   const isCoach = currentUser.role === 'coach';
-  const roleLabel = ROLE_LABELS[currentUser.role] ?? currentUser.role;
+  const roleLabel = t(ROLE_LABELS[currentUser.role] ?? currentUser.role);
 
   // Dezelfde twee getallen als op het hoofdscherm, en langs dezelfde weg berekend: een
   // trainer kijkt naar de agenda van de dag, een speler naar zijn eigen lessen.
@@ -134,12 +136,12 @@ export default function ProfileScreen(): React.JSX.Element {
   );
 
   const contactRows: Row[] = [
-    { key: 'mail', icon: Mail, title: currentUser.email, subtitle: 'E-mailadres' },
+    { key: 'mail', icon: Mail, title: currentUser.email, subtitle: t('E-mailadres') },
     {
       key: 'phone',
       icon: Phone,
-      title: currentUser.phone ?? 'Niet ingevuld',
-      subtitle: 'Telefoonnummer',
+      title: currentUser.phone ?? t('Niet ingevuld'),
+      subtitle: t('Telefoonnummer'),
     },
   ];
   // De rij staat er bij een trainer altijd, ook zonder tarief: zolang hij leeg is, is zijn
@@ -148,8 +150,8 @@ export default function ProfileScreen(): React.JSX.Element {
     contactRows.push({
       key: 'rate',
       icon: Euro,
-      title: rateMissing ? 'Nog niet ingesteld' : `€ ${currentUser.hourly_rate}`,
-      subtitle: 'Jouw uurtarief',
+      title: rateMissing ? t('Nog niet ingesteld') : `€ ${currentUser.hourly_rate}`,
+      subtitle: t('Jouw uurtarief'),
     });
   }
 
@@ -160,29 +162,29 @@ export default function ProfileScreen(): React.JSX.Element {
         {
           key: 'set',
           icon: SettingsIcon,
-          title: 'Instellingen',
-          subtitle: 'Boekingstijden, thema en taal',
+          title: t('Instellingen'),
+          subtitle: t('Boekingstijden, thema en taal'),
           onPress: () => router.push('/admin/settings'),
         },
         {
           key: 'rep',
           icon: BarChart3,
-          title: 'Rapport',
-          subtitle: 'Jouw boekingen per betaalwijze',
+          title: t('Rapport'),
+          subtitle: t('Jouw boekingen per betaalwijze'),
           onPress: () => router.push('/admin/reports'),
         },
         {
           key: 'pay',
           icon: CreditCard,
-          title: 'Betalingen',
-          subtitle: 'Openstaande lessen afhandelen',
+          title: t('Betalingen'),
+          subtitle: t('Openstaande lessen afhandelen'),
           onPress: () => router.push('/admin/payments'),
         },
         {
           key: 'admin',
           icon: SlidersHorizontal,
-          title: 'Beheer',
-          subtitle: 'Banen, doelen, beurtenkaarten en leden',
+          title: t('Beheer'),
+          subtitle: t('Banen, doelen, beurtenkaarten en leden'),
           onPress: () => router.push('/admin'),
         },
       ]
@@ -211,21 +213,21 @@ export default function ProfileScreen(): React.JSX.Element {
           ruimte vrij zodat de naam er nooit achter verdwijnt. */}
       <View style={styles.statsWrap}>
         <StatCardRow>
-          <StatCard icon={CalendarDays} value={today} label="Lessen vandaag" />
+          <StatCard icon={CalendarDays} value={today} label={t('Lessen vandaag')} />
           {/* Een trainer telt lessen die hij nog moet afhandelen; een speler wil weten
               hoeveel hij nog moet betalen. Zelfde plek, ander getal. */}
           {isCoach ? (
             <StatCard
               icon={CreditCard}
               value={pending.length}
-              label="Openstaande betalingen"
+              label={t('Openstaande betalingen')}
               tone={pending.length > 0 ? 'warning' : 'primary'}
             />
           ) : (
             <StatCard
               icon={CreditCard}
               value={`€${formatEuro(balance.amount)}`}
-              label="Openstaand saldo"
+              label={t('Openstaand saldo')}
               tone={balance.amount > 0 ? 'warning' : 'primary'}
             />
           )}
@@ -233,23 +235,23 @@ export default function ProfileScreen(): React.JSX.Element {
             <StatCard
               icon={Wallet}
               value={`€${formatEuro(earnedThisMonth)}`}
-              label="Verdiend deze maand"
+              label={t('Verdiend deze maand')}
               tone={rateMissing ? 'warning' : 'primary'}
             />
           ) : null}
         </StatCardRow>
         {isCoach && rateMissing ? (
           <Text style={styles.rateWarning}>
-            Je uurtarief is nog niet ingesteld, dus je verdiensten blijven op €0,00 staan.
+            {t('Je uurtarief is nog niet ingesteld, dus je verdiensten blijven op €0,00 staan.')}
           </Text>
         ) : null}
       </View>
 
       <View style={styles.body}>
-        <Section label="Contact" rows={contactRows} />
-        <Section label="Instellingen" rows={settingRows} />
+        <Section label={t('Contact')} rows={contactRows} />
+        <Section label={t('Instellingen')} rows={settingRows} />
         <Button
-          label="Uitloggen"
+          label={t('Uitloggen')}
           variant="secondary"
           icon={<LogOut size={18} color={tennisColors.text} />}
           onPress={() => {

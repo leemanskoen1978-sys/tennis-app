@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Stack, Redirect, useSegments } from 'expo-router';
 import { ThemeProvider, DefaultTheme, type Theme } from '@react-navigation/native';
 import { View, ActivityIndicator } from 'react-native';
@@ -8,6 +8,7 @@ import { TabBar } from '../components/ui/TabBar';
 import { AppBackground } from '../components/ui/AppBackground';
 import { tennisColors } from '../constants/tennis-colors';
 import { applyThemeMode, rememberedThemeMode } from '../lib/theme-mode';
+import { LanguageProvider, useT, type Translate } from '../lib/i18n';
 
 // Nog vóór er iets getekend wordt: het thema van de vorige keer. De echte keuze staat in de
 // instellingen van de club en komt pas mee met de databank; zonder deze regel zie je bij
@@ -50,32 +51,32 @@ const HEADLESS = new Set([
 ]);
 
 /** Screens in the order of the hub: Agenda, Spelers, Trainers, Beheer. */
-const SCREENS: ReadonlyArray<{ name: string; title: string }> = [
-  { name: 'profile', title: 'Profiel' },
-  { name: 'agenda/index', title: 'Agenda' },
-  { name: 'agenda/new', title: 'Nieuwe afspraak' },
-  { name: 'agenda/overzicht', title: 'Overzicht' },
-  { name: 'agenda/historiek', title: 'Historiek' },
-  { name: 'agenda/komend', title: 'Nog te komen' },
-  { name: 'players/index', title: 'Spelers' },
-  { name: 'players/[id]', title: 'Speler-dossier' },
+const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> => [
+  { name: 'profile', title: t('Profiel') },
+  { name: 'agenda/index', title: t('Agenda') },
+  { name: 'agenda/new', title: t('Nieuwe afspraak') },
+  { name: 'agenda/overzicht', title: t('Overzicht') },
+  { name: 'agenda/historiek', title: t('Historiek') },
+  { name: 'agenda/komend', title: t('Nog te komen') },
+  { name: 'players/index', title: t('Spelers') },
+  { name: 'players/[id]', title: t('Speler-dossier') },
   // Geen trainer bereikt dit scherm — een voortgangsverslag over een speler vult een
   // trainer in via de kaart in het spelersdossier. Hier komt alleen een speler, via het
   // tabblad Voortgang, dus de kop zou letterlijk herhalen wat die tab al zegt.
-  { name: 'players/progress', title: 'Voortgang' },
-  { name: 'coaches/index', title: 'Trainers' },
-  { name: 'coaches/[id]', title: 'Trainer-dossier' },
-  { name: 'coaches/lessons/index', title: 'Lesmateriaal' },
-  { name: 'coaches/lessons/new', title: 'Nieuw lesmateriaal' },
-  { name: 'coaches/lessons/databank', title: 'Databank' },
-  { name: 'coaches/drawing', title: 'Tekenveld' },
-  { name: 'admin/index', title: 'Beheer' },
-  { name: 'admin/payments', title: 'Betalingen' },
-  { name: 'admin/beurtenkaarten', title: 'Beurtenkaarten' },
-  { name: 'admin/reports', title: 'Rapport' },
-  { name: 'admin/courts', title: 'Banen' },
-  { name: 'admin/goals', title: 'Doelen' },
-  { name: 'admin/settings', title: 'Instellingen' },
+  { name: 'players/progress', title: t('Voortgang') },
+  { name: 'coaches/index', title: t('Trainers') },
+  { name: 'coaches/[id]', title: t('Trainer-dossier') },
+  { name: 'coaches/lessons/index', title: t('Lesmateriaal') },
+  { name: 'coaches/lessons/new', title: t('Nieuw lesmateriaal') },
+  { name: 'coaches/lessons/databank', title: t('Databank') },
+  { name: 'coaches/drawing', title: t('Tekenveld') },
+  { name: 'admin/index', title: t('Beheer') },
+  { name: 'admin/payments', title: t('Betalingen') },
+  { name: 'admin/beurtenkaarten', title: t('Beurtenkaarten') },
+  { name: 'admin/reports', title: t('Rapport') },
+  { name: 'admin/courts', title: t('Banen') },
+  { name: 'admin/goals', title: t('Doelen') },
+  { name: 'admin/settings', title: t('Instellingen') },
 ];
 
 /**
@@ -95,6 +96,7 @@ const transparentTheme: Theme = {
 };
 
 function Root() {
+  const t = useT();
   const { loading, currentUser, settings } = useSimpleData();
   const segments = useSegments();
 
@@ -133,7 +135,7 @@ function Root() {
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="login" />
-            {SCREENS.map((s) => (
+            {screens(t).map((s) => (
               <Stack.Screen
                 key={s.name}
                 name={s.name}
@@ -151,10 +153,24 @@ function Root() {
   );
 }
 
+/**
+ * De taal uit de instellingen doorgeven aan de rest van de app.
+ *
+ * Dit is een eigen laagje tussen de databank en de schermen, want de taal komt uít de
+ * instellingen en moet dus bóven elk scherm staan dat een zin op het scherm zet — ook
+ * boven `Root`, dat zelf de titels van de schermen samenstelt.
+ */
+function LanguageFromSettings({ children }: { children: React.ReactNode }) {
+  const { settings } = useSimpleData();
+  return <LanguageProvider lang={settings.language ?? 'nl'}>{children}</LanguageProvider>;
+}
+
 export default function RootLayout() {
   return (
     <SimpleDataProvider>
-      <Root />
+      <LanguageFromSettings>
+        <Root />
+      </LanguageFromSettings>
     </SimpleDataProvider>
   );
 }

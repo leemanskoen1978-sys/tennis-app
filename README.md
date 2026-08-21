@@ -80,8 +80,33 @@ Eenmalig instellen op GitHub:
 De site staat in een submap (`/tennis-app/`); dat is de `baseUrl` in `app.json`. Verandert
 de naam van de repo, dan verandert die mee.
 
+## Thema en taal
+
+Beheer → Instellingen heeft twee knoppen die de hele app raken. Ze gelden voor de club, niet
+per gebruiker: ze staan in dezelfde `club_settings`-rij als de boekingseindtijd.
+
+**Licht en donker.** Elk scherm schrijft `tennisColors.text`, en dat is op het web de tekst
+`var(--tc-text)`. Wat die verwijzing betekent staat in `lib/theme-mode`, dat één attribuut op
+`<html>` zet; de browser verft de rest. Er wordt dus niets opnieuw gerenderd om te wisselen, en
+geen van de 600+ stijlregels in de app hoeft van thema's te weten. Een kleur bestaat in twee
+rijen (`constants/tennis-colors`): één om mee te schríjven en één om mee te vúllen. Op donker
+lopen die uiteen — tennisgroen is prima om mee te schrijven op wit en onleesbaar op bijna zwart,
+terwijl het als vulling met witte tekst erop in beide thema's goed is.
+
+**Nederlands en Engels.** De sleutel van een vertaling is de Nederlandse zin zelf, dus in de code
+staat `t('Eindtijd reserveringen')`. Een vergeten vertaling valt daardoor terug op het Nederlands
+in plaats van op een sleutel die niemand herkent. De Engelse kant staat in `lib/i18n-en`; een
+scherm haalt `t` op met `useT()` uit `lib/i18n`, zodat React weet dat het opnieuw getekend moet
+worden. Datums en maandnamen komen van de browser en volgen de taal mee.
+
+Wat **niet** vertaald wordt, met opzet: alles wat de club zelf schrijft. Het lessenboekje, de
+titels en beschrijvingen van lesmateriaal, notities, doelen, de namen van banen en spelers, en de
+tags die uit die teksten gehaald worden.
+
 ## Nog te doen
 
 - Herinneringen, annuleringsregels en facturen — zie `OPENSTAAND.md`
 - Bestanden (PDF's, spraakmemo's) naar Supabase Storage in plaats van base64 in de opslag
 - Tests op de schermen; alles wat er nu is, zit in `lib/`
+- Donker thema op een telefoon-build: CSS-variabelen bestaan daar niet, dus daar
+  staat het lichte palet vast (zie `constants/tennis-colors`)

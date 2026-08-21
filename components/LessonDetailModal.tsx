@@ -11,15 +11,16 @@ import { LessonExplanation } from './LessonExplanation';
 import {
   TrainingPlanView, TrainingPlanEditor, planFrom, planPatch, type TrainingPlan,
 } from './LessonTraining';
+import { useT, type Translate } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, shadow, webCursor, contentMaxWidth } from '../constants/theme';
 import type { Lesson, LessonAttachment } from '../lib/types';
 
-function confirmDelete(message: string, onYes: () => void) {
+function confirmDelete(t: Translate, message: string, onYes: () => void) {
   if (Platform.OS === 'web') { if (window.confirm(message)) onYes(); return; }
-  Alert.alert('Bevestigen', message, [
-    { text: 'Annuleren', style: 'cancel' },
-    { text: 'Verwijderen', style: 'destructive', onPress: onYes },
+  Alert.alert(t('Bevestigen'), message, [
+    { text: t('Annuleren'), style: 'cancel' },
+    { text: t('Verwijderen'), style: 'destructive', onPress: onYes },
   ]);
 }
 
@@ -32,6 +33,7 @@ export function LessonDetailModal({
   onClose: () => void;
   canEdit: boolean;
 }) {
+  const t = useT();
   const router = useRouter();
   const { users, lessons, updateLesson, deleteLesson } = useSimpleData();
   const [editing, setEditing] = useState(false);
@@ -51,8 +53,8 @@ export function LessonDetailModal({
   if (!lesson) return null;
   const students = users.filter((u) => u.role !== 'coach');
   const studentName = lesson.student_id
-    ? (users.find((u) => u.id === lesson.student_id)?.name ?? 'Onbekend')
-    : 'Iedereen';
+    ? (users.find((u) => u.id === lesson.student_id)?.name ?? t('Onbekend'))
+    : t('Iedereen');
 
   const startEdit = () => {
     setTitle(lesson.title);
@@ -87,13 +89,13 @@ export function LessonDetailModal({
   };
 
   const removeDrawing = () => {
-    confirmDelete('Veldsituatie verwijderen?', async () => {
+    confirmDelete(t, t('Veldsituatie verwijderen?'), async () => {
       await updateLesson(lesson.id, { drawing: undefined });
     });
   };
 
   const remove = () => {
-    confirmDelete(`"${lesson.title}" verwijderen?`, async () => {
+    confirmDelete(t, t('"{titel}" verwijderen?', { titel: lesson.title }), async () => {
       await deleteLesson(lesson.id);
       onClose();
     });
@@ -106,8 +108,8 @@ export function LessonDetailModal({
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <View style={styles.header}>
-            <Text style={styles.title}>{editing ? 'Les bewerken' : 'Lesdetails'}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Sluiten" onPress={close} style={webCursor}>
+            <Text style={styles.title}>{editing ? t('Les bewerken') : t('Lesdetails')}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('Sluiten')} onPress={close} style={webCursor}>
               <X size={22} color={tennisColors.textMuted} />
             </Pressable>
           </View>
@@ -115,37 +117,37 @@ export function LessonDetailModal({
           <ScrollView contentContainerStyle={styles.body}>
             {editing ? (
               <>
-                <Text style={styles.label}>Titel</Text>
-                <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Titel" placeholderTextColor={tennisColors.textMuted} />
-                <Text style={styles.label}>Video-URL</Text>
+                <Text style={styles.label}>{t('Titel')}</Text>
+                <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder={t('Titel')} placeholderTextColor={tennisColors.textMuted} />
+                <Text style={styles.label}>{t('Video-URL')}</Text>
                 <TextInput style={styles.input} value={url} onChangeText={setUrl} placeholder="https://…" placeholderTextColor={tennisColors.textMuted} autoCapitalize="none" />
-                <Text style={styles.label}>Beschrijving</Text>
-                <TextInput style={[styles.input, styles.multiline]} value={description} onChangeText={setDescription} placeholder="Beschrijving" placeholderTextColor={tennisColors.textMuted} multiline />
+                <Text style={styles.label}>{t('Beschrijving')}</Text>
+                <TextInput style={[styles.input, styles.multiline]} value={description} onChangeText={setDescription} placeholder={t('Beschrijving')} placeholderTextColor={tennisColors.textMuted} multiline />
                 <TrainingPlanEditor key={editSession} value={plan} onChange={setPlan} />
-                <Text style={styles.label}>PDF-bijlagen</Text>
+                <Text style={styles.label}>{t('PDF-bijlagen')}</Text>
                 <LessonAttachments attachments={attachments} onChange={setAttachments} />
-                <Text style={styles.label}>Voor wie</Text>
+                <Text style={styles.label}>{t('Voor wie')}</Text>
                 <StudentCombobox students={students} value={studentId} onChange={setStudentId} />
                 <View style={styles.actions}>
-                  <Button label="Annuleren" variant="secondary" onPress={() => setEditing(false)} />
-                  <Button label="Opslaan" variant="primary" onPress={save} disabled={!title.trim()} />
+                  <Button label={t('Annuleren')} variant="secondary" onPress={() => setEditing(false)} />
+                  <Button label={t('Opslaan')} variant="primary" onPress={save} disabled={!title.trim()} />
                 </View>
               </>
             ) : (
               <>
                 <Text style={styles.lessonTitle}>{lesson.title}</Text>
-                <Text style={styles.meta}>Voor: {studentName}</Text>
-                {lesson.description ? <Text style={styles.desc}>{lesson.description}</Text> : <Text style={styles.descMuted}>Geen beschrijving.</Text>}
+                <Text style={styles.meta}>{t('Voor')}: {studentName}</Text>
+                {lesson.description ? <Text style={styles.desc}>{lesson.description}</Text> : <Text style={styles.descMuted}>{t('Geen beschrijving.')}</Text>}
 
                 <TrainingPlanView plan={planFrom(lesson)} />
 
                 {lesson.url ? (
-                  <Button label="Video openen" variant="primary" icon={<ExternalLink size={18} color={tennisColors.onFill} />} onPress={() => { if (lesson.url) void Linking.openURL(lesson.url); }} />
+                  <Button label={t('Video openen')} variant="primary" icon={<ExternalLink size={18} color={tennisColors.onFill} />} onPress={() => { if (lesson.url) void Linking.openURL(lesson.url); }} />
                 ) : (
-                  <Text style={styles.descMuted}>Geen video-link.</Text>
+                  <Text style={styles.descMuted}>{t('Geen video-link.')}</Text>
                 )}
 
-                <Text style={styles.label}>Veldsituatie</Text>
+                <Text style={styles.label}>{t('Veldsituatie')}</Text>
                 {lesson.drawing ? (
                   <>
                     <CourtScene drawing={lesson.drawing} width={240} />
@@ -154,20 +156,20 @@ export function LessonDetailModal({
                         <Pressable
                           onPress={() => openCanvas()}
                           accessibilityRole="button"
-                          accessibilityLabel="Veldsituatie aanpassen"
+                          accessibilityLabel={t('Veldsituatie aanpassen')}
                           style={[styles.link, webCursor]}
                         >
                           <PenLine size={16} color={tennisColors.primary} />
-                          <Text style={styles.linkText}>Aanpassen</Text>
+                          <Text style={styles.linkText}>{t('Aanpassen')}</Text>
                         </Pressable>
                         <Pressable
                           onPress={removeDrawing}
                           accessibilityRole="button"
-                          accessibilityLabel="Veldsituatie verwijderen"
+                          accessibilityLabel={t('Veldsituatie verwijderen')}
                           style={[styles.link, webCursor]}
                         >
                           <Trash2 size={16} color={tennisColors.danger} />
-                          <Text style={styles.linkTextDanger}>Verwijderen</Text>
+                          <Text style={styles.linkTextDanger}>{t('Verwijderen')}</Text>
                         </Pressable>
                       </View>
                     ) : null}
@@ -176,14 +178,14 @@ export function LessonDetailModal({
                   <Pressable
                     onPress={() => openCanvas()}
                     accessibilityRole="button"
-                    accessibilityLabel="Veldsituatie toevoegen"
+                    accessibilityLabel={t('Veldsituatie toevoegen')}
                     style={[styles.link, webCursor]}
                   >
                     <Plus size={16} color={tennisColors.primary} />
-                    <Text style={styles.linkText}>Veldsituatie toevoegen</Text>
+                    <Text style={styles.linkText}>{t('Veldsituatie toevoegen')}</Text>
                   </Pressable>
                 ) : (
-                  <Text style={styles.descMuted}>Geen veldsituatie.</Text>
+                  <Text style={styles.descMuted}>{t('Geen veldsituatie.')}</Text>
                 )}
 
                 <LessonExplanation
@@ -192,13 +194,13 @@ export function LessonDetailModal({
                   canEdit={canEdit}
                 />
 
-                <Text style={styles.label}>PDF-bijlagen</Text>
+                <Text style={styles.label}>{t('PDF-bijlagen')}</Text>
                 <AttachmentList attachments={lesson.attachments} />
 
                 {canEdit ? (
                   <View style={styles.actions}>
-                    <Button label="Bewerken" variant="secondary" icon={<Pencil size={16} color={tennisColors.text} />} onPress={startEdit} />
-                    <Button label="Verwijderen" variant="danger" icon={<Trash2 size={16} color={tennisColors.onFill} />} onPress={remove} />
+                    <Button label={t('Bewerken')} variant="secondary" icon={<Pencil size={16} color={tennisColors.text} />} onPress={startEdit} />
+                    <Button label={t('Verwijderen')} variant="danger" icon={<Trash2 size={16} color={tennisColors.onFill} />} onPress={remove} />
                   </View>
                 ) : null}
               </>

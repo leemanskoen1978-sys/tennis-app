@@ -12,6 +12,7 @@ import {
   currentPeriod, customPeriod, formatDayInput, parseDayInput, periodLabel, previousMonthPeriod,
   quarterPeriod, shiftPeriod, yearPeriod, type Period,
 } from '../../lib/period';
+import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography } from '../../constants/theme';
 
@@ -28,6 +29,7 @@ export function PeriodPicker({
   value: Period;
   onChange: (p: Period) => void;
 }): React.JSX.Element {
+  const t = useT();
   const now = new Date();
   // De velden van de eigen periode staan alleen open als je erom vraagt; ze beginnen op de
   // periode die je nu ziet, zodat je er alleen nog een dag in hoeft te verschuiven.
@@ -37,17 +39,17 @@ export function PeriodPicker({
   const [customError, setCustomError] = useState<string | null>(null);
 
   const quick: ReadonlyArray<{ key: string; label: string; make: () => Period }> = [
-    { key: 'this-month', label: 'Deze maand', make: () => currentPeriod(now) },
-    { key: 'prev-month', label: 'Vorige maand', make: () => previousMonthPeriod(now) },
-    { key: 'quarter', label: 'Dit kwartaal', make: () => quarterPeriod(now) },
-    { key: 'year', label: 'Dit jaar', make: () => yearPeriod(now) },
+    { key: 'this-month', label: t('Deze maand'), make: () => currentPeriod(now) },
+    { key: 'prev-month', label: t('Vorige maand'), make: () => previousMonthPeriod(now) },
+    { key: 'quarter', label: t('Dit kwartaal'), make: () => quarterPeriod(now) },
+    { key: 'year', label: t('Dit jaar'), make: () => yearPeriod(now) },
   ];
 
   function applyCustom(): void {
     const from = parseDayInput(fromText);
     const to = parseDayInput(toText);
     if (!from || !to) {
-      setCustomError('Vul beide datums in als dd/mm/jjjj.');
+      setCustomError(t('Vul beide datums in als dd/mm/jjjj.'));
       return;
     }
     setCustomError(null);
@@ -71,7 +73,7 @@ export function PeriodPicker({
           />
         ))}
         <Chip
-          label="Eigen periode"
+          label={t('Eigen periode')}
           selected={customOpen}
           onPress={() => {
             setFromText(formatDayInput(value.from));
@@ -86,32 +88,32 @@ export function PeriodPicker({
         <View style={styles.customBox}>
           <View style={styles.customRow}>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Van</Text>
+              <Text style={styles.fieldLabel}>{t('Van')}</Text>
               <TextInput
                 style={styles.input}
                 value={fromText}
                 onChangeText={setFromText}
-                placeholder="dd/mm/jjjj"
+                placeholder={t('dd/mm/jjjj')}
                 placeholderTextColor={tennisColors.textMuted}
-                accessibilityLabel="Begindatum van de periode"
+                accessibilityLabel={t('Begindatum van de periode')}
                 inputMode="numeric"
               />
             </View>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Tot en met</Text>
+              <Text style={styles.fieldLabel}>{t('Tot en met')}</Text>
               <TextInput
                 style={styles.input}
                 value={toText}
                 onChangeText={setToText}
-                placeholder="dd/mm/jjjj"
+                placeholder={t('dd/mm/jjjj')}
                 placeholderTextColor={tennisColors.textMuted}
-                accessibilityLabel="Einddatum van de periode"
+                accessibilityLabel={t('Einddatum van de periode')}
                 inputMode="numeric"
               />
             </View>
           </View>
           {customError ? <Text style={styles.error}>{customError}</Text> : null}
-          <Button label="Toon deze periode" variant="secondary" onPress={applyCustom} />
+          <Button label={t('Toon deze periode')} variant="secondary" onPress={applyCustom} />
         </View>
       ) : null}
 
@@ -119,7 +121,7 @@ export function PeriodPicker({
           getrokken over de volle breedte oogde dit als drie losse dingen; het is er één. */}
       <View style={styles.pagerRow}>
         <Button
-          label="Vorige"
+          label={t('Vorige')}
           variant="secondary"
           fullWidth={false}
           icon={<ChevronLeft size={16} color={tennisColors.text} />}
@@ -127,7 +129,7 @@ export function PeriodPicker({
         />
         <Text style={styles.periodLabel}>{periodLabel(value)}</Text>
         <Button
-          label="Volgende"
+          label={t('Volgende')}
           variant="secondary"
           fullWidth={false}
           icon={<ChevronRight size={16} color={tennisColors.text} />}

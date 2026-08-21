@@ -18,11 +18,13 @@ import { LessonAttachments } from '../../../components/LessonAttachments';
 import { TagPill } from '../../../components/LessonDatabase';
 import { parseTagInput, tagsForText } from '../../../lib/tags';
 import { spacing, typography, webCursor } from '../../../constants/theme';
+import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
 import { useSimpleData } from '../../../providers/SimpleDataProvider';
 import type { LessonAttachment, User } from '../../../lib/types';
 
 export default function NewLessonScreen(): React.JSX.Element {
+  const t = useT();
   const { currentUser, users, addLesson, error } = useSimpleData();
   const router = useRouter();
 
@@ -48,7 +50,7 @@ export default function NewLessonScreen(): React.JSX.Element {
   if (!isCoach) {
     return (
       <Screen>
-        <Text style={styles.empty}>Alleen een trainer kan lesmateriaal toevoegen.</Text>
+        <Text style={styles.empty}>{t('Alleen een trainer kan lesmateriaal toevoegen.')}</Text>
       </Screen>
     );
   }
@@ -86,29 +88,29 @@ export default function NewLessonScreen(): React.JSX.Element {
 
       {saved !== null ? (
         <Card>
-          <Text style={styles.savedText}>“{saved}” is toegevoegd.</Text>
+          <Text style={styles.savedText}>{t('“{titel}” is toegevoegd.', { titel: saved })}</Text>
           <Text
             style={styles.link}
             accessibilityRole="button"
-            accessibilityLabel="Bekijk in de databank"
+            accessibilityLabel={t('Bekijk in de databank')}
             onPress={() => router.push('/coaches/lessons/databank')}
           >
-            Bekijk in de databank
+            {t('Bekijk in de databank')}
           </Text>
         </Card>
       ) : null}
 
       <Card>
-        <Text style={styles.label}>Titel</Text>
+        <Text style={styles.label}>{t('Titel')}</Text>
         <TextInput
           style={styles.input}
           value={title}
           onChangeText={setTitle}
-          placeholder="Titel"
+          placeholder={t('Titel')}
           placeholderTextColor={tennisColors.textMuted}
         />
 
-        <Text style={styles.label}>Link (optioneel)</Text>
+        <Text style={styles.label}>{t('Link (optioneel)')}</Text>
         <TextInput
           style={styles.input}
           value={url}
@@ -118,22 +120,22 @@ export default function NewLessonScreen(): React.JSX.Element {
           autoCapitalize="none"
         />
 
-        <Text style={styles.label}>Beschrijving (optioneel)</Text>
+        <Text style={styles.label}>{t('Beschrijving (optioneel)')}</Text>
         <TextInput
           style={[styles.input, styles.multiline]}
           value={description}
           onChangeText={setDescription}
-          placeholder="Beschrijving"
+          placeholder={t('Beschrijving')}
           placeholderTextColor={tennisColors.textMuted}
           multiline
         />
 
-        <Text style={styles.label}>Tags (optioneel)</Text>
+        <Text style={styles.label}>{t('Tags (optioneel)')}</Text>
         <TextInput
           style={styles.input}
           value={tagInput}
           onChangeText={setTagInput}
-          placeholder="U9, wedstrijdvorm"
+          placeholder={t('U9, wedstrijdvorm')}
           placeholderTextColor={tennisColors.textMuted}
           autoCapitalize="none"
         />
@@ -151,19 +153,19 @@ export default function NewLessonScreen(): React.JSX.Element {
           </View>
         ) : null}
 
-        <Text style={styles.label}>PDF (optioneel)</Text>
+        <Text style={styles.label}>{t('PDF (optioneel)')}</Text>
         <LessonAttachments attachments={attachments} onChange={setAttachments} />
 
-        <Text style={styles.label}>Voor wie</Text>
+        <Text style={styles.label}>{t('Voor wie')}</Text>
         <StudentCombobox
           students={students}
           value={studentId}
           onChange={setStudentId}
-          placeholder="Iedereen"
+          placeholder={t('Iedereen')}
         />
 
         <Button
-          label="Toevoegen"
+          label={t('Toevoegen')}
           variant="primary"
           icon={<Plus size={18} color={tennisColors.onFill} />}
           disabled={title.trim().length === 0}
