@@ -210,6 +210,27 @@ git commit -m "feat(csv): een CSV lezen, met puntkomma, tab, BOM en aanhalingste
 
 ### Task 2: De kolommen en de rollen lezen
 
+> **Bijgesteld tijdens de uitvoering.** De kwaliteitsreview vond drie dingen in de code
+> hieronder en die zijn rechtgezet in de commits `26ca7c8` en later. Wie dit plan opnieuw
+> uitvoert, hoort meteen de bijgestelde vorm te bouwen:
+>
+> 1. `leesUurtarief` maakte `parseEuro` uit `lib/money.ts` na en verloor daarbij twee regels
+>    die dit project al had: negatieve bedragen worden geweigerd en er wordt op centen
+>    afgerond. Een uurtarief van `-45` liep zo ongehinderd het trainersloon in. De juiste
+>    vorm is een dun jasje om `parseEuro`, dat alleen "leeg" van "onleesbaar" onderscheidt:
+>    `if (!waarde.replace(/[€\s]/g, '')) return undefined; return parseEuro(waarde) ?? null;`
+> 2. De kop-opzoeking moet ook spaties *binnen* een kop weghalen
+>    (`.replace(/\s+/g, '')` na `toLowerCase()`), anders verdwijnt de kolom "Uur tarief"
+>    of "Telefoon nummer" stil — wat het commentaar erboven al beloofde te doen.
+> 3. `kolomIndexen` heet nu `leesKopregel` en geeft naast de kolommen ook `nietHerkend`
+>    terug: de koppen die er stonden en die niets werden, in hun oorspronkelijke
+>    schrijfwijze. Het scherm toont die, zodat een kolom "Tarief/uur" niet stil wegvalt.
+>    Lege koppen tellen daarbij niet mee.
+>
+> Ook goed om te weten: `satisfies` werkt niet in dit project — Jest draait via Babel en
+> diens parser struikelt erover. `tsc` zou het wel aankunnen; gebruik een generieke
+> helperfunctie als je hetzelfde vangnet wil.
+
 De vertaalslag van "wat er in het bestand staat" naar "wat de app kent". De rolnamen zijn in het bestand Nederlands en in de databank Engels; die vertaling staat hier op één plek, want een trainer hoort niet te weten dat zijn rol intern `coach` heet.
 
 **Files:**
@@ -505,8 +526,27 @@ describe('planImport', () => {
     expect(plan.nieuw).toEqual([]);
     expect(plan.fouten).toEqual([
       { regel: 2, reden: 'Onbekende rol "hoofdtrainer". Kies speler, trainer of ouder.' },
-      { regel: 3, reden: 'Het uurtarief "veel" is geen bedrag.' },
+      { regel: 3, reden: 'Het uurtarief "veel" is geen geldig bedrag.' },
     ]);
+  });
+
+  it('weigert een negatief uurtarief, want dan legt de club geld toe', () => {
+    const plan = planImport([kop, ['Sofie', 'sofie@club.be', 'trainer', '', '-45']], []);
+    expect(plan.nieuw).toEqual([]);
+    expect(plan.fouten).toEqual([
+      { regel: 2, reden: 'Het uurtarief "-45" is geen geldig bedrag.' },
+    ]);
+  });
+
+  it('geeft door welke kolomkoppen het niet herkende', () => {
+    const plan = planImport([
+      ['naam', 'email', 'Tarief/uur'],
+      ['Jonas', 'jonas@club.be', '45'],
+    ], []);
+    // De regel zelf gaat gewoon door; alleen die ene kolom komt niet mee.
+    expect(plan.nieuw).toHaveLength(1);
+    expect(plan.nieuw[0].hourly_rate).toBeUndefined();
+    expect(plan.nietHerkend).toEqual(['Tarief/uur']);
   });
 
   it('houdt het tweede voorkomen van hetzelfde adres tegen', () => {
@@ -579,6 +619,12 @@ export interface ImportPlan {
   nieuw: Omit<User, 'id'>[];
   bijgewerkt: ImportBijwerking[];
   fouten: ImportFout[];
+  /**
+   * Kolomkoppen die in het bestand stonden en die we niet thuis konden brengen, in hun
+   * oorspronkelijke schrijfwijze. Het scherm toont ze: een kolom "Tarief/uur" die stil
+   * wegvalt kost een trainer alle tarieven zonder dat hij ooit een melding zag.
+   */
+  nietHerkend: string[];
 }
 
 /** Adressen vergelijken zoals de databank het doet: hoofdletterongevoelig. */
@@ -611,17 +657,19 @@ export function planImport(
   rijen: ReadonlyArray<readonly string[]>,
   bestaande: readonly User[],
 ): ImportPlan {
-  const plan: ImportPlan = { nieuw: [], bijgewerkt: [], fouten: [] };
+  const plan: ImportPlan = { nieuw: [], bijgewerkt: [], fouten: [], nietHerkend: [] };
   if (rijen.length === 0) {
     plan.fouten.push({ regel: 1, reden: 'Dit bestand is leeg.' });
     return plan;
   }
 
-  const kolommen = kolomIndexen(rijen[0]);
-  if (!kolommen) {
+  const kop = leesKopregel(rijen[0]);
+  if (!kop) {
     plan.fouten.push({ regel: 1, reden: 'De kopregel mist de kolom "naam" of "email".' });
     return plan;
   }
+  const { kolommen } = kop;
+  plan.nietHerkend = kop.nietHerkend;
 
   const bekend = new Map(bestaande.map((u) => [sleutel(u.email), u]));
   // Waar in het bestand we een adres eerder zagen — voor de melding "staat al op regel 2".
@@ -664,7 +712,7 @@ export function planImport(
     const tariefCel = cel(kolommen.uurtarief);
     const hourly_rate = leesUurtarief(tariefCel);
     if (hourly_rate === null) {
-      plan.fouten.push({ regel, reden: `Het uurtarief "${tariefCel}" is geen bedrag.` });
+      plan.fouten.push({ regel, reden: `Het uurtarief "${tariefCel}" is geen geldig bedrag.` });
       continue;
     }
 
@@ -1001,6 +1049,17 @@ export default function LedenImport(): React.JSX.Element {
               })}
             </Text>
 
+            {/* Een kolom die we niet thuisbrengen valt stil weg; dat hoort de trainer te
+                zien vóór hij importeert, niet weken later als de tarieven blijken te
+                ontbreken. */}
+            {plan.nietHerkend.length > 0 ? (
+              <Text style={styles.nietHerkend}>
+                {t('Deze kolommen herken ik niet en komen niet mee: {koppen}', {
+                  koppen: plan.nietHerkend.join(', '),
+                })}
+              </Text>
+            ) : null}
+
             {plan.nieuw.map((lid) => (
               <Text key={`n-${lid.email}`} style={styles.regel}>
                 {t('Nieuw')}: {lid.name} — {lid.email}
@@ -1073,6 +1132,7 @@ const styles = StyleSheet.create({
   knop: { marginTop: spacing.md },
   telling: { ...typography.h3, color: tennisColors.primary, marginBottom: spacing.sm },
   regel: { fontSize: 14, color: tennisColors.text, marginTop: spacing.xs },
+  nietHerkend: { fontSize: 14, color: tennisColors.textMuted, marginBottom: spacing.sm },
   foutKop: { ...typography.h3, color: tennisColors.danger },
   fout: { fontSize: 14, color: tennisColors.danger, marginTop: spacing.xs },
   resultaat: { fontSize: 14, color: tennisColors.text, marginTop: spacing.md },
@@ -1535,6 +1595,8 @@ Onderaan het `EN`-object, vóór de sluitende accolade:
   'Nieuw': 'New',
   'Bijwerken': 'Update',
   'Deze regels worden overgeslagen': 'These rows are skipped',
+  'Deze kolommen herken ik niet en komen niet mee: {koppen}':
+    "I don't recognise these columns, so they are left out: {koppen}",
   'Regel {regel}': 'Row {regel}',
   'Importeren': 'Import',
   'Bezig…': 'Working…',
@@ -1567,7 +1629,7 @@ Onderaan het `EN`-object, vóór de sluitende accolade:
   'De twee wachtwoorden zijn niet gelijk.': 'The two passwords are not the same.',
 ```
 
-**Let op:** de meldingen met een aanhalingsteken erin — `Onbekende rol "hoofdtrainer"...`, `Het uurtarief "veel" is geen bedrag.` en `Dit adres staat eerder in het bestand, op regel 2.` — staan hier bewust **niet**. Die worden in `lib/import-leden.ts` samengesteld met de waarde erin en zijn dus geen vaste zin. Ze blijven in het Nederlands staan; dat is een bekend gat en geen vergetelheid. Wil je ze later vertalen, dan moeten die redenen eerst een vorm met plaatshouders krijgen (`Onbekende rol "{rol}"...`) die het scherm door `t(reden, vars)` haalt.
+**Let op:** de meldingen met een aanhalingsteken erin — `Onbekende rol "hoofdtrainer"...`, `Het uurtarief "veel" is geen geldig bedrag.` en `Dit adres staat eerder in het bestand, op regel 2.` — staan hier bewust **niet**. Die worden in `lib/import-leden.ts` samengesteld met de waarde erin en zijn dus geen vaste zin. Ze blijven in het Nederlands staan; dat is een bekend gat en geen vergetelheid. Wil je ze later vertalen, dan moeten die redenen eerst een vorm met plaatshouders krijgen (`Onbekende rol "{rol}"...`) die het scherm door `t(reden, vars)` haalt.
 
 - [ ] **Step 2: Controleer**
 
