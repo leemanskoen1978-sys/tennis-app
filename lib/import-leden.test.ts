@@ -1,4 +1,4 @@
-import { leesRol, leesUurtarief, kolomIndexen, LEDEN_KOPPEN } from './import-leden';
+import { leesRol, leesUurtarief, leesKopregel, LEDEN_KOPPEN } from './import-leden';
 
 describe('leesRol', () => {
   it('vertaalt de Nederlandse rolnamen naar wat de databank kent', () => {
@@ -64,37 +64,65 @@ describe('leesUurtarief', () => {
   });
 });
 
-describe('kolomIndexen', () => {
+describe('leesKopregel', () => {
   it('vindt de kolommen ongeacht volgorde en hoofdletters', () => {
-    expect(kolomIndexen(['Email', 'NAAM'])).toStrictEqual({ naam: 1, email: 0 });
+    expect(leesKopregel(['Email', 'NAAM'])).toStrictEqual({
+      kolommen: { naam: 1, email: 0 },
+      nietHerkend: [],
+    });
   });
 
   it('neemt de gangbare andere schrijfwijzen aan', () => {
-    expect(kolomIndexen(['naam', 'e-mail', 'gsm'])).toStrictEqual({ naam: 0, email: 1, telefoon: 2 });
+    expect(leesKopregel(['naam', 'e-mail', 'gsm'])).toStrictEqual({
+      kolommen: { naam: 0, email: 1, telefoon: 2 },
+      nietHerkend: [],
+    });
   });
 
   it('neemt schrijfwijzen met een spatie erin ook aan', () => {
-    expect(kolomIndexen(['naam', 'E mail', 'Uur tarief', 'Telefoon nummer'])).toStrictEqual({
-      naam: 0, email: 1, uurtarief: 2, telefoon: 3,
+    expect(leesKopregel(['naam', 'E mail', 'Uur tarief', 'Telefoon nummer'])).toStrictEqual({
+      kolommen: { naam: 0, email: 1, uurtarief: 2, telefoon: 3 },
+      nietHerkend: [],
     });
   });
 
   it('geeft null als een verplichte kolom ontbreekt', () => {
-    expect(kolomIndexen(['naam', 'telefoon'])).toBeNull();
-    expect(kolomIndexen(['email'])).toBeNull();
+    expect(leesKopregel(['naam', 'telefoon'])).toBeNull();
+    expect(leesKopregel(['email'])).toBeNull();
   });
 
   it('laat de eerste kolom winnen als een naam dubbel voorkomt', () => {
-    expect(kolomIndexen(['naam', 'email', 'e-mail'])).toStrictEqual({ naam: 0, email: 1 });
+    expect(leesKopregel(['naam', 'email', 'e-mail'])).toStrictEqual({
+      kolommen: { naam: 0, email: 1 },
+      nietHerkend: [],
+    });
   });
 
   it('stoort zich niet aan een lege kop', () => {
-    expect(kolomIndexen(['naam', '', 'email'])).toStrictEqual({ naam: 0, email: 2 });
+    expect(leesKopregel(['naam', '', 'email'])).toStrictEqual({
+      kolommen: { naam: 0, email: 2 },
+      nietHerkend: [],
+    });
   });
 
   it('kent de koppen van het voorbeeldbestand allemaal', () => {
-    expect(kolomIndexen([...LEDEN_KOPPEN])).toStrictEqual({
-      naam: 0, email: 1, rol: 2, telefoon: 3, uurtarief: 4,
+    expect(leesKopregel([...LEDEN_KOPPEN])).toStrictEqual({
+      kolommen: { naam: 0, email: 1, rol: 2, telefoon: 3, uurtarief: 4 },
+      nietHerkend: [],
+    });
+  });
+
+  it('geeft een niet-herkende kop terug zoals hij in het bestand staat', () => {
+    expect(leesKopregel(['naam', 'email', 'Tarief/uur'])).toStrictEqual({
+      kolommen: { naam: 0, email: 1 },
+      nietHerkend: ['Tarief/uur'],
+    });
+  });
+
+  it('telt een lege kop niet mee als niet-herkend', () => {
+    expect(leesKopregel(['naam', 'email', '', '  '])).toStrictEqual({
+      kolommen: { naam: 0, email: 1 },
+      nietHerkend: [],
     });
   });
 });

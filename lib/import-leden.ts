@@ -98,18 +98,39 @@ const KOPNAMEN: Record<string, keyof Kolommen> = Object.assign(Object.create(nul
 });
 
 /**
+ * Het resultaat van het lezen van de kopregel: niet alleen waar de kolommen staan, maar ook
+ * welke koppen er stonden en niets betekenden. Dat laatste is niet bijzaak: een kop die stil
+ * wordt genegeerd (een trainer die "Tarief/uur" typt in plaats van "uurtarief") levert een
+ * geïmporteerde lijst op die er goed uitziet en het toch mist — en dat valt pas op als iemand
+ * weken later zijn tarief niet blijkt te hebben. Het scherm toont `nietHerkend` daarom aan
+ * de trainer, vóór er iets wordt weggeschreven.
+ */
+export interface Kopregel {
+  kolommen: Kolommen;
+  /** Koppen die er stonden en die we niet thuis konden brengen, precies zoals in het bestand. */
+  nietHerkend: string[];
+}
+
+/**
  * De kopregel lezen. `null` betekent: hier ontbreekt een kolom die we niet kunnen missen.
  * Naam en e-mailadres zijn verplicht — zonder adres valt een lid later nooit aan zijn login
  * te koppelen, en dan is de import zinloos werk geweest.
  */
-export function kolomIndexen(kopregel: readonly string[]): Kolommen | null {
+export function leesKopregel(kopregel: readonly string[]): Kopregel | null {
   const gevonden: Partial<Record<keyof Kolommen, number>> = {};
+  const nietHerkend: string[] = [];
   kopregel.forEach((kop, i) => {
-    const veld = KOPNAMEN[kop.trim().toLowerCase().replace(/\s+/g, '')];
+    const schoon = kop.trim().toLowerCase().replace(/\s+/g, '');
+    if (!schoon) return; // een lege kop is geen kop, en dus ook geen vergissing.
+    const veld = KOPNAMEN[schoon];
+    if (!veld) {
+      nietHerkend.push(kop);
+      return;
+    }
     // De eerste kolom met deze naam wint; een tweede is een vergissing en geen overschrijving.
-    if (veld && gevonden[veld] === undefined) gevonden[veld] = i;
+    if (gevonden[veld] === undefined) gevonden[veld] = i;
   });
   const { naam, email } = gevonden;
   if (naam === undefined || email === undefined) return null;
-  return { ...gevonden, naam, email };
+  return { kolommen: { ...gevonden, naam, email }, nietHerkend };
 }
