@@ -795,9 +795,15 @@ export const EN: Record<string, string> = {
   'Wachtwoord opslaan': 'Save password',
   'Bezig…': 'Working…',
   'Het wachtwoord instellen is mislukt.': 'Setting the password failed.',
+  'Terug naar inloggen': 'Back to log in',
 
   // --- meldingen van Supabase, vertaald in `loginMessage` (providers/supabaseStore.ts) ------
   'E-mailadres of wachtwoord klopt niet.': 'Email address or password is incorrect.',
   'Je account is nog niet bevestigd. Kijk in je mailbox.':
     'Your account has not been confirmed yet. Check your mailbox.',
+
+  // --- de foutmelding van de lokale opslag; onbereikbaar zolang er geen wachtwoordknop
+  // bestaat zonder Supabase erachter, maar een zin die bestaat om gelezen te worden hoort
+  // ook vertaald te zijn (providers/backend.ts) --------------------------------------------
+  'Wachtwoorden bestaan alleen met een databank.': 'Passwords only exist with a database.',
 };
