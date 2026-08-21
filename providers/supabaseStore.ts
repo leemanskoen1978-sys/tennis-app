@@ -68,6 +68,38 @@ async function selectAll<T>(table: string, drop: string[] = HOUSEKEEPING): Promi
   return (data ?? []).map((row) => clean<T>(row as Row, drop));
 }
 
+/**
+ * Kent deze databank die tabel (nog) niet? Postgres zegt 42P01, PostgREST zegt PGRST205 en
+ * schrijft er "schema cache" bij; alle drie betekenen hetzelfde.
+ */
+function tabelBestaatNiet(error: { code?: string; message?: string }): boolean {
+  if (error.code === '42P01' || error.code === 'PGRST205') return true;
+  return /schema cache/i.test(error.message ?? '');
+}
+
+/**
+ * Een tabel ophalen die er nog niet hoeft te zijn.
+ *
+ * `memos` kwam later dan de rest van het schema. Een club die de nieuwe SQL nog niet
+ * gedraaid heeft, kent die tabel niet — en omdat alles in één keer wordt opgehaald, zou
+ * dat de hele lading laten mislukken. De app komt dan niet voorbij het inlogscherm, voor
+ * iedereen, wegens één tabel die alleen spraakmemo's draagt.
+ *
+ * Alleen "die tabel bestaat niet" wordt hier geslikt. Een fout in de rechten of in de
+ * verbinding komt gewoon naar boven, want dat is een fout die iemand hoort te zien.
+ */
+async function selectAllOptioneel<T>(table: string, drop: string[] = HOUSEKEEPING): Promise<T[]> {
+  const { data, error } = await supabase.from(table).select('*');
+  if (error) {
+    if (tabelBestaatNiet(error)) {
+      console.warn(`${table}: tabel bestaat nog niet — draai supabase-schema.sql.`);
+      return [];
+    }
+    throw new Error(`${table}: ${error.message}`);
+  }
+  return (data ?? []).map((row) => clean<T>(row as Row, drop));
+}
+
 /** Alles ophalen wat deze gebruiker mag zien. */
 export async function loadFromSupabase(): Promise<StoreData> {
   const [users, courts, bookings, lessons, progress, goals, beurtenkaarten, memos] = await Promise.all([
@@ -80,7 +112,7 @@ export async function loadFromSupabase(): Promise<StoreData> {
     selectAll<PlayerGoal>('player_goals'),
     selectAll<Beurtenkaart>('beurtenkaarten', ['auth_id']),
     // `created_at` hoort hier wél bij de app: de uitwerklijst zet de oudste bovenaan.
-    selectAll<Memo>('memos', ['auth_id']),
+    selectAllOptioneel<Memo>('memos', ['auth_id']),
   ]);
 
   const [settingsRow, catalogueRows] = await Promise.all([
