@@ -1,5 +1,6 @@
 import {
   leesRol, leesUurtarief, leesKopregel, LEDEN_KOPPEN, planImport, voorbeeldLedenCsv,
+  bestandAfgekeurd, pasImportToe,
 } from './import-leden';
 import { parseCsv } from './csv';
 import type { User } from './types';
@@ -248,8 +249,16 @@ describe('planImport', () => {
     ], []);
     expect(plan.nieuw).toEqual([]);
     expect(plan.fouten).toEqual([
-      { regel: 2, reden: 'Onbekende rol "hoofdtrainer". Kies speler, trainer of ouder.' },
-      { regel: 3, reden: 'Het uurtarief "veel" is geen geldig bedrag.' },
+      {
+        regel: 2,
+        reden: 'Onbekende rol "{rol}". Kies speler, trainer of ouder.',
+        vars: { rol: 'hoofdtrainer' },
+      },
+      {
+        regel: 3,
+        reden: 'Het uurtarief "{tarief}" is geen geldig bedrag.',
+        vars: { tarief: 'veel' },
+      },
     ]);
   });
 
@@ -257,7 +266,11 @@ describe('planImport', () => {
     const plan = planImport([kop, ['Sofie', 'sofie@club.be', 'trainer', '', '-45']], []);
     expect(plan.nieuw).toEqual([]);
     expect(plan.fouten).toEqual([
-      { regel: 2, reden: 'Het uurtarief "-45" is geen geldig bedrag.' },
+      {
+        regel: 2,
+        reden: 'Het uurtarief "{tarief}" is geen geldig bedrag.',
+        vars: { tarief: '-45' },
+      },
     ]);
   });
 
@@ -280,7 +293,11 @@ describe('planImport', () => {
     ], []);
     expect(plan.nieuw).toHaveLength(1);
     expect(plan.fouten).toEqual([
-      { regel: 3, reden: 'Dit adres staat eerder in het bestand, op regel 2.' },
+      {
+        regel: 3,
+        reden: 'Dit adres staat eerder in het bestand, op regel {vorigeRegel}.',
+        vars: { vorigeRegel: 2 },
+      },
     ]);
   });
 
@@ -481,5 +498,90 @@ describe('voorbeeldLedenCsv', () => {
   it('toont een speler en een trainer, zodat beide vormen te zien zijn', () => {
     const plan = planImport(parseCsv(voorbeeldLedenCsv()), []);
     expect(plan.nieuw.map((u) => u.role)).toEqual(['player', 'coach']);
+  });
+});
+
+describe('bestandAfgekeurd', () => {
+  it('is waar bij een leeg bestand', () => {
+    expect(bestandAfgekeurd(planImport([], []))).toBe(true);
+  });
+
+  it('is waar als de kopregel een verplichte kolom mist', () => {
+    expect(bestandAfgekeurd(planImport([['naam', 'telefoon'], ['Jonas', '0470']], []))).toBe(true);
+  });
+
+  it('is onwaar zodra minstens één regel wél doorging', () => {
+    const plan = planImport([kop, ['Jonas', 'jonas@club.be', 'speler', '', '']], []);
+    expect(bestandAfgekeurd(plan)).toBe(false);
+  });
+
+  it('is onwaar bij losse foute regels in een verder bruikbaar bestand', () => {
+    const plan = planImport([
+      kop,
+      ['Jonas', 'jonas@club.be', 'speler', '', ''],
+      ['Zonder adres', '', '', '', ''],
+    ], []);
+    expect(bestandAfgekeurd(plan)).toBe(false);
+  });
+});
+
+describe('pasImportToe', () => {
+  const legePlan = (): ReturnType<typeof planImport> => planImport([kop], []);
+
+  it('voegt eerst alle nieuwe leden toe en werkt dan pas bestaande bij', () => {
+    const volgorde: string[] = [];
+    const plan = {
+      ...legePlan(),
+      nieuw: [{ name: 'Nieuw', email: 'nieuw@club.be', role: 'player' as const }],
+      bijgewerkt: [{ bestaand: lid('u1', 'jonas@club.be'), wijzigingen: { name: 'Jonas' } }],
+    };
+    const acties = {
+      addUser: async (u: Omit<User, 'id'>) => { volgorde.push(`add:${u.email}`); return { ...u, id: 'nieuw-id' }; },
+      updateUser: async (id: string) => { volgorde.push(`update:${id}`); },
+    };
+    return pasImportToe(plan, acties).then(() => {
+      expect(volgorde).toEqual(['add:nieuw@club.be', 'update:u1']);
+    });
+  });
+
+  it('telt een addUser die null teruggeeft als mislukt, niet als toegevoegd', async () => {
+    const plan = { ...legePlan(), nieuw: [{ name: 'Jonas', email: 'jonas@club.be', role: 'player' as const }] };
+    const acties = {
+      addUser: async () => null,
+      updateUser: async () => {},
+    };
+    const uitslag = await pasImportToe(plan, acties);
+    expect(uitslag).toEqual({ toegevoegd: 0, bijgewerkt: 0, mislukt: 1 });
+  });
+
+  it('telt een updateUser die weigert als mislukt, en gaat door met de rest', async () => {
+    const plan = {
+      ...legePlan(),
+      bijgewerkt: [
+        { bestaand: lid('u1', 'jonas@club.be'), wijzigingen: { name: 'Jonas' } },
+        { bestaand: lid('u2', 'sofie@club.be'), wijzigingen: { name: 'Sofie' } },
+      ],
+    };
+    const acties = {
+      addUser: async (u: Omit<User, 'id'>) => ({ ...u, id: 'x' }),
+      updateUser: async (id: string) => { if (id === 'u1') throw new Error('opslaan mislukt'); },
+    };
+    const uitslag = await pasImportToe(plan, acties);
+    expect(uitslag).toEqual({ toegevoegd: 0, bijgewerkt: 1, mislukt: 1 });
+  });
+
+  it('meldt de voortgang na elke regel, over nieuw én bijgewerkt heen', async () => {
+    const plan = {
+      ...legePlan(),
+      nieuw: [{ name: 'A', email: 'a@club.be', role: 'player' as const }],
+      bijgewerkt: [{ bestaand: lid('u1', 'b@club.be'), wijzigingen: { name: 'B' } }],
+    };
+    const acties = {
+      addUser: async (u: Omit<User, 'id'>) => ({ ...u, id: 'x' }),
+      updateUser: async () => {},
+    };
+    const gemeld: Array<[number, number]> = [];
+    await pasImportToe(plan, acties, (klaar, totaal) => gemeld.push([klaar, totaal]));
+    expect(gemeld).toEqual([[1, 2], [2, 2]]);
   });
 });

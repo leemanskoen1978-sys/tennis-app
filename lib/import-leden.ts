@@ -169,7 +169,16 @@ export function leesKopregel(kopregel: readonly string[]): Kopregel {
 export interface ImportFout {
   /** Het regelnummer zoals de trainer het in Excel ziet: de kopregel is regel 1. */
   regel: number;
+  /**
+   * De reden, als vaste zin met eventuele plaatshouders van de vorm `{naam}` — nooit als
+   * kant-en-klare tekst met een waarde er al in geplakt. Drie redenen hebben een waarde uit
+   * het bestand nodig (welke rol, welk bedrag, welke regel eerder); plakte deze functie die
+   * er zelf in, dan kreeg elke regel een eigen, unieke sleutel die nooit vertaald kan worden.
+   * Het scherm doet `t(reden, vars)`, precies zoals `lib/i18n.ts` bedoeld is.
+   */
   reden: string;
+  /** De waarden voor de plaatshouders in `reden`. Ontbreekt bij een reden zonder plaatshouder. */
+  vars?: Record<string, string | number>;
 }
 
 /** Eén bestaand lid, en wat dit bestand aan hem verandert. */
@@ -231,6 +240,36 @@ function verschillen(bestaand: User, regel: Omit<User, 'id'>): Partial<Omit<User
     wijzigingen.hourly_rate = regel.hourly_rate;
   }
   return wijzigingen;
+}
+
+/**
+ * Hoe de velden die `verschillen` hierboven kan opleveren heten voor een trainer. Dit mapje
+ * moet meegroeien met `verschillen` — vandaar ernaast, en niet in het scherm, dat anders zelf
+ * een vertaling zou moeten verzinnen voor een sleutel uit de databank (`hourly_rate`) die een
+ * trainer nooit te zien hoort te krijgen.
+ */
+export const VELD_NAMEN: Partial<Record<keyof Omit<User, 'id' | 'role'>, string>> = {
+  name: 'Naam',
+  phone: 'Telefoonnummer',
+  hourly_rate: 'Uurtarief',
+};
+
+/**
+ * Is dit hele bestand afgekeurd, in plaats van een paar regels erin?
+ *
+ * Zo'n plan heeft precies één fout, op regel 1 (de kopregel), en geen enkele regel die wél
+ * doorging: dat gebeurt alleen bij een leeg bestand of een kopregel zonder "naam" of "email".
+ * Het scherm moet dat lezen als "dit bestand deugt niet" en niet als "deze ene regel wordt
+ * overgeslagen" — de twee gevallen vragen om een ander soort melding.
+ */
+export function bestandAfgekeurd(plan: ImportPlan): boolean {
+  return (
+    plan.nieuw.length === 0
+    && plan.bijgewerkt.length === 0
+    && plan.waarschuwingen.length === 0
+    && plan.fouten.length === 1
+    && plan.fouten[0].regel === 1
+  );
 }
 
 /**
@@ -317,7 +356,8 @@ export function planImport(
     if (eerder !== undefined) {
       plan.fouten.push({
         regel,
-        reden: `Dit adres staat eerder in het bestand, op regel ${eerder}.`,
+        reden: 'Dit adres staat eerder in het bestand, op regel {vorigeRegel}.',
+        vars: { vorigeRegel: eerder },
       });
       continue;
     }
@@ -327,7 +367,8 @@ export function planImport(
     if (role === null) {
       plan.fouten.push({
         regel,
-        reden: `Onbekende rol "${rolCel}". Kies speler, trainer of ouder.`,
+        reden: 'Onbekende rol "{rol}". Kies speler, trainer of ouder.',
+        vars: { rol: rolCel },
       });
       continue;
     }
@@ -335,7 +376,11 @@ export function planImport(
     const tariefCel = cel(kolommen.uurtarief);
     const hourly_rate = leesUurtarief(tariefCel);
     if (hourly_rate === null) {
-      plan.fouten.push({ regel, reden: `Het uurtarief "${tariefCel}" is geen geldig bedrag.` });
+      plan.fouten.push({
+        regel,
+        reden: 'Het uurtarief "{tarief}" is geen geldig bedrag.',
+        vars: { tarief: tariefCel },
+      });
       continue;
     }
 
@@ -422,4 +467,70 @@ export function voorbeeldLedenCsv(): string {
     'Jonas Peeters;jonas@voorbeeld.be;speler;0470 12 34 56;',
     'Sofie Maes;sofie@voorbeeld.be;trainer;;45',
   ].join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Het plan uitvoeren
+// ---------------------------------------------------------------------------
+
+/** Wat een aangeroepen actie van dit type teruggeeft — precies het stukje `useSimpleData` dat de import nodig heeft. */
+export interface ImportActies {
+  addUser: (u: Omit<User, 'id'>) => Promise<User | null>;
+  updateUser: (id: string, patch: Partial<Omit<User, 'id' | 'role'>>) => Promise<void>;
+}
+
+/** Hoeveel van elke soort actie geslaagd is. */
+export interface ImportUitslag {
+  toegevoegd: number;
+  bijgewerkt: number;
+  mislukt: number;
+}
+
+/**
+ * Voert een eerder getoond plan uit: eerst alle nieuwe leden, dan alle bijwerkingen, en dat
+ * één voor één in plaats van in één klap. Zo loopt elke wijziging over dezelfde bewaakte weg
+ * als een trainer die met de hand een lid toevoegt of aanpast — en zo is met twee simpele
+ * spies te toetsen of de telling nog klopt als lid 30 van de 50 faalt.
+ *
+ * `addUser` geeft `null` terug als de opslag nog niet geladen was — dat telt hier als
+ * mislukt en niet als succes, anders leest een trainer "50 toegevoegd" terwijl er niets
+ * gebeurde. `updateUser` geeft niets terug om op te controleren: een `commit` die faalt
+ * gooit een fout, en die vangt de `try/catch` hieronder op dezelfde manier op.
+ *
+ * `voortgang`, als hij is meegegeven, wordt na elke afgehandelde regel aangeroepen met hoeveel
+ * er klaar zijn en hoeveel er in totaal te doen zijn — voor een scherm dat "lid 12 van 50"
+ * wil tonen zodat een trainer bij een grote lijst niet denkt dat de app is blijven hangen.
+ */
+export async function pasImportToe(
+  plan: ImportPlan,
+  acties: ImportActies,
+  voortgang?: (klaar: number, totaal: number) => void,
+): Promise<ImportUitslag> {
+  const totaal = plan.nieuw.length + plan.bijgewerkt.length;
+  let klaar = 0;
+  let toegevoegd = 0;
+  let bijgewerkt = 0;
+  let mislukt = 0;
+
+  for (const lid of plan.nieuw) {
+    try {
+      if (await acties.addUser(lid)) toegevoegd++; else mislukt++;
+    } catch {
+      mislukt++;
+    }
+    klaar++;
+    voortgang?.(klaar, totaal);
+  }
+  for (const b of plan.bijgewerkt) {
+    try {
+      await acties.updateUser(b.bestaand.id, b.wijzigingen);
+      bijgewerkt++;
+    } catch {
+      mislukt++;
+    }
+    klaar++;
+    voortgang?.(klaar, totaal);
+  }
+
+  return { toegevoegd, bijgewerkt, mislukt };
 }
