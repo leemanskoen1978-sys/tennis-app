@@ -51,9 +51,12 @@ export default function Coaches() {
               <View style={styles.icon}><GraduationCap size={20} color={tennisColors.primary} /></View>
               <View style={styles.info}>
                 <Text style={styles.name}>{c.name}</Text>
+                {/* Alleen hoeveel spelers hij heeft. Het uurloon stond hier ook, maar deze
+                    lijst staat open voor iedereen die de app opent, en wat een trainer
+                    verdient hoort niet bij het kiezen van een trainer. Het staat nog waar
+                    het thuishoort: in zijn eigen dossier en in Beheer. */}
                 <Text style={styles.meta}>
                   {n === 1 ? t('1 speler') : t('{n} spelers', { n })}
-                  {c.hourly_rate ? ` · ${t('€{bedrag}/uur', { bedrag: c.hourly_rate })}` : ''}
                 </Text>
               </View>
               <ChevronRight size={20} color={tennisColors.textMuted} />

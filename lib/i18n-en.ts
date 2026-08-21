@@ -492,7 +492,6 @@ export const EN: Record<string, string> = {
   '€ {bedrag} per speler': '€ {bedrag} per player',
   '€ {laag} à € {hoog} per speler': '€ {laag} to € {hoog} per player',
   '€{bedrag} per uur': '€{bedrag} per hour',
-  '€{bedrag}/uur': '€{bedrag}/hr',
   '€ {bedrag} geboekt': '€ {bedrag} booked',
   '€ {bedrag} afgehandeld': '€ {bedrag} settled',
   'Openstaand saldo € {bedrag}': 'Outstanding balance € {bedrag}',
