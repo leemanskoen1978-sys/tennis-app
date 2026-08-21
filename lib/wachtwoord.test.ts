@@ -1,4 +1,7 @@
-import { controleerWachtwoord, gaatOverEenBestaandAccount, MIN_WACHTWOORD } from './wachtwoord';
+import {
+  controleerWachtwoord, gaatOverEenBestaandAccount, MIN_WACHTWOORD,
+  magVersturen, aanmeldUitkomst, aanmeldMelding, BESTAAT_AL_MELDING, BEVESTIG_MAIL_MELDING,
+} from './wachtwoord';
 
 describe('controleerWachtwoord', () => {
   it('keurt een goed en tweemaal gelijk wachtwoord goed', () => {
@@ -38,5 +41,57 @@ describe('gaatOverEenBestaandAccount', () => {
 
   it('laat een andere fout met rust', () => {
     expect(gaatOverEenBestaandAccount('Network request failed')).toBe(false);
+  });
+});
+
+describe('magVersturen', () => {
+  const velden = { email: 'a@b.be', wachtwoord: 'geheim123', herhaling: 'geheim123', naam: 'Piet' };
+
+  it('is genoeg om in te loggen: alleen adres en wachtwoord', () => {
+    expect(magVersturen('inloggen', { ...velden, herhaling: '', naam: '' })).toBe(true);
+  });
+
+  it('vraagt bij "eerste" ook een herhaling', () => {
+    expect(magVersturen('eerste', { ...velden, herhaling: '' })).toBe(false);
+    expect(magVersturen('eerste', velden)).toBe(true);
+  });
+
+  it('vraagt bij "aanmelden" ook een naam', () => {
+    expect(magVersturen('aanmelden', { ...velden, naam: '' })).toBe(false);
+    expect(magVersturen('aanmelden', velden)).toBe(true);
+  });
+
+  it('houdt een leeg e-mailadres of wachtwoord altijd tegen', () => {
+    expect(magVersturen('inloggen', { ...velden, email: '  ' })).toBe(false);
+    expect(magVersturen('inloggen', { ...velden, wachtwoord: '' })).toBe(false);
+  });
+});
+
+describe('aanmeldUitkomst', () => {
+  it('herkent een bestaand, bevestigd adres aan de lege identiteitenlijst', () => {
+    expect(aanmeldUitkomst(true, 0)).toBe('bestaat-al');
+    expect(aanmeldUitkomst(false, 0)).toBe('bestaat-al');
+  });
+
+  it('is meteen ingelogd als er een sessie meekomt (Confirm email staat uit)', () => {
+    expect(aanmeldUitkomst(true, 1)).toBe('ingelogd');
+  });
+
+  it('moet nog bevestigd worden als er geen sessie meekomt (Confirm email staat aan)', () => {
+    expect(aanmeldUitkomst(false, 1)).toBe('bevestig-je-mail');
+  });
+});
+
+describe('aanmeldMelding', () => {
+  it('geeft de "bestaat al"-melding', () => {
+    expect(aanmeldMelding('bestaat-al')).toBe(BESTAAT_AL_MELDING);
+  });
+
+  it('geeft de "bevestig je mail"-melding', () => {
+    expect(aanmeldMelding('bevestig-je-mail')).toBe(BEVESTIG_MAIL_MELDING);
+  });
+
+  it('heeft niets te zeggen bij een geslaagde, meteen ingelogde aanmelding', () => {
+    expect(aanmeldMelding('ingelogd')).toBeNull();
   });
 });

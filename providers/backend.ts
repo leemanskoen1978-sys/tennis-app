@@ -13,6 +13,7 @@ import { loadStore, saveStore, resetStore, type StoreData } from './mockStore';
 import {
   currentAppUserId, loadFromSupabase, onAuthChange, saveToSupabase, signIn, signOut, signUp,
 } from './supabaseStore';
+import type { AanmeldUitkomst } from '../lib/wachtwoord';
 
 /**
  * Hoe je in deze opzet binnenkomt.
@@ -37,7 +38,7 @@ export interface Backend {
   /** Het id van de ingelogde gebruiker in de app, of null als er niemand ingelogd is. */
   currentUserId: () => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<AanmeldUitkomst>;
   signOut: () => Promise<void>;
   /** Roept terug als de login verandert; geeft de opzegging terug. */
   onAuthChange: (handler: () => void) => () => void;

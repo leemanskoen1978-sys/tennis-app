@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabase';
 import { diffStores, type SyncTable } from '../lib/sync';
 import type { StoreData } from './mockStore';
 import { defaultSettings } from '../lib/seed';
+import { aanmeldUitkomst, type AanmeldUitkomst } from '../lib/wachtwoord';
 import type {
   Beurtenkaart, Booking, Court, Lesson, PlayerGoal, Settings, StudentProgress, User,
 } from '../lib/types';
@@ -182,10 +183,15 @@ export async function signIn(email: string, password: string): Promise<void> {
 /**
  * Aanmelden. De naam gaat mee als metadata; de databank gebruikt hem alleen als er nog geen
  * gebruiker met dit e-mailadres bestond.
+ *
+ * Geeft terug wát er gebeurde in plaats van alleen "het lukte": bij een bestaand, al
+ * bevestigd adres gooit Supabase geen fout (dat zou verklappen wie er al lid is), en zonder
+ * dit onderscheid zou het scherm een gebruiker die zijn wachtwoord vergeten is vertellen dat
+ * hij zonet een nieuw wachtwoord instelde.
  */
-export async function signUp(email: string, password: string, name: string): Promise<void> {
+export async function signUp(email: string, password: string, name: string): Promise<AanmeldUitkomst> {
   const schoon = name.trim();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
     // Geen naam? Dan sturen we het veld helemaal niet mee. Een lege string is voor de
@@ -194,6 +200,7 @@ export async function signUp(email: string, password: string, name: string): Pro
     options: schoon ? { data: { name: schoon } } : undefined,
   });
   if (error) throw new Error(loginMessage(error.message));
+  return aanmeldUitkomst(data.session !== null, data.user?.identities?.length ?? 0);
 }
 
 export async function signOut(): Promise<void> {
@@ -207,7 +214,14 @@ export function onAuthChange(handler: () => void): () => void {
   return () => data.subscription.unsubscribe();
 }
 
-/** De meldingen van Supabase zijn Engels en technisch; dit is wat een trainer eraan heeft. */
+/**
+ * De meldingen van Supabase zijn Engels en technisch; dit is wat een trainer eraan heeft.
+ *
+ * "Al geregistreerd" vertaalt hier expres niet mee: `signUp` gooit die fout in de praktijk
+ * niet meer (zie `aanmeldUitkomst`), maar mócht Supabase dat toch doen, dan herkent het
+ * loginscherm de Engelse tekst zelf via `gaatOverEenBestaandAccount` — en dan hoort de
+ * vertaling van die ene fout op precies één plek te staan, niet hier én daar.
+ */
 function loginMessage(raw: string): string {
   const text = raw.toLowerCase();
   if (text.includes('invalid login credentials')) {
@@ -215,9 +229,6 @@ function loginMessage(raw: string): string {
   }
   if (text.includes('email not confirmed')) {
     return 'Je account is nog niet bevestigd. Kijk in je mailbox.';
-  }
-  if (text.includes('user already registered')) {
-    return 'Er bestaat al een account met dit e-mailadres. Log in.';
   }
   if (text.includes('password should be')) {
     return 'Kies een wachtwoord van minstens zes tekens.';

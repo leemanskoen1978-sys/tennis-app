@@ -5,6 +5,7 @@ import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
 import { newId, type StoreData } from './mockStore';
 import { backend, type AuthMode } from './backend';
+import type { AanmeldUitkomst } from '../lib/wachtwoord';
 import { installCatalogue } from '../lib/catalogue';
 import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { upsertGoal, removeGoal } from '../lib/goals';
@@ -45,7 +46,7 @@ interface DataShape {
   /** Inloggen met e-mailadres en wachtwoord. Gooit een leesbare fout bij een misser. */
   signIn: (email: string, password: string) => Promise<void>;
   /** Een account aanmaken. Bestond het e-mailadres al bij de club, dan wordt het gekoppeld. */
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<AanmeldUitkomst>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   /** Het tarief en de groepstaffel van een baan bijstellen; `id`, naam en nummer blijven. */
@@ -289,7 +290,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
     setError(null);
-    await backend.signUp(email, password, name);
+    return backend.signUp(email, password, name);
   }, []);
 
   const logout = useCallback(async () => {
