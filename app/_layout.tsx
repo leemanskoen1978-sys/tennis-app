@@ -53,6 +53,7 @@ const HEADLESS = new Set([
 /** Screens in the order of the hub: Agenda, Spelers, Trainers, Beheer. */
 const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> => [
   { name: 'profile', title: t('Profiel') },
+  { name: 'nieuw-wachtwoord', title: t('Nieuw wachtwoord') },
   { name: 'agenda/index', title: t('Agenda') },
   { name: 'agenda/new', title: t('Nieuwe afspraak') },
   { name: 'agenda/overzicht', title: t('Overzicht') },
@@ -98,7 +99,7 @@ const transparentTheme: Theme = {
 
 function Root() {
   const t = useT();
-  const { loading, currentUser, settings } = useSimpleData();
+  const { loading, currentUser, settings, herstelBezig } = useSimpleData();
   const segments = useSegments();
 
   // De enige plek waar het thema uit de instellingen op het scherm terechtkomt. Verder
@@ -116,14 +117,21 @@ function Root() {
     );
   }
 
+  // Wie via een herstellink binnenkomt, ís ingelogd — maar heeft nog geen wachtwoord gekozen.
+  // Zonder deze omleiding belandt hij in de hub en staat hij de volgende keer weer buiten.
+  if (herstelBezig && segments[0] !== 'nieuw-wachtwoord') {
+    return <Redirect href="/nieuw-wachtwoord" />;
+  }
+
   // Without a tab bar every screen is directly linkable, so the guard lives here instead
   // of in a tabs layout.
   if (!currentUser && segments[0] !== 'login') {
     return <Redirect href="/login" />;
   }
 
-  // Every screen carries the bars except login, which has no navigation to offer yet.
-  const showMenu = segments[0] !== 'login';
+  // Every screen carries the bars except login en nieuw-wachtwoord: die hebben nog niets om
+  // naartoe te navigeren, of navigeren zou juist het wachtwoord instellen omzeilen.
+  const showMenu = segments[0] !== 'login' && segments[0] !== 'nieuw-wachtwoord';
 
   return (
     <View style={{ flex: 1, backgroundColor: tennisColors.background }}>

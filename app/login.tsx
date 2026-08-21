@@ -16,6 +16,10 @@ import {
   BESTAAT_AL_MELDING, type Stand,
 } from '../lib/wachtwoord';
 
+/** De vier standen van het loginscherm; 'vergeten' bestaat alleen op het scherm zelf (een
+ *  e-mailadres versturen kent geen "klaar om te versturen"-regel die getest hoeft te worden). */
+type SchermStand = Stand | 'vergeten';
+
 type Role = 'player' | 'coach' | 'parent';
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -53,8 +57,8 @@ function roleBadgeProps(t: Translate, role: string): { label: string; color?: st
  */
 function WachtwoordLogin(): React.JSX.Element {
   const t = useT();
-  const { signIn, signUp } = useSimpleData();
-  const [stand, setStand] = useState<Stand>('inloggen');
+  const { signIn, signUp, stuurHerstelmail } = useSimpleData();
+  const [stand, setStand] = useState<SchermStand>('inloggen');
   const [email, setEmail] = useState<string>('');
   const [wachtwoord, setWachtwoord] = useState<string>('');
   const [herhaling, setHerhaling] = useState<string>('');
@@ -66,9 +70,13 @@ function WachtwoordLogin(): React.JSX.Element {
   const bezigRef = useRef<boolean>(false);
   const herhalingRef = useRef<TextInput>(null);
 
-  const klaar = magVersturen(stand, { email, wachtwoord, herhaling, naam });
+  // "Vergeten" vraagt alleen een e-mailadres; de wachtwoordregels van `magVersturen` gaan
+  // daar niet over.
+  const klaar = stand === 'vergeten'
+    ? email.trim().length > 0
+    : magVersturen(stand, { email, wachtwoord, herhaling, naam });
 
-  const wissel = (naarStand: Stand): void => {
+  const wissel = (naarStand: SchermStand): void => {
     setStand(naarStand);
     setMelding(null);
     setHerhaling('');
@@ -81,6 +89,34 @@ function WachtwoordLogin(): React.JSX.Element {
     if (stand === 'eerste') {
       const klacht = controleerWachtwoord(wachtwoord, herhaling);
       if (klacht) { setMelding({ tekst: t(klacht), soort: 'fout' }); return; }
+    }
+
+    if (stand === 'vergeten') {
+      bezigRef.current = true;
+      setBezig(true);
+      try {
+        await stuurHerstelmail(email);
+      } catch (e: unknown) {
+        // Ook een technische misser (geen netwerk, te vaak geprobeerd) krijgt hier zijn
+        // eigen melding — alleen "bestaat dit adres" blijft verborgen, niet elke fout.
+        setMelding({
+          tekst: e instanceof Error ? t(e.message) : t('Versturen is mislukt.'),
+          soort: 'fout',
+        });
+        bezigRef.current = false;
+        setBezig(false);
+        return;
+      }
+      bezigRef.current = false;
+      setBezig(false);
+      // Dezelfde melding of het adres nu bestaat of niet: dat is geen vaagheid maar dezelfde
+      // regel die Supabase zelf aanhoudt. Wie een adres intypt, hoort niet te weten te komen
+      // wie er lid is van de club.
+      setMelding({
+        tekst: t('Als dit adres bij de club bekend is, staat er zo een mail in je mailbox.'),
+        soort: 'goed',
+      });
+      return;
     }
 
     bezigRef.current = true;
@@ -112,7 +148,10 @@ function WachtwoordLogin(): React.JSX.Element {
         setWachtwoord('');
         setHerhaling('');
       } else {
-        setMelding({ tekst: ruw || t('Inloggen mislukt.'), soort: 'fout' });
+        // `ruw` is de Nederlandse zin uit `loginMessage` (providers/supabaseStore.ts) — die
+        // gaat, net als elke andere tekst op dit scherm, door `t()` om ook in het Engels te
+        // kunnen luiden.
+        setMelding({ tekst: ruw ? t(ruw) : t('Inloggen mislukt.'), soort: 'fout' });
       }
     } finally {
       bezigRef.current = false;
@@ -122,7 +161,8 @@ function WachtwoordLogin(): React.JSX.Element {
 
   const knopLabel = stand === 'inloggen'
     ? t('Inloggen')
-    : stand === 'eerste' ? t('Wachtwoord instellen') : t('Account aanmaken');
+    : stand === 'eerste' ? t('Wachtwoord instellen')
+    : stand === 'vergeten' ? t('Herstelmail sturen') : t('Account aanmaken');
 
   return (
     <View style={styles.listInner}>
@@ -151,27 +191,32 @@ function WachtwoordLogin(): React.JSX.Element {
           autoCapitalize="none"
           keyboardType="email-address"
           autoComplete="email"
+          onSubmitEditing={stand === 'vergeten' ? () => { void verstuur(); } : undefined}
         />
 
-        <Text style={styles.label}>{t('Wachtwoord')}</Text>
-        <TextInput
-          style={styles.input}
-          value={wachtwoord}
-          onChangeText={setWachtwoord}
-          placeholder={t('Minstens zes tekens')}
-          placeholderTextColor={tennisColors.textMuted}
-          secureTextEntry
-          autoComplete={stand === 'inloggen' ? 'current-password' : 'new-password'}
-          onSubmitEditing={() => {
-            // Bij "eerste" staat de herhaling nog leeg: Enter springt daarheen in plaats
-            // van stil niets te doen (de knop is dan nog grijs, zonder dat te verklaren).
-            if (stand === 'eerste') {
-              herhalingRef.current?.focus();
-            } else {
-              void verstuur();
-            }
-          }}
-        />
+        {stand !== 'vergeten' ? (
+          <>
+            <Text style={styles.label}>{t('Wachtwoord')}</Text>
+            <TextInput
+              style={styles.input}
+              value={wachtwoord}
+              onChangeText={setWachtwoord}
+              placeholder={t('Minstens zes tekens')}
+              placeholderTextColor={tennisColors.textMuted}
+              secureTextEntry
+              autoComplete={stand === 'inloggen' ? 'current-password' : 'new-password'}
+              onSubmitEditing={() => {
+                // Bij "eerste" staat de herhaling nog leeg: Enter springt daarheen in plaats
+                // van stil niets te doen (de knop is dan nog grijs, zonder dat te verklaren).
+                if (stand === 'eerste') {
+                  herhalingRef.current?.focus();
+                } else {
+                  void verstuur();
+                }
+              }}
+            />
+          </>
+        ) : null}
 
         {stand === 'eerste' ? (
           <>
@@ -209,7 +254,7 @@ function WachtwoordLogin(): React.JSX.Element {
           style={styles.knop}
         />
 
-        {stand !== 'eerste' ? (
+        {stand !== 'eerste' && stand !== 'vergeten' ? (
           <Text
             style={styles.wissel}
             accessibilityRole="button"
@@ -231,7 +276,7 @@ function WachtwoordLogin(): React.JSX.Element {
           </Text>
         ) : null}
 
-        {stand !== 'aanmelden' ? (
+        {stand !== 'aanmelden' && stand !== 'vergeten' ? (
           <Text
             style={styles.wissel}
             accessibilityRole="button"
@@ -239,6 +284,17 @@ function WachtwoordLogin(): React.JSX.Element {
             onPress={() => wissel('aanmelden')}
           >
             {t('Ik sta nog niet bij de club')}
+          </Text>
+        ) : null}
+
+        {stand === 'inloggen' ? (
+          <Text
+            style={styles.wissel}
+            accessibilityRole="button"
+            accessibilityLabel={t('Wachtwoord vergeten?')}
+            onPress={() => wissel('vergeten')}
+          >
+            {t('Wachtwoord vergeten?')}
           </Text>
         ) : null}
       </Card>
