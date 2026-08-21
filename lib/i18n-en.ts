@@ -777,4 +777,23 @@ export const EN: Record<string, string> = {
     'This address already has a password. Just log in.',
   'Kies een wachtwoord van minstens zes tekens.': 'Choose a password of at least six characters.',
   'De twee wachtwoorden zijn niet gelijk.': 'The two passwords are not the same.',
+
+  // --- wachtwoord vergeten -------------------------------------------------
+  'Wachtwoord vergeten?': 'Forgot your password?',
+  'Herstelmail sturen': 'Send recovery email',
+  'Als dit adres bij de club bekend is, staat er zo een mail in je mailbox.':
+    'If this address is known at the club, an email will be in your inbox shortly.',
+  'Versturen is mislukt.': 'Sending failed.',
+  'Nieuw wachtwoord': 'New password',
+  'Kies een nieuw wachtwoord': 'Choose a new password',
+  'Je bent binnen via de link uit je mail. Kies hier je nieuwe wachtwoord.':
+    'You are in via the link from your email. Choose your new password here.',
+  'Wachtwoord opslaan': 'Save password',
+  'Bezig…': 'Working…',
+  'Het wachtwoord instellen is mislukt.': 'Setting the password failed.',
+
+  // --- meldingen van Supabase, vertaald in `loginMessage` (providers/supabaseStore.ts) ------
+  'E-mailadres of wachtwoord klopt niet.': 'Email address or password is incorrect.',
+  'Je account is nog niet bevestigd. Kijk in je mailbox.':
+    'Your account has not been confirmed yet. Check your mailbox.',
 };

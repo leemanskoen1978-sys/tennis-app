@@ -71,6 +71,16 @@ De anon key staat in de webbundel en dat hoort zo: hij geeft alleen toegang tot 
 Level Security toelaat. Die regels staan in `supabase-schema.sql` — een trainer beheert
 zijn eigen agenda, een speler ziet en doet alleen wat van hemzelf is.
 
+Zet ook **Site URL** en **Redirect URLs** goed (Authentication → URL Configuration). Het adres
+van de website hoort in die lijst te staan, anders weigert Supabase de link uit een
+herstelmail en komt je speler op een foutpagina. Dat is de meest gemaakte fout bij het
+opzetten hiervan, en je merkt hem pas als iemand zijn wachtwoord kwijt is.
+
+Reken bovendien niet op de ingebouwde mail van Supabase: die is streng gelimiteerd. Een club
+met vijftig leden hoort onder Project Settings → Authentication → SMTP zijn eigen mailserver
+in te stellen. Zonder werkende mail doen "Confirm email" en "Wachtwoord vergeten" allebei
+niets zichtbaars.
+
 ## Online zetten
 
 Elke push naar `main` bouwt de webversie en zet hem op GitHub Pages
