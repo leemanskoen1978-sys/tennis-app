@@ -1,6 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Mic, Square, Trash2, Play } from 'lucide-react-native';
+import { useOpname } from './useOpname';
+import { memoDuur } from '../lib/memo';
 import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, webCursor } from '../constants/theme';
@@ -39,65 +41,26 @@ function WebVoiceRecorder({
   value, onRecorded, onClear,
 }: { value?: string; onRecorded?: (uri: string) => void; onClear?: () => void }) {
   const t = useT();
-  const [recording, setRecording] = useState(false);
-  const [seconds, setSeconds] = useState(0);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    recorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
-  }, []);
-
-  const start = async () => {
-    setErrorMsg(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
-      chunksRef.current = [];
-      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      rec.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
-        const reader = new FileReader();
-        reader.onloadend = () => { if (typeof reader.result === 'string') onRecorded?.(reader.result); };
-        reader.readAsDataURL(blob);
-        stream.getTracks().forEach((t) => t.stop());
-      };
-      recorderRef.current = rec;
-      rec.start();
-      setRecording(true);
-      setSeconds(0);
-      timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-    } catch {
-      setErrorMsg(t('Microfoon niet beschikbaar of geweigerd.'));
-    }
-  };
-
-  const stop = () => {
-    recorderRef.current?.stop();
-    setRecording(false);
-    if (timerRef.current) clearInterval(timerRef.current);
-  };
-
-  const mmss = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  // Geen bovengrens hier: dit blad kende die nooit, en een blad waar je rustig bij zit is
+  // niet dezelfde plek als een knop op een baan.
+  const opname = useOpname((dataUrl) => onRecorded?.(dataUrl));
+  const mmss = memoDuur(opname.ms);
 
   return (
     <View style={styles.box}>
-      {recording ? (
-        <Pressable onPress={stop} style={[styles.btn, styles.stopBtn, webCursor]} accessibilityRole="button" accessibilityLabel={t('Stop opname')}>
+      {opname.bezig ? (
+        <Pressable onPress={opname.stop} style={[styles.btn, styles.stopBtn, webCursor]} accessibilityRole="button" accessibilityLabel={t('Stop opname')}>
           <Square size={18} color={tennisColors.onFill} />
           <Text style={styles.btnTextLight}>{t('Stop')} • {mmss}</Text>
         </Pressable>
       ) : (
-        <Pressable onPress={start} style={[styles.btn, styles.recBtn, webCursor]} accessibilityRole="button" accessibilityLabel={t('Start opname')}>
+        <Pressable onPress={() => { void opname.start(); }} style={[styles.btn, styles.recBtn, webCursor]} accessibilityRole="button" accessibilityLabel={t('Start opname')}>
           <Mic size={18} color={tennisColors.onFill} />
           <Text style={styles.btnTextLight}>{value ? t('Opnieuw opnemen') : t('Opnemen')}</Text>
         </Pressable>
       )}
 
-      {value && !recording ? (
+      {value && !opname.bezig ? (
         <>
           {/* Native <audio> element (web only). */}
           {React.createElement('audio', { src: value, controls: true, style: { height: 32 } })}
@@ -107,11 +70,11 @@ function WebVoiceRecorder({
         </>
       ) : null}
 
-      {value && !recording ? null : (
+      {value && !opname.bezig ? null : (
         <View style={styles.hintWrap}><Play size={14} color={tennisColors.textMuted} /><Text style={styles.hint}>{t('Neem een korte memo op')}</Text></View>
       )}
 
-      {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
+      {opname.fout ? <Text style={styles.error}>{opname.fout}</Text> : null}
     </View>
   );
 }
