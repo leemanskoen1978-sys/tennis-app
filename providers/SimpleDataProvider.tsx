@@ -21,7 +21,7 @@ import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
 import { planSeries, type RecurrenceRule, type SeriesSlot } from '../lib/recurrence';
 import type {
-  User, Court, Booking, Lesson, StudentProgress, PlayerGoal, Settings,
+  User, Court, Booking, Lesson, Memo, StudentProgress, PlayerGoal, Settings,
   Beurtenkaart, BookingStatus, PaymentMethod, PaymentSplit,
 } from '../lib/types';
 
@@ -31,6 +31,7 @@ interface DataShape {
   bookings: Booking[];
   lessons: Lesson[];
   progress: StudentProgress[];
+  memos: Memo[];
   goals: PlayerGoal[];
   beurtenkaarten: Beurtenkaart[];
   settings: Settings;
@@ -122,6 +123,19 @@ interface DataShape {
   ) => Promise<void>;
   /** Onomkeerbaar: alleen achter een bevestiging in beeld brengen. */
   deleteProgress: (id: string) => Promise<void>;
+  /** Een opname bewaren. `id` en `created_at` worden hier gezet. */
+  addMemo: (memo: Omit<Memo, 'id' | 'created_at'>) => Promise<void>;
+  /** Weggooien zonder er een notitie van te maken. Onomkeerbaar. */
+  deleteMemo: (id: string) => Promise<void>;
+  /**
+   * De memo uitwerken: de notitie erbij, de memo weg — in één opslag.
+   *
+   * Dat is geen nettigheid maar de kern: zouden dit twee opslagen zijn, dan bestaat er een
+   * moment waarop de tweede kan mislukken, en houd je een dubbele notitie of een memo die
+   * al uitgewerkt is. Dezelfde reden waarom een beurt afboeken en de les op factuur zetten
+   * één stap zijn.
+   */
+  werkMemoUit: (memoId: string, notitie: Omit<StudentProgress, 'id'>) => Promise<void>;
   /** Store a goal under its own id — a horizon holds as many as the coach wants. */
   saveGoal: (goal: PlayerGoal) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
@@ -731,6 +745,38 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     await commit({ ...store, progress: store.progress.filter((p) => p.id !== id) });
   }, [commit]);
 
+  const addMemo = useCallback(async (memo: Omit<Memo, 'id' | 'created_at'>) => {
+    const store = storeRef.current;
+    if (!store) return;
+    const entry: Memo = { ...memo, id: newId('memo'), created_at: nowISO() };
+    await commit({ ...store, memos: [...store.memos, entry] });
+  }, [commit]);
+
+  const deleteMemo = useCallback(async (id: string) => {
+    const store = storeRef.current;
+    if (!store) return;
+    await commit({ ...store, memos: store.memos.filter((m) => m.id !== id) });
+  }, [commit]);
+
+  const werkMemoUit = useCallback(async (
+    memoId: string,
+    notitie: Omit<StudentProgress, 'id'>,
+  ) => {
+    const store = storeRef.current;
+    if (!store) return;
+    const entry: StudentProgress = {
+      ...notitie,
+      id: newId('p'),
+      created_at: notitie.created_at ?? nowISO(),
+    };
+    // Eén commit: de notitie erbij en de memo weg, of geen van beide.
+    await commit({
+      ...store,
+      progress: [...store.progress, entry],
+      memos: store.memos.filter((m) => m.id !== memoId),
+    });
+  }, [commit]);
+
   const saveGoal = useCallback(async (goal: PlayerGoal) => {
     const store = storeRef.current;
     if (!store) return;
@@ -772,6 +818,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     bookings: store?.bookings ?? [],
     lessons: store?.lessons ?? [],
     progress: store?.progress ?? [],
+    memos: store?.memos ?? [],
     goals: store?.goals ?? [],
     beurtenkaarten: store?.beurtenkaarten ?? [],
     settings: store?.settings ?? { booking_end_time: '21:00', theme: 'light', language: 'nl' },
@@ -813,6 +860,9 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     addProgress,
     updateProgress,
     deleteProgress,
+    addMemo,
+    deleteMemo,
+    werkMemoUit,
     saveGoal,
     deleteGoal,
     saveSettings,
@@ -827,6 +877,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
+    addMemo, deleteMemo, werkMemoUit,
     saveGoal, deleteGoal, saveSettings, emergencyCleanup,
   ]);
 
