@@ -415,6 +415,60 @@ describe('planImport', () => {
       { name: 'Jonas', email: 'jonas@club.be', role: 'player' },
     ]);
   });
+
+  it('werkt het tarief van een bestaande trainer bij, ook zonder kolom rol', () => {
+    // Geen kolom `rol` betekent niet "dit zijn spelers" — de rol van wie er al is telt,
+    // niet wat een ontbrekende rolcel toevallig oplevert.
+    const bestaande = [
+      lid('u1', 'sofie@club.be', { name: 'Sofie Maes', role: 'coach', hourly_rate: 40 }),
+      lid('u2', 'tom@club.be', { name: 'Tom Jans', role: 'coach', hourly_rate: 40 }),
+    ];
+    const plan = planImport([
+      ['naam', 'email', 'uurtarief'],
+      ['Sofie Maes', 'sofie@club.be', '50'],
+      ['Tom Jans', 'tom@club.be', '55'],
+    ], bestaande);
+    expect(plan.fouten).toEqual([]);
+    expect(plan.waarschuwingen).toEqual([]);
+    expect(plan.bijgewerkt).toEqual([
+      { bestaand: bestaande[0], wijzigingen: { hourly_rate: 50 } },
+      { bestaand: bestaande[1], wijzigingen: { hourly_rate: 55 } },
+    ]);
+  });
+
+  it('werkt het tarief van een bestaande trainer bij bij een lege rolcel', () => {
+    const bestaande = [lid('u1', 'sofie@club.be', { name: 'Sofie Maes', role: 'coach', hourly_rate: 40 })];
+    const plan = planImport([kop, ['Sofie Maes', 'sofie@club.be', '', '', '50']], bestaande);
+    expect(plan.waarschuwingen).toEqual([]);
+    expect(plan.bijgewerkt).toEqual([
+      { bestaand: bestaande[0], wijzigingen: { hourly_rate: 50 } },
+    ]);
+  });
+
+  it('geeft geen tariefwaarschuwing bij een rij die toch al wordt afgekeurd', () => {
+    const bestaande = [
+      lid('u1', 'x@club.be', { name: 'Iemand' }),
+      lid('u2', 'x@club.be', { name: 'Iemand Anders' }),
+    ];
+    const plan = planImport([kop, ['A', 'x@club.be', 'speler', '', '45']], bestaande);
+    expect(plan.fouten).toEqual([
+      { regel: 2, reden: 'Er staan twee leden met dit adres in de club; los dat eerst op in Beheer.' },
+    ]);
+    expect(plan.waarschuwingen).toEqual([]);
+  });
+
+  it('waarschuwt bij twee nieuwe rijen met dezelfde naam in hetzelfde bestand', () => {
+    const plan = planImport([
+      kop,
+      ['Jonas Peeters', 'jonas1@club.be', 'speler', '', ''],
+      ['Jonas Peeters', 'jonas2@club.be', 'speler', '', ''],
+    ], []);
+    expect(plan.nieuw).toHaveLength(2);
+    expect(plan.fouten).toEqual([]);
+    expect(plan.waarschuwingen).toEqual([
+      { regel: 3, reden: 'Er staat al een lid met deze naam; kijk even of dit niet dezelfde persoon is.' },
+    ]);
+  });
 });
 
 describe('voorbeeldLedenCsv', () => {

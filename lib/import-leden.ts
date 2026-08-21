@@ -272,6 +272,10 @@ export function planImport(
   }
   // Waar in het bestand we een adres eerder zagen — voor de melding "staat al op regel 2".
   const gezien = new Map<string, number>();
+  // Namen die dit bestand zelf al als nieuw lid heeft goedgekeurd: twee nieuwe rijen met
+  // dezelfde naam zijn in een keuzelijst al even onherkenbaar als een nieuwe rij die een
+  // bestaande naam herhaalt, dus telt dit lijstje mee in dezelfde controle als `nameExists`.
+  const nieuweNamen = new Set<string>();
 
   for (let i = 1; i < rijen.length; i++) {
     const rij = rijen[i];
@@ -293,6 +297,21 @@ export function planImport(
       continue;
     }
     const key = normalizeEmail(email);
+
+    // Deze controle hangt aan de club, niet aan de rij, en hoort dus vóór alles wat over
+    // déze rij gaat — óók vóór `gezien.set` hieronder. Stond hij erna, dan zou een latere
+    // rij met hetzelfde adres "eerder in het bestand" te horen krijgen en verwijzen naar
+    // een regel die zelf al was afgekeurd; nu meldt elke rij die dit adres treft hetzelfde,
+    // op zichzelf staande probleem.
+    const bestaandeMetDitAdres = bekend.get(key);
+    if (bestaandeMetDitAdres && bestaandeMetDitAdres.length > 1) {
+      plan.fouten.push({
+        regel,
+        reden: 'Er staan twee leden met dit adres in de club; los dat eerst op in Beheer.',
+      });
+      continue;
+    }
+    const bestaandLid = bestaandeMetDitAdres?.[0];
 
     const eerder = gezien.get(key);
     if (eerder !== undefined) {
@@ -325,56 +344,61 @@ export function planImport(
     // komt dan gewoon door als nieuw — de eerste poging is immers nooit doorgegaan.
     gezien.set(key, regel);
 
-    if (hourly_rate !== undefined && role !== 'coach') {
-      plan.waarschuwingen.push({
-        regel,
-        reden: 'Een uurtarief hoort bij een trainer; voor een speler laat ik het weg.',
-      });
+    if (bestaandLid) {
+      // De rol van iemand die er al is, verandert de import nooit: `updateUser` sluit `role`
+      // uit van zijn type, en dat is met opzet — trainer word je in Beheer, bewust. Een
+      // bestand dat iets anders beweert, wordt afgekeurd en niet half doorgevoerd. De cel is
+      // hier bewust `rolCel` en niet `role`: een lege cel zegt niets en mag niets afkeuren.
+      if (rolCel && role !== bestaandLid.role) {
+        plan.fouten.push({
+          regel,
+          reden: 'Staat al in de club met een andere rol; dat wijzig je in Beheer.',
+        });
+        continue;
+      }
     }
+
+    // De rol waarop het tarief beoordeeld wordt: voor een bestaand lid is dat zíjn rol, niet
+    // wat een lege of ontbrekende rolcel toevallig oplevert. `leesRol('')` geeft altijd
+    // 'player' terug — zonder deze correctie leek een bestand zonder kolom `rol` elke
+    // bestaande trainer een speler te maken, en verdween zijn tarief geruisloos. Voor een
+    // écht nieuw lid is er geen bestaande rol, en beslist het bestand dus zoals voorheen.
+    const effectieveRol = bestaandLid?.role ?? role;
 
     // Een leeg optioneel veld hoort niet als sleutel met `undefined` in het object te staan:
     // dat is het verschil tussen "niet ingevuld" en "leeggemaakt", en de tests zien het.
     // Het adres komt genormaliseerd binnen: zo niet, dan komt "JONAS@Club.be" in willekeurige
     // kapitalisatie in de databank terecht, en mist elke latere opzoeker die zelf niet
     // normaliseert (een Supabase `eq('email', …)`, de koppeling met een login) dit lid.
-    const lid: Omit<User, 'id'> = { name: naam, email: key, role };
+    const lid: Omit<User, 'id'> = { name: naam, email: key, role: effectieveRol };
     const phone = normalizePhone(cel(kolommen.telefoon));
     if (phone) lid.phone = phone;
-    if (hourly_rate !== undefined && role === 'coach') lid.hourly_rate = hourly_rate;
+    if (hourly_rate !== undefined && effectieveRol === 'coach') lid.hourly_rate = hourly_rate;
 
-    const bestaandeMetDitAdres = bekend.get(key);
-    if (bestaandeMetDitAdres && bestaandeMetDitAdres.length > 1) {
-      plan.fouten.push({
+    // Pas hier waarschuwen, ná elke `continue` hierboven: een rij die toch al wordt
+    // afgekeurd (dubbel adres, verkeerde rol) mag niet ook nog "kijk het tarief na" te horen
+    // krijgen over een regel die sowieso niet wordt overgenomen.
+    if (hourly_rate !== undefined && effectieveRol !== 'coach') {
+      plan.waarschuwingen.push({
         regel,
-        reden: 'Er staan twee leden met dit adres in de club; los dat eerst op in Beheer.',
+        reden: 'Een uurtarief hoort bij een trainer; voor een speler laat ik het weg.',
       });
-      continue;
     }
-    const bestaandLid = bestaandeMetDitAdres?.[0];
 
     if (!bestaandLid) {
       // Twee echte naamgenoten kunnen bestaan — dat hard weigeren zou te streng zijn — maar
       // in elke latere keuzelijst zijn ze niet meer uit elkaar te houden, dus de trainer
       // krijgt het te zien vóór hij bevestigt, net als bij `canCreateName` in lib/students.
-      if (nameExists(bestaande, naam)) {
+      // Ook een naam die dit bestand zelf al eerder goedkeurde telt mee: een import van
+      // 200 rijen is juist de plek waar twee identieke, nog onbekende namen ontstaan.
+      if (nameExists(bestaande, naam) || nieuweNamen.has(normalizeName(naam))) {
         plan.waarschuwingen.push({
           regel,
           reden: 'Er staat al een lid met deze naam; kijk even of dit niet dezelfde persoon is.',
         });
       }
+      nieuweNamen.add(normalizeName(naam));
       plan.nieuw.push(lid);
-      continue;
-    }
-
-    // De rol van iemand die er al is, verandert de import nooit: `updateUser` sluit `role`
-    // uit van zijn type, en dat is met opzet — trainer word je in Beheer, bewust. Een
-    // bestand dat iets anders beweert, wordt afgekeurd en niet half doorgevoerd. De cel is
-    // hier bewust `rolCel` en niet `role`: een lege cel zegt niets en mag niets afkeuren.
-    if (rolCel && role !== bestaandLid.role) {
-      plan.fouten.push({
-        regel,
-        reden: 'Staat al in de club met een andere rol; dat wijzig je in Beheer.',
-      });
       continue;
     }
 
