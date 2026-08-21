@@ -1,7 +1,7 @@
 // In-memory mock backend, persisted to AsyncStorage (localStorage on web).
 // Same shape the Supabase layer will later return, so screens don't change.
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Beurtenkaart, Booking, Court, Lesson, PlayerGoal, StudentProgress, User, Settings } from '../lib/types';
+import type { Beurtenkaart, Booking, Court, Lesson, Memo, PlayerGoal, StudentProgress, User, Settings } from '../lib/types';
 import {
   seedUsers, seedCourts, seedBookings, seedLessons, seedProgress, defaultSettings,
 } from '../lib/seed';
@@ -18,6 +18,7 @@ export interface StoreData {
   beurtenkaarten: Beurtenkaart[];
   lessons: Lesson[];
   progress: StudentProgress[];
+  memos: Memo[];
   goals: PlayerGoal[];
   settings: Settings;
   /** Which shipped lesson catalogues have already been added, so a deleted
@@ -33,6 +34,7 @@ function freshSeed(): StoreData {
     beurtenkaarten: [],
     lessons: [...seedLessons],
     progress: [...seedProgress],
+    memos: [],
     goals: [],
     settings: { ...defaultSettings },
     installed_catalogues: [],
@@ -53,6 +55,8 @@ function withDefaults(data: StoreData): StoreData {
     beurtenkaarten: data.beurtenkaarten ?? [],
     lessons: data.lessons ?? [],
     progress: data.progress ?? [],
+    // Een opslag van vóór de memo's heeft dit veld niet; leeg is dan het goede antwoord.
+    memos: data.memos ?? [],
     goals: data.goals ?? [],
     settings: { ...defaultSettings, ...data.settings },
   };

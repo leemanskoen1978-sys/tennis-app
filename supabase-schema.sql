@@ -128,6 +128,24 @@ create table if not exists student_progress (
 
 create index if not exists student_progress_student_idx on student_progress (student_id);
 
+-- Spraakmemo's: ruw materiaal dat een trainer op de baan inspreekt en later uitwerkt.
+-- De audio staat als data-URL in de rij, net als bij student_progress.voice_memo_uri. Dat
+-- mag hier omdat een memo tijdelijk is: uitwerken verwijdert hem. Wordt dat ooit anders,
+-- dan hoort de audio in Supabase Storage en niet meer hier.
+create table if not exists memos (
+  id text primary key,
+  student_id text not null references users(id) on delete cascade,
+  coach_id text not null references users(id) on delete cascade,
+  -- De les mag verdwijnen zonder de memo mee te nemen: wat er over een speler gezegd is,
+  -- hoort niet weg te vallen omdat een boeking geschrapt wordt.
+  booking_id text references bookings(id) on delete set null,
+  audio_uri text not null,
+  duration_ms int not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists memos_coach_idx on memos (coach_id);
+
 create table if not exists player_goals (
   id text primary key,
   student_id text not null references users(id) on delete cascade,
@@ -257,6 +275,7 @@ alter table courts enable row level security;
 alter table bookings enable row level security;
 alter table lessons enable row level security;
 alter table student_progress enable row level security;
+alter table memos enable row level security;
 alter table player_goals enable row level security;
 alter table beurtenkaarten enable row level security;
 alter table club_settings enable row level security;
@@ -352,6 +371,16 @@ create policy progress_select on student_progress for select
 drop policy if exists progress_write on student_progress;
 create policy progress_write on student_progress for all
   to authenticated using (is_coach()) with check (is_coach());
+
+-- Een memo is ruw materiaal, geen mededeling: een speler ziet zijn memo's níét. Wat hij te
+-- zien krijgt, is de notitie die de trainer eruit maakt. En een trainer ziet alleen zijn
+-- eigen memo's — de opname van een collega is niet aan hem.
+drop policy if exists memos_select on memos;
+create policy memos_select on memos for select
+  to authenticated using (coach_id = app_user_id());
+drop policy if exists memos_write on memos;
+create policy memos_write on memos for all
+  to authenticated using (coach_id = app_user_id()) with check (coach_id = app_user_id());
 
 drop policy if exists goals_select on player_goals;
 create policy goals_select on player_goals for select

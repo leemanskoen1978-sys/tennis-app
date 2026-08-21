@@ -21,7 +21,7 @@ import type { StoreData } from './mockStore';
 import { defaultSettings } from '../lib/seed';
 import { aanmeldUitkomst, type AanmeldUitkomst } from '../lib/wachtwoord';
 import type {
-  Beurtenkaart, Booking, Court, Lesson, PlayerGoal, Settings, StudentProgress, User,
+  Beurtenkaart, Booking, Court, Lesson, Memo, PlayerGoal, Settings, StudentProgress, User,
 } from '../lib/types';
 
 /** De tabelnaam in de databank bij elke verzameling in de app. */
@@ -33,6 +33,7 @@ const TABLES: Record<SyncTable, string> = {
   progress: 'student_progress',
   goals: 'player_goals',
   beurtenkaarten: 'beurtenkaarten',
+  memos: 'memos',
 };
 
 type Row = Record<string, unknown>;
@@ -69,7 +70,7 @@ async function selectAll<T>(table: string, drop: string[] = HOUSEKEEPING): Promi
 
 /** Alles ophalen wat deze gebruiker mag zien. */
 export async function loadFromSupabase(): Promise<StoreData> {
-  const [users, courts, bookings, lessons, progress, goals, beurtenkaarten] = await Promise.all([
+  const [users, courts, bookings, lessons, progress, goals, beurtenkaarten, memos] = await Promise.all([
     selectAll<User>('users'),
     selectAll<Court>('courts'),
     selectAll<Booking>('bookings'),
@@ -78,6 +79,8 @@ export async function loadFromSupabase(): Promise<StoreData> {
     selectAll<StudentProgress>('student_progress', ['auth_id']),
     selectAll<PlayerGoal>('player_goals'),
     selectAll<Beurtenkaart>('beurtenkaarten', ['auth_id']),
+    // `created_at` hoort hier wél bij de app: de uitwerklijst zet de oudste bovenaan.
+    selectAll<Memo>('memos', ['auth_id']),
   ]);
 
   const [settingsRow, catalogueRows] = await Promise.all([
@@ -97,6 +100,7 @@ export async function loadFromSupabase(): Promise<StoreData> {
     progress,
     goals,
     beurtenkaarten,
+    memos,
     // De club heeft één rij instellingen; ontbrekende velden vallen terug op de standaard,
     // zodat een nieuw veld geen lege plek in een scherm oplevert.
     settings: { ...defaultSettings, ...stored },

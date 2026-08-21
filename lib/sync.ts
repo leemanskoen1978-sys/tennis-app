@@ -14,12 +14,13 @@
 // verdwijnen in plaats van hem door te geven.
 
 import type {
-  Beurtenkaart, Booking, Court, Lesson, PlayerGoal, Settings, StudentProgress, User,
+  Beurtenkaart, Booking, Court, Lesson, Memo, PlayerGoal, Settings, StudentProgress, User,
 } from './types';
 
 /** De verzamelingen die als rijen in een tabel leven. */
 export type SyncTable =
-  | 'users' | 'courts' | 'bookings' | 'lessons' | 'progress' | 'goals' | 'beurtenkaarten';
+  | 'users' | 'courts' | 'bookings' | 'lessons' | 'progress' | 'goals' | 'beurtenkaarten'
+  | 'memos';
 
 /** Alles wat een rij moet hebben om bij te werken te zijn. */
 interface Row {
@@ -54,6 +55,7 @@ export interface SyncableStore {
   progress: StudentProgress[];
   goals: PlayerGoal[];
   beurtenkaarten: Beurtenkaart[];
+  memos: Memo[];
   settings: Settings;
   installed_catalogues?: string[];
 }
@@ -112,7 +114,7 @@ export function diffStores(
 ): StoreChange {
   const before: SyncableStore = previous ?? {
     users: [], courts: [], bookings: [], lessons: [], progress: [], goals: [],
-    beurtenkaarten: [], settings: next.settings, installed_catalogues: [],
+    beurtenkaarten: [], memos: [], settings: next.settings, installed_catalogues: [],
   };
 
   const tables: TableChange[] = [
@@ -123,6 +125,7 @@ export function diffStores(
     changeFor('progress', before.progress, next.progress),
     changeFor('goals', before.goals, next.goals),
     changeFor('beurtenkaarten', before.beurtenkaarten, next.beurtenkaarten),
+    changeFor('memos', before.memos, next.memos),
   ].filter((c) => c.upsert.length > 0 || c.remove.length > 0);
 
   const settings = previous === null || !sameRow(before.settings, next.settings)
