@@ -1,4 +1,7 @@
-import { leesRol, leesUurtarief, leesKopregel, LEDEN_KOPPEN, planImport } from './import-leden';
+import {
+  leesRol, leesUurtarief, leesKopregel, LEDEN_KOPPEN, planImport, voorbeeldLedenCsv,
+} from './import-leden';
+import { parseCsv } from './csv';
 import type { User } from './types';
 
 describe('leesRol', () => {
@@ -411,5 +414,18 @@ describe('planImport', () => {
     expect(plan.nieuw).toEqual([
       { name: 'Jonas', email: 'jonas@club.be', role: 'player' },
     ]);
+  });
+});
+
+describe('voorbeeldLedenCsv', () => {
+  it('levert een bestand op dat de import zelf zonder klachten leest', () => {
+    const plan = planImport(parseCsv(voorbeeldLedenCsv()), []);
+    expect(plan.fouten).toEqual([]);
+    expect(plan.nieuw).toHaveLength(2);
+  });
+
+  it('toont een speler en een trainer, zodat beide vormen te zien zijn', () => {
+    const plan = planImport(parseCsv(voorbeeldLedenCsv()), []);
+    expect(plan.nieuw.map((u) => u.role)).toEqual(['player', 'coach']);
   });
 });

@@ -386,3 +386,16 @@ export function planImport(
 
   return plan;
 }
+
+/**
+ * Het voorbeeldbestand. Twee regels en niet één: een speler zonder tarief en een trainer
+ * mét, zodat een trainer ziet dat een lege cel gewoon mag. Puntkomma's, want dat is wat
+ * Nederlandse Excel zelf schrijft en dus wat er straks terugkomt.
+ */
+export function voorbeeldLedenCsv(): string {
+  return [
+    LEDEN_KOPPEN.join(';'),
+    'Jonas Peeters;jonas@voorbeeld.be;speler;0470 12 34 56;',
+    'Sofie Maes;sofie@voorbeeld.be;trainer;;45',
+  ].join('\n');
+}
