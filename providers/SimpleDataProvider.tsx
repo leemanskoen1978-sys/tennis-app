@@ -1,11 +1,12 @@
 import React, {
   createContext, useContext, useEffect, useState, useCallback, useMemo, useRef,
 } from 'react';
+import { Platform } from 'react-native';
 import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
 import { newId, type StoreData } from './mockStore';
 import { backend, type AuthMode } from './backend';
-import type { AanmeldUitkomst } from '../lib/wachtwoord';
+import { isHerstelHash, type AanmeldUitkomst } from '../lib/wachtwoord';
 import type { AuthGebeurtenis } from './supabaseStore';
 import { installCatalogue } from '../lib/catalogue';
 import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
@@ -165,12 +166,24 @@ function refusedSeriesNotice(refused: number, total: number, method: PaymentMeth
     + 'Je vindt ze in Beheer → Betalingen.';
 }
 
+/**
+ * Duidt de URL bij het opstarten al op een herstellink? Nodig als aanvulling op het
+ * `'herstel'`-event van `onAuthChange` hieronder: dat event vuurt maar één keer, vlak na het
+ * openen van de link. Ververst iemand de pagina daarna — vóór hij een wachtwoord koos — dan
+ * is dat event al voorbij en zou de vlag zonder deze aanvulling ineens weer op `false` staan,
+ * terwijl de sessie nog steeds een onafgemaakt herstel is.
+ */
+function herstelUitUrl(): boolean {
+  return Platform.OS === 'web' && typeof window !== 'undefined' && !!window.location
+    && isHerstelHash(window.location.hash);
+}
+
 export function SimpleDataProvider({ children }: { children: React.ReactNode }) {
   const [store, setStore] = useState<StoreData | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [herstelBezig, setHerstelBezig] = useState<boolean>(false);
+  const [herstelBezig, setHerstelBezig] = useState<boolean>(herstelUitUrl);
 
   // Elke actie leest hieruit in plaats van uit de snapshot van zijn render: twee snelle
   // klikken achter elkaar schrijven anders allebei dezelfde oude store terug en wist de
@@ -282,6 +295,10 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       // De sessie van een herstellink is een echte sessie: gewoon meenemen in het ophalen
       // hieronder, net als elke andere wisseling. Alleen de vlag hierboven is nieuw.
       if (wat === 'herstel') setHerstelBezig(true);
+      // Een weggevallen sessie (uitloggen, of een token dat niet meer te verlengen was) mag
+      // de vlag niet laten staan: anders blijft de indeling deze gebruiker naar
+      // /nieuw-wachtwoord sturen terwijl er geen sessie meer is om iets in op te slaan.
+      if (wat === 'weg') setHerstelBezig(false);
       void start();
     });
 

@@ -123,6 +123,13 @@ function Root() {
     return <Redirect href="/nieuw-wachtwoord" />;
   }
 
+  // De spiegelregel: is het wachtwoord gezet (de vlag staat weer uit) en sta je nog op dit
+  // scherm, dan is er niets meer te doen — verder naar de hub. Zonder deze regel bleef het
+  // scherm na een gelukte wijziging gewoon staan; niets in de indeling haalde je er weg.
+  if (!herstelBezig && currentUser && segments[0] === 'nieuw-wachtwoord') {
+    return <Redirect href="/" />;
+  }
+
   // Without a tab bar every screen is directly linkable, so the guard lives here instead
   // of in a tabs layout.
   if (!currentUser && segments[0] !== 'login') {

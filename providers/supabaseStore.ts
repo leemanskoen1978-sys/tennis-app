@@ -208,18 +208,25 @@ export async function signOut(): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-/** Wat er met de login gebeurde. 'herstel' is de klik op een link uit een herstelmail. */
-export type AuthGebeurtenis = 'herstel' | 'anders';
+/**
+ * Wat er met de login gebeurde.
+ *  - 'herstel': de klik op een link uit een herstelmail.
+ *  - 'weg': de sessie is verdwenen — uitgelogd, of een token dat niet meer te verlengen was.
+ *  - 'anders': elke andere wisseling (inloggen, een ververste sessie bij het opstarten, …).
+ */
+export type AuthGebeurtenis = 'herstel' | 'weg' | 'anders';
 
 /**
  * Roept terug bij elke wisseling van login, ook bij het herstellen van een oude sessie.
  *
  * Geeft het soort gebeurtenis mee — niet de sessie zelf: de app hoeft alleen te weten of
- * dit een herstellink was, niet wat er precies in die sessie zit.
+ * dit een herstellink was of een weggevallen sessie, niet wat er precies in die sessie zit.
  */
 export function onAuthChange(handler: (wat: AuthGebeurtenis) => void): () => void {
   const { data } = supabase.auth.onAuthStateChange((event) => {
-    handler(event === 'PASSWORD_RECOVERY' ? 'herstel' : 'anders');
+    const wat: AuthGebeurtenis = event === 'PASSWORD_RECOVERY' ? 'herstel'
+      : event === 'SIGNED_OUT' ? 'weg' : 'anders';
+    handler(wat);
   });
   return () => data.subscription.unsubscribe();
 }

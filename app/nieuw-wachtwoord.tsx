@@ -5,7 +5,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { useT } from '../lib/i18n';
-import { controleerWachtwoord } from '../lib/wachtwoord';
+import { controleerWachtwoord, magNieuwWachtwoordVersturen } from '../lib/wachtwoord';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
 
@@ -19,7 +19,7 @@ import { spacing, typography } from '../constants/theme';
  */
 export default function NieuwWachtwoord(): React.JSX.Element {
   const t = useT();
-  const { zetNieuwWachtwoord } = useSimpleData();
+  const { zetNieuwWachtwoord, logout } = useSimpleData();
   const [wachtwoord, setWachtwoord] = useState<string>('');
   const [herhaling, setHerhaling] = useState<string>('');
   const [melding, setMelding] = useState<string | null>(null);
@@ -79,10 +79,22 @@ export default function NieuwWachtwoord(): React.JSX.Element {
         <Button
           label={bezig ? t('Bezig…') : t('Wachtwoord opslaan')}
           variant="primary"
-          disabled={bezig || wachtwoord.length === 0 || herhaling.length === 0}
+          disabled={bezig || !magNieuwWachtwoordVersturen(wachtwoord, herhaling)}
           onPress={() => { void verstuur(); }}
           style={styles.knop}
         />
+
+        {/* De uitweg voor wie hier niets meer mee wil, of wiens sessie is weggevallen (een
+            verlopen token bijvoorbeeld): uitloggen zet de herstelvlag zelf uit, via dezelfde
+            `onAuthChange` die ook een gewone uitlog-actie afhandelt. */}
+        <Text
+          style={styles.terug}
+          accessibilityRole="button"
+          accessibilityLabel={t('Terug naar inloggen')}
+          onPress={() => { void logout(); }}
+        >
+          {t('Terug naar inloggen')}
+        </Text>
       </Card>
     </Screen>
   );
@@ -115,4 +127,11 @@ const styles = StyleSheet.create({
   },
   melding: { marginTop: spacing.md, fontSize: 14, color: tennisColors.danger },
   knop: { marginTop: spacing.lg },
+  terug: {
+    marginTop: spacing.md,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+    color: tennisColors.primary,
+  },
 });
