@@ -710,16 +710,25 @@ export const EN: Record<string, string> = {
   'Voorbeeldbestand downloaden': 'Download a sample file',
   'Bestand kiezen': 'Choose a file',
   'Plak hier de kolommen uit Excel': 'Paste the columns from Excel here',
-  'naam;email;rol': 'naam;email;rol',
   'Nakijken': 'Check',
+  'Bezig met importeren…': 'Importing…',
+  'Lid {klaar} van {totaal}.': 'Member {klaar} of {totaal}.',
+  'Dit kan even duren. Blijf op dit scherm tot het klaar is.':
+    'This can take a while. Stay on this screen until it is done.',
+  'Dit bestand kan niet gebruikt worden': 'This file cannot be used',
   'Dit gaat er gebeuren': 'This is what will happen',
-  '{nieuw} nieuw, {bijgewerkt} bijgewerkt, {fouten} fout':
-    '{nieuw} new, {bijgewerkt} updated, {fouten} skipped',
-  'Nieuw': 'New',
-  'Bijwerken': 'Update',
+  'Resultaat': 'Result',
+  '{nieuw} nieuw, {bijgewerkt} bijgewerkt': '{nieuw} new, {bijgewerkt} updated',
+  '1 fout': '1 error',
+  '{n} fouten': '{n} errors',
+  'Nieuw lid: {naam} — {email}': 'New member: {naam} — {email}',
+  // 'Bijgewerkt: {naam} — {velden}' vult `{velden}` met vertaalde veldnamen als 'Naam',
+  // 'Telefoonnummer' en 'Uurtarief' (zie `VELD_NAMEN` in lib/import-leden.ts) — die drie
+  // staan al hierboven bij de losse woorden, dus hoeven hier niet nog eens.
+  'Bijgewerkt: {naam} — {velden}': 'Updated: {naam} — {velden}',
   'Deze regels worden overgeslagen': 'These rows are skipped',
   'Kijk deze regels even na': 'Have a look at these rows',
-  ' — {aantal} om na te kijken': ' — {aantal} to check',
+  '{aantal} om na te kijken': '{aantal} to check',
   'Er staat al een lid met deze naam; kijk even of dit niet dezelfde persoon is.':
     'There is already a member with this name; check whether this is the same person.',
   'Een uurtarief hoort bij een trainer; voor een speler laat ik het weg.':
@@ -732,12 +741,13 @@ export const EN: Record<string, string> = {
     'These columns appear twice; only the first one is read: {koppen}',
   'Regel {regel}': 'Row {regel}',
   'Importeren': 'Import',
-  'Bezig…': 'Working…',
   'Ander bestand': 'Another file',
+  'Nieuwe import': 'New import',
   '{toegevoegd} toegevoegd en {bijgewerkt} bijgewerkt.':
     '{toegevoegd} added and {bijgewerkt} updated.',
-  '{toegevoegd} toegevoegd, {bijgewerkt} bijgewerkt, {mislukt} mislukt. Probeer het bestand opnieuw — wie er al staat, komt er niet dubbel bij.':
-    '{toegevoegd} added, {bijgewerkt} updated, {mislukt} failed. Try the file again — nobody already there gets added twice.',
+  '{toegevoegd} toegevoegd, {bijgewerkt} bijgewerkt, {mislukt} mislukt. Kijk de fouten hieronder na — wie er al staat, komt er niet dubbel bij als je het opnieuw probeert.':
+    '{toegevoegd} added, {bijgewerkt} updated, {mislukt} failed. Check the errors below — nobody '
+    + 'already there gets added twice if you try again.',
 
   // --- redenen waarom een regel wordt overgeslagen -------------------------
   'Dit bestand is leeg.': 'This file is empty.',
@@ -748,6 +758,12 @@ export const EN: Record<string, string> = {
   'Dit is geen geldig e-mailadres.': 'This is not a valid email address.',
   'Staat al in de club met een andere rol; dat wijzig je in Beheer.':
     'Already in the club with a different role; change that in Admin.',
+  'Dit adres staat eerder in het bestand, op regel {vorigeRegel}.':
+    'This address appears earlier in the file, on row {vorigeRegel}.',
+  'Onbekende rol "{rol}". Kies speler, trainer of ouder.':
+    'Unknown role "{rol}". Choose speler, trainer or ouder.',
+  'Het uurtarief "{tarief}" is geen geldig bedrag.':
+    'The hourly rate "{tarief}" is not a valid amount.',
 
   // --- eerste keer inloggen -----------------------------------------------
   'Eerste keer hier? Stel je wachtwoord in': 'First time here? Set your password',
