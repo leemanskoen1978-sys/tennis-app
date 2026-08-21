@@ -11,6 +11,7 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { useT, type Translate } from '../lib/i18n';
+import { controleerWachtwoord, gaatOverEenBestaandAccount } from '../lib/wachtwoord';
 
 type Role = 'player' | 'coach' | 'parent';
 
@@ -36,48 +37,82 @@ function roleBadgeProps(t: Translate, role: string): { label: string; color?: st
 /**
  * Inloggen met e-mailadres en wachtwoord — de weg zodra de club een databank heeft.
  *
- * Aanmelden staat op hetzelfde scherm en niet achter een aparte pagina: een speler die de
- * trainer al heeft ingevoerd, moet zijn account nog één keer zelf aanmaken, en dat is geen
- * tweede reis waard. Wie zich aanmeldt met een e-mailadres dat de trainer al kende, krijgt
- * diens bestaande lessen en dossier mee — dat koppelen gebeurt in de databank.
+ * Drie standen op één scherm, en dat is met opzet. Een speler die de trainer al heeft
+ * ingevoerd, bestáát: hij heeft lessen, een beurtenkaart en een dossier, en mist alleen nog
+ * een wachtwoord. "Maak een account aan" is voor hem een leugen en "eerste keer hier" niet.
+ * Onder water is het hetzelfde: `signUp` maakt de login, en de trigger `link_auth_user` in
+ * de databank hangt hem aan de rij met datzelfde adres.
  */
+type Stand = 'inloggen' | 'eerste' | 'aanmelden';
+
 function WachtwoordLogin(): React.JSX.Element {
   const t = useT();
   const { signIn, signUp } = useSimpleData();
-  const [aanmelden, setAanmelden] = useState<boolean>(false);
+  const [stand, setStand] = useState<Stand>('inloggen');
   const [email, setEmail] = useState<string>('');
   const [wachtwoord, setWachtwoord] = useState<string>('');
+  const [herhaling, setHerhaling] = useState<string>('');
   const [naam, setNaam] = useState<string>('');
   const [melding, setMelding] = useState<string | null>(null);
   const [bezig, setBezig] = useState<boolean>(false);
 
   const klaar = email.trim().length > 0 && wachtwoord.length > 0
-    && (!aanmelden || naam.trim().length > 0);
+    && (stand !== 'aanmelden' || naam.trim().length > 0)
+    && (stand !== 'eerste' || herhaling.length > 0);
+
+  const wissel = (naarStand: Stand): void => {
+    setStand(naarStand);
+    setMelding(null);
+    setHerhaling('');
+  };
 
   const verstuur = async (): Promise<void> => {
     if (!klaar || bezig) return;
-    setBezig(true);
     setMelding(null);
+
+    if (stand === 'eerste') {
+      const klacht = controleerWachtwoord(wachtwoord, herhaling);
+      if (klacht) { setMelding(t(klacht)); return; }
+    }
+
+    setBezig(true);
     try {
-      if (aanmelden) {
+      if (stand === 'inloggen') {
+        await signIn(email, wachtwoord);
+      } else if (stand === 'eerste') {
+        // Geen naam: die staat al in de ledenlijst en hoort van de trainer te blijven.
+        // Is dit adres onbekend, dan valt de databank terug op het deel vóór het apenstaartje.
+        await signUp(email, wachtwoord, '');
+        setMelding(t('Klaar. Log in met je nieuwe wachtwoord.'));
+        setStand('inloggen');
+      } else {
         await signUp(email, wachtwoord, naam);
         // Staat "bevestig je e-mailadres" aan in Supabase, dan gebeurt er nu nog niets
         // zichtbaars; zonder dit bericht lijkt de knop kapot.
         setMelding(t('Account aangemaakt. Kijk in je mailbox als er om bevestiging gevraagd wordt.'));
-      } else {
-        await signIn(email, wachtwoord);
       }
     } catch (e: unknown) {
-      setMelding(e instanceof Error ? e.message : t('Inloggen mislukt.'));
+      const ruw = e instanceof Error ? e.message : '';
+      // De belangrijkste fout van dit scherm: iemand die vorig seizoen al een wachtwoord
+      // koos en dat vergeten is. Die hoort geen Engelse databankmelding te lezen.
+      setMelding(
+        stand !== 'inloggen' && gaatOverEenBestaandAccount(ruw)
+          ? t('Er bestaat al een wachtwoord voor dit adres. Log gewoon in.')
+          : (ruw || t('Inloggen mislukt.')),
+      );
     } finally {
       setBezig(false);
     }
   };
 
+  const knopLabel = stand === 'inloggen'
+    ? t('Inloggen')
+    : stand === 'eerste' ? t('Wachtwoord instellen') : t('Account aanmaken');
+
   return (
     <View style={styles.listInner}>
       <Card>
-        {aanmelden ? (
+        {stand === 'aanmelden' ? (
           <>
             <Text style={styles.label}>{t('Naam')}</Text>
             <TextInput
@@ -111,16 +146,35 @@ function WachtwoordLogin(): React.JSX.Element {
           placeholder={t('Minstens zes tekens')}
           placeholderTextColor={tennisColors.textMuted}
           secureTextEntry
-          autoComplete={aanmelden ? 'new-password' : 'current-password'}
+          autoComplete={stand === 'inloggen' ? 'current-password' : 'new-password'}
           onSubmitEditing={() => {
             void verstuur();
           }}
         />
 
+        {stand === 'eerste' ? (
+          <>
+            {/* Twee keer, want een typefout hier sluit je buiten zonder weg terug. */}
+            <Text style={styles.label}>{t('Wachtwoord nog eens')}</Text>
+            <TextInput
+              style={styles.input}
+              value={herhaling}
+              onChangeText={setHerhaling}
+              placeholder={t('Dezelfde als hierboven')}
+              placeholderTextColor={tennisColors.textMuted}
+              secureTextEntry
+              autoComplete="new-password"
+              onSubmitEditing={() => {
+                void verstuur();
+              }}
+            />
+          </>
+        ) : null}
+
         {melding ? <Text style={styles.melding}>{melding}</Text> : null}
 
         <Button
-          label={aanmelden ? t('Account aanmaken') : t('Inloggen')}
+          label={knopLabel}
           variant="primary"
           disabled={!klaar || bezig}
           onPress={() => {
@@ -128,17 +182,39 @@ function WachtwoordLogin(): React.JSX.Element {
           }}
           style={styles.knop}
         />
-        <Text
-          style={styles.wissel}
-          accessibilityRole="button"
-          accessibilityLabel={aanmelden ? t('Ik heb al een account') : t('Ik heb nog geen account')}
-          onPress={() => {
-            setAanmelden((aan) => !aan);
-            setMelding(null);
-          }}
-        >
-          {aanmelden ? t('Ik heb al een account') : t('Nog geen account? Meld je aan')}
-        </Text>
+
+        {stand !== 'eerste' ? (
+          <Text
+            style={styles.wissel}
+            accessibilityRole="button"
+            accessibilityLabel={t('Eerste keer hier? Stel je wachtwoord in')}
+            onPress={() => wissel('eerste')}
+          >
+            {t('Eerste keer hier? Stel je wachtwoord in')}
+          </Text>
+        ) : null}
+
+        {stand !== 'inloggen' ? (
+          <Text
+            style={styles.wissel}
+            accessibilityRole="button"
+            accessibilityLabel={t('Ik heb al een account')}
+            onPress={() => wissel('inloggen')}
+          >
+            {t('Ik heb al een account')}
+          </Text>
+        ) : null}
+
+        {stand !== 'aanmelden' ? (
+          <Text
+            style={styles.wissel}
+            accessibilityRole="button"
+            accessibilityLabel={t('Ik sta nog niet bij de club')}
+            onPress={() => wissel('aanmelden')}
+          >
+            {t('Ik sta nog niet bij de club')}
+          </Text>
+        ) : null}
       </Card>
     </View>
   );
