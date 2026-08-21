@@ -291,4 +291,77 @@ describe('parseCsv', () => {
     expect(parseCsv('')).toEqual([]);
     expect(parseCsv('   \n  ')).toEqual([]);
   });
+
+  it('een ongepaard aanhalingsteken achteraan een cel houdt de volgende rij heel', () => {
+    // Een lengte als "1,80"" (met het teken voor centimeter) mag de rest van het
+    // bestand niet opslokken: het aanhalingsteken staat niet aan het begin van de cel.
+    expect(parseCsv('naam;lengte\nJan;1,80"\nPiet;1,90')).toEqual([
+      ['naam', 'lengte'],
+      ['Jan', '1,80"'],
+      ['Piet', '1,90'],
+    ]);
+  });
+
+  it('een aanhalingsteken midden in een cel blijft gewoon in de tekst staan', () => {
+    expect(parseCsv('naam;bij\nJan "Jantje" Peeters;x')).toEqual([
+      ['naam', 'bij'],
+      ['Jan "Jantje" Peeters', 'x'],
+    ]);
+  });
+
+  it('een aanhalingsteken met alleen spaties ervoor telt nog als het begin van een cel', () => {
+    // Met de hand overgetypt komt er weleens een spatie na het scheidingsteken. De cel is
+    // op dat moment nog leeg op de spatie na, en wordt toch getrimd — dus mag het
+    // aanhalingsteken hier nog gewoon de cel openen.
+    expect(parseCsv('naam;bio\nJan; "De Vries; Jan"')).toEqual([
+      ['naam', 'bio'],
+      ['Jan', 'De Vries; Jan'],
+    ]);
+  });
+
+  it('een titelregel boven de kopregel verwart de scheidingsteken-detectie niet', () => {
+    expect(parseCsv('Ledenlijst 2026\nnaam,email\nJan,jan@x.be')).toEqual([
+      ['Ledenlijst 2026'],
+      ['naam', 'email'],
+      ['Jan', 'jan@x.be'],
+    ]);
+  });
+
+  it('een lege regel bovenaan het bestand verwart de scheidingsteken-detectie niet', () => {
+    expect(parseCsv('\nnaam,email\nJan,jan@x.be')).toEqual([
+      ['naam', 'email'],
+      ['Jan', 'jan@x.be'],
+    ]);
+  });
+
+  it('een regeleinde binnen een geciteerde cel blijft deel van de cel', () => {
+    // Dit is precies waarom er een tekenlus staat en geen `split('\n')`.
+    expect(parseCsv('naam;adres\nJan;"Straat 1\nGent"')).toEqual([
+      ['naam', 'adres'],
+      ['Jan', 'Straat 1\nGent'],
+    ]);
+  });
+
+  it('laat geen dwaal-CR achter in een cel die over meerdere regels loopt', () => {
+    expect(parseCsv('naam;adres\r\nJan;"Straat 1\r\nGent"')).toEqual([
+      ['naam', 'adres'],
+      ['Jan', 'Straat 1\nGent'],
+    ]);
+  });
+
+  it('een rij met meer of minder kolommen dan de kop komt door zoals hij is', () => {
+    // Opvullen of afkappen is geen zaak van de lezer — dat is regelgeving voor een latere taak.
+    expect(parseCsv('a;b;c\nd;e\nf;g;h;i')).toEqual([
+      ['a', 'b', 'c'],
+      ['d', 'e'],
+      ['f', 'g', 'h', 'i'],
+    ]);
+  });
+
+  it('trimt spaties rond een cel, want die horen niet in een naam of e-mailadres', () => {
+    expect(parseCsv('naam ; email \n Jan ; jan@x.be ')).toEqual([
+      ['naam', 'email'],
+      ['Jan', 'jan@x.be'],
+    ]);
+  });
 });

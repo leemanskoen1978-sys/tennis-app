@@ -201,36 +201,45 @@ export function toXlsx(rows: CsvRow[]): Uint8Array {
 type Scheidingsteken = ';' | ',' | '\t';
 
 /**
- * Welk scheidingsteken gebruikt dit bestand? Bepaald op de kopregel: die heeft van elke
- * kolom er precies één, dus het teken dat daar het vaakst staat is het scheidingsteken.
- * Wat tussen aanhalingstekens staat telt niet mee — een naam als "De Vries, Jan" hoort de
- * telling niet te kunnen kantelen.
+ * Welk scheidingsteken gebruikt dit bestand? Bepaald op de eerste regel die er één laat
+ * zien: die heeft van elke kolom er precies één, dus het teken dat daar het vaakst staat is
+ * het scheidingsteken. Een titelregel of een lege regel boven de kopregel telt niet mee —
+ * `parseCsv` gooit lege regels zelf ook al weg, en een titel zonder scheidingsteken erin mag
+ * de detectie niet naar de terugval duwen. Wat tussen aanhalingstekens staat telt niet mee —
+ * een naam als "De Vries, Jan" hoort de telling niet te kunnen kantelen.
  */
 function scheidingstekenVan(text: string): Scheidingsteken {
-  const eerste = text.split(/\r?\n/, 1)[0] ?? '';
-  const tellingen: Record<Scheidingsteken, number> = { ';': 0, ',': 0, '\t': 0 };
-  let inAanhaling = false;
-  for (const teken of eerste) {
-    if (teken === '"') {
-      inAanhaling = !inAanhaling;
-    } else if (!inAanhaling && (teken === ';' || teken === ',' || teken === '\t')) {
-      tellingen[teken]++;
+  for (const regel of text.split(/\r?\n/)) {
+    const tellingen: Record<Scheidingsteken, number> = { ';': 0, ',': 0, '\t': 0 };
+    let inAanhaling = false;
+    for (const teken of regel) {
+      if (teken === '"') {
+        inAanhaling = !inAanhaling;
+      } else if (!inAanhaling && (teken === ';' || teken === ',' || teken === '\t')) {
+        tellingen[teken]++;
+      }
     }
+    if (tellingen[';'] === 0 && tellingen[','] === 0 && tellingen['\t'] === 0) continue;
+    // Gelijkspel gaat naar de puntkomma: dat is wat de club aanlevert.
+    if (tellingen['\t'] > tellingen[';'] && tellingen['\t'] > tellingen[',']) return '\t';
+    if (tellingen[','] > tellingen[';']) return ',';
+    return ';';
   }
-  // Gelijkspel (of niets gevonden) gaat naar de puntkomma: dat is wat de club aanlevert.
-  if (tellingen['\t'] > tellingen[';'] && tellingen['\t'] > tellingen[',']) return '\t';
-  if (tellingen[','] > tellingen[';']) return ',';
+  // Geen enkele regel had een scheidingsteken: terugval op de puntkomma.
   return ';';
 }
 
 /**
  * Een CSV-tekst als rijen cellen. Lege regels vallen weg — een lege cel niet, want die
  * betekent "hier staat niets ingevuld" en dat is iets anders dan een kolom die er niet is.
+ * Elke cel wordt getrimd: een trainer typt weleens een spatie na een scheidingsteken, en die
+ * hoort niet mee in een naam of een e-mailadres.
  */
 export function parseCsv(text: string): string[][] {
-  // De BOM als escape geschreven, net als in lib/share.ts: zo blijft het in elke
-  // editor één zichtbaar teken in plaats van een onzichtbaar teken in een regex.
-  const schoon = text.replace(/^\uFEFF/, '');
+  // De BOM als escape geschreven, net als in lib/share.ts: zo blijft het in elke editor één
+  // onzichtbaar teken en eindigt hij niet per ongeluk als tekst. Regeleindes meteen
+  // normaliseren naar '\n' — anders overleeft een dwaal-'\r' binnen aanhalingstekens.
+  const schoon = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const scheiding = scheidingstekenVan(schoon);
   const rijen: string[][] = [];
   let rij: string[] = [];
@@ -251,9 +260,14 @@ export function parseCsv(text: string): string[][] {
       }
       continue;
     }
-    if (teken === '"') { inAanhaling = true; continue; }
+    if (teken === '"') {
+      // Een aanhalingsteken heeft alleen aan het begin van een cel zijn betekenis (RFC
+      // 4180, en zo schrijft Excel het ook); midden in een cel is het gewoon tekst. Op een
+      // spatie na leeg telt nog als "begin", want de cel wordt toch getrimd.
+      if (cel.trim() === '') { inAanhaling = true; } else { cel += teken; }
+      continue;
+    }
     if (teken === scheiding) { rij.push(cel); cel = ''; continue; }
-    if (teken === '\r') continue;
     if (teken === '\n') { rij.push(cel); rijen.push(rij); rij = []; cel = ''; continue; }
     cel += teken;
   }
