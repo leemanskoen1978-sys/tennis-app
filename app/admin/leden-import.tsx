@@ -17,15 +17,39 @@ import { spacing, typography } from '../../constants/theme';
 
 // Overleeft, anders dan React-state, een her-mount van dit scherm: een trainer die tijdens
 // een grote import wegnavigeert en terugkomt krijgt zo geen tweede lus over hetzelfde
-// bestand, ook al is de vorige `LedenImport`-instantie allang verdwenen. De luisteraars
-// hieronder zorgen dat een scherm dat intussen opnieuw opende niet voor altijd "Bezig" blijft
-// tonen: zodra de lopende lus klaar is, hoort elk gemount scherm dat.
+// bestand, ook al is de vorige `LedenImport`-instantie allang verdwenen. Voortgang en uitslag
+// staan om dezelfde reden op moduleniveau: een verse instantie heeft zelf nooit gezien wat de
+// lus op de oude instantie deed, en zou anders bij nul beginnen — met "Bezig" dat voor altijd
+// blijft staan, of een uitslag die spoorloos verdwijnt.
 let importDraait = false;
-const importKlaarLuisteraars = new Set<() => void>();
+let laatsteVoortgang: { klaar: number; totaal: number } | null = null;
+let laatsteUitslag: ImportUitslag | null = null;
 
-function meldImportKlaar(): void {
+type ImportGebeurtenis =
+  | { type: 'voortgang'; klaar: number; totaal: number }
+  | { type: 'klaar'; uitslag: ImportUitslag };
+
+const importLuisteraars = new Set<(gebeurtenis: ImportGebeurtenis) => void>();
+
+function meldVoortgang(klaar: number, totaal: number): void {
+  laatsteVoortgang = { klaar, totaal };
+  importLuisteraars.forEach((fn) => fn({ type: 'voortgang', klaar, totaal }));
+}
+
+function meldImportKlaar(uitslag: ImportUitslag): void {
   importDraait = false;
-  importKlaarLuisteraars.forEach((fn) => fn());
+  laatsteVoortgang = null;
+  laatsteUitslag = uitslag;
+  importLuisteraars.forEach((fn) => fn({ type: 'klaar', uitslag }));
+}
+
+/** Wist wat er nog van een eerdere lus in het geheugen stond. Gebeurt bij elke nieuwe stap
+ *  van de trainer (een nieuw plan tonen, of expliciet opnieuw beginnen) — zonder dit zou een
+ *  scherm dat lang daarna weer eens geopend wordt de uitslag van een allang vergeten import
+ *  nog een keer tonen. */
+function wisLaatsteUitslag(): void {
+  laatsteUitslag = null;
+  laatsteVoortgang = null;
 }
 
 /**
@@ -44,17 +68,30 @@ export default function LedenImport(): React.JSX.Element {
   const [voortgang, setVoortgang] = useState<{ klaar: number; totaal: number } | null>(null);
   const [uitkomst, setUitkomst] = useState<ImportUitslag | null>(null);
 
-  // Zie `importKlaarLuisteraars` hierboven: dit scherm kan gemount worden ná het opnieuw
-  // openen van de trainer, terwijl de lus van vóór het navigeren nog loopt op een intussen
-  // verdwenen instantie. Zonder dit effect zou "Bezig" hier voor altijd blijven staan.
   useEffect(() => {
-    const klaar = (): void => { setBezig(false); setVoortgang(null); };
-    importKlaarLuisteraars.add(klaar);
-    // Dekt de smalle kier tussen het lezen van `importDraait` hierboven (bij het aanmaken van
-    // de state) en deze registratie: liep de import intussen al af, dan is er niemand meer
-    // die het nog gaat melden, en zou dit scherm anders voor altijd op "Bezig" blijven staan.
-    if (!importDraait) klaar();
-    return () => { importKlaarLuisteraars.delete(klaar); };
+    const onGebeurtenis = (g: ImportGebeurtenis): void => {
+      if (g.type === 'voortgang') { setVoortgang({ klaar: g.klaar, totaal: g.totaal }); return; }
+      setBezig(false);
+      setVoortgang(null);
+      setUitkomst(g.uitslag);
+    };
+    importLuisteraars.add(onGebeurtenis);
+    // Hermontage tijdens, of vlak ná, een lopende import: haal op wat er al bekend is in
+    // plaats van bij nul te beginnen. Zonder dit zag een trainer die tijdens een grote
+    // import wegnavigeerde en terugkwam "Dit kan even duren" zonder teller, en las hij de
+    // uitslag niet als de lus intussen al was afgelopen op de inmiddels verdwenen instantie.
+    if (importDraait) {
+      setVoortgang(laatsteVoortgang);
+    } else if (laatsteUitslag) {
+      // Eenmalig afleveren: eenmaal getoond, hoort een latere, losse opening van dit scherm
+      // deze oude uitslag niet nog eens te zien.
+      const uitslag = laatsteUitslag;
+      laatsteUitslag = null;
+      setBezig(false);
+      setVoortgang(null);
+      setUitkomst(uitslag);
+    }
+    return () => { importLuisteraars.delete(onGebeurtenis); };
   }, []);
 
   if (currentUser?.role !== 'coach') {
@@ -81,12 +118,14 @@ export default function LedenImport(): React.JSX.Element {
   }
 
   const toonPlan = (inhoud: string): void => {
+    wisLaatsteUitslag();
     setTekst(inhoud);
     setUitkomst(null);
     setPlan(planImport(parseCsv(inhoud), users));
   };
 
   const opnieuw = (): void => {
+    wisLaatsteUitslag();
     setTekst('');
     setPlan(null);
     setUitkomst(null);
@@ -95,23 +134,49 @@ export default function LedenImport(): React.JSX.Element {
   const voerUit = async (): Promise<void> => {
     if (!plan || bezig || importDraait) return;
     importDraait = true;
+    const totaal = plan.nieuw.length + plan.bijgewerkt.length;
+    laatsteVoortgang = { klaar: 0, totaal };
     setBezig(true);
-    setVoortgang({ klaar: 0, totaal: plan.nieuw.length + plan.bijgewerkt.length });
+    setVoortgang(laatsteVoortgang);
     try {
-      const uitslag = await pasImportToe(
-        plan,
-        { addUser, updateUser },
-        (klaar, totaal) => setVoortgang({ klaar, totaal }),
-      );
-      setUitkomst(uitslag);
+      const uitslag = await pasImportToe(plan, { addUser, updateUser }, meldVoortgang);
       // Alleen bij volledig succes mag het plakvak leeg: bij een mislukking staat er op web
       // weliswaar een bestand dat opnieuw te kiezen is, maar op een telefoon was er nooit een
       // bestand — alleen deze geplakte tekst — en het klembord kan intussen iets anders bevatten.
       if (uitslag.mislukt === 0) setTekst('');
-    } finally {
-      meldImportKlaar();
+      meldImportKlaar(uitslag);
+    } catch (e) {
+      // `pasImportToe` vangt elke mislukking per lid zelf op en gooit dus nooit — maar mocht
+      // dat ooit veranderen, dan mag "Bezig" hier niet voor altijd blijven staan.
+      meldImportKlaar({ toegevoegd: 0, bijgewerkt: 0, mislukt: 0 });
+      throw e;
     }
   };
+
+  // Geen plan meer (bijvoorbeeld: dit scherm ving de uitslag pas op ná een her-mount, zie
+  // hierboven) maar wél een uitslag om te tonen: een kale samenvatting in plaats van de volle
+  // kaarten met fouten en waarschuwingen, want die horen bij een plan dat hier niet meer is.
+  if (uitkomst && plan === null) {
+    return (
+      <Screen scroll={false}>
+        <Card>
+          <Text style={styles.kop}>{t('Resultaat')}</Text>
+          <Text style={styles.telling}>
+            {uitkomst.mislukt > 0
+              ? t('{toegevoegd} toegevoegd, {bijgewerkt} bijgewerkt, {mislukt} mislukt.', {
+                toegevoegd: uitkomst.toegevoegd, bijgewerkt: uitkomst.bijgewerkt, mislukt: uitkomst.mislukt,
+              })
+              : t('{toegevoegd} toegevoegd en {bijgewerkt} bijgewerkt.', {
+                toegevoegd: uitkomst.toegevoegd, bijgewerkt: uitkomst.bijgewerkt,
+              })}
+          </Text>
+        </Card>
+        <Card>
+          <Button label={t('Nieuwe import')} onPress={opnieuw} />
+        </Card>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -196,7 +261,7 @@ export default function LedenImport(): React.JSX.Element {
             <Text style={styles.telling}>
               {uitkomst ? (
                 uitkomst.mislukt > 0
-                  ? t('{toegevoegd} toegevoegd, {bijgewerkt} bijgewerkt, {mislukt} mislukt. Kijk de fouten hieronder na — wie er al staat, komt er niet dubbel bij als je het opnieuw probeert.', {
+                  ? t('{toegevoegd} toegevoegd, {bijgewerkt} bijgewerkt, {mislukt} mislukt. Wie er al staat, komt er niet dubbel bij als je het opnieuw probeert.', {
                     toegevoegd: uitkomst.toegevoegd, bijgewerkt: uitkomst.bijgewerkt, mislukt: uitkomst.mislukt,
                   })
                   : t('{toegevoegd} toegevoegd en {bijgewerkt} bijgewerkt.', {
@@ -277,8 +342,11 @@ export default function LedenImport(): React.JSX.Element {
             <Card>
               {/* Deze kaart blijft ook staan ná het importeren: dit zijn precies de regels
                   die de trainer met de hand moet natrekken, en dat blijft zo ongeacht of de
-                  rest van het bestand lukte. */}
-              <Text style={styles.foutKop}>{t('Deze regels worden overgeslagen')}</Text>
+                  rest van het bestand lukte. De kop staat in de verleden tijd zodra het
+                  importeren al gebeurd is — "worden overgeslagen" klopt dan niet meer. */}
+              <Text style={styles.foutKop}>
+                {uitkomst ? t('Deze regels zijn overgeslagen') : t('Deze regels worden overgeslagen')}
+              </Text>
               {plan.fouten.map((f) => (
                 <Text key={`f-${f.regel}`} style={styles.fout}>
                   {t('Regel {regel}', { regel: f.regel })}: {t(f.reden, f.vars)}
@@ -289,7 +357,16 @@ export default function LedenImport(): React.JSX.Element {
 
           <Card>
             {uitkomst ? (
-              <Button label={t('Nieuwe import')} onPress={opnieuw} />
+              <>
+                {uitkomst.mislukt > 0 ? (
+                  // Alleen bij een mislukking: `tekst` staat nog (zie voerUit hierboven), en
+                  // dit rekent het plan gewoon opnieuw tegen de intussen bijgewerkte `users`
+                  // — zo toont het precies de leden die nog niet gelukt zijn, in plaats van
+                  // de trainer het hele bestand nog eens te laten kiezen of plakken.
+                  <Button label={t('Opnieuw proberen')} onPress={() => toonPlan(tekst)} />
+                ) : null}
+                <Button label={t('Nieuwe import')} variant="secondary" onPress={opnieuw} style={styles.knop} />
+              </>
             ) : (
               <>
                 <Button

@@ -554,6 +554,27 @@ describe('pasImportToe', () => {
     expect(uitslag).toEqual({ toegevoegd: 0, bijgewerkt: 0, mislukt: 1 });
   });
 
+  it('telt een addUser die weigert als mislukt, en gaat door met de rest', async () => {
+    // Het echte geval: `commit` in de provider gooit als de databank het schrijven weigert —
+    // niet alleen `null` omdat de opslag nog niet geladen was.
+    const plan = {
+      ...legePlan(),
+      nieuw: [
+        { name: 'Jonas', email: 'jonas@club.be', role: 'player' as const },
+        { name: 'Sofie', email: 'sofie@club.be', role: 'player' as const },
+      ],
+    };
+    const acties = {
+      addUser: async (u: Omit<User, 'id'>) => {
+        if (u.email === 'jonas@club.be') throw new Error('opslaan mislukt');
+        return { ...u, id: 'x' };
+      },
+      updateUser: async () => {},
+    };
+    const uitslag = await pasImportToe(plan, acties);
+    expect(uitslag).toEqual({ toegevoegd: 1, bijgewerkt: 0, mislukt: 1 });
+  });
+
   it('telt een updateUser die weigert als mislukt, en gaat door met de rest', async () => {
     const plan = {
       ...legePlan(),

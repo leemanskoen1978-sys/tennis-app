@@ -727,6 +727,7 @@ export const EN: Record<string, string> = {
   // staan al hierboven bij de losse woorden, dus hoeven hier niet nog eens.
   'Bijgewerkt: {naam} — {velden}': 'Updated: {naam} — {velden}',
   'Deze regels worden overgeslagen': 'These rows are skipped',
+  'Deze regels zijn overgeslagen': 'These rows were skipped',
   'Kijk deze regels even na': 'Have a look at these rows',
   '{aantal} om na te kijken': '{aantal} to check',
   'Er staat al een lid met deze naam; kijk even of dit niet dezelfde persoon is.':
@@ -743,11 +744,14 @@ export const EN: Record<string, string> = {
   'Importeren': 'Import',
   'Ander bestand': 'Another file',
   'Nieuwe import': 'New import',
+  'Opnieuw proberen': 'Try again',
   '{toegevoegd} toegevoegd en {bijgewerkt} bijgewerkt.':
     '{toegevoegd} added and {bijgewerkt} updated.',
-  '{toegevoegd} toegevoegd, {bijgewerkt} bijgewerkt, {mislukt} mislukt. Kijk de fouten hieronder na — wie er al staat, komt er niet dubbel bij als je het opnieuw probeert.':
-    '{toegevoegd} added, {bijgewerkt} updated, {mislukt} failed. Check the errors below — nobody '
-    + 'already there gets added twice if you try again.',
+  '{toegevoegd} toegevoegd, {bijgewerkt} bijgewerkt, {mislukt} mislukt.':
+    '{toegevoegd} added, {bijgewerkt} updated, {mislukt} failed.',
+  '{toegevoegd} toegevoegd, {bijgewerkt} bijgewerkt, {mislukt} mislukt. Wie er al staat, komt er niet dubbel bij als je het opnieuw probeert.':
+    '{toegevoegd} added, {bijgewerkt} updated, {mislukt} failed. Nobody already there gets added '
+    + 'twice if you try again.',
 
   // --- redenen waarom een regel wordt overgeslagen -------------------------
   'Dit bestand is leeg.': 'This file is empty.',
@@ -761,7 +765,7 @@ export const EN: Record<string, string> = {
   'Dit adres staat eerder in het bestand, op regel {vorigeRegel}.':
     'This address appears earlier in the file, on row {vorigeRegel}.',
   'Onbekende rol "{rol}". Kies speler, trainer of ouder.':
-    'Unknown role "{rol}". Choose speler, trainer or ouder.',
+    'Unknown role "{rol}". Choose player, coach or parent.',
   'Het uurtarief "{tarief}" is geen geldig bedrag.':
     'The hourly rate "{tarief}" is not a valid amount.',
 
