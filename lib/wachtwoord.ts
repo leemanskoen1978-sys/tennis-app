@@ -40,19 +40,29 @@ export function gaatOverEenBestaandAccount(melding: string): boolean {
 /** De vier standen van het loginscherm. Hier en niet in het scherm, want de regels die
  * erbij horen (wat "klaar om te versturen" betekent, welke uitkomst welke melding krijgt)
  * horen bij deze standen, niet bij de weergave ervan. */
-export type Stand = 'inloggen' | 'eerste' | 'aanmelden' | 'vergeten';
+/**
+ * De drie standen van het inlogscherm.
+ *
+ * Er waren er vier: "eerste keer hier" voor wie al in de ledenlijst stond, en "ik sta nog
+ * niet bij de club" voor wie er nog niet in stond. Dat vroeg de bezoeker om iets te weten
+ * wat hij niet kan weten — of de trainer zijn adres al had ingevoerd — terwijl het onder
+ * water hetzelfde is: `signUp` maakt de login, en de trigger `link_auth_user` hangt hem aan
+ * de rij met datzelfde adres als die bestaat. De app hoeft die vraag dus niet te stellen.
+ */
+export type Stand = 'inloggen' | 'nieuw' | 'vergeten';
 
-/** Mag er verstuurd worden? Elke stand heeft haar eigen verplichte velden: alleen `eerste`
- * vraagt een herhaling, alleen `aanmelden` vraagt een naam, en `vergeten` vraagt alleen een
- * e-mailadres — daar bestaat geen wachtwoordveld om aan te vragen. */
+/** Mag er verstuurd worden? Elke stand heeft haar eigen verplichte velden: alleen `nieuw`
+ * vraagt een herhaling, en `vergeten` vraagt alleen een e-mailadres — daar bestaat geen
+ * wachtwoordveld om aan te vragen. De naam is nooit verplicht: staat hij al in de
+ * ledenlijst, dan blijft die van de trainer gelden, en anders valt de databank terug op het
+ * deel vóór het apenstaartje. */
 export function magVersturen(
   stand: Stand,
   velden: { email: string; wachtwoord: string; herhaling: string; naam: string },
 ): boolean {
   if (stand === 'vergeten') return velden.email.trim().length > 0;
   return velden.email.trim().length > 0 && velden.wachtwoord.length > 0
-    && (stand !== 'aanmelden' || velden.naam.trim().length > 0)
-    && (stand !== 'eerste' || velden.herhaling.length > 0);
+    && (stand !== 'nieuw' || velden.herhaling.length > 0);
 }
 
 /**

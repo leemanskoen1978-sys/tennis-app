@@ -40,16 +40,19 @@ function roleBadgeProps(t: Translate, role: string): { label: string; color?: st
 /**
  * Inloggen met e-mailadres en wachtwoord — de weg zodra de club een databank heeft.
  *
- * Drie standen op één scherm, en dat is met opzet. Een speler die de trainer al heeft
- * ingevoerd, bestáát: hij heeft lessen, een beurtenkaart en een dossier, en mist alleen nog
- * een wachtwoord. "Maak een account aan" is voor hem een leugen en "eerste keer hier" niet.
- * Onder water is het hetzelfde: `signUp` maakt de login, en de trigger `link_auth_user` in
- * de databank hangt hem aan de rij met datzelfde adres.
+ * Drie standen op één scherm: inloggen, een nieuwe login maken, en een wachtwoord
+ * herstellen. Meer keuzes hoort dit scherm niet te hebben.
  *
- * `signUp` gooit geen fout meer voor een bestaand adres — dat zou verklappen wie er al lid
- * is — maar geeft de uitkomst terug (`lib/wachtwoord.ts: aanmeldUitkomst`). Dit scherm kiest
- * daarop dezelfde melding voor "eerste keer hier" én "ik sta nog niet bij de club", zodat
- * wie de verkeerde knop koos niet een ander antwoord krijgt dan wie de juiste koos.
+ * Er stonden er ooit vier. Naast "eerste keer hier" — voor wie de trainer al had ingevoerd —
+ * stond er "ik sta nog niet bij de club", voor wie er nog niet in stond. Dat vroeg de
+ * bezoeker om iets te weten wat hij niet kán weten: of zijn adres al in de ledenlijst staat.
+ * En het maakte niet uit ook, want onder water is het één handeling: `signUp` maakt de
+ * login, en de trigger `link_auth_user` hangt hem aan de rij met datzelfde adres als die
+ * bestaat — mét zijn lessen, zijn beurtenkaart en zijn dossier. Bestaat die rij niet, dan
+ * komt er een speler bij. Eén knop dus: "Nieuwe login".
+ *
+ * `signUp` gooit geen fout voor een bestaand adres — dat zou verklappen wie er al lid is —
+ * maar geeft de uitkomst terug (`lib/wachtwoord.ts: aanmeldUitkomst`).
  */
 function WachtwoordLogin(): React.JSX.Element {
   const t = useT();
@@ -79,7 +82,7 @@ function WachtwoordLogin(): React.JSX.Element {
     if (!klaar || bezigRef.current) return;
     setMelding(null);
 
-    if (stand === 'eerste') {
+    if (stand === 'nieuw') {
       const klacht = controleerWachtwoord(wachtwoord, herhaling);
       if (klacht) { setMelding({ tekst: t(klacht), soort: 'fout' }); return; }
     }
@@ -116,10 +119,11 @@ function WachtwoordLogin(): React.JSX.Element {
       if (stand === 'inloggen') {
         await signIn(email, wachtwoord);
       } else {
-        // Geen naam bij "eerste": die staat al in de ledenlijst en hoort van de trainer te
-        // blijven. Is dit adres onbekend, dan valt de databank terug op het deel vóór het
+        // De naam mag leeg zijn. Staat dit adres al in de ledenlijst, dan blijft de naam
+        // die de trainer invoerde gelden — de trigger raakt hem niet aan. Is het adres
+        // onbekend én de naam leeg, dan valt de databank terug op het deel vóór het
         // apenstaartje.
-        const uitkomst = await signUp(email, wachtwoord, stand === 'eerste' ? '' : naam);
+        const uitkomst = await signUp(email, wachtwoord, naam);
         const tekst = aanmeldMelding(uitkomst);
         if (tekst) setMelding({ tekst: t(tekst), soort: 'goed' });
         if (uitkomst === 'bestaat-al') setStand('inloggen');
@@ -152,15 +156,15 @@ function WachtwoordLogin(): React.JSX.Element {
 
   const knopLabel = stand === 'inloggen'
     ? t('Inloggen')
-    : stand === 'eerste' ? t('Wachtwoord instellen')
-    : stand === 'vergeten' ? t('Herstelmail sturen') : t('Account aanmaken');
+    : stand === 'vergeten' ? t('Herstelmail sturen')
+    : t('Wachtwoord instellen');
 
   return (
     <View style={styles.listInner}>
       <Card>
-        {stand === 'aanmelden' ? (
+        {stand === 'nieuw' ? (
           <>
-            <Text style={styles.label}>{t('Naam')}</Text>
+            <Text style={styles.label}>{t('Naam (mag leeg)')}</Text>
             <TextInput
               style={styles.input}
               value={naam}
@@ -169,6 +173,11 @@ function WachtwoordLogin(): React.JSX.Element {
               placeholderTextColor={tennisColors.textMuted}
               autoComplete="name"
             />
+            {/* Wie al in de ledenlijst staat, hoeft hier niets: zijn naam blijft zoals de
+                trainer hem invoerde. Dit veld is er voor wie nieuw is. */}
+            <Text style={styles.hint}>
+              {t('Staat je naam al in de ledenlijst, dan blijft die gewoon staan.')}
+            </Text>
           </>
         ) : null}
 
@@ -199,7 +208,7 @@ function WachtwoordLogin(): React.JSX.Element {
               onSubmitEditing={() => {
                 // Bij "eerste" staat de herhaling nog leeg: Enter springt daarheen in plaats
                 // van stil niets te doen (de knop is dan nog grijs, zonder dat te verklaren).
-                if (stand === 'eerste') {
+                if (stand === 'nieuw') {
                   herhalingRef.current?.focus();
                 } else {
                   void verstuur();
@@ -209,7 +218,7 @@ function WachtwoordLogin(): React.JSX.Element {
           </>
         ) : null}
 
-        {stand === 'eerste' ? (
+        {stand === 'nieuw' ? (
           <>
             {/* Twee keer, want een typefout hier sluit je buiten zonder weg terug. */}
             <Text style={styles.label}>{t('Wachtwoord nog eens')}</Text>
@@ -245,14 +254,14 @@ function WachtwoordLogin(): React.JSX.Element {
           style={styles.knop}
         />
 
-        {stand !== 'eerste' && stand !== 'vergeten' ? (
+        {stand === 'inloggen' ? (
           <Text
             style={styles.wissel}
             accessibilityRole="button"
-            accessibilityLabel={t('Eerste keer hier? Stel je wachtwoord in')}
-            onPress={() => wissel('eerste')}
+            accessibilityLabel={t('Nieuwe login')}
+            onPress={() => wissel('nieuw')}
           >
-            {t('Eerste keer hier? Stel je wachtwoord in')}
+            {t('Nieuwe login')}
           </Text>
         ) : null}
 
@@ -264,17 +273,6 @@ function WachtwoordLogin(): React.JSX.Element {
             onPress={() => wissel('inloggen')}
           >
             {t('Ik heb al een account')}
-          </Text>
-        ) : null}
-
-        {stand !== 'aanmelden' && stand !== 'vergeten' ? (
-          <Text
-            style={styles.wissel}
-            accessibilityRole="button"
-            accessibilityLabel={t('Ik sta nog niet bij de club')}
-            onPress={() => wissel('aanmelden')}
-          >
-            {t('Ik sta nog niet bij de club')}
           </Text>
         ) : null}
 
@@ -480,6 +478,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   knop: { marginTop: spacing.lg },
+  // Onder een veld: uitleg die je alleen leest als je twijfelt.
+  hint: { fontSize: 12, color: tennisColors.textMuted, marginTop: -4, marginBottom: 4 },
   wissel: {
     marginTop: spacing.md,
     textAlign: 'center',

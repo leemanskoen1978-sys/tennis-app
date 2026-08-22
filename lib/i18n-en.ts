@@ -321,7 +321,6 @@ export const EN: Record<string, string> = {
   // --- login --------------------------------------------------------------
   'Log in om verder te gaan': 'Log in to continue',
   'Kies je profiel om te starten': 'Pick your profile to start',
-  'Account aanmaken': 'Create account',
   'Ik heb al een account': 'I already have an account',
   'Inloggen mislukt.': 'Log in failed.',
   'Voor- en achternaam': 'First and last name',
@@ -766,8 +765,6 @@ export const EN: Record<string, string> = {
     'The hourly rate "{tarief}" is not a valid amount.',
 
   // --- eerste keer inloggen -----------------------------------------------
-  'Eerste keer hier? Stel je wachtwoord in': 'First time here? Set your password',
-  'Ik sta nog niet bij de club': "I'm not a member yet",
   'Wachtwoord instellen': 'Set password',
   'Wachtwoord nog eens': 'Password again',
   'Dezelfde als hierboven': 'The same as above',
@@ -821,4 +818,9 @@ export const EN: Record<string, string> = {
   'Weggooien': 'Discard',
   // Rechten.
   'beheerder': 'admin',
+  // Het inlogscherm: één weg voor een nieuwe login.
+  'Nieuwe login': 'New login',
+  'Naam (mag leeg)': 'Name (optional)',
+  'Staat je naam al in de ledenlijst, dan blijft die gewoon staan.':
+    'If your name is already on the member list, it stays as it is.',
 };

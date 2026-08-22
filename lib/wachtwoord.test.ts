@@ -52,14 +52,13 @@ describe('magVersturen', () => {
     expect(magVersturen('inloggen', { ...velden, herhaling: '', naam: '' })).toBe(true);
   });
 
-  it('vraagt bij "eerste" ook een herhaling', () => {
-    expect(magVersturen('eerste', { ...velden, herhaling: '' })).toBe(false);
-    expect(magVersturen('eerste', velden)).toBe(true);
+  it('vraagt bij "nieuw" ook een herhaling', () => {
+    expect(magVersturen('nieuw', { ...velden, herhaling: '' })).toBe(false);
+    expect(magVersturen('nieuw', velden)).toBe(true);
   });
 
-  it('vraagt bij "aanmelden" ook een naam', () => {
-    expect(magVersturen('aanmelden', { ...velden, naam: '' })).toBe(false);
-    expect(magVersturen('aanmelden', velden)).toBe(true);
+  it('vraagt nooit om een naam: die staat er al, of de databank vult hem aan', () => {
+    expect(magVersturen('nieuw', { ...velden, naam: '' })).toBe(true);
   });
 
   it('houdt een leeg e-mailadres of wachtwoord altijd tegen', () => {
