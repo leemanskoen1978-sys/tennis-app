@@ -19,8 +19,17 @@ import type { Booking, BookingStatus } from './types';
  * Zet de trainer van die les hem zelf in, dan staat hij meteen vast: hij hoeft zichzelf
  * niets te vragen. Doet iemand anders het — een speler, of een trainer die bij een collega
  * boekt — dan wacht de les op goedkeuring van de trainer die hem moet geven.
+ *
+ * Een beheerder is de uitzondering: hij maakt het lesrooster van de club, en een rooster
+ * dat pas geldt als iedereen het goedkeurt, is geen rooster. Zijn les staat dus meteen
+ * vast — ook in de agenda van een collega. Die ziet hem gewoon in zijn agenda staan.
  */
-export function initialStatusFor(creatorId: string, coachId: string): BookingStatus {
+export function initialStatusFor(
+  creatorId: string,
+  coachId: string,
+  doorBeheerder = false,
+): BookingStatus {
+  if (doorBeheerder) return 'confirmed';
   return creatorId === coachId ? 'confirmed' : 'pending';
 }
 

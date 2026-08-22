@@ -109,7 +109,13 @@ interface DataShape {
   addUser: (u: Omit<User, 'id'>) => Promise<User | null>;
   /** `role` blijft erbuiten: van een trainer een speler maken raakt boekingen,
    *  lessen en voortgang, en is geen formulierdetail. */
-  updateUser: (id: string, patch: Partial<Omit<User, 'id' | 'role'>>) => Promise<void>;
+  /**
+   * `role` en `is_admin` blijven er expliciet buiten. Een rol geef je bewust in Beheer, en
+   * wie de club beheert bepaalt de beheerder zelf — niet een scherm dat toevallig een veld
+   * meestuurt. De databank denkt er hetzelfde over: een trigger weigert elke wijziging van
+   * `is_admin` die niet van een beheerder komt.
+   */
+  updateUser: (id: string, patch: Partial<Omit<User, 'id' | 'role' | 'is_admin'>>) => Promise<void>;
   addLesson: (l: Omit<Lesson, 'id'>) => Promise<void>;
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;

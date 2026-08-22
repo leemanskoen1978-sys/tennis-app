@@ -42,6 +42,15 @@ export interface User {
   working_hours?: { start: string; end: string };
   working_days?: number[];
   notification_settings?: Record<string, boolean>;
+  /**
+   * Beheert deze gebruiker de club? Bewust een vinkje en geen vierde rol: wie de club
+   * beheert is meestal ook gewoon trainer, met zijn eigen agenda en zijn eigen spelers.
+   * Was het een rol, dan raakte hij dat allemaal kwijt. Zie lib/rechten.
+   *
+   * Wat het geeft: werken in de agenda van elke trainer. De databank bewaakt dat zelf —
+   * `is_admin()` in supabase-schema.sql.
+   */
+  is_admin?: boolean;
   /** Coach only, display-only: revenue is computed from the court rate, not from this. */
   hourly_rate?: number;
   /** Speler: de betaalwijze die een nieuwe les standaard krijgt. */

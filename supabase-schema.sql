@@ -193,6 +193,9 @@ create table if not exists installed_catalogues (
 alter table lessons add column if not exists tags jsonb;
 alter table bookings add column if not exists created_by text references users(id) on delete set null;
 alter table courts add column if not exists group_rates jsonb;
+-- Wie de club beheert. Bewust een vinkje en geen vierde rol: een beheerder is meestal ook
+-- gewoon trainer, met zijn eigen agenda en zijn eigen spelers. Zie lib/rechten.ts.
+alter table users add column if not exists is_admin boolean not null default false;
 
 -- ---------------------------------------------------------------------------
 -- Wie ben ik — één keer uitgerekend, door elke policy hieronder gebruikt
@@ -211,6 +214,18 @@ as $$
   select id from users where auth_id = auth.uid();
 $$;
 
+-- Beheert deze gebruiker de club? Zelfde opzet als is_coach: `security definer`, want de
+-- policies op users mogen deze vraag niet zelf weer door RLS sturen.
+create or replace function is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from users where auth_id = auth.uid() and is_admin);
+$$;
+
 create or replace function is_coach()
 returns boolean
 language sql
@@ -220,6 +235,47 @@ set search_path = public
 as $$
   select exists (select 1 from users where auth_id = auth.uid() and role = 'coach');
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Het beheerdersvinkje bewaken
+-- ---------------------------------------------------------------------------
+
+-- Alleen een beheerder maakt een beheerder. Dit kán niet met een policy: RLS kijkt naar
+-- hele rijen, niet naar één kolom, en `users_update` staat een trainer toe om gebruikers
+-- bij te werken. Zonder deze trigger zou elke trainer zichzelf tot beheerder kunnen maken
+-- door één veld mee te sturen — de app biedt dat nergens aan, maar de app is de bewaker
+-- niet.
+--
+-- `auth.uid() is null` betekent: dit komt niet uit de app maar uit de SQL-editor of een
+-- service-role sleutel. Dat moet mogen, anders kon de allereerste beheerder nooit gezet
+-- worden en zat de club buiten haar eigen deur.
+create or replace function bewaak_is_admin()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.is_admin and auth.uid() is not null and not is_admin() then
+      raise exception 'Alleen een beheerder kan een beheerder aanmaken';
+    end if;
+    return new;
+  end if;
+
+  if new.is_admin is distinct from old.is_admin
+     and auth.uid() is not null
+     and not is_admin() then
+    raise exception 'Alleen een beheerder kan het beheerdersvinkje wijzigen';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists users_is_admin_bewaakt on users;
+create trigger users_is_admin_bewaakt
+  before insert or update on users
+  for each row execute function bewaak_is_admin();
 
 -- ---------------------------------------------------------------------------
 -- Nieuwe login aan een bestaande gebruiker koppelen
@@ -289,16 +345,16 @@ create policy users_select on users for select
 
 drop policy if exists users_insert on users;
 create policy users_insert on users for insert
-  to authenticated with check (is_coach());
+  to authenticated with check (is_coach() or is_admin());
 
 drop policy if exists users_update on users;
 create policy users_update on users for update
-  to authenticated using (is_coach() or auth_id = auth.uid())
-  with check (is_coach() or auth_id = auth.uid());
+  to authenticated using (is_coach() or is_admin() or auth_id = auth.uid())
+  with check (is_coach() or is_admin() or auth_id = auth.uid());
 
 drop policy if exists users_delete on users;
 create policy users_delete on users for delete
-  to authenticated using (is_coach());
+  to authenticated using (is_coach() or is_admin());
 
 -- courts en instellingen: iedereen leest (een speler ziet op welke baan hij staat), de
 -- trainer beheert.
@@ -312,13 +368,13 @@ drop policy if exists club_settings_select on club_settings;
 create policy club_settings_select on club_settings for select to authenticated using (true);
 drop policy if exists club_settings_write on club_settings;
 create policy club_settings_write on club_settings for all
-  to authenticated using (is_coach()) with check (is_coach());
+  to authenticated using (is_coach() or is_admin()) with check (is_coach() or is_admin());
 
 drop policy if exists catalogues_select on installed_catalogues;
 create policy catalogues_select on installed_catalogues for select to authenticated using (true);
 drop policy if exists catalogues_write on installed_catalogues;
 create policy catalogues_write on installed_catalogues for all
-  to authenticated using (is_coach()) with check (is_coach());
+  to authenticated using (is_coach() or is_admin()) with check (is_coach() or is_admin());
 
 -- bookings: een trainer ziet en beheert zijn eigen agenda; een speler ziet de lessen waarin
 -- hij meespeelt.
@@ -329,7 +385,8 @@ create policy catalogues_write on installed_catalogues for all
 drop policy if exists bookings_select on bookings;
 create policy bookings_select on bookings for select
   to authenticated using (
-    coach_id = app_user_id()
+    is_admin()
+    or coach_id = app_user_id()
     or player_id = app_user_id()
     or coalesce(participant_ids, '[]'::jsonb) ? app_user_id()
   );
@@ -340,7 +397,9 @@ create policy bookings_select on bookings for select
 drop policy if exists bookings_insert on bookings;
 create policy bookings_insert on bookings for insert
   to authenticated with check (
-    (is_coach() and coach_id = app_user_id() and created_by = app_user_id())
+    -- De beheerder maakt het rooster van de club en mag dus in elke agenda inplannen.
+    is_admin()
+    or (is_coach() and coach_id = app_user_id() and created_by = app_user_id())
     or (player_id = app_user_id() and status = 'pending' and created_by = app_user_id())
   );
 
@@ -348,11 +407,12 @@ create policy bookings_insert on bookings for insert
 -- die les.
 drop policy if exists bookings_update on bookings;
 create policy bookings_update on bookings for update
-  to authenticated using (coach_id = app_user_id()) with check (coach_id = app_user_id());
+  to authenticated using (coach_id = app_user_id() or is_admin())
+  with check (coach_id = app_user_id() or is_admin());
 
 drop policy if exists bookings_delete on bookings;
 create policy bookings_delete on bookings for delete
-  to authenticated using (coach_id = app_user_id());
+  to authenticated using (coach_id = app_user_id() or is_admin());
 
 -- lesmateriaal: de trainer beheert alles, de speler ziet wat aan hém is toegewezen. Dezelfde
 -- grens als `visibleLessonsFor` in lib/lessons: het clubmateriaal zonder speler is
@@ -362,7 +422,7 @@ create policy lessons_select on lessons for select
   to authenticated using (is_coach() or student_id = app_user_id());
 drop policy if exists lessons_write on lessons;
 create policy lessons_write on lessons for all
-  to authenticated using (is_coach()) with check (is_coach());
+  to authenticated using (is_coach() or is_admin()) with check (is_coach() or is_admin());
 
 -- voortgang, doelen en beurtenkaarten: de speler leest zijn eigen, de trainer schrijft.
 drop policy if exists progress_select on student_progress;
@@ -370,9 +430,12 @@ create policy progress_select on student_progress for select
   to authenticated using (is_coach() or student_id = app_user_id());
 drop policy if exists progress_write on student_progress;
 create policy progress_write on student_progress for all
-  to authenticated using (is_coach()) with check (is_coach());
+  to authenticated using (is_coach() or is_admin()) with check (is_coach() or is_admin());
 
--- Een memo is ruw materiaal, geen mededeling: een speler ziet zijn memo's níét. Wat hij te
+-- Een memo is ruw materiaal, geen mededeling: een speler ziet zijn memo's níét. Ook een
+-- beheerder niet — dit is de ene plek waar `is_admin()` bewust ontbreekt. Wat een trainer
+-- half ingesproken over een kind zegt, is van hem tot hij het uitwerkt; wát hij ervan
+-- maakt, staat daarna gewoon in het dossier waar de beheerder wél bij kan. Wat hij te
 -- zien krijgt, is de notitie die de trainer eruit maakt. En een trainer ziet alleen zijn
 -- eigen memo's — de opname van een collega is niet aan hem.
 drop policy if exists memos_select on memos;
@@ -387,14 +450,14 @@ create policy goals_select on player_goals for select
   to authenticated using (is_coach() or student_id = app_user_id());
 drop policy if exists goals_write on player_goals;
 create policy goals_write on player_goals for all
-  to authenticated using (is_coach()) with check (is_coach());
+  to authenticated using (is_coach() or is_admin()) with check (is_coach() or is_admin());
 
 drop policy if exists kaarten_select on beurtenkaarten;
 create policy kaarten_select on beurtenkaarten for select
   to authenticated using (is_coach() or player_id = app_user_id());
 drop policy if exists kaarten_write on beurtenkaarten;
 create policy kaarten_write on beurtenkaarten for all
-  to authenticated using (is_coach()) with check (is_coach());
+  to authenticated using (is_coach() or is_admin()) with check (is_coach() or is_admin());
 
 -- ---------------------------------------------------------------------------
 -- Rechten voor de app

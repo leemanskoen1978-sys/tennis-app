@@ -24,6 +24,15 @@ describe('initialStatusFor', () => {
     // Ook een trainer die bij een collega boekt: het is de agenda van die collega.
     expect(initialStatusFor('sanne', 'koen')).toBe('pending');
   });
+
+  it('laat een beheerder meteen inplannen, ook bij een collega', () => {
+    expect(initialStatusFor('koen', 'sanne', true)).toBe('confirmed');
+    expect(initialStatusFor('koen', 'koen', true)).toBe('confirmed');
+  });
+
+  it('verandert niets als er geen beheerder in het spel is', () => {
+    expect(initialStatusFor('koen', 'sanne', false)).toBe('pending');
+  });
 });
 
 describe('needsApproval', () => {

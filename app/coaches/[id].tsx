@@ -14,6 +14,7 @@ import { groupSize, shortGroupLabel } from '../../lib/groups';
 import { playersForCoach } from '../../lib/relations';
 import { formatWorkingDays } from '../../lib/slots';
 import { useT, useLanguage } from '../../lib/i18n';
+import { rolLabel } from '../../lib/rechten';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
@@ -102,7 +103,7 @@ export default function CoachDossier() {
     <Screen>
       <Card>
         <Text style={styles.name}>{coach.name}</Text>
-        <Badge label={t('Trainer')} color={tennisColors.primaryFill} />
+        <Badge label={rolLabel(coach)} color={tennisColors.primaryFill} />
         {coach.email ? <Text style={styles.contact}>{coach.email}</Text> : null}
         {coach.phone ? <Text style={styles.contact}>{coach.phone}</Text> : null}
 

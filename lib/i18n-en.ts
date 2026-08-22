@@ -823,4 +823,6 @@ export const EN: Record<string, string> = {
   'Memo weggooien': 'Discard memo',
   'Weggooien? De opname is niet terug te halen.': 'Discard? The recording cannot be recovered.',
   'Weggooien': 'Discard',
+  // Rechten.
+  'beheerder': 'admin',
 };

@@ -24,6 +24,7 @@ import {
 } from '../lib/beurtenkaart';
 import { sponsorHint, sponsorState } from '../lib/sponsor';
 import { initialStatusFor } from '../lib/inbox';
+import { magInElkeAgenda } from '../lib/rechten';
 import { formatDay } from '../lib/datetime';
 import { formatDayInput, parseDayInput } from '../lib/period';
 import {
@@ -142,8 +143,10 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const bewaakt = method === 'beurtenkaart' || method === 'sponsor';
   // Boekt iemand anders dan de trainer van dit uur, dan is dit een aanvraag en geen les die
   // al vaststaat. Dezelfde regel als `initialStatusFor`, hier alleen om het zo te noemen.
+  // Een beheerder plant in plaats van te vragen: hij maakt het rooster van de club.
+  const beheerder = magInElkeAgenda(currentUser);
   const isAanvraag = currentUser !== null && currentUser !== undefined
-    && initialStatusFor(currentUser.id, coachId) === 'pending';
+    && initialStatusFor(currentUser.id, coachId, beheerder) === 'pending';
 
   const players = users.filter((u) => u.role !== 'coach');
   // Wat de les gaat kosten, met de gekozen namen erin verwerkt: zo ziet de trainer meteen
@@ -237,7 +240,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         end_time,
         // Zet de trainer de les zelf in, dan staat hij vast; boekt een speler, dan wacht hij
         // op goedkeuring. Die ene regel staat in lib/inbox en nergens anders.
-        status: initialStatusFor(currentUser.id, coachId),
+        status: initialStatusFor(currentUser.id, coachId, beheerder),
         // Wie er boekt, blijft aan de les hangen: daaraan ziet de trainer straks dat deze
         // afspraak van een speler kwam en niet van hemzelf.
         created_by: currentUser.id,
@@ -520,8 +523,14 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                 </Text>
               ) : null}
 
-              {error && !seriesNotice ? <Text style={styles.error}>{error}</Text> : null}
             </ScrollView>
+
+            {/* De foutregel hoort bij de knop die hem veroorzaakte. Hij stond in het
+                scrollbare deel terwijl de knoppen eronder vastgepind staan — dan druk je
+                op Bevestigen, gebeurt er niets, en staat de uitleg buiten beeld. */}
+            {error && !seriesNotice ? (
+              <Text style={[styles.error, styles.errorBijKnop]}>{error}</Text>
+            ) : null}
 
             <View style={styles.actions}>
               {seriesNotice ? (
@@ -671,6 +680,8 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: spacing.sm,
   },
+  // Buiten de ScrollView, dus met eigen marges — binnenin erfde hij die van het blad.
+  errorBijKnop: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   error: {
     color: tennisColors.danger,
     fontSize: 14,
