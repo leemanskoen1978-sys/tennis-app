@@ -3,7 +3,7 @@
 process.env.TZ = 'Europe/Brussels';
 
 import type { Booking } from './types';
-import { MAX_LESSONS, planSeries, seriesSummary, type RecurrenceRule } from './recurrence';
+import { MAX_LESSONS, laatsteDagVan, planSeries, seriesSummary, type RecurrenceRule } from './recurrence';
 
 /** Een les op een lokale dag en uur; ISO eruit, precies zoals de app zelf boekt. */
 function iso(y: number, m: number, d: number, hour: number, minute = 0): string {
@@ -197,5 +197,37 @@ describe('de samenvatting', () => {
     const rule: RecurrenceRule = { frequency: 'weekly', until: 'ooit' };
     expect(seriesSummary({ usable: [], skipped: [] }, rule))
       .toBe('Wekelijks tot en met datum onbekend · geen lessen');
+  });
+});
+
+describe('laatsteDagVan', () => {
+  const eerste = new Date(2026, 7, 25); // dinsdag 25 augustus
+
+  it('rekent weken om naar een einddatum, de eerste les meegerekend', () => {
+    // Tien wekelijkse lessen: de tiende valt negen weken later.
+    const d = laatsteDagVan(eerste, 'weekly', 10);
+    expect([d.getDate(), d.getMonth() + 1]).toEqual([27, 10]);
+  });
+
+  it('telt bij tweewekelijks in stappen van veertien dagen', () => {
+    const d = laatsteDagVan(eerste, 'biweekly', 3);
+    expect([d.getDate(), d.getMonth() + 1]).toEqual([22, 9]);
+  });
+
+  it('geeft bij één les de dag zelf terug', () => {
+    const d = laatsteDagVan(eerste, 'weekly', 1);
+    expect([d.getDate(), d.getMonth() + 1]).toEqual([25, 8]);
+  });
+
+  it('vertrouwt geen onzin uit een invoerveld', () => {
+    for (const onzin of [0, -3, Number.NaN]) {
+      const d = laatsteDagVan(eerste, 'weekly', onzin);
+      expect([d.getDate(), d.getMonth() + 1]).toEqual([25, 8]);
+    }
+  });
+
+  it('stapt netjes over een jaargrens', () => {
+    const d = laatsteDagVan(new Date(2026, 11, 22), 'weekly', 3);
+    expect([d.getDate(), d.getMonth() + 1, d.getFullYear()]).toEqual([5, 1, 2027]);
   });
 });

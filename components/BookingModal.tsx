@@ -26,9 +26,8 @@ import { sponsorHint, sponsorState } from '../lib/sponsor';
 import { initialStatusFor } from '../lib/inbox';
 import { magInElkeAgenda } from '../lib/rechten';
 import { formatDay } from '../lib/datetime';
-import { formatDayInput, parseDayInput } from '../lib/period';
 import {
-  MAX_LESSONS, planSeries, seriesSummary,
+  MAX_LESSONS, laatsteDagVan, planSeries, seriesSummary,
   type RecurrenceFrequency, type RecurrenceRule,
 } from '../lib/recurrence';
 
@@ -66,8 +65,6 @@ function lessons(n: number): string {
 }
 
 /** Hoeveel dagen er tussen twee lessen van een reeks zitten. */
-const STEP_DAYS: Record<RecurrenceFrequency, number> = { weekly: 7, biweekly: 14 };
-
 export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const t = useT();
   const { visible, onClose, coachId, date, slot, courts, playerId } = props;
@@ -101,7 +98,9 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   // Herhalen: `null` is één losse les, en dat blijft de standaard — zonder keuze hier
   // gebeurt er precies wat er vóór de reeksen gebeurde.
   const [repeat, setRepeat] = useState<RecurrenceFrequency | null>(null);
-  const [untilText, setUntilText] = useState<string>('');
+  // Hoeveel lessen de reeks telt, de eerste meegerekend. Een trainer denkt in "tien
+  // weken", niet in "tot en met 3 november" — de einddatum wordt hieruit gerekend.
+  const [aantalText, setAantalText] = useState<string>('');
   // De afsluitende melding van een reeks waarvan niet elke les zijn betaalwijze kreeg. Zolang
   // die er staat blijft het venster open: dichtklappen zou zeggen "alles gelukt".
   const [seriesNotice, setSeriesNotice] = useState<string | null>(null);
@@ -165,7 +164,9 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
 
   // De reeks zoals hij er nú uitziet, met wat er in het veld staat. Het rekenwerk loopt mee
   // terwijl de trainer tikt: een halve datum levert geen regel en dus geen plan op.
-  const untilDate = repeat ? parseDayInput(untilText) : null;
+  const aantal = Number.parseInt(aantalText, 10);
+  const aantalDeugt = Number.isFinite(aantal) && aantal >= 2 && aantal <= MAX_LESSONS;
+  const untilDate = repeat && aantalDeugt ? laatsteDagVan(date, repeat, aantal) : null;
   const rule: RecurrenceRule | null = repeat && untilDate
     ? { frequency: repeat, until: dayKey(untilDate) }
     : null;
@@ -192,19 +193,16 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
    */
   const kiesHerhaling = (frequency: RecurrenceFrequency | null): void => {
     setRepeat(frequency);
-    if (frequency && !untilText.trim()) {
-      const days = 11 * STEP_DAYS[frequency];
-      setUntilText(formatDayInput(
-        new Date(date.getFullYear(), date.getMonth(), date.getDate() + days),
-      ));
-    }
+    // Bewust géén startgetal. Hier stond eerst een einddatum die zichzelf invulde op elf
+    // stappen vooruit; wie "Wekelijks" aantikte en bevestigde, kreeg twaalf lessen zonder
+    // dat ooit gevraagd te hebben. Nu staat de knop uit tot je zegt hoeveel het er zijn.
   };
 
   const handleClose = (): void => {
     setBookedWithoutBeurt(null);
     setSeriesNotice(null);
     setRepeat(null);
-    setUntilText('');
+    setAantalText('');
     setNotes('');
     setParticipants([]);
     setSplit('together');
@@ -470,19 +468,38 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
 
                   {repeat ? (
                     <>
-                      <Text style={styles.fieldLabel}>{t('Tot en met')}</Text>
+                      <Text style={styles.fieldLabel}>{t('Hoeveel lessen?')}</Text>
+                      {/* Vaste stappen voor wat een trainer meestal kiest, en een veld voor
+                          de rest. Sneller dan tikken, en niemand hoeft een datum uit te
+                          rekenen. */}
+                      <View style={styles.chipRow}>
+                        {[6, 10, 12, 20].map((n) => (
+                          <Chip
+                            key={n}
+                            label={t('{n}×', { n })}
+                            selected={aantal === n}
+                            onPress={() => setAantalText(String(n))}
+                          />
+                        ))}
+                      </View>
                       <TextInput
                         style={styles.dayInput}
-                        value={untilText}
-                        onChangeText={setUntilText}
-                        placeholder={t('dd/mm/jjjj')}
+                        value={aantalText}
+                        onChangeText={setAantalText}
+                        placeholder={t('aantal')}
                         placeholderTextColor={tennisColors.textMuted}
-                        accessibilityLabel={t('Laatste dag van de reeks')}
+                        accessibilityLabel={t('Aantal lessen in de reeks')}
                         inputMode="numeric"
                       />
-                      {!untilDate ? (
-                        <Text style={styles.hint}>{t('Vul de laatste dag in als dd/mm/jjjj.')}</Text>
-                      ) : null}
+                      {!aantalDeugt ? (
+                        <Text style={styles.hint}>
+                          {t('Vul een aantal in van 2 tot {max}.', { max: MAX_LESSONS })}
+                        </Text>
+                      ) : (
+                        <Text style={styles.hint}>
+                          {t('Laatste les op {dag}.', { dag: formatDay(untilDate as Date) })}
+                        </Text>
+                      )}
 
                       {/* Wat er gaat gebeuren, vóór het bevestigen. De overgeslagen dagen
                           staan er met datum bij: "3 overgeslagen" zonder te zeggen welke

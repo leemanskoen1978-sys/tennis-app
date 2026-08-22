@@ -166,3 +166,23 @@ export function seriesSummary(plan: SeriesPlan, rule: RecurrenceRule): string {
     lessen: lessons,
   });
 }
+
+/**
+ * De laatste dag van een reeks van `aantal` lessen, de eerste meegerekend.
+ *
+ * Een trainer denkt in "tien weken", niet in "tot en met 3 november". Dit rekent het ene
+ * naar het andere om, zodat het scherm naar een aantal kan vragen en de regel eronder
+ * gewoon met een einddatum blijft werken — er verandert niets aan `planSeries`.
+ *
+ * Een aantal van 1 of minder levert de eerste dag zelf op: dan is er geen reeks, en dat is
+ * geen fout maar een antwoord.
+ */
+export function laatsteDagVan(
+  eerste: Date,
+  frequency: RecurrenceFrequency,
+  aantal: number,
+): Date {
+  const stappen = Number.isFinite(aantal) ? Math.max(1, Math.floor(aantal)) - 1 : 0;
+  const dagen = stappen * (frequency === 'biweekly' ? 14 : 7);
+  return new Date(eerste.getFullYear(), eerste.getMonth(), eerste.getDate() + dagen);
+}

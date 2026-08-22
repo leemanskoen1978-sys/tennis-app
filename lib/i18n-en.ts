@@ -52,7 +52,6 @@ export const EN: Record<string, string> = {
   'Vandaag': 'Today',
   'Van': 'From',
   'Tot': 'To',
-  'Tot en met': 'Up to and including',
   'tot': 'up to',
   'Vorige': 'Previous',
   'Volgende': 'Next',
@@ -346,7 +345,6 @@ export const EN: Record<string, string> = {
   'Waar let je op?': 'What do you look out for?',
   'Wat oefen je hiermee?': 'What does this practise?',
   'Neem een korte memo op': 'Record a short memo',
-  'dd/mm/jjjj': 'dd/mm/yyyy',
   'Bijvoorbeeld 500': 'For example 500',
   'Bijvoorbeeld: betaald op 3 september': 'For example: paid on 3 September',
   'bv. 45': 'e.g. 45',
@@ -371,7 +369,6 @@ export const EN: Record<string, string> = {
   'Verwijder opname': 'Delete recording',
   'Begindatum van de periode': 'Start date of the period',
   'Einddatum van de periode': 'End date of the period',
-  'Laatste dag van de reeks': 'Last day of the series',
   'Markeer als gegeven': 'Mark as given',
   'Terug naar gepland': 'Back to planned',
   'Alle coaches': 'All coaches',
@@ -548,7 +545,6 @@ export const EN: Record<string, string> = {
   '{baan} — je trainer moet deze les nog bevestigen.':
     '{baan} — your coach still has to confirm this lesson.',
   'Nieuwe afspraak met {naam}': 'New booking with {naam}',
-  'Vul de laatste dag in als dd/mm/jjjj.': 'Enter the last day as dd/mm/yyyy.',
   'Vul beide datums in als dd/mm/jjjj.': 'Enter both dates as dd/mm/yyyy.',
   'Een reeks gaat tot {n} lessen; wat daarna komt valt erbuiten.':
     'A series runs up to {n} lessons; anything beyond that falls outside it.',
@@ -830,4 +826,13 @@ export const EN: Record<string, string> = {
   'In de agenda van {trainer}': 'In {trainer}\u2019s calendar',
   'Bericht wegklikken': 'Dismiss message',
   'Geweigerde aanvragen wissen': 'Clear declined requests',
+  // De lengte van een reeks: een aantal in plaats van een einddatum.
+  'Hoeveel lessen?': 'How many lessons?',
+  '{n}\u00d7': '{n}\u00d7',
+  'aantal': 'number',
+  'Aantal lessen in de reeks': 'Number of lessons in the series',
+  'Vul een aantal in van 2 tot {max}.': 'Enter a number from 2 to {max}.',
+  'Laatste les op {dag}.': 'Last lesson on {dag}.',
+  'Tot en met': 'Up to and including',
+  'dd/mm/jjjj': 'dd/mm/yyyy',
 };
