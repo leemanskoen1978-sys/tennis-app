@@ -427,17 +427,28 @@ export interface OpenBalance {
  * niet als saldo — daarover gaat de club met hem in gesprek, niet dit scherm.
  *
  * Voor een trainer levert dit vrijwel altijd 0 op: hij betaalt zijn eigen lessen niet.
+ *
+ * Alleen lessen die geweest zijn tellen mee. Voor een les van volgende week ben je nog
+ * niets schuldig — die staat wel op 'Open', maar dat betekent daar "er is nog niets
+ * afgesproken" en niet "je moet nog betalen". Het saldo dat een speler op zijn scherm ziet,
+ * hoort te kloppen met wat hij bij de volgende training in zijn hand moet hebben.
+ *
+ * Een les die nu bezig is telt nog niet mee: die is pas geweest als hij afgelopen is.
  */
 export function openBalanceFor(
   user: User | null | undefined,
   bookings: Booking[],
   courts: Court[],
+  now: Date = new Date(),
 ): OpenBalance {
   if (!user) return { amount: 0, lessons: 0 };
   const byId = new Map(courts.map((c) => [c.id, c]));
+  const moment = now.getTime();
   let cents = 0;
   let lessons = 0;
   for (const b of pendingPaymentsFor(user, bookings)) {
+    const eind = new Date(b.end_time).getTime();
+    if (!Number.isFinite(eind) || eind > moment) continue;
     const mine = lessonShares(b, byId.get(b.court_id))
       .filter((s) => s.player_id === user.id && s.method === 'open');
     if (mine.length === 0) continue;

@@ -563,10 +563,12 @@ describe('groupRateSteps', () => {
 
 describe('openBalanceFor', () => {
   const speler: User = { id: 'p1', email: 'p1@x.be', name: 'Mathis', role: 'player' };
+  // Een vast moment ná de les uit `base`: anders hangt de uitkomst van de klok af.
+  const NU = new Date('2026-08-20T12:00:00.000Z');
   const ander: User = { id: 'p2', email: 'p2@x.be', name: 'Lotte', role: 'player' };
 
   it('telt de eigen lessen op die nog op open staan', () => {
-    const saldo = openBalanceFor(speler, [base, { ...base, id: '2' }], courts);
+    const saldo = openBalanceFor(speler, [base, { ...base, id: '2' }], courts, NU);
     expect(saldo).toEqual({ amount: 60, lessons: 2 });
   });
 
@@ -576,11 +578,11 @@ describe('openBalanceFor', () => {
       { ...base, id: '2', payment_method: 'invoice' as const },
       { ...base, id: '3', payment_method: 'sponsor' as const },
     ];
-    expect(openBalanceFor(speler, afgesproken, courts)).toEqual({ amount: 0, lessons: 0 });
+    expect(openBalanceFor(speler, afgesproken, courts, NU)).toEqual({ amount: 0, lessons: 0 });
   });
 
   it('telt een geannuleerde les niet mee', () => {
-    expect(openBalanceFor(speler, [{ ...base, status: 'cancelled' }], courts))
+    expect(openBalanceFor(speler, [{ ...base, status: 'cancelled' }], courts, NU))
       .toEqual({ amount: 0, lessons: 0 });
   });
 
@@ -588,16 +590,48 @@ describe('openBalanceFor', () => {
     // Samen factureren: de betaler heeft alles openstaan, de meespeler niets.
     const samen: Booking = { ...base, participant_ids: ['p2'], payment_method: 'invoice' };
     const open: Booking = { ...samen, payment_method: 'open' };
-    expect(openBalanceFor(speler, [open], courts).amount).toBe(30);
-    expect(openBalanceFor(ander, [open], courts)).toEqual({ amount: 0, lessons: 0 });
+    expect(openBalanceFor(speler, [open], courts, NU).amount).toBe(30);
+    expect(openBalanceFor(ander, [open], courts, NU)).toEqual({ amount: 0, lessons: 0 });
 
     // Apart factureren: ieder zijn helft.
     const apart: Booking = { ...open, payment_split: 'separate' };
-    expect(openBalanceFor(speler, [apart], courts)).toEqual({ amount: 15, lessons: 1 });
-    expect(openBalanceFor(ander, [apart], courts)).toEqual({ amount: 15, lessons: 1 });
+    expect(openBalanceFor(speler, [apart], courts, NU)).toEqual({ amount: 15, lessons: 1 });
+    expect(openBalanceFor(ander, [apart], courts, NU)).toEqual({ amount: 15, lessons: 1 });
   });
 
   it('is leeg zonder gebruiker', () => {
-    expect(openBalanceFor(null, [base], courts)).toEqual({ amount: 0, lessons: 0 });
+    expect(openBalanceFor(null, [base], courts, NU)).toEqual({ amount: 0, lessons: 0 });
+  });
+});
+
+describe('openBalanceFor — alleen wat geweest is', () => {
+  const speler: User = { id: 'p1', email: 'p1@x.be', name: 'Mathis', role: 'player' };
+  const NU = new Date('2026-08-20T12:00:00.000Z');
+  const straks: Booking = {
+    ...base, id: 'later',
+    start_time: '2026-08-27T10:00:00.000Z', end_time: '2026-08-27T11:00:00.000Z',
+  };
+
+  it('rekent een les van volgende week niet mee', () => {
+    // Wel 'open', maar dat betekent daar "nog niets afgesproken" en niet "je moet betalen".
+    expect(openBalanceFor(speler, [straks], courts, NU)).toEqual({ amount: 0, lessons: 0 });
+  });
+
+  it('rekent de les die geweest is wél mee', () => {
+    expect(openBalanceFor(speler, [base, straks], courts, NU)).toEqual({ amount: 30, lessons: 1 });
+  });
+
+  it('telt een les die nu bezig is nog niet mee', () => {
+    const bezig = { ...base, id: 'bezig', end_time: '2026-08-20T13:00:00.000Z' };
+    expect(openBalanceFor(speler, [bezig], courts, NU)).toEqual({ amount: 0, lessons: 0 });
+  });
+
+  it('telt hem mee op het moment dat hij afgelopen is', () => {
+    // Een uur les dat precies nu eindigt: de grens hoort erbij, niet erbuiten.
+    const netAf = {
+      ...base, id: 'netaf',
+      start_time: '2026-08-20T11:00:00.000Z', end_time: NU.toISOString(),
+    };
+    expect(openBalanceFor(speler, [netAf], courts, NU)).toEqual({ amount: 30, lessons: 1 });
   });
 });
