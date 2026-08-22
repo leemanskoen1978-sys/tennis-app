@@ -4,11 +4,11 @@
 //   about a person -> Spelers or Trainers · about club/money/system -> Beheer · about time -> Agenda
 // Tiles are ordered by how often you use them, not alphabetically.
 
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import {
   CalendarDays, CalendarPlus, Users, GraduationCap, SlidersHorizontal,
-  BookOpen, TrendingUp, Wallet, ChevronRight, XCircle, type LucideIcon,
+  BookOpen, TrendingUp, Wallet, ChevronRight, X, XCircle, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
@@ -18,6 +18,8 @@ import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDat
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf, recentGeweigerd } from '../lib/inbox';
 import { magInElkeAgenda } from '../lib/rechten';
+import { zonderWeggeklikt } from '../lib/weggeklikt';
+import { useWeggeklikt } from '../providers/weggeklikt';
 import { bookingsFor, filterPendingPayment, openBalanceFor } from '../lib/payments';
 import { formatEuro } from '../lib/money';
 import { formatDayTimeRange } from '../lib/datetime';
@@ -65,6 +67,10 @@ export default function Hub() {
   // Een geweigerde aanvraag is het enige dat anders nergens te zien is: de les verdwijnt
   // en niemand zegt waarom. Een goedgekeurde les staat gewoon in zijn agenda.
   const geweigerd = isCoach ? [] : recentGeweigerd(bookings, currentUser.id, new Date());
+  // Wat je wegklikt blijft weg — op dit toestel. Zie lib/weggeklikt voor waarom dat niet in
+  // de databank staat.
+  const { weggeklikt, klikWeg } = useWeggeklikt(geweigerd);
+  const teTonen = zonderWeggeklikt(geweigerd, weggeklikt);
 
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? t(one) : t(many)}`;
 
@@ -121,7 +127,7 @@ export default function Hub() {
 
       {/* Wat er met een aanvraag gebeurde. Staat bovenaan en verdwijnt na een week vanzelf:
           er valt niets weg te klikken, en een bericht van drie weken oud is geen bericht. */}
-      {geweigerd.map((les) => (
+      {teTonen.map((les) => (
         <Card key={les.id} style={styles.geweigerd}>
           <View style={styles.geweigerdRij}>
             <View style={styles.geweigerdIcoon}>
@@ -136,6 +142,17 @@ export default function Hub() {
                 {t('Vraag gerust een ander uur aan.')}
               </Text>
             </View>
+            {/* Wegklikken kan meteen: gelezen is gelezen, en zeven dagen naar hetzelfde
+                bericht kijken is geen bericht meer maar behang. */}
+            <Pressable
+              onPress={() => klikWeg(les.id)}
+              accessibilityRole="button"
+              accessibilityLabel={t('Bericht wegklikken')}
+              style={styles.wegknop}
+              hitSlop={8}
+            >
+              <X size={20} color={tennisColors.textMuted} />
+            </Pressable>
           </View>
         </Card>
       ))}
@@ -199,6 +216,7 @@ const styles = StyleSheet.create({
     backgroundColor: tennisColors.dangerTint,
   },
   geweigerdTekst: { flex: 1 },
+  wegknop: { padding: 4 },
   geweigerdTitel: { ...typography.h3, color: tennisColors.text },
   geweigerdSub: { fontSize: 13, color: tennisColors.textMuted },
   balance: { borderWidth: 1, borderColor: tennisColors.warning },
