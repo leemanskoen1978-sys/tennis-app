@@ -325,10 +325,28 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       // De sessie van een herstellink is een echte sessie: gewoon meenemen in het ophalen
       // hieronder, net als elke andere wisseling. Alleen de vlag hierboven is nieuw.
       if (wat === 'herstel') setHerstelBezig(true);
-      // Een weggevallen sessie (uitloggen, of een token dat niet meer te verlengen was) mag
-      // de vlag niet laten staan: anders blijft de indeling deze gebruiker naar
+
+      // Uitgelogd is uitgelogd: hier wordt niets meer opgehaald.
+      //
+      // Dit stond er ooit anders: ook bij 'weg' liep `start()` nog een keer, "om te kijken
+      // wie er nu is". Maar dat wegschrijven van de sessie gebeurt niet op hetzelfde
+      // moment als dit event, en dan zag `currentUserId()` de sessie die net aan het
+      // verdwijnen was nog één keer staan. Gevolg: je drukte op uitloggen, kwam op het
+      // inlogscherm, en werd meteen terug naar het dashboard gezet. Op een telefoon viel
+      // dat altijd verkeerd, omdat het daar net iets trager gaat.
+      //
+      // De vlag moet hier ook uit: anders blijft de indeling deze gebruiker naar
       // /nieuw-wachtwoord sturen terwijl er geen sessie meer is om iets in op te slaan.
-      if (wat === 'weg') setHerstelBezig(false);
+      if (wat === 'weg') {
+        setHerstelBezig(false);
+        storeRef.current = null;
+        setStore(null);
+        setCurrentUserId(null);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
       void start();
     });
 
@@ -372,11 +390,19 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setCurrentUserId(null);
     await clearCurrentUserId();
     if (backend.authMode === 'wachtwoord') {
-      await backend.signOut();
-      // Wat er in het geheugen stond, was van de vorige gebruiker: weg ermee, anders ziet de
-      // volgende op hetzelfde toestel diens lessen nog even staan.
+      // Wat er in het geheugen stond, was van de vorige gebruiker: weg ermee vóór het
+      // afmelden, anders ziet de volgende op hetzelfde toestel diens lessen nog even staan
+      // als het afmelden traag is.
       storeRef.current = null;
       setStore(null);
+      // Lukt het afmelden bij de databank niet (geen netwerk op de baan), dan blijft de app
+      // toch uitgelogd. Andersom — wél afgemeld maar nog binnen in de app — is de fout die
+      // je niet wilt.
+      try {
+        await backend.signOut();
+      } catch (e: unknown) {
+        console.warn('Afmelden bij de databank mislukt:', e);
+      }
     }
   }, []);
 
