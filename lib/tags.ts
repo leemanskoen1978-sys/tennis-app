@@ -24,22 +24,7 @@ import type { Lesson, TrainingExercise } from './types';
  */
 interface TagRule {
   tag: string;
-  /** Groep waarin de tag in de filterbalk staat. */
-  group: TagGroup;
   patterns: readonly string[];
-}
-
-export type TagGroup = 'slag' | 'spel' | 'thema';
-
-export const TAG_GROUP_LABELS: Record<TagGroup, string> = {
-  slag: 'Slag',
-  spel: 'Spelsituatie',
-  thema: 'Thema',
-};
-
-/** Hetzelfde label, in de taal die de gebruiker gekozen heeft. */
-export function tagGroupLabel(group: TagGroup): string {
-  return t(TAG_GROUP_LABELS[group]);
 }
 
 /**
@@ -48,44 +33,41 @@ export function tagGroupLabel(group: TagGroup): string {
  */
 const RULES: readonly TagRule[] = [
   // --- Slagen ---
-  { tag: 'Forehand', group: 'slag', patterns: ['forehand', 'fh', 'voorhand'] },
-  { tag: 'Backhand', group: 'slag', patterns: ['backhand', 'bh', 'achterhand'] },
-  { tag: 'Opslag', group: 'slag', patterns: ['opslag', 'service', 'serveren', 'opslagspeler', 'ospeler', 'effectopslag'] },
-  { tag: 'Terugslag', group: 'slag', patterns: ['terugslag', 'return', 'tspeler'] },
-  { tag: 'Volley', group: 'slag', patterns: ['volley', 'volleys', 'halfvolley', 'netbal'] },
-  { tag: 'Smash', group: 'slag', patterns: ['smash', 'smashen'] },
-  { tag: 'Lob', group: 'slag', patterns: ['lob', 'lobben', 'lobbal'] },
-  { tag: 'Slice', group: 'slag', patterns: ['slice', 'gesneden'] },
-  { tag: 'Dropshot', group: 'slag', patterns: ['dropshot', 'dropbal', 'stopbal'] },
-  { tag: 'Topspin', group: 'slag', patterns: ['topspin', 'lift', 'liftbal'] },
+  { tag: 'Forehand', patterns: ['forehand', 'fh', 'voorhand'] },
+  { tag: 'Backhand', patterns: ['backhand', 'bh', 'achterhand'] },
+  { tag: 'Opslag', patterns: ['opslag', 'service', 'serveren', 'opslagspeler', 'ospeler', 'effectopslag'] },
+  { tag: 'Terugslag', patterns: ['terugslag', 'return', 'tspeler'] },
+  { tag: 'Volley', patterns: ['volley', 'volleys', 'halfvolley', 'netbal'] },
+  { tag: 'Smash', patterns: ['smash', 'smashen'] },
+  { tag: 'Lob', patterns: ['lob', 'lobben', 'lobbal'] },
+  { tag: 'Slice', patterns: ['slice', 'gesneden'] },
+  { tag: 'Dropshot', patterns: ['dropshot', 'dropbal', 'stopbal'] },
+  { tag: 'Topspin', patterns: ['topspin', 'lift', 'liftbal'] },
 
   // --- Spelsituaties ---
-  { tag: 'Basislijnspel', group: 'spel', patterns: ['basislijnspel', 'basislijn', 'grondslagen'] },
-  { tag: 'Netspel', group: 'spel', patterns: ['netspel', 'netbasis', 'netaanval', 'opkomen', 'aanvalszone'] },
-  { tag: 'Aanvallen', group: 'spel', patterns: ['aanvallen', 'aanval', 'aanvalsbal'] },
-  { tag: 'Verdedigen', group: 'spel', patterns: ['verdedigen', 'verdediging', 'verdedigend'] },
-  { tag: 'Uitwisselen', group: 'spel', patterns: ['uitwisselen', 'rally', 'rallys', 'uitwisseling'] },
-  { tag: 'Punt starten', group: 'spel', patterns: ['punt starten', 'bal 3', 'bal 4', 'b4', 't2', 'o1', 'starten van het punt'] },
-  { tag: 'Dubbelspel', group: 'spel', patterns: ['dubbelspel', 'dubbel', 'dubbelterrein'] },
-  { tag: 'Wedstrijdvorm', group: 'spel', patterns: ['wedstrijd', 'wedstrijdvorm', 'tornooi', 'tiebreak', 'game', 'match'] },
+  { tag: 'Basislijnspel', patterns: ['basislijnspel', 'basislijn', 'grondslagen'] },
+  { tag: 'Netspel', patterns: ['netspel', 'netbasis', 'netaanval', 'opkomen', 'aanvalszone'] },
+  { tag: 'Aanvallen', patterns: ['aanvallen', 'aanval', 'aanvalsbal'] },
+  { tag: 'Verdedigen', patterns: ['verdedigen', 'verdediging', 'verdedigend'] },
+  { tag: 'Uitwisselen', patterns: ['uitwisselen', 'rally', 'rallys', 'uitwisseling'] },
+  { tag: 'Punt starten', patterns: ['punt starten', 'bal 3', 'bal 4', 'b4', 't2', 'o1', 'starten van het punt'] },
+  { tag: 'Dubbelspel', patterns: ['dubbelspel', 'dubbel', 'dubbelterrein'] },
+  { tag: 'Wedstrijdvorm', patterns: ['wedstrijd', 'wedstrijdvorm', 'tornooi', 'tiebreak', 'game', 'match'] },
 
   // --- Thema's ---
-  { tag: 'Coördinatie', group: 'thema', patterns: ['coordinatie', 'coordinatief'] },
-  { tag: 'Voetenwerk', group: 'thema', patterns: ['benenspel', 'voetenwerk', 'splitstep', 'verplaatsing', 'herplaatsen', 'speelbasis'] },
-  { tag: 'Techniek', group: 'thema', patterns: ['techniek', 'greep', 'greepwissel', 'hamergreep', 'zwaaivorm', 'balcontact'] },
-  { tag: 'Tactiek', group: 'thema', patterns: ['tactiek', 'tactisch', 'tactische', 'spelplan'] },
-  { tag: 'Fysiek', group: 'thema', patterns: ['fysiek', 'conditie', 'uithouding', 'kracht', 'snelheid', 'lenigheid'] },
-  { tag: 'Mentaal', group: 'thema', patterns: ['mentaal', 'concentratie', 'focus', 'zelfvertrouwen'] },
-  { tag: 'Opwarming', group: 'thema', patterns: ['opwarming', 'opwarmen', 'inspelen'] },
-  { tag: 'Kist', group: 'thema', patterns: ['kist', 'aanspelen', 'aangespeeld'] },
+  { tag: 'Coördinatie', patterns: ['coordinatie', 'coordinatief'] },
+  { tag: 'Voetenwerk', patterns: ['benenspel', 'voetenwerk', 'splitstep', 'verplaatsing', 'herplaatsen', 'speelbasis'] },
+  { tag: 'Techniek', patterns: ['techniek', 'greep', 'greepwissel', 'hamergreep', 'zwaaivorm', 'balcontact'] },
+  { tag: 'Tactiek', patterns: ['tactiek', 'tactisch', 'tactische', 'spelplan'] },
+  { tag: 'Fysiek', patterns: ['fysiek', 'conditie', 'uithouding', 'kracht', 'snelheid', 'lenigheid'] },
+  { tag: 'Mentaal', patterns: ['mentaal', 'concentratie', 'focus', 'zelfvertrouwen'] },
+  { tag: 'Opwarming', patterns: ['opwarming', 'opwarmen', 'inspelen'] },
+  { tag: 'Kist', patterns: ['kist', 'aanspelen', 'aangespeeld'] },
 ];
 
 /** Alle tags die de app kent, in de volgorde van de lijst hierboven. */
 export const ALL_TAGS: readonly string[] = RULES.map((r) => r.tag);
 
-export function tagGroup(tag: string): TagGroup | undefined {
-  return RULES.find((r) => r.tag === tag)?.group;
-}
 
 /**
  * Tekst klaarmaken om woorden in te zoeken: kleine letters, accenten eraf, en alles wat

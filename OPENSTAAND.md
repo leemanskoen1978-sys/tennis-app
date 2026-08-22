@@ -67,11 +67,6 @@ beurtenkaart toelaat (de laatste lessen horen op "Open" te blijven, met melding)
   in deze app nog niet. De lege plaatshouder `components/SpeechToText.tsx` is weggehaald bij
   de opruimronde: een bestand dat "binnenkort" zegt en nergens getoond wordt, is geen begin
   van een functie maar ruis. De weg ernaartoe staat in `docs/voice-memo-native.md`.
-- **De tag-indeling in `lib/tags.ts` wordt nergens getoond.** `TagGroup`, `TAG_GROUP_LABELS`,
-  `tagGroupLabel` en `tagGroup` delen elke tag in bij slag, spelsituatie of thema, maar geen
-  enkel scherm doet er iets mee. Bewust laten staan bij het opruimen: het is een half
-  gebouwde functie (filteren per categorie in de lessendatabank), en die indeling weggooien
-  is informatie weggooien. Bouw hem af of haal hem weg — laat hem niet zo staan.
 - **De memoknop is nog niet met een echte microfoon doorlopen**: opnemen, te kort loslaten,
   de aftelling voorbij 50 seconden en de afkap op 60. Dat vraagt een baan met een les erop
   en toestemming voor de microfoon in de browser.

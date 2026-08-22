@@ -33,7 +33,6 @@ export const EN: Record<string, string> = {
   'Telefoonnummer': 'Phone number',
   'Contact': 'Contact',
   'Instellingen': 'Settings',
-  'Thema': 'Theme',
   'Taal': 'Language',
   'Licht': 'Light',
   'Donker': 'Dark',
@@ -185,7 +184,6 @@ export const EN: Record<string, string> = {
   'Type training': 'Training type',
   'Type slag': 'Stroke type',
   'Type wijziging': 'Change type',
-  'Slag': 'Stroke',
   'Wijziging': 'Change',
   'Situatie': 'Situation',
   'Bedoeling': 'Purpose',
@@ -475,7 +473,6 @@ export const EN: Record<string, string> = {
   'Fysiek': 'Physical',
   'Mentaal': 'Mental',
   'Match': 'Match',
-  'Spelsituatie': 'Match situation',
   'datum onbekend': 'date unknown',
   'tijd onbekend': 'time unknown',
 
