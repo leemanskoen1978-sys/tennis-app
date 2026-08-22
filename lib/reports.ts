@@ -14,8 +14,10 @@
 //     (wat hij krijgt). Ze mogen nooit in elkaar geschoven worden.
 
 import { t } from './i18n';
-import { bookingPrice, coachPayout, countsAsRevenue, lessonShares } from './payments';
-import { shortMonthName } from './period';
+import {
+  bookingPrice, coachPayout, countsAsRevenue, lessonShares, totalCoachPayout,
+} from './payments';
+import { bookingsInPeriod, currentPeriod, shortMonthName } from './period';
 import type { Booking, Court, PaymentMethod, User } from './types';
 
 /** De statussen waarin een les daadwerkelijk staat te gebeuren of gebeurd is. */
@@ -257,4 +259,26 @@ export function monthlySeries(
   }
 
   return series.map((p) => ({ ...p, amount: euro(p.amount) }));
+}
+
+/**
+ * Wat één trainer deze maand verdiende: zijn eigen uurtarief over zijn eigen lessen.
+ *
+ * Zijn profiel en zijn dossier rekenden dit ieder apart uit — dezelfde drie stappen,
+ * tweemaal overgeschreven. Het is bovendien het bedrag dat straks afgeschermd moet worden,
+ * en dat kan alleen als er één plek is waar het vandaan komt.
+ *
+ * Let op het verschil met de omzet: die loopt op het uurtarief van de BAAN en is wat de
+ * spelers betalen. Dit loopt op het uurtarief van de TRAINER. Zonder ingevuld tarief is de
+ * uitkomst 0 — het scherm hoort daar zelf iets bij te zeggen, want een stille nul leest als
+ * "niets verdiend" in plaats van "niets ingevuld".
+ */
+export function coachPayoutThisMonth(
+  coach: User | null | undefined,
+  bookings: Booking[],
+  now: Date = new Date(),
+): number {
+  if (!coach) return 0;
+  const mine = bookings.filter((b) => b.coach_id === coach.id);
+  return totalCoachPayout(bookingsInPeriod(mine, currentPeriod(now)), [coach]);
 }

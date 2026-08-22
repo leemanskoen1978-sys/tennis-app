@@ -23,8 +23,8 @@ import { spacing, radius, typography, webCursor, minTapTarget } from '../constan
 import { tennisColors } from '../constants/tennis-colors';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday } from '../lib/hub';
-import { bookingsFor, openBalanceFor, totalCoachPayout } from '../lib/payments';
-import { bookingsInPeriod, currentPeriod } from '../lib/period';
+import { bookingsFor, openBalanceFor } from '../lib/payments';
+import { coachPayoutThisMonth } from '../lib/reports';
 import { formatEuro } from '../lib/csv';
 import { useT } from '../lib/i18n';
 import { isCoach } from '../lib/rechten';
@@ -130,11 +130,7 @@ export default function ProfileScreen(): React.JSX.Element {
   const balance = openBalanceFor(currentUser, bookings, courts);
 
   const rateMissing = currentUser.hourly_rate === undefined;
-  const myLessons = bookings.filter((b) => b.coach_id === currentUser.id);
-  const earnedThisMonth = totalCoachPayout(
-    bookingsInPeriod(myLessons, currentPeriod()),
-    [currentUser],
-  );
+  const earnedThisMonth = coachPayoutThisMonth(currentUser, bookings);
 
   const contactRows: Row[] = [
     { key: 'mail', icon: Mail, title: currentUser.email, subtitle: t('E-mailadres') },

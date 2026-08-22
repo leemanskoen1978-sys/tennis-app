@@ -18,8 +18,7 @@ import { rolLabel } from '../../lib/rechten';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
-import { totalCoachPayout } from '../../lib/payments';
-import { bookingsInPeriod, currentPeriod } from '../../lib/period';
+import { coachPayoutThisMonth } from '../../lib/reports';
 import { formatEuro } from '../../lib/csv';
 
 /**
@@ -69,10 +68,7 @@ export default function CoachDossier() {
   // Wat deze trainer deze maand verdient: zijn eigen uurtarief over zijn eigen lessen, langs
   // dezelfde weg als op zijn profiel. Geen tarief ingevuld geeft 0, met een melding erbij.
   const rateMissing = coach.hourly_rate === undefined;
-  const earnedThisMonth = totalCoachPayout(
-    bookingsInPeriod(bookings.filter((b) => b.coach_id === coach.id), currentPeriod()),
-    [coach],
-  );
+  const earnedThisMonth = coachPayoutThisMonth(coach, bookings);
 
   // Derived from bookings/lessons/progress — see lib/relations.ts. No assignment screen.
   const players = playersForCoach(coach.id, bookings, lessons, progress)

@@ -1,5 +1,7 @@
 import { totalCoachPayout, totalRevenue } from './payments';
-import { countByPaymentMethod, monthlySeries, payoutsByCoach, totalsByPlayer } from './reports';
+import {
+  coachPayoutThisMonth, countByPaymentMethod, monthlySeries, payoutsByCoach, totalsByPlayer,
+} from './reports';
 import type { Booking, Court, User } from './types';
 
 const courts: Court[] = [
@@ -411,5 +413,44 @@ describe('groepslessen in het rapport', () => {
   it('telt de groepsles één keer in de maandreeks', () => {
     const series = monthlySeries([groepsles], staffel, new Date(2026, 7, 15), 1);
     expect(series[0]).toMatchObject({ lessons: 1, amount: 60 });
+  });
+});
+
+describe('coachPayoutThisMonth', () => {
+  const koen: User = { id: 'koen', email: 'k@x.be', name: 'Koen', role: 'coach', hourly_rate: 20 };
+  const sanne: User = { id: 'sanne', email: 's@x.be', name: 'Sanne', role: 'coach', hourly_rate: 30 };
+  const nu = new Date(2026, 7, 15);
+
+  const les = (over: Partial<Booking>): Booking => ({
+    id: 'b1',
+    player_id: 'p1',
+    coach_id: 'koen',
+    court_id: 'c-1',
+    start_time: new Date(2026, 7, 10, 10, 0).toISOString(),
+    end_time: new Date(2026, 7, 10, 11, 0).toISOString(),
+    status: 'completed',
+    payment_method: 'cash',
+    ...over,
+  });
+
+  it('rekent alleen de eigen lessen van deze maand', () => {
+    const bookings = [
+      les({ id: 'a' }),
+      // Vorige maand: telt niet mee.
+      les({ id: 'b', start_time: new Date(2026, 6, 10, 10, 0).toISOString(), end_time: new Date(2026, 6, 10, 11, 0).toISOString() }),
+      // Van een collega: telt niet mee, ook al staat hij in dezelfde lijst.
+      les({ id: 'c', coach_id: 'sanne' }),
+    ];
+    expect(coachPayoutThisMonth(koen, bookings, nu)).toBe(20);
+    expect(coachPayoutThisMonth(sanne, bookings, nu)).toBe(30);
+  });
+
+  it('geeft 0 zonder ingevuld uurtarief', () => {
+    const zonder: User = { ...koen, hourly_rate: undefined };
+    expect(coachPayoutThisMonth(zonder, [les({})], nu)).toBe(0);
+  });
+
+  it('geeft 0 als er niemand is', () => {
+    expect(coachPayoutThisMonth(null, [les({})], nu)).toBe(0);
   });
 });
