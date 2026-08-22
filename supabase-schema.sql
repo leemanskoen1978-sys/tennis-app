@@ -38,7 +38,8 @@ create table if not exists users (
   working_hours jsonb,
   working_days jsonb,
   notification_settings jsonb,
-  hourly_rate numeric,
+  -- Het uurloon staat NIET hier maar in `coach_rates`. Zie daar waarom: een kolom in deze
+  -- tabel is voor iedereen leesbaar die de ledenlijst mag zien, en dat is iedereen.
   default_payment_method text check (default_payment_method in
     ('open','cash','invoice','qr','beurtenkaart','sponsor')),
   sponsor_budget numeric,
@@ -171,6 +172,44 @@ create table if not exists beurtenkaarten (
 
 create index if not exists beurtenkaarten_player_idx on beurtenkaarten (player_id);
 
+-- Wat een trainer per uur verdient. Bewust een eigen tabel en geen kolom in `users`:
+-- RLS kijkt naar rijen, niet naar kolommen, en `users_select` staat open voor iedereen die
+-- ingelogd is — een trainer moet immers de naam van zijn spelers kunnen zien. Zolang het
+-- uurloon dáárin stond, kon elke ingelogde gebruiker het loon van elke trainer opvragen,
+-- ook al toonde geen enkel scherm het hem. Als eigen tabel valt de vraag "wiens loon is
+-- dit" wél samen met een rij, en houdt de policy hieronder hem tegen.
+--
+-- Schrijven doet alleen de beheerder. Het uurloon is wat de club uitbetaalt; wie het zelf
+-- kon zetten, kon zijn eigen loon verhogen.
+create table if not exists coach_rates (
+  coach_id text primary key references users(id) on delete cascade,
+  hourly_rate numeric not null,
+  updated_at timestamptz not null default now()
+);
+
+-- Welke ouder bij welk kind hoort.
+--
+-- Een ouder ziet niets tot een trainer ja zegt: de aanvraag begint op 'pending', net als een
+-- lesaanvraag. Zonder die stap zou iedereen die zich als ouder aanmeldt het dossier van elk
+-- kind van de club kunnen openen door de naam te kiezen.
+--
+-- 'rejected' blijft staan in plaats van te verdwijnen, zodat de ouder te horen krijgt wat er
+-- met zijn vraag gebeurd is — dezelfde reden als `rejected_at` bij een geweigerde les.
+create table if not exists ouder_kind (
+  id text primary key,
+  parent_id text not null references users(id) on delete cascade,
+  child_id text not null references users(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending','approved','rejected')),
+  created_at timestamptz not null default now(),
+  decided_at timestamptz,
+  decided_by text references users(id) on delete set null,
+  -- Eén aanvraag per paar: vraagt een ouder het twee keer, dan is het dezelfde vraag.
+  unique (parent_id, child_id)
+);
+
+create index if not exists ouder_kind_parent_idx on ouder_kind (parent_id, status);
+create index if not exists ouder_kind_child_idx on ouder_kind (child_id, status);
+
 -- De instellingen van de club: één rij, en dat wordt afgedwongen met een vaste sleutel.
 -- Een tabel met per ongeluk twee rijen instellingen is een bron van "bij mij staat er iets
 -- anders" die niemand ooit terugvindt.
@@ -201,6 +240,24 @@ alter table users add column if not exists is_admin boolean not null default fal
 -- 'cancelled'. Zonder dit onderscheid kan de speler niet te horen krijgen wat er met zijn
 -- vraag gebeurd is.
 alter table bookings add column if not exists rejected_at timestamptz;
+
+-- Het uurloon verhuisde van `users` naar `coach_rates` (zie daar waarom). Eerst overzetten,
+-- dan pas weghalen — en allebei alleen als de oude kolom er nog is, zodat dit script ook op
+-- een project dat het al draaide gewoon opnieuw mag.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'users' and column_name = 'hourly_rate'
+  ) then
+    insert into coach_rates (coach_id, hourly_rate)
+    select id, hourly_rate from users where hourly_rate is not null
+    on conflict (coach_id) do nothing;
+
+    alter table users drop column hourly_rate;
+  end if;
+end
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Wie ben ik — één keer uitgerekend, door elke policy hieronder gebruikt
@@ -239,6 +296,23 @@ security definer
 set search_path = public
 as $$
   select exists (select 1 from users where auth_id = auth.uid() and role = 'coach');
+$$;
+
+-- Is dit een goedgekeurd kind van wie er nu kijkt? Zelfde opzet als hierboven: `security
+-- definer`, want de policies op ouder_kind mogen deze vraag niet zelf weer door RLS sturen.
+create or replace function is_mijn_kind(kind_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from ouder_kind
+    where parent_id = app_user_id()
+      and child_id = kind_id
+      and status = 'approved'
+  );
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -281,6 +355,45 @@ drop trigger if exists users_is_admin_bewaakt on users;
 create trigger users_is_admin_bewaakt
   before insert or update on users
   for each row execute function bewaak_is_admin();
+
+-- ---------------------------------------------------------------------------
+-- De betaalwijze mag de betaler zelf zetten — en verder niets
+-- ---------------------------------------------------------------------------
+
+-- `bookings_update` laat hieronder ook de betaler toe (en de ouder van een minderjarige
+-- betaler), want wie de rekening krijgt hoort te kiezen of hij cash betaalt of op factuur.
+-- Maar RLS kent alleen hele rijen: wie een rij mag wijzigen, mag élke kolom wijzigen. Zonder
+-- deze trigger kon een speler met dezelfde toestemming zijn les een uur verzetten, aan een
+-- andere trainer hangen of zichzelf goedkeuren.
+--
+-- Vandaar de vergelijking op de hele rij: alles behalve de twee betaalvelden moet gelijk
+-- blijven. Zo hoeft deze functie niet te weten welke kolommen er in de toekomst bij komen —
+-- een nieuwe kolom valt vanzelf onder "mag niet".
+create or replace function bewaak_betaalvelden()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Buiten een sessie om (een script, de SQL-editor) geldt deze grens niet.
+  if auth.uid() is null then return new; end if;
+  -- De trainer van deze les en de beheerder mogen alles; voor hen is er niets te bewaken.
+  if is_admin() or old.coach_id = app_user_id() then return new; end if;
+
+  if (to_jsonb(new) - 'payment_method' - 'beurtenkaart_id')
+     is distinct from (to_jsonb(old) - 'payment_method' - 'beurtenkaart_id') then
+    raise exception 'Alleen de betaalwijze van je eigen les mag je zelf wijzigen.';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists bookings_betaalvelden_bewaakt on bookings;
+create trigger bookings_betaalvelden_bewaakt
+  before update on bookings
+  for each row execute function bewaak_betaalvelden();
 
 -- ---------------------------------------------------------------------------
 -- Nieuwe login aan een bestaande gebruiker koppelen
@@ -327,8 +440,15 @@ create trigger on_auth_user_created
 -- Row Level Security
 --
 -- De regel van de app in één zin: een trainer beheert de club, een speler ziet en doet
--- alleen wat van hemzelf is. Die grens staat hier en niet alleen in de schermen — anders is
--- hij weg zodra iemand de app voorbijloopt en rechtstreeks met de databank praat.
+-- alleen wat van hemzelf is, en een ouder ziet wat van zijn goedgekeurde kind is. Die grens
+-- staat hier en niet alleen in de schermen — anders is hij weg zodra iemand de app
+-- voorbijloopt en rechtstreeks met de databank praat.
+--
+-- Twee dingen die RLS niet kan, en waar dus een trigger voor staat:
+--  - één kolom afschermen. Daarom heeft het uurloon een eigen tabel (`coach_rates`) in
+--    plaats van een kolom in `users`: zo valt "wiens loon is dit" samen met een rij.
+--  - één kolom vrijgeven. De betaler mag zijn betaalwijze zetten maar niet zijn lesuur;
+--    `bewaak_betaalvelden` bewaakt dat verschil.
 -- ---------------------------------------------------------------------------
 
 alter table users enable row level security;
@@ -339,6 +459,8 @@ alter table student_progress enable row level security;
 alter table memos enable row level security;
 alter table player_goals enable row level security;
 alter table beurtenkaarten enable row level security;
+alter table coach_rates enable row level security;
+alter table ouder_kind enable row level security;
 alter table club_settings enable row level security;
 alter table installed_catalogues enable row level security;
 
@@ -364,6 +486,54 @@ create policy users_update on users for update
 drop policy if exists users_delete on users;
 create policy users_delete on users for delete
   to authenticated using (is_coach() or is_admin());
+
+-- coach_rates: je eigen loon, of alles als je de club beheert. Dit is de hele reden dat het
+-- uurloon een eigen tabel heeft — zie daar. Een collega valt buiten beide takken en krijgt
+-- geen rij terug; niet een rij met een leeg bedrag, maar niets.
+drop policy if exists rates_select on coach_rates;
+create policy rates_select on coach_rates for select
+  to authenticated using (coach_id = app_user_id() or is_admin());
+
+-- Schrijven alleen de beheerder: dit is wat de club uitbetaalt.
+drop policy if exists rates_write on coach_rates;
+create policy rates_write on coach_rates for all
+  to authenticated using (is_admin()) with check (is_admin());
+
+-- ouder_kind: de ouder ziet zijn eigen aanvragen, de trainer ziet ze allemaal (hij moet
+-- erover beslissen).
+drop policy if exists ouder_kind_select on ouder_kind;
+create policy ouder_kind_select on ouder_kind for select
+  to authenticated using (parent_id = app_user_id() or is_coach() or is_admin());
+
+-- Een ouder vraagt alleen voor zichzelf, en alleen als vraag: 'pending' staat er met zoveel
+-- woorden, zodat hij zichzelf niet kan goedkeuren door de app voorbij te lopen. Dezelfde
+-- opzet als bookings_insert.
+drop policy if exists ouder_kind_insert on ouder_kind;
+create policy ouder_kind_insert on ouder_kind for insert
+  to authenticated with check (
+    is_coach()
+    or is_admin()
+    or (parent_id = app_user_id() and status = 'pending')
+  );
+
+-- Beslissen doet de trainer. LET OP de upsert (zie bookings_insert): de app schrijft hele
+-- rijen, dus een ouder die zijn aanvraag opnieuw wegschrijft komt ook langs deze regel — en
+-- die laat hem alleen 'pending' houden. Goedkeuren kan hij dus niet.
+drop policy if exists ouder_kind_update on ouder_kind;
+create policy ouder_kind_update on ouder_kind for update
+  to authenticated
+  using (is_coach() or is_admin() or parent_id = app_user_id())
+  with check (
+    is_coach()
+    or is_admin()
+    or (parent_id = app_user_id() and status = 'pending')
+  );
+
+-- Intrekken mag de ouder zelf: een vraag die je niet meer wilt stellen, hoort te kunnen
+-- verdwijnen.
+drop policy if exists ouder_kind_delete on ouder_kind;
+create policy ouder_kind_delete on ouder_kind for delete
+  to authenticated using (is_coach() or is_admin() or parent_id = app_user_id());
 
 -- courts en instellingen: iedereen leest (een speler ziet op welke baan hij staat), de
 -- trainer beheert.
@@ -398,6 +568,13 @@ create policy bookings_select on bookings for select
     or coach_id = app_user_id()
     or player_id = app_user_id()
     or coalesce(participant_ids, '[]'::jsonb) ? app_user_id()
+    -- De ouder ziet de lessen van zijn goedgekeurde kind, langs allebei de kanten: het kind
+    -- kan de betaler zijn of gewoon meespelen in een groepsles.
+    or is_mijn_kind(player_id)
+    or exists (
+      select 1 from jsonb_array_elements_text(coalesce(participant_ids, '[]'::jsonb)) as p(id)
+      where is_mijn_kind(p.id)
+    )
   );
 
 -- Een speler mag alleen een les voor zichzelf aanvragen, en alleen als aanvraag: 'pending'
@@ -420,14 +597,31 @@ create policy bookings_insert on bookings for insert
     is_admin()
     or (is_coach() and coach_id = app_user_id())
     or (player_id = app_user_id() and status = 'pending' and created_by = app_user_id())
+    -- Een ouder vraagt aan namens zijn kind: dezelfde regel, alleen staat de speler op de
+    -- naam van het kind en de maker op die van de ouder.
+    or (is_mijn_kind(player_id) and status = 'pending' and created_by = app_user_id())
   );
 
 -- Wijzigen (goedkeuren, weigeren, betaalwijze, annuleren) is het werk van de trainer van
 -- die les.
 drop policy if exists bookings_update on bookings;
+-- Ook de betaler staat hier, en de ouder van een minderjarige betaler: wie de rekening
+-- krijgt, kiest of hij cash betaalt of op factuur. Wat hij verder níét mag — het uur
+-- verzetten, van trainer wisselen, zichzelf goedkeuren — houdt de trigger
+-- `bewaak_betaalvelden` tegen, want een policy kent alleen hele rijen en geen kolommen.
 create policy bookings_update on bookings for update
-  to authenticated using (coach_id = app_user_id() or is_admin())
-  with check (coach_id = app_user_id() or is_admin());
+  to authenticated using (
+    coach_id = app_user_id()
+    or is_admin()
+    or player_id = app_user_id()
+    or is_mijn_kind(player_id)
+  )
+  with check (
+    coach_id = app_user_id()
+    or is_admin()
+    or player_id = app_user_id()
+    or is_mijn_kind(player_id)
+  );
 
 drop policy if exists bookings_delete on bookings;
 create policy bookings_delete on bookings for delete
@@ -438,7 +632,9 @@ create policy bookings_delete on bookings for delete
 -- gereedschap van de trainer.
 drop policy if exists lessons_select on lessons;
 create policy lessons_select on lessons for select
-  to authenticated using (is_coach() or student_id = app_user_id());
+  to authenticated using (
+    is_coach() or student_id = app_user_id() or is_mijn_kind(student_id)
+  );
 drop policy if exists lessons_write on lessons;
 create policy lessons_write on lessons for all
   to authenticated using (is_coach() or is_admin()) with check (is_coach() or is_admin());
@@ -446,7 +642,9 @@ create policy lessons_write on lessons for all
 -- voortgang, doelen en beurtenkaarten: de speler leest zijn eigen, de trainer schrijft.
 drop policy if exists progress_select on student_progress;
 create policy progress_select on student_progress for select
-  to authenticated using (is_coach() or student_id = app_user_id());
+  to authenticated using (
+    is_coach() or student_id = app_user_id() or is_mijn_kind(student_id)
+  );
 drop policy if exists progress_write on student_progress;
 create policy progress_write on student_progress for all
   to authenticated using (is_coach() or is_admin()) with check (is_coach() or is_admin());
@@ -466,14 +664,18 @@ create policy memos_write on memos for all
 
 drop policy if exists goals_select on player_goals;
 create policy goals_select on player_goals for select
-  to authenticated using (is_coach() or student_id = app_user_id());
+  to authenticated using (
+    is_coach() or student_id = app_user_id() or is_mijn_kind(student_id)
+  );
 drop policy if exists goals_write on player_goals;
 create policy goals_write on player_goals for all
   to authenticated using (is_coach() or is_admin()) with check (is_coach() or is_admin());
 
 drop policy if exists kaarten_select on beurtenkaarten;
 create policy kaarten_select on beurtenkaarten for select
-  to authenticated using (is_coach() or player_id = app_user_id());
+  to authenticated using (
+    is_coach() or player_id = app_user_id() or is_mijn_kind(player_id)
+  );
 drop policy if exists kaarten_write on beurtenkaarten;
 create policy kaarten_write on beurtenkaarten for all
   to authenticated using (is_coach() or is_admin()) with check (is_coach() or is_admin());
