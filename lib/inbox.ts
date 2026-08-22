@@ -40,8 +40,11 @@ export function isAwaitingApproval(b: Booking): boolean {
 }
 
 /** Moet déze trainer erover beslissen? */
-export function needsApproval(b: Booking, coachId: string): boolean {
-  return isAwaitingApproval(b) && b.coach_id === coachId;
+export function needsApproval(b: Booking, coachId: string, magAlles = false): boolean {
+  if (!isAwaitingApproval(b)) return false;
+  // Een beheerder beslist over de hele club. Anders blijft een aanvraag liggen zodra de
+  // trainer van dat uur een week weg is, en dan wacht de speler op iemand die niet kijkt.
+  return magAlles || b.coach_id === coachId;
 }
 
 /**
@@ -53,10 +56,11 @@ export function needsApproval(b: Booking, coachId: string): boolean {
 export function awaitingApprovalFor(
   bookings: Booking[],
   coachId: string | null | undefined,
+  magAlles = false,
 ): Booking[] {
   if (!coachId) return [];
   return bookings
-    .filter((b) => needsApproval(b, coachId))
+    .filter((b) => needsApproval(b, coachId, magAlles))
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 }
 

@@ -136,3 +136,25 @@ describe('recentGeweigerd', () => {
     expect(recentGeweigerd([groep], 'p1', NU).map((b) => b.id)).toEqual(['g']);
   });
 });
+
+describe('goedkeuren als beheerder', () => {
+  const vanKoen: Booking = { ...base, id: 'k', coach_id: 'koen' };
+  const vanAnn: Booking = { ...base, id: 'a', coach_id: 'ann' };
+
+  it('laat een gewone trainer alleen over zijn eigen agenda beslissen', () => {
+    expect(needsApproval(vanKoen, 'koen')).toBe(true);
+    expect(needsApproval(vanAnn, 'koen')).toBe(false);
+    expect(awaitingApprovalFor([vanKoen, vanAnn], 'koen').map((b) => b.id)).toEqual(['k']);
+  });
+
+  it('laat een beheerder over de hele club beslissen', () => {
+    expect(needsApproval(vanAnn, 'koen', true)).toBe(true);
+    expect(awaitingApprovalFor([vanKoen, vanAnn], 'koen', true).map((b) => b.id).sort())
+      .toEqual(['a', 'k']);
+  });
+
+  it('maakt van een besliste les geen aanvraag, ook niet voor een beheerder', () => {
+    const beslist: Booking = { ...vanAnn, status: 'confirmed' };
+    expect(needsApproval(beslist, 'koen', true)).toBe(false);
+  });
+});

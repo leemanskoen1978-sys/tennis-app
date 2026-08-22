@@ -17,6 +17,7 @@ import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
 import { bookingsOnDay } from '../../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf } from '../../lib/inbox';
+import { magInElkeAgenda } from '../../lib/rechten';
 import { formatDayTime } from '../../lib/datetime';
 import { formatTimeRange } from '../../lib/datetime';
 import { groupSize, shortGroupLabel } from '../../lib/groups';
@@ -53,7 +54,9 @@ export default function BookingsScreen(): React.JSX.Element {
   // Wat een speler aanvroeg en nog op een beslissing wacht. Staat bovenaan: zolang de
   // trainer niets zegt, gaat die les niet door.
   const teKeuren = useMemo(
-    () => (isCoach ? awaitingApprovalFor(bookings, currentUser?.id) : []),
+    () => (isCoach
+      ? awaitingApprovalFor(bookings, currentUser?.id, magInElkeAgenda(currentUser))
+      : []),
     [isCoach, bookings, currentUser],
   );
   // Aan de andere kant van dezelfde vraag: waar de speler zelf nog op wacht.
@@ -107,6 +110,14 @@ export default function BookingsScreen(): React.JSX.Element {
                     <Text style={styles.lessonCourt}>
                       {formatDayTime(b.start_time)} · {courtName(b.court_id)}
                     </Text>
+                    {/* Een beheerder ziet ook de aanvragen van collega's. Dan moet erbij
+                        staan wiens agenda het is, anders keurt hij iets goed voor iemand
+                        anders zonder het te weten. */}
+                    {b.coach_id !== currentUser?.id ? (
+                      <Text style={styles.lessonCourt}>
+                        {t('In de agenda van {trainer}', { trainer: nameOf(b.coach_id) })}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
                 {/* Goedkeuren is de knop die je meestal wilt, dus die is de nadrukkelijke;

@@ -17,6 +17,7 @@ import { Lesdag } from '../components/lesdag/Lesdag';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf, recentGeweigerd } from '../lib/inbox';
+import { magInElkeAgenda } from '../lib/rechten';
 import { bookingsFor, filterPendingPayment, openBalanceFor } from '../lib/payments';
 import { formatEuro } from '../lib/money';
 import { formatDayTimeRange } from '../lib/datetime';
@@ -56,7 +57,9 @@ export default function Hub() {
   // Wat op een beslissing van deze trainer wacht. De badge staat op Agenda, want daar staat
   // de lijst zelf ook — een melding die naar een ander scherm wijst dan waar je hem
   // afhandelt, laat je zoeken.
-  const teKeuren = isCoach ? awaitingApprovalFor(bookings, currentUser.id).length : 0;
+  const teKeuren = isCoach
+    ? awaitingApprovalFor(bookings, currentUser.id, magInElkeAgenda(currentUser)).length
+    : 0;
   // En andersom: waar de speler zelf nog op wacht.
   const gevraagd = isCoach ? 0 : awaitingApprovalOf(bookings, currentUser.id).length;
   // Een geweigerde aanvraag is het enige dat anders nergens te zien is: de les verdwijnt

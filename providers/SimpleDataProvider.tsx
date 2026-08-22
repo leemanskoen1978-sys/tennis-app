@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
 import { newId, type StoreData } from './mockStore';
+import { magInElkeAgenda } from '../lib/rechten';
 import { backend, type AuthMode } from './backend';
 import { isHerstelHash, type AanmeldUitkomst } from '../lib/wachtwoord';
 import type { AuthGebeurtenis } from './supabaseStore';
@@ -598,7 +599,9 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     const store = storeRef.current;
     if (!store || !currentUserId) return;
     const booking = store.bookings.find((b) => b.id === id);
-    if (!booking || !needsApproval(booking, currentUserId)) return;
+    // Een beheerder beslist over de hele club; een trainer alleen over zijn eigen agenda.
+    const magAlles = magInElkeAgenda(store.users.find((u) => u.id === currentUserId));
+    if (!booking || !needsApproval(booking, currentUserId, magAlles)) return;
     // Bij een weigering blijft het tijdstip achter: alleen daaraan is later te zien dat
     // deze les niet is afgezegd maar afgewezen, en dat is wat de speler te horen krijgt.
     await updateBooking(id, status === 'cancelled' ? { status, rejected_at: nowISO() } : { status });

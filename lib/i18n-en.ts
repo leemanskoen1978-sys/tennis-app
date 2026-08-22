@@ -827,4 +827,5 @@ export const EN: Record<string, string> = {
   // Wat er met een lesaanvraag gebeurde.
   'Je aanvraag is geweigerd': 'Your request was declined',
   'Vraag gerust een ander uur aan.': 'Feel free to request another time.',
+  'In de agenda van {trainer}': 'In {trainer}\u2019s calendar',
 };
