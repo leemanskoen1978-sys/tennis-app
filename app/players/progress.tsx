@@ -19,6 +19,8 @@ import { useT } from '../../lib/i18n';
 import type { TrainingType } from '../../lib/types';
 import { isCoach } from '../../lib/rechten';
 import { playersOf } from '../../lib/hub';
+import { useActieveSpeler } from '../../providers/kindkeuze';
+import { KindKiezer } from '../../components/ui/KindKiezer';
 
 const RATINGS: readonly number[] = [1, 2, 3, 4, 5] as const;
 
@@ -26,6 +28,7 @@ export default function ProgressScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const { currentUser, progress, users, addProgress, error } = useSimpleData();
+  const speler = useActieveSpeler();
   const { playerId } = useLocalSearchParams<{ playerId?: string }>();
 
   const prefill = users.find((u) => u.id === playerId && u.role !== 'coach')?.id ?? null;
@@ -71,10 +74,14 @@ export default function ProgressScreen(): React.JSX.Element {
   const reportEntries = (studentId: string) =>
     progress.filter((p) => p.student_id === studentId).sort(byDateDesc);
 
-  const ownEntries = currentUser ? reportEntries(currentUser.id) : [];
+  // Bij een ouder gaat "jouw beoordelingen" over zijn kind: hij krijgt zelf geen les.
+  const ownEntries = speler ? reportEntries(speler.id) : [];
 
   return (
     <Screen>
+      {/* Voor een ouder met meer dan één kind: wiens voortgang lees je? */}
+      <KindKiezer />
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {isCoach(currentUser) && currentUser ? (

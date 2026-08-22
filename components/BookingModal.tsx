@@ -10,6 +10,7 @@ import { ParticipantPicker } from './ParticipantPicker';
 import { UserManagement } from './UserManagement';
 import type { Court, PaymentMethod, PaymentSplit } from '../lib/types';
 import { useSimpleData } from '../providers/SimpleDataProvider';
+import { useActieveSpeler } from '../providers/kindkeuze';
 import {
   defaultMethodFor, lessonPriceLine, PAYMENT_LABELS, PAYMENT_METHODS,
 } from '../lib/payments';
@@ -63,6 +64,7 @@ function lessons(n: number): string {
 export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const t = useT();
   const { visible, onClose, coachId, date, slot, courts, playerId } = props;
+  const speler = useActieveSpeler();
   // `courts` is een prop (de terreinen waaruit je hier kiest); voor de prijs van een les
   // is de hele lijst nodig, dus die komt uit de opslag onder een eigen naam.
   const {
@@ -124,7 +126,10 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const start_time = startDate.toISOString();
   const end_time = endDate.toISOString();
 
-  const forPlayerId = playerId ?? currentUser?.id;
+  // Voor wie deze les is. Wijst het scherm eromheen niemand aan, dan is het de speler over
+  // wie de app op dit moment gaat: jijzelf, of — bij een ouder — het kind dat hij koos. Een
+  // ouder heeft zelf geen lessen, dus "voor mezelf" zou hier het verkeerde antwoord zijn.
+  const forPlayerId = playerId ?? speler?.id ?? currentUser?.id;
   const defaultMethod = defaultMethodFor(users.find((u) => u.id === forPlayerId));
   const isGroup = participants.length > 0;
   // De betaalwijze waarmee geboekt wordt: bij een groepsles staat die vast op factuur,
@@ -226,7 +231,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
         return;
       }
       const base = {
-        player_id: playerId ?? currentUser.id,
+        player_id: forPlayerId ?? currentUser.id,
         coach_id: coachId,
         court_id: selectedCourtId || courts[0]?.id || '',
         start_time,
@@ -310,10 +315,10 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
               {formatDay(date)} · {slot}–{slotEndLabel}
             </Text>
             {/* Booking for someone else is easy to do by accident, so name them. */}
-            {playerId && playerId !== currentUser?.id ? (
+            {forPlayerId && forPlayerId !== currentUser?.id ? (
               <Text style={styles.forWhom}>
                 {t('Voor {naam}', {
-                  naam: users.find((u) => u.id === playerId)?.name ?? t('onbekende speler'),
+                  naam: users.find((u) => u.id === forPlayerId)?.name ?? t('onbekende speler'),
                 })}
               </Text>
             ) : null}

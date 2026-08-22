@@ -1,17 +1,25 @@
 import {
-  seedUsers, seedCourts, seedBookings, seedLessons, seedProgress, defaultSettings,
+  seedUsers, seedCourts, seedBookings, seedLessons, seedProgress, seedRelaties, defaultSettings,
 } from './seed';
+import { kinderenVan } from './ouderkind';
 import { coachesForPlayer } from './relations';
 import { pendingPaymentsFor, rateForGroup } from './payments';
 
 describe('seed data', () => {
-  it('has two coaches and two players', () => {
+  it('has two coaches, two players and a parent', () => {
     expect(seedUsers.map((u) => [u.name, u.role])).toEqual([
       ['Koen', 'coach'],
       ['Sanne', 'coach'],
       ['Mathis', 'player'],
       ['Test', 'player'],
+      ['Wim', 'parent'],
     ]);
+  });
+
+  // Twee kinderen en niet één: met één kind is de kindkiezer onzichtbaar en valt niet te
+  // proberen wat er gebeurt als je wisselt.
+  it('geeft de ouder twee goedgekeurde kinderen', () => {
+    expect(kinderenVan('u-wim', seedRelaties).sort()).toEqual(['u-mathis', 'u-test']);
   });
 
   // The demo data has to show what the app now does: one player, two coaches.

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
-  Upload, type LucideIcon,
+  Upload, Users, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
@@ -13,6 +13,7 @@ import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
 import { isCoach } from '../../lib/rechten';
+import { openAanvragen } from '../../lib/ouderkind';
 
 interface Tile {
   key: string;
@@ -27,7 +28,7 @@ interface Tile {
 export default function Admin() {
   const t = useT();
   const router = useRouter();
-  const { currentUser } = useSimpleData();
+  const { currentUser, relaties } = useSimpleData();
   const pending = usePendingPaymentBookings();
   const [addOpen, setAddOpen] = useState(false);
 
@@ -59,6 +60,9 @@ export default function Admin() {
         { key: 'goals', title: t('Doelen'), subtitle: t('Woordenlijst voor spelersdoelen'), icon: Target, onPress: () => router.push('/admin/goals') },
         { key: 'add', title: t('Speler toevoegen'), subtitle: t('Nieuw lid aanmaken'), icon: UserPlus, onPress: () => setAddOpen(true) },
         { key: 'import', title: t('Leden importeren'), subtitle: t('Uit een Excel-lijst'), icon: Upload, onPress: () => router.push('/admin/leden-import') },
+        // Het aantal op de tegel is het aantal beslissingen dat op iemand ligt te wachten:
+        // zolang er niets gebeurt, ziet een ouder een lege app.
+        { key: 'ouders', title: t('Ouders en kinderen'), subtitle: openAanvragen(relaties).length > 0 ? t('{n} wacht op goedkeuring', { n: openAanvragen(relaties).length }) : t('Koppelingen nakijken'), icon: Users, onPress: () => router.push('/admin/ouders'), badge: openAanvragen(relaties).length },
       ],
     },
     {

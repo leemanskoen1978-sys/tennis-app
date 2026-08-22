@@ -21,7 +21,8 @@ import { StatCard, StatCardRow } from '../components/ui/StatCard';
 import { initials } from '../components/ui/ProfileAvatar';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../constants/theme';
 import { tennisColors } from '../constants/tennis-colors';
-import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
+import { useSimpleData } from '../providers/SimpleDataProvider';
+import { useActieveSpeler, useOpenstaandeBetalingen } from '../providers/kindkeuze';
 import { bookingsToday } from '../lib/hub';
 import { bookingsFor, openBalanceFor } from '../lib/payments';
 import { coachPayoutThisMonth } from '../lib/reports';
@@ -95,7 +96,11 @@ export default function ProfileScreen(): React.JSX.Element {
   const router = useRouter();
   const { currentUser, logout, bookings, courts } = useSimpleData();
   const coach = isCoach(currentUser);
-  const pending = usePendingPaymentBookings();
+  const pending = useOpenstaandeBetalingen();
+  // Het profiel gaat over het account — naam, adres, rol — maar de twee getallen eronder
+  // gaan over lessen. Een ouder heeft die zelf niet; die van zijn kind zijn wat hij zoekt,
+  // en het is ook zijn rekening. Zie providers/kindkeuze.
+  const speler = useActieveSpeler();
   const isWide = useIsWide();
 
   if (!currentUser) {
@@ -114,14 +119,14 @@ export default function ProfileScreen(): React.JSX.Element {
   // trainer kijkt naar de agenda van de dag, een speler naar zijn eigen lessen.
   // `bookingsFor` en niet zelf filteren: zo ziet een speler ook de groepslessen waarin
   // hij meespeelt zonder te betalen.
-  const myBookings = bookingsFor(currentUser, bookings);
+  const myBookings = bookingsFor(speler, bookings);
   const today = bookingsToday(coach ? bookings : myBookings, new Date());
 
   // Wat een trainer deze maand verdiende: zijn eigen uurtarief over zijn eigen lessen. Dus
   // niet de omzet — die loopt op het uurtarief van de baan en is wat de spelers betalen.
   // Zonder ingevuld tarief is dat 0, en dat zeggen we er hieronder met zoveel woorden bij.
   // Wat een speler nog moet afrekenen — hetzelfde bedrag als op zijn hoofdscherm.
-  const balance = openBalanceFor(currentUser, bookings, courts);
+  const balance = openBalanceFor(speler, bookings, courts);
 
   const rateMissing = currentUser.hourly_rate === undefined;
   const earnedThisMonth = coachPayoutThisMonth(currentUser, bookings);

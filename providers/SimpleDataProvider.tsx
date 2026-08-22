@@ -12,6 +12,7 @@ import type { AuthGebeurtenis } from './supabaseStore';
 import { installCatalogue } from '../lib/catalogue';
 import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { upsertGoal, removeGoal } from '../lib/goals';
+import { aanvraagVoor } from '../lib/ouderkind';
 import {
   SESSIONS_PER_CARD, useSession, releaseSession, removeManualSession,
   planMethodChange, planCancel, planCardDeletion, planParticipantsChange, planSplitChange,
@@ -23,7 +24,7 @@ import { seriesFrom } from '../lib/series';
 import { planSeries, type RecurrenceRule, type SeriesSlot } from '../lib/recurrence';
 import type {
   User, Court, Booking, Lesson, Memo, StudentProgress, PlayerGoal, Settings,
-  Beurtenkaart, BookingStatus, PaymentMethod, PaymentSplit,
+  Beurtenkaart, BookingStatus, OuderKind, PaymentMethod, PaymentSplit,
 } from '../lib/types';
 
 interface DataShape {
@@ -35,6 +36,8 @@ interface DataShape {
   memos: Memo[];
   goals: PlayerGoal[];
   beurtenkaarten: Beurtenkaart[];
+  /** De koppelingen ouder-kind: aangevraagd, goedgekeurd of geweigerd. Zie lib/ouderkind. */
+  relaties: OuderKind[];
   settings: Settings;
   currentUser: User | null;
   loading: boolean;
@@ -117,6 +120,16 @@ interface DataShape {
    * `is_admin` die niet van een beheerder komt.
    */
   updateUser: (id: string, patch: Partial<Omit<User, 'id' | 'role' | 'is_admin'>>) => Promise<void>;
+  /**
+   * Een ouder vraagt een kind aan zijn profiel te koppelen. De aanvraag begint op 'pending';
+   * een trainer beslist. Vraagt hij het over een kind waar al een aanvraag over loopt, dan
+   * gebeurt er niets — de vraag is al gesteld.
+   */
+  vraagKindAan: (childId: string) => Promise<void>;
+  /** De trainer beslist over zo'n aanvraag. */
+  beslisOverKind: (relatieId: string, goedgekeurd: boolean) => Promise<void>;
+  /** De koppeling of de aanvraag weghalen. Een ouder mag zijn eigen vraag intrekken. */
+  wisRelatie: (relatieId: string) => Promise<void>;
   addLesson: (l: Omit<Lesson, 'id'>) => Promise<void>;
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
@@ -746,6 +759,52 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     [commit],
   );
 
+  // ---------------------------------------------------------------------------
+  // Ouder en kind
+  //
+  // De ouder vraagt, de trainer beslist. Dezelfde vorm als een lesaanvraag, en om dezelfde
+  // reden: zonder die stap kon iedereen die zich als ouder aanmeldt het dossier van elk
+  // kind van de club openen door de naam te kiezen. Zie lib/ouderkind.
+  // ---------------------------------------------------------------------------
+
+  const vraagKindAan = useCallback(async (childId: string) => {
+    const store = storeRef.current;
+    if (!store || !currentUserId) return;
+    // Al gevraagd is gevraagd: een tweede rij zou de trainer dezelfde beslissing nog eens
+    // laten nemen, en de databank staat er maar één toe per paar.
+    if (aanvraagVoor(currentUserId, childId, store.relaties)) return;
+    const nieuw: OuderKind = {
+      id: newId('ok'),
+      parent_id: currentUserId,
+      child_id: childId,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    };
+    await commit({ ...store, relaties: [...store.relaties, nieuw] });
+  }, [commit, currentUserId]);
+
+  const beslisOverKind = useCallback(async (relatieId: string, goedgekeurd: boolean) => {
+    const store = storeRef.current;
+    if (!store) return;
+    await commit({
+      ...store,
+      relaties: store.relaties.map((r) => (r.id === relatieId
+        ? {
+          ...r,
+          status: goedgekeurd ? 'approved' as const : 'rejected' as const,
+          decided_at: new Date().toISOString(),
+          ...(currentUserId ? { decided_by: currentUserId } : {}),
+        }
+        : r)),
+    });
+  }, [commit, currentUserId]);
+
+  const wisRelatie = useCallback(async (relatieId: string) => {
+    const store = storeRef.current;
+    if (!store) return;
+    await commit({ ...store, relaties: store.relaties.filter((r) => r.id !== relatieId) });
+  }, [commit]);
+
   const addLesson = useCallback(async (l: Omit<Lesson, 'id'>) => {
     const store = storeRef.current;
     if (!store) return;
@@ -868,6 +927,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     memos: store?.memos ?? [],
     goals: store?.goals ?? [],
     beurtenkaarten: store?.beurtenkaarten ?? [],
+    relaties: store?.relaties ?? [],
     settings: store?.settings ?? { booking_end_time: '21:00', theme: 'light', language: 'nl' },
     currentUser,
     loading,
@@ -901,6 +961,9 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     deleteBeurtenkaart,
     addUser,
     updateUser,
+    vraagKindAan,
+    beslisOverKind,
+    wisRelatie,
     addLesson,
     updateLesson,
     deleteLesson,
@@ -922,7 +985,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setParticipants, setPaymentSplit,
     setPaymentMethod, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
-    addUser, updateUser, addLesson,
+    addUser, updateUser, vraagKindAan, beslisOverKind, wisRelatie, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
     addMemo, deleteMemo, werkMemoUit,
     saveGoal, deleteGoal, saveSettings, emergencyCleanup,

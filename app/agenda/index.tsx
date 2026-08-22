@@ -14,7 +14,9 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
-import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
+import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { useActieveSpeler, useOpenstaandeBetalingen } from '../../providers/kindkeuze';
+import { KindKiezer } from '../../components/ui/KindKiezer';
 import { bookingsOnDay } from '../../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf } from '../../lib/inbox';
 import { isCoach, magInElkeAgenda } from '../../lib/rechten';
@@ -39,15 +41,17 @@ export default function BookingsScreen(): React.JSX.Element {
   const t = useT();
   const { currentUser, bookings, users, courts, approveBooking, rejectBooking, error } =
     useSimpleData();
-  const pending = usePendingPaymentBookings();
+  const pending = useOpenstaandeBetalingen();
+  // Voor een ouder gaat dit scherm over het kind dat hij koos. Zie providers/kindkeuze.
+  const speler = useActieveSpeler();
   const router = useRouter();
   const coach = isCoach(currentUser);
 
   // Vandaag in lokale tijd; `bookingsOnDay` bepaalt wat "deze dag" is, dezelfde regel
   // die de teller op het hoofdscherm gebruikt.
   const today = useMemo(
-    () => bookingsOnDay(bookingsFor(currentUser ?? null, bookings), new Date()),
-    [currentUser, bookings],
+    () => bookingsOnDay(bookingsFor(speler, bookings), new Date()),
+    [speler, bookings],
   );
 
   // Wat een speler aanvroeg en nog op een beslissing wacht. Staat bovenaan: zolang de
@@ -60,8 +64,8 @@ export default function BookingsScreen(): React.JSX.Element {
   );
   // Aan de andere kant van dezelfde vraag: waar de speler zelf nog op wacht.
   const gevraagd = useMemo(
-    () => (coach ? [] : awaitingApprovalOf(bookings, currentUser?.id)),
-    [coach, bookings, currentUser],
+    () => (coach ? [] : awaitingApprovalOf(bookings, speler?.id)),
+    [coach, bookings, speler],
   );
 
   const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
@@ -86,6 +90,9 @@ export default function BookingsScreen(): React.JSX.Element {
 
   return (
     <Screen>
+      {/* Voor een ouder met meer dan één kind: over wie gaat deze agenda? */}
+      <KindKiezer />
+
       {/* Eén kolom, op elk venster: Vandaag boven, de tegels daaronder. Twee kolomen naast
           elkaar leverde op een rustige dag links één regel met een zee van wit op, en
           drukte de drie tegels rechts in een scheve 2+1. Over de volle breedte staan ze

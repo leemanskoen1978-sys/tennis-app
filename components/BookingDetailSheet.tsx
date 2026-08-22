@@ -19,6 +19,7 @@ import { DetailSheet } from './ui/DetailSheet';
 import { ParticipantPicker } from './ParticipantPicker';
 import { PaymentMethodSheet } from './PaymentMethodSheet';
 import { useSimpleData } from '../providers/SimpleDataProvider';
+import { useActieveSpeler } from '../providers/kindkeuze';
 import { cardsFor, remaining, GROEPSLES_ALLEEN_FACTUUR } from '../lib/beurtenkaart';
 import { formatDayTimeRange } from '../lib/datetime';
 import { isGroupLesson, participantIdsOf } from '../lib/groups';
@@ -99,6 +100,7 @@ export function BookingDetailSheet({
 }): React.JSX.Element | null {
   const t = useT();
   const router = useRouter();
+  const speler = useActieveSpeler();
   const {
     bookings, users, courts, beurtenkaarten,
     updateBooking, deleteBooking, cancelSeriesFrom, deleteSeriesFrom,
@@ -135,8 +137,14 @@ export function BookingDetailSheet({
   const paymentLabel = paymentLabelFor(booking, payment, beurtenkaarten);
   const isCancelled = booking.status === 'cancelled';
   const canCancel = !isCancelled && booking.status !== 'completed';
+  // Wie de rekening krijgt, kiest hoe hij betaalt: de betaler zelf, en de ouder die voor
+  // hem meekijkt. De trainer mag het ook — hij handelt het af aan de baan. Wat een betaler
+  // verder níét mag (het uur verzetten, van trainer wisselen, zichzelf goedkeuren) hangt
+  // aan `canManage` hieronder, en de databank bewaakt datzelfde verschil met de trigger
+  // `bewaak_betaalvelden`.
+  const betaler = speler?.id === booking.player_id;
   // Alleen bij een lopende les: op een geannuleerde les valt niets meer te betalen.
-  const canPay = canManage && !isCancelled;
+  const canPay = (canManage || betaler) && !isCancelled;
   const isGroup = isGroupLesson(booking);
   const court = courts.find((c) => c.id === booking.court_id);
   const players = playersOf(users);

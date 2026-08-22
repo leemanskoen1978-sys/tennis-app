@@ -835,4 +835,40 @@ export const EN: Record<string, string> = {
   'Laatste les op {dag}.': 'Last lesson on {dag}.',
   'Tot en met': 'Up to and including',
   'dd/mm/jjjj': 'dd/mm/yyyy',
+
+  // Ouder en kind. Een ouder heeft zelf geen lessen; de app gaat over het kind dat hij koos.
+  'Kind': 'Child',
+  'Mijn kinderen': 'My children',
+  'Ouders en kinderen': 'Parents and children',
+  'Kind toevoegen': 'Add child',
+  'Nog geen kind gekoppeld': 'No child linked yet',
+  'Vraag je kind aan je profiel toe te voegen. Zodra een trainer het goedkeurt, zie je hier zijn lessen, zijn saldo en zijn voortgang.':
+    'Ask for your child to be added to your profile. Once a coach approves it, you will see their lessons, their balance and their progress here.',
+  'Zoek je kind op naam. Een trainer keurt de koppeling goed; daarna zie je zijn lessen, zijn saldo en zijn voortgang.':
+    'Find your child by name. A coach approves the link; after that you will see their lessons, their balance and their progress.',
+  'Typ de naam van je kind\u2026': "Type your child's name\u2026",
+  'Gekoppeld': 'Linked',
+  'Aangevraagd': 'Requested',
+  'Goedgekeurd': 'Approved',
+  'Niet goedgekeurd': 'Not approved',
+  'Intrekken': 'Withdraw',
+  'Weghalen': 'Remove',
+  'Losmaken': 'Unlink',
+  'Vraag het na bij de trainer als dit niet klopt.': 'Ask your coach if this is not right.',
+  'Je hebt nog geen kind gekoppeld.': 'You have not linked a child yet.',
+  'Er wacht geen aanvraag.': 'No request is waiting.',
+  'Nog geen ouder aan een kind gekoppeld.': 'No parent linked to a child yet.',
+  'Koppelingen nakijken': 'Review links',
+  '{n} wacht op goedkeuring': '{n} awaiting approval',
+  '{ouder} vraagt {kind} te mogen volgen.': '{ouder} is asking to follow {kind}.',
+  'Gevraagd op {dag}': 'Requested on {dag}',
+  'Na goedkeuring ziet deze ouder de lessen, het saldo en de voortgang van dit kind.':
+    'Once approved, this parent sees this child\u2019s lessons, balance and progress.',
+  'Ouder: {naam}': 'Parent: {naam}',
+  'kind': 'child',
+  'kinderen': 'children',
+  // Geld dat van jou is en niet van de club.
+  'Mijn loon': 'My pay',
+  'Alleen een beheerder kan een uurtarief zetten; ik laat het weg.':
+    'Only an administrator can set an hourly rate; I am leaving it out.',
 };

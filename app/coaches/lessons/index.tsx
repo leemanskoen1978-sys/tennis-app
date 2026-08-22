@@ -17,11 +17,14 @@ import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
 import { spacing, typography } from '../../../constants/theme';
 import { isCoach } from '../../../lib/rechten';
+import { useActieveSpeler } from '../../../providers/kindkeuze';
 
 export default function LessonsScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const { currentUser, lessons, error } = useSimpleData();
+  // Een ouder ziet het lesmateriaal van zijn kind; hij heeft er zelf geen.
+  const speler = useActieveSpeler();
 
   if (!isCoach(currentUser)) {
     return (
@@ -30,7 +33,7 @@ export default function LessonsScreen(): React.JSX.Element {
           <Text style={styles.error}>{error}</Text>
         ) : null}
         <LessonDatabase
-          lessons={visibleLessonsFor(lessons, currentUser)}
+          lessons={visibleLessonsFor(lessons, speler)}
           canEdit={false}
           emptyLabel={t('Je trainer heeft nog geen lesmateriaal voor je klaargezet.')}
         />

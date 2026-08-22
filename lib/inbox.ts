@@ -97,10 +97,13 @@ export const WEIGERING_DAGEN = 7;
  */
 export function recentGeweigerd(
   bookings: Booking[],
-  playerId: string,
+  // Leeg mag: een ouder zonder gekozen kind heeft niemand om berichten over te tonen, en
+  // dat is een antwoord — geen lege lijst afdwingen bij elke aanroeper.
+  playerId: string | null | undefined,
   now: Date,
   dagen: number = WEIGERING_DAGEN,
 ): Booking[] {
+  if (!playerId) return [];
   const grens = now.getTime() - dagen * 24 * 60 * 60 * 1000;
   return bookings
     .filter((b) => b.status === 'cancelled' && b.rejected_at !== undefined && playsIn(b, playerId))

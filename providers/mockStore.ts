@@ -6,7 +6,8 @@ import type {
   Settings,
 } from '../lib/types';
 import {
-  seedUsers, seedCourts, seedBookings, seedLessons, seedProgress, defaultSettings,
+  seedUsers, seedCourts, seedBookings, seedLessons, seedProgress, seedRelaties,
+  defaultSettings,
 } from '../lib/seed';
 import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { installCatalogue } from '../lib/catalogue';
@@ -41,7 +42,7 @@ function freshSeed(): StoreData {
     progress: [...seedProgress],
     memos: [],
     goals: [],
-    relaties: [],
+    relaties: [...seedRelaties],
     settings: { ...defaultSettings },
     installed_catalogues: [],
   };

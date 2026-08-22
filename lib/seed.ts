@@ -1,4 +1,6 @@
-import type { User, Court, Settings, Booking, Lesson, StudentProgress } from './types';
+import type {
+  User, Court, Settings, Booking, Lesson, OuderKind, StudentProgress,
+} from './types';
 
 // Fixed ids so the mock store has stable relations across reloads.
 export const seedUsers: User[] = [
@@ -12,6 +14,21 @@ export const seedUsers: User[] = [
   { id: 'u-sanne', name: 'Sanne', email: 'sanne@example.com', role: 'coach', hourly_rate: 26 },
   { id: 'u-mathis', name: 'Mathis', email: 'mathis@example.com', role: 'player' },
   { id: 'u-test', name: 'Test', email: 'test@example.com', role: 'player' },
+  // Een ouder met twee kinderen, want met één kind is de kindkiezer onzichtbaar en is niet
+  // te proberen wat er gebeurt als je wisselt. Zie providers/kindkeuze.
+  { id: 'u-wim', name: 'Wim', email: 'wim@example.com', role: 'parent' },
+];
+
+/**
+ * De koppelingen ouder-kind van de demo: Wim hoort bij Mathis en bij Test.
+ *
+ * Allebei goedgekeurd, zodat de app meteen te proberen is. De aanvraagkant — een ouder die
+ * vraagt en een trainer die beslist — zie je door in Beheer → Ouders en kinderen een
+ * koppeling los te maken en hem opnieuw aan te vragen.
+ */
+export const seedRelaties: OuderKind[] = [
+  { id: 'ok-wim-mathis', parent_id: 'u-wim', child_id: 'u-mathis', status: 'approved' },
+  { id: 'ok-wim-test', parent_id: 'u-wim', child_id: 'u-test', status: 'approved' },
 ];
 
 // De banen hebben meteen een groepstaffel, zodat een groepsles te proberen is zonder eerst

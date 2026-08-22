@@ -3,6 +3,7 @@ import { Stack, Redirect, useSegments } from 'expo-router';
 import { ThemeProvider, DefaultTheme, type Theme } from '@react-navigation/native';
 import { View, ActivityIndicator } from 'react-native';
 import { SimpleDataProvider, useSimpleData } from '../providers/SimpleDataProvider';
+import { KindkeuzeProvider } from '../providers/kindkeuze';
 import { MenuBar } from '../components/ui/MenuBar';
 import { TabBar } from '../components/ui/TabBar';
 import { AppBackground } from '../components/ui/AppBackground';
@@ -78,6 +79,8 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   { name: 'admin/courts', title: t('Banen') },
   { name: 'admin/goals', title: t('Doelen') },
   { name: 'admin/leden-import', title: t('Leden importeren') },
+  { name: 'admin/ouders', title: t('Ouders en kinderen') },
+  { name: 'ouder/kinderen', title: t('Mijn kinderen') },
   { name: 'admin/settings', title: t('Instellingen') },
 ];
 
@@ -185,7 +188,11 @@ export default function RootLayout() {
   return (
     <SimpleDataProvider>
       <LanguageFromSettings>
-        <Root />
+        {/* Binnen de taal, want de kinderlijst wordt op naam gesorteerd en dat hangt van de
+            taal af. Boven Root, want elk scherm eronder vraagt wie de actieve speler is. */}
+        <KindkeuzeProvider>
+          <Root />
+        </KindkeuzeProvider>
       </LanguageFromSettings>
     </SimpleDataProvider>
   );

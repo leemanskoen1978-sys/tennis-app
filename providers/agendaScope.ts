@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react';
 import { bookingsInScope, defaultCoachFilter } from '../lib/payments';
 import { coachesOf } from '../lib/hub';
 import { useSimpleData } from './SimpleDataProvider';
+import { useActieveSpeler } from './kindkeuze';
 import type { Booking, User } from '../lib/types';
 
 export interface AgendaScope {
@@ -26,15 +27,18 @@ export interface AgendaScope {
 }
 
 export function useAgendaScope(): AgendaScope {
-  const { currentUser, bookings, users } = useSimpleData();
+  const { bookings, users } = useSimpleData();
+  // Wiens agenda dit is. Voor iedereen behalve een ouder is dat hijzelf; een ouder kijkt
+  // naar het kind dat hij koos, want hij heeft zelf geen lessen. Zie providers/kindkeuze.
+  const speler = useActieveSpeler();
   const [coachId, setCoachId] = useState<string | null>(
-    () => defaultCoachFilter(currentUser),
+    () => defaultCoachFilter(speler),
   );
 
   const coaches = useMemo(() => coachesOf(users), [users]);
   const shown = useMemo(
-    () => bookingsInScope(currentUser ?? null, bookings, coachId),
-    [currentUser, bookings, coachId],
+    () => bookingsInScope(speler, bookings, coachId),
+    [speler, bookings, coachId],
   );
 
   return { coachId, setCoachId, coaches, bookings: shown };

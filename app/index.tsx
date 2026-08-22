@@ -15,7 +15,9 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ActionTile, TileGrid } from '../components/ui/ActionTile';
 import { Lesdag } from '../components/lesdag/Lesdag';
-import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
+import { useSimpleData } from '../providers/SimpleDataProvider';
+import { useKindkeuze, useOpenstaandeBetalingen } from '../providers/kindkeuze';
+import { KindKiezer } from '../components/ui/KindKiezer';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf, recentGeweigerd } from '../lib/inbox';
 import { isCoach, magInElkeAgenda } from '../lib/rechten';
@@ -43,20 +45,23 @@ export default function Hub() {
   const router = useRouter();
   const { currentUser, users, bookings, courts } = useSimpleData();
   const coach = isCoach(currentUser);
-  const pending = usePendingPaymentBookings();
+  const pending = useOpenstaandeBetalingen();
+  // Wiens gegevens dit scherm toont. Voor een ouder is dat zijn gekozen kind: hij heeft zelf
+  // geen lessen, geen saldo en geen voortgang. Zie providers/kindkeuze.
+  const { speler, viaOuder, kinderen } = useKindkeuze();
 
   if (!currentUser) return <Redirect href="/login" />;
 
   // `bookingsFor` en niet zelf filteren: zo ziet een speler ook de groepslessen waarin
   // hij meespeelt zonder te betalen.
-  const myBookings = bookingsFor(currentUser, bookings);
+  const myBookings = bookingsFor(speler, bookings);
   const today = bookingsToday(coach ? bookings : myBookings, new Date());
   // Dezelfde definitie van "staat nog open" als Beheer: een geannuleerde of nog niet
   // bevestigde les hoort niet op de badge, anders loopt die juist óp bij een annulering.
   const myOpen = filterPendingPayment(myBookings).length;
   // Wat er in euro's nog openstaat. Een teller zegt "2 lessen"; wat een speler wil weten is
   // hoeveel dat is, en dat staat daarom voluit op zijn hoofdscherm in plaats van als badge.
-  const balance = openBalanceFor(currentUser, bookings, courts);
+  const balance = openBalanceFor(speler, bookings, courts);
   // Wat op een beslissing van deze trainer wacht. De badge staat op Agenda, want daar staat
   // de lijst zelf ook — een melding die naar een ander scherm wijst dan waar je hem
   // afhandelt, laat je zoeken.
@@ -64,10 +69,10 @@ export default function Hub() {
     ? awaitingApprovalFor(bookings, currentUser.id, magInElkeAgenda(currentUser)).length
     : 0;
   // En andersom: waar de speler zelf nog op wacht.
-  const gevraagd = coach ? 0 : awaitingApprovalOf(bookings, currentUser.id).length;
+  const gevraagd = coach ? 0 : awaitingApprovalOf(bookings, speler?.id).length;
   // Een geweigerde aanvraag is het enige dat anders nergens te zien is: de les verdwijnt
   // en niemand zegt waarom. Een goedgekeurde les staat gewoon in zijn agenda.
-  const geweigerd = coach ? [] : recentGeweigerd(bookings, currentUser.id, new Date());
+  const geweigerd = coach ? [] : recentGeweigerd(bookings, speler?.id, new Date());
   // Wat je wegklikt blijft weg — op dit toestel. Zie lib/weggeklikt voor waarom dat niet in
   // de databank staat.
   const { weggeklikt, klikWeg, klikAllesWeg } = useWeggeklikt(geweigerd);
@@ -111,7 +116,23 @@ export default function Hub() {
     { key: 'prog', title: t('Voortgang'), subtitle: t('Jouw beoordelingen'), icon: TrendingUp, onPress: () => router.push('/players/progress') },
   ];
 
-  const tiles = coach ? coachTiles : playerTiles;
+  // Een ouder krijgt dezelfde vier tegels — ze gaan over het kind dat hij koos — plus de
+  // plek waar hij zijn kinderen beheert. Zonder die tegel is er geen weg naar het scherm
+  // dat de app voor hem laat werken.
+  const ouderTiles: Tile[] = [
+    ...playerTiles,
+    {
+      key: 'kinderen',
+      title: t('Mijn kinderen'),
+      subtitle: kinderen.length === 0
+        ? t('Nog geen kind gekoppeld')
+        : plural(kinderen.length, 'kind', 'kinderen'),
+      icon: Users,
+      onPress: () => router.push('/ouder/kinderen'),
+    },
+  ];
+
+  const tiles = coach ? coachTiles : viaOuder ? ouderTiles : playerTiles;
 
   return (
     <Screen>
@@ -121,6 +142,22 @@ export default function Hub() {
           <Text style={styles.q}>{t('Wat wil je doen?')}</Text>
         </View>
       </View>
+
+      {/* Voor een ouder met meer dan één kind: waar gaat dit scherm over? Alles eronder
+          volgt die keuze. Zie providers/kindkeuze. */}
+      <KindKiezer />
+
+      {/* Een ouder zonder goedgekeurd kind ziet een lege app, en dat is geen kapotte app
+          maar een onbeantwoorde vraag. Zeg dus wat er moet gebeuren. */}
+      {viaOuder && kinderen.length === 0 ? (
+        <Card onPress={() => router.push('/ouder/kinderen')} accessibilityLabel={t('Kind toevoegen')}>
+          <Text style={styles.leegTitel}>{t('Nog geen kind gekoppeld')}</Text>
+          <Text style={styles.leegTekst}>
+            {t('Vraag je kind aan je profiel toe te voegen. Zodra een trainer het goedkeurt, '
+              + 'zie je hier zijn lessen, zijn saldo en zijn voortgang.')}
+          </Text>
+        </Card>
+      ) : null}
 
       {/* De lesdag hoort bovenaan: wat een trainer om vijf voor vijf wil zien, is de les
           van vijf uur — niet een keuzemenu. De tegels blijven eronder staan. */}
@@ -212,6 +249,8 @@ export default function Hub() {
 }
 
 const styles = StyleSheet.create({
+  leegTitel: { ...typography.h3, color: tennisColors.text },
+  leegTekst: { ...typography.body, fontSize: 14, color: tennisColors.textMuted, marginTop: spacing.xs },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   headerText: { flex: 1, gap: spacing.xs },
   hi: { ...typography.h1, color: tennisColors.text },
