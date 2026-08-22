@@ -46,6 +46,25 @@ Wat nog niet met de hand in de browser is doorlopen: een reeks boeken die langer
 beurtenkaart toelaat (de laatste lessen horen op "Open" te blijven, met melding), en
 "deze en alle volgende" annuleren.
 
+### 1b. Wat er op 22 augustus bij is gekomen en werkt
+
+Met de hand doorlopen op de echte site, door de gebruiker:
+
+- **De lesdag met de spraakmemo.** Opnemen op de baan, de uitwerklijst, en de notitie die
+  eruit voortkomt. De tabel `memos` staat in Supabase.
+- **Beheerder als vinkje** (`users.is_admin`): boeken, wijzigen en schrappen in elke agenda,
+  en beslissen over de lesaanvragen van de hele club. Wie beheerder mag maken, bewaakt de
+  trigger `bewaak_is_admin` — niet de app.
+- **Uitloggen blijft uitgelogd**, ook op een telefoon.
+- **Bladeren tussen de openstaande betalingen** in plaats van ze in volgorde te moeten
+  afwerken.
+- **Goedkeuren en weigeren werkt weer.** Zie de valkuil hieronder; het lag aan de RLS, niet
+  aan het scherm.
+- **De speler krijgt bericht als zijn aanvraag geweigerd is** (`bookings.rejected_at`,
+  verdwijnt na een week).
+- **Een trainer kan een les van vandaag én van vorige week nog inzetten**; een speler begint
+  bij morgen.
+
 ### 2. Achterstallig klein werk
 
 - **Verwijderen in het detailblad** verschijnt alleen bij een les uit een reeks. Bij een losse
@@ -56,9 +75,6 @@ beurtenkaart toelaat (de laatste lessen horen op "Open" te blijven, met melding)
 - **`clubMargin`** in `lib/payments.ts` is gebouwd en getest maar staat op geen enkel scherm.
 - **Genest venster**: een onbekende speler aanmaken vanuit de spelerskeuzelijst opent een modal
   binnen een modal. Werkt op web; nog niet op een telefoon getest.
-- **De tabel `memos` moet nog in Supabase aangemaakt worden** door het bijgewerkte
-  `supabase-schema.sql` te draaien. Zolang dat niet gebeurd is, werkt de app gewoon maar
-  doen de spraakmemo's niets: `selectAllOptioneel` slikt alleen "die tabel bestaat niet".
 - **Memo's blijven liggen als je ze nooit uitwerkt.** Dat is met opzet (het is een werklijst,
   geen postvak dat opruimt), maar er staat geen grens op. Een trainer die een half jaar niets
   uitwerkt, sleept al die audio bij elke start mee. Zodra dat gebeurt is Supabase Storage het
@@ -67,9 +83,6 @@ beurtenkaart toelaat (de laatste lessen horen op "Open" te blijven, met melding)
   in deze app nog niet. De lege plaatshouder `components/SpeechToText.tsx` is weggehaald bij
   de opruimronde: een bestand dat "binnenkort" zegt en nergens getoond wordt, is geen begin
   van een functie maar ruis. De weg ernaartoe staat in `docs/voice-memo-native.md`.
-- **De memoknop is nog niet met een echte microfoon doorlopen**: opnemen, te kort loslaten,
-  de aftelling voorbij 50 seconden en de afkap op 60. Dat vraagt een baan met een les erop
-  en toestemming voor de microfoon in de browser.
 
 ### 3. Grotere dingen die nog niet besproken zijn
 
