@@ -4,7 +4,7 @@ import Svg, { Polygon, Ellipse, Circle, Line, Path } from 'react-native-svg';
 export type CourtObjectType = 'cone' | 'player' | 'racket';
 
 /** Orange training cone (triangle + base + white band). */
-export function ConeIcon({ size = 34 }: { size?: number }) {
+function ConeIcon({ size = 34 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
       <Ellipse cx={16} cy={28} rx={11} ry={3} fill="#B5541F" />
@@ -15,7 +15,7 @@ export function ConeIcon({ size = 34 }: { size?: number }) {
 }
 
 /** Blue player figure. */
-export function PlayerIcon({ size = 34 }: { size?: number }) {
+function PlayerIcon({ size = 34 }: { size?: number }) {
   const c = '#2C5F8A';
   return (
     <Svg width={size} height={size * 1.15} viewBox="0 0 32 38">
@@ -33,7 +33,7 @@ export function PlayerIcon({ size = 34 }: { size?: number }) {
 }
 
 /** Tennis racket. */
-export function RacketIcon({ size = 34 }: { size?: number }) {
+function RacketIcon({ size = 34 }: { size?: number }) {
   const frame = '#2E6B30';
   return (
     <Svg width={size} height={size * 1.25} viewBox="0 0 32 40">

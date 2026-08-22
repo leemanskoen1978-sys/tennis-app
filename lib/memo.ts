@@ -20,7 +20,7 @@ export const MIN_MEMO_MS = 1000;
 export const MAX_MEMO_MS = 60_000;
 
 /** Vanaf hier telt de knop zichtbaar af, zodat de afkap niemand verrast. */
-export const WAARSCHUW_VANAF_MS = 50_000;
+const WAARSCHUW_VANAF_MS = 50_000;
 
 /** Is deze opname het bewaren waard? */
 export function opnameDeugt(durationMs: number): boolean {

@@ -18,7 +18,7 @@ export interface TrainingPlan {
   exercises: TrainingExercise[];
 }
 
-export const emptyExercise = (): TrainingExercise => ({
+const emptyExercise = (): TrainingExercise => ({
   nr: '', duration: '', situation: '', purpose: '',
   description: '', quality: '', organisation: '',
 });
@@ -65,7 +65,7 @@ const toLines = (text: string): string[] =>
  * One row of the training table. Every column keeps its own label — the booklet's headings
  * are the vocabulary the coach reads on court, so flattening them into prose would lose it.
  */
-export function ExerciseCard({ exercise }: { exercise: TrainingExercise }) {
+function ExerciseCard({ exercise }: { exercise: TrainingExercise }) {
   const t = useT();
   return (
     <View style={styles.exercise}>

@@ -92,7 +92,7 @@ export function tagGroup(tag: string): TagGroup | undefined {
  * geen letter of cijfer is wordt een spatie. Daardoor valt "FH/BH" uiteen in twee woorden
  * en hoeft elk patroon alleen nog met spaties eromheen gezocht te worden.
  */
-export function normalise(text: string): string {
+function normalise(text: string): string {
   return ` ${text
     .toLowerCase()
     .normalize('NFD')
@@ -102,7 +102,7 @@ export function normalise(text: string): string {
 }
 
 /** Alle tekst van een les op één hoop — dat is waar de tags uit komen. */
-export function lessonText(lesson: Lesson): string {
+function lessonText(lesson: Lesson): string {
   const parts: string[] = [lesson.title];
   if (lesson.description) parts.push(lesson.description);
   if (lesson.focus_points) parts.push(...lesson.focus_points);
@@ -146,7 +146,7 @@ export function exerciseTags(ex: TrainingExercise): string[] {
  * Hoe vaak elke tag voorkomt in deze lessen. De filterbalk toont alleen tags die er
  * echt zijn: een chip die nul resultaten oplevert is een dode knop.
  */
-export function tagCounts(lessons: Lesson[]): Map<string, number> {
+function tagCounts(lessons: Lesson[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const lesson of lessons) {
     for (const tag of lessonTags(lesson)) {
@@ -226,7 +226,7 @@ export function filterExercises(
 }
 
 /** Tags van losse oefeningen tellen, voor de filterbalk in de oefeningenweergave. */
-export function exerciseTagCounts(lessons: Lesson[]): Map<string, number> {
+function exerciseTagCounts(lessons: Lesson[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const lesson of lessons) {
     for (const ex of lesson.exercises ?? []) {

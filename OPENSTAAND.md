@@ -63,8 +63,15 @@ beurtenkaart toelaat (de laatste lessen horen op "Open" te blijven, met melding)
   geen postvak dat opruimt), maar er staat geen grens op. Een trainer die een half jaar niets
   uitwerkt, sleept al die audio bij elke start mee. Zodra dat gebeurt is Supabase Storage het
   antwoord — zie de spec van 22 augustus.
-- **Spraak-naar-tekst** zou het uitwerken van een memo bijna overbodig maken; op web bestaat
-  het in deze app nog niet (`components/SpeechToText.tsx` is een plaatshouder).
+- **Spraak-naar-tekst** zou het uitwerken van een memo bijna overbodig maken, maar bestaat
+  in deze app nog niet. De lege plaatshouder `components/SpeechToText.tsx` is weggehaald bij
+  de opruimronde: een bestand dat "binnenkort" zegt en nergens getoond wordt, is geen begin
+  van een functie maar ruis. De weg ernaartoe staat in `docs/voice-memo-native.md`.
+- **De tag-indeling in `lib/tags.ts` wordt nergens getoond.** `TagGroup`, `TAG_GROUP_LABELS`,
+  `tagGroupLabel` en `tagGroup` delen elke tag in bij slag, spelsituatie of thema, maar geen
+  enkel scherm doet er iets mee. Bewust laten staan bij het opruimen: het is een half
+  gebouwde functie (filteren per categorie in de lessendatabank), en die indeling weggooien
+  is informatie weggooien. Bouw hem af of haal hem weg — laat hem niet zo staan.
 - **De memoknop is nog niet met een echte microfoon doorlopen**: opnemen, te kort loslaten,
   de aftelling voorbij 50 seconden en de afkap op 60. Dat vraagt een baan met een les erop
   en toestemming voor de microfoon in de browser.
@@ -117,6 +124,17 @@ Op volgorde van wat ik als eerste zou doen:
 - Bestaande vormgeving hergebruiken: `components/ui/ActionTile.tsx` (tegels),
   `StatCard.tsx` (cijfers), `Screen.tsx` + `useIsWide()` (breedte), `constants/theme.ts` en
   `constants/tennis-colors.ts` (maten en kleuren). Geen nieuwe kleuren of maten verzinnen.
+
+## Opruimronde van 22 augustus
+
+Wat er weg is: `components/SpeechToText.tsx` (nergens geïmporteerd), `currentLanguage` in
+lib/i18n, `paymentEntryFor` in lib/payments, en drie vertalingen zonder plek in de code.
+Negentien exports die alleen binnen hun eigen bestand gebruikt werden, zijn geen export meer
+— zo is van buitenaf te zien wat een module aanbiedt en wat er zijn eigen huishouding is.
+
+Wat er bewust bleef staan: alles wat alleen nog in tests voorkomt. Dat zijn bouwstenen die
+apart getest worden (`sameRow`, `splitEvenly`, `crc32`, `leesKopregel` en dertig andere);
+niet-geëxporteerd zijn ze niet te testen, en dat is de prijs waard.
 
 ## Losse bestanden die niet in git horen
 

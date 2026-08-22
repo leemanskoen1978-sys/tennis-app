@@ -87,7 +87,7 @@ export interface PaymentEntry {
  * definitie 'invoice'. De kaart hoort alleen bij de betaler thuis, en een groepsles heeft er
  * toch geen — beurten gelden alleen voor een privéles.
  */
-export function paymentEntriesOf(b: SplitBooking): PaymentEntry[] {
+function paymentEntriesOf(b: SplitBooking): PaymentEntry[] {
   if (splitOf(b) === 'together') {
     return [{
       player_id: b.player_id,
@@ -98,10 +98,6 @@ export function paymentEntriesOf(b: SplitBooking): PaymentEntry[] {
   return lessonPlayerIds(b).map((id) => ({ player_id: id, method: b.payment_method }));
 }
 
-/** De betaalregel van één speler bij deze les, of `null` als hij niets betaalt. */
-export function paymentEntryFor(b: SplitBooking, playerId: string): PaymentEntry | null {
-  return paymentEntriesOf(b).find((e) => e.player_id === playerId) ?? null;
-}
 
 /**
  * Een bedrag in gelijke delen, zó dat de delen samen exact het totaal zijn. Rekenen gebeurt

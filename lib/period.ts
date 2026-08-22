@@ -37,7 +37,7 @@ export function shortMonthName(monthIndex: number): string {
 }
 
 /** Het begin van de dag waarop `d` valt, lokale tijd. */
-export function startOfDay(d: Date): Date {
+function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 }
 

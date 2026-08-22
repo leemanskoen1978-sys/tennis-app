@@ -18,7 +18,7 @@ import {
 const STYLE_ID = 'tc-theme';
 const STORAGE_KEY = 'tc-theme-mode';
 
-export const isWeb = Platform.OS === 'web' && typeof document !== 'undefined';
+const isWeb = Platform.OS === 'web' && typeof document !== 'undefined';
 
 const varsFor = (mode: ThemeMode): string => {
   const palette = palettes[mode];

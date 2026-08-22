@@ -323,8 +323,6 @@ export const EN: Record<string, string> = {
   'Kies je profiel om te starten': 'Pick your profile to start',
   'Account aanmaken': 'Create account',
   'Ik heb al een account': 'I already have an account',
-  'Ik heb nog geen account': 'I do not have an account yet',
-  'Nog geen account? Meld je aan': 'No account yet? Sign up',
   'Inloggen mislukt.': 'Log in failed.',
   'Voor- en achternaam': 'First and last name',
   'Minstens zes tekens': 'At least six characters',
@@ -669,8 +667,6 @@ export const EN: Record<string, string> = {
   'Alleen PDF-bestanden kunnen worden geüpload.': 'Only PDF files can be uploaded.',
   'Microfoon niet beschikbaar of geweigerd.': 'Microphone unavailable or denied.',
   'Spraakopname — binnenkort (mobiele app)': 'Voice recording — coming soon (mobile app)',
-  'Spraak-naar-tekst — binnenkort (alleen mobiele app)':
-    'Speech to text — coming soon (mobile app only)',
   'Materiaal maken of terugvinden — de databank doorzoekt elke oefening op tags.':
     'Create or find material — the database searches every exercise by tag.',
 

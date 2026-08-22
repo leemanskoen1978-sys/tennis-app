@@ -93,7 +93,7 @@ export const CSV_HEADER: readonly string[] = CSV_COLUMNS.map((c) => c.label);
  * en wordt dus één keer gemaakt, bij het opstarten. Had de vertaling daar gestaan, dan was
  * de taal van dat ene moment voor de rest van de sessie vastgelegd.
  */
-export function csvHeader(): string[] {
+function csvHeader(): string[] {
   return CSV_COLUMNS.map((c) => t(c.label));
 }
 

@@ -21,13 +21,10 @@ export type Language = 'nl' | 'en';
 /** De taal voor code die buiten React draait. Wordt gezet door `LanguageProvider`. */
 let current: Language = 'nl';
 
-export function setCurrentLanguage(lang: Language): void {
+function setCurrentLanguage(lang: Language): void {
   current = lang;
 }
 
-export function currentLanguage(): Language {
-  return current;
-}
 
 /**
  * De taalcode voor `toLocaleDateString` en vrienden. Belgisch Nederlands en Brits Engels:

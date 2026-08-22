@@ -18,9 +18,9 @@ import type { LessonAttachment } from '../lib/types';
  */
 
 /** Browser localStorage is ~5MB total and base64 adds ~33%, so keep single files small. */
-export const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024;
 
-export function formatBytes(bytes: number): string {
+function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -31,7 +31,7 @@ function newAttachmentId(): string {
 }
 
 /** Opens an attachment: a Drive link directly, a local data URL via a blob tab on web. */
-export function openAttachment(att: LessonAttachment): void {
+function openAttachment(att: LessonAttachment): void {
   if (att.source === 'drive' || !att.uri.startsWith('data:')) {
     void Linking.openURL(att.uri);
     return;
