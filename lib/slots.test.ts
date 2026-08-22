@@ -4,6 +4,7 @@ import {
   worksOnDay,
   slotsForCoach,
   slotsStillToCome,
+  bookingDays,
   formatWorkingDays,
   DAY_LABELS,
 } from './slots';
@@ -111,6 +112,25 @@ describe('DAY_LABELS', () => {
   });
 });
 
+describe('bookingDays', () => {
+  const nu = new Date(2026, 7, 22, 13, 0);
+
+  it('begint bij vandaag als er niets terug mag', () => {
+    const dagen = bookingDays(nu, 0, 3);
+    expect(dagen.map((d) => d.getDate())).toEqual([22, 23, 24]);
+  });
+
+  it('zet het verleden ervoor als dat wel mag', () => {
+    const dagen = bookingDays(nu, 2, 2);
+    expect(dagen.map((d) => d.getDate())).toEqual([20, 21, 22, 23]);
+  });
+
+  it('stapt netjes over een maandgrens', () => {
+    const dagen = bookingDays(new Date(2026, 8, 1, 10, 0), 2, 1);
+    expect(dagen.map((d) => `${d.getDate()}/${d.getMonth() + 1}`)).toEqual(['30/8', '31/8', '1/9']);
+  });
+});
+
 describe('isDateBookable — vandaag', () => {
   const nu = new Date(2026, 7, 22, 13, 0);
   const vandaag = new Date(2026, 7, 22);
@@ -126,8 +146,12 @@ describe('isDateBookable — vandaag', () => {
     expect(isDateBookable(vandaag, nu, true)).toBe(true);
   });
 
-  it('houdt het verleden altijd dicht, ook met de uitzondering', () => {
-    expect(isDateBookable(gisteren, nu, true)).toBe(false);
+  it('houdt het verleden dicht voor een speler', () => {
+    expect(isDateBookable(gisteren, nu)).toBe(false);
+  });
+
+  it('laat de trainer ook terug in de tijd: een gegeven les moet alsnog ingevoerd kunnen', () => {
+    expect(isDateBookable(gisteren, nu, true)).toBe(true);
   });
 
   it('laat morgen voor iedereen toe', () => {

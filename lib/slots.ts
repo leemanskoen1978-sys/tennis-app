@@ -21,24 +21,48 @@ export function generateSlots(endTime: string): string[] {
   return slots;
 }
 
+/** Hoeveel dagen terug een trainer kan boeken, en hoever iedereen vooruit kan. */
+export const DAGEN_TERUG = 7;
+export const DAGEN_VOORUIT = 14;
+
 /**
- * Mag er op deze dag geboekt worden? Het verleden nooit, en vandaag alleen als
- * `todayAllowed` het toestaat.
+ * De dagen in de keuzestrook. Een trainer krijgt er een week verleden bij; een speler
+ * begint bij vandaag.
  *
- * Die uitzondering is er voor de trainer. Een speler die vanochtend nog snel een uur wil
- * vastleggen, zet zijn trainer voor een voldongen feit; die staat misschien al ergens
- * anders. Maar de trainer zelf weet wat er die dag nog kan — belt een leerling om half
- * negen voor een uur om elf, dan moet hij dat gewoon kunnen inzetten. Vandaar dat de app
- * dit niet voor iedereen dichtzet, maar per persoon.
+ * Die week terug is er omdat een les die al gegeven is nog ingevoerd moet kunnen worden.
+ * Vergeet een trainer dat op de baan, dan bestaat dat uur nergens: niet in zijn omzet, niet
+ * op een factuur, niet in het dossier van de speler. Een week is ruim genoeg om dat recht
+ * te zetten en kort genoeg om niet in de boekhouding van vorige maand te gaan graven.
+ */
+export function bookingDays(now: Date, daysBack: number, daysAhead: number): Date[] {
+  const dagen: Date[] = [];
+  for (let i = -daysBack; i < daysAhead; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    d.setDate(d.getDate() + i);
+    dagen.push(d);
+  }
+  return dagen;
+}
+
+/**
+ * Mag er op deze dag geboekt worden?
+ *
+ * Voor een speler: vanaf morgen. Wie vanochtend nog snel een uur vastlegt, zet zijn trainer
+ * voor een voldongen feit terwijl die misschien al ergens anders staat, en een les
+ * aanvragen die al geweest is slaat helemaal nergens op.
+ *
+ * Voor een trainer: elke dag die in de strook staat, verleden inbegrepen. Hij weet zelf wat
+ * er die dag nog kan, en een uur dat hij gaf maar vergat in te geven, moet hij alsnog
+ * kunnen invoeren. Hoever terug dat reikt, bepaalt `bookingDays` — niet deze functie.
  */
 export function isDateBookable(
   date: Date,
   now: Date = new Date(),
-  todayAllowed = false,
+  trainerMag = false,
 ): boolean {
+  if (trainerMag) return true;
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (d.getTime() === t.getTime()) return todayAllowed;
   return d.getTime() > t.getTime();
 }
 

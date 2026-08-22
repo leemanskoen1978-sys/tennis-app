@@ -12,7 +12,7 @@ import {
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import {
   generateSlots, isDateBookable, slotsForCoach, slotsStillToCome, worksOnDay,
-  formatWorkingDays, DAY_LABELS,
+  formatWorkingDays, bookingDays, DAGEN_TERUG, DAGEN_VOORUIT, DAY_LABELS,
 } from '../../lib/slots';
 import { Screen } from '../../components/ui/Screen';
 import { Button } from '../../components/ui/Button';
@@ -40,16 +40,6 @@ function timeOf(iso: string): string {
   const h = String(dt.getHours()).padStart(2, '0');
   const m = String(dt.getMinutes()).padStart(2, '0');
   return `${h}:${m}`;
-}
-
-function next14Days(from: Date = new Date()): Date[] {
-  const days: Date[] = [];
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-    d.setDate(d.getDate() + i);
-    days.push(d);
-  }
-  return days;
 }
 
 export default function HomeScreen(): JSX.Element {
@@ -97,7 +87,10 @@ export default function HomeScreen(): JSX.Element {
     players.find((u) => u.id === selectedPlayerId)?.id ?? null;
   const canBook: boolean = hasCoach && (!isCoach || validPlayerId !== null);
 
-  const days: Date[] = useMemo(() => next14Days(), []);
+  const days: Date[] = useMemo(
+    () => bookingDays(new Date(), isCoach ? DAGEN_TERUG : 0, DAGEN_VOORUIT),
+    [isCoach],
+  );
 
   // The coach whose agenda is being filled — their own days and hours bound what is
   // bookable. Without a specific coach ("Alle coaches") the club window stands; that is
@@ -107,9 +100,9 @@ export default function HomeScreen(): JSX.Element {
     [coaches, bookingCoachId],
   );
 
-  // Alleen een trainer mag een les van vandaag inzetten. Een speler die vanochtend nog snel
-  // een uur vastlegt, zet zijn trainer voor een voldongen feit; de trainer weet zelf wat er
-  // die dag nog kan.
+  // Een trainer kiest zelf zijn dag, verleden inbegrepen: hij weet wat er die dag nog kan,
+  // en een uur dat hij gaf maar vergat in te geven moet hij alsnog kunnen invoeren. Een
+  // speler begint bij morgen.
   const magVandaag = isCoach;
 
   const slots: string[] = useMemo(() => {
