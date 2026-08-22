@@ -15,9 +15,6 @@ import { t } from './i18n';
 import { buildXlsx, type XlsxCel } from './xlsx';
 import type { Booking, Court, User } from './types';
 
-/** Eén bedrag-opmaak voor de hele app; de export houdt zijn eigen ingang. Zie lib/money. */
-export { formatEuro } from './money';
-
 export interface CsvRow {
   id: string;
   /** Het begin van de les zoals het is opgeslagen; de xlsx zet hier een echte datum van. */

@@ -19,7 +19,7 @@ import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
 import { coachPayoutThisMonth } from '../../lib/reports';
-import { formatEuro } from '../../lib/csv';
+import { formatEuro } from '../../lib/money';
 
 /**
  * Zelfde opbouw als het spelersdossier: de kop-kaart met de trainer blijft altijd staan, en

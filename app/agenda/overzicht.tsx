@@ -3,13 +3,13 @@
 // van volgende week tussen de afgehandelde betalingen van vorige week. Twee tegels, elk met
 // zijn eigen scherm en zijn eigen filters.
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { CalendarClock, History } from 'lucide-react-native';
 
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
-import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { useSchoneLei } from '../../providers/SimpleDataProvider';
 import { useAgendaScope } from '../../providers/agendaScope';
 import {
   bookingsInPeriod, currentPeriod, pastBookings, periodLabel, upcomingBookings,
@@ -18,7 +18,7 @@ import { useT } from '../../lib/i18n';
 
 export default function OverzichtScreen(): React.JSX.Element {
   const t = useT();
-  const { clearError } = useSimpleData();
+  useSchoneLei();
   const router = useRouter();
   // Dezelfde beginstand als de twee schermen erachter — het is letterlijk dezelfde hook.
   // Anders belooft de tegel een aantal dat je daarna niet terugziet. Er staat hier geen
@@ -34,10 +34,6 @@ export default function OverzichtScreen(): React.JSX.Element {
   );
   const upcomingCount = useMemo(() => upcomingBookings(scoped, now).length, [scoped, now]);
 
-  // De fout is één globale bak: wis bij binnenkomst wat een ander scherm achterliet.
-  useEffect(() => {
-    clearError();
-  }, []);
 
   return (
     <Screen>

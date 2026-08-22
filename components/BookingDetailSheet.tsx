@@ -1,4 +1,8 @@
-// Alles over één les, in een blad. Het maandoverzicht toonde dat allemaal op de kaart zelf:
+// Alles over één geboekte les, in een blad — een Booking dus, een uur op de baan. Het heette
+// LessonDetailSheet, naast een LessonDetailModal dat over lesmateriaal gaat; twee namen die
+// precies andersom klonken dan wat ze doen.
+//
+// Het maandoverzicht toonde dat allemaal op de kaart zelf:
 // twee namen, twee badges en een knop per les. Daardoor werd elke kaart een blok en paste er
 // maar één les per rij. Nu draagt de kaart alleen wat je nodig hebt om een les te herkennen,
 // en woont de rest — met de handelingen — hier.
@@ -81,7 +85,7 @@ export function paymentLabelFor(
   return `${meta.label} · ${tr('nog {n}', { n: remaining(card) })}`;
 }
 
-export function LessonDetailSheet({
+export function BookingDetailSheet({
   booking: selected,
   visible,
   onClose,

@@ -2,7 +2,7 @@
 // van één trainer. Wat je hier ziet is ook precies wat de export meeneemt — één selectie,
 // twee vormen, zodat scherm en bestand niet uit elkaar kunnen lopen.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Download } from 'lucide-react-native';
 
@@ -12,7 +12,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { CoachFilter } from '../../components/ui/CoachFilter';
 import { PeriodPicker } from '../../components/ui/PeriodPicker';
-import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { useSchoneLei, useSimpleData } from '../../providers/SimpleDataProvider';
 import { useAgendaScope } from '../../providers/agendaScope';
 import { csvRows, toCsv, toXlsx } from '../../lib/csv';
 import { formatEuro } from '../../lib/money';
@@ -28,8 +28,9 @@ import { isCoach } from '../../lib/rechten';
 
 export default function HistoriekScreen(): React.JSX.Element {
   const t = useT();
-  const { currentUser, users, courts, error, clearError } = useSimpleData();
+  const { currentUser, users, courts, error } = useSimpleData();
   const { coachId, setCoachId, coaches, bookings } = useAgendaScope();
+  useSchoneLei();
 
   const [period, setPeriod] = useState<Period>(() => currentPeriod());
   // Eigen state: een mislukte download is geen opslagfout, dus hij hoort niet in de
@@ -65,11 +66,6 @@ export default function HistoriekScreen(): React.JSX.Element {
   const csvNaam = periodFilename(period, 'csv');
   const xlsxNaam = periodFilename(period, 'xlsx');
 
-  // De fout is één globale bak: wis bij binnenkomst wat een ander scherm achterliet.
-  // Alleen bij het openen, zodat een melding van dit scherm zelf blijft staan.
-  useEffect(() => {
-    clearError();
-  }, []);
 
   // Twee vormen van dezelfde selectie, dus ook één plek waar het misgaan opgevangen wordt.
   async function exporteer(maak: () => Promise<void>): Promise<void> {

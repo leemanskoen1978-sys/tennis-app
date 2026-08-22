@@ -30,7 +30,7 @@ import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
 import type { GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
-import { isCoach } from '../../lib/rechten';
+import { isCoach, rolLabel } from '../../lib/rechten';
 
 /**
  * Het dossier is een kop-kaart met de speler en daaronder een raster tegels — dezelfde
@@ -177,7 +177,7 @@ export default function PlayerDossier() {
   // Vanuit een blad open je soms nog iets: een notitie, een horizon, een les, het toewijzen.
   // Twee bladen over elkaar heen is rommelig — de tweede backdrop verduistert de eerste en op
   // Android sluit één druk op terug ze allebei. Daarom sluit het onderste blad zolang het
-  // bovenste openstaat (zelfde truc als LessonDetailSheet met de betaalwijze). `openSection`
+  // bovenste openstaat (zelfde truc als BookingDetailSheet met de betaalwijze). `openSection`
   // blijft ondertussen staan, dus je komt terug in het blad waar je vandaan kwam.
   const stacked = progressOpen || openEntry !== null || openHorizon !== null
     || assignOpen || detailOpen;
@@ -208,7 +208,9 @@ export default function PlayerDossier() {
       {/* Wie is dit */}
       <Card>
         <Text style={styles.name}>{player.name}</Text>
-        <Badge label={player.role === 'coach' ? t('Coach') : player.role === 'parent' ? t('Ouder') : t('Speler')} color={tennisColors.primaryFill} />
+        {/* Dezelfde regel als op het trainersdossier: de rol, met het beheerdersvinkje
+            erachter als hij dat heeft. */}
+        <Badge label={rolLabel(player)} color={tennisColors.primaryFill} />
         {player.email ? <Text style={styles.contact}>{player.email}</Text> : null}
         {player.phone ? <Text style={styles.contact}>{player.phone}</Text> : null}
         {playerCoaches.length > 0 ? (

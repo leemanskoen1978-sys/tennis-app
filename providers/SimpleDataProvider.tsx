@@ -938,6 +938,22 @@ export function useSimpleData(): DataShape {
 }
 
 /** Payments the current user may handle — scoped to them. Money stays per coach. */
+/**
+ * Wis bij binnenkomst de foutmelding die een ánder scherm achterliet.
+ *
+ * De fout is één globale bak, dus zonder dit begroet Historiek je met een melding over een
+ * boeking die je op Agenda probeerde. Alleen bij het openen: een melding van dit scherm
+ * zelf hoort te blijven staan. Drie schermen schreven deze useEffect los uit.
+ */
+export function useSchoneLei(): void {
+  const { clearError } = useSimpleData();
+  useEffect(() => {
+    clearError();
+    // Bewust leeg: alleen bij het openen, niet bij elke hertekening.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
 export function usePendingPaymentBookings(): Booking[] {
   const { currentUser, bookings } = useSimpleData();
   return useMemo(() => pendingPaymentsFor(currentUser, bookings), [currentUser, bookings]);

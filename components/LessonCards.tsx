@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-import { LessonDetailSheet, paymentLabelFor } from './LessonDetailSheet';
+import { BookingDetailSheet, paymentLabelFor } from './BookingDetailSheet';
 import { Badge } from './ui/Badge';
 import { Card } from './ui/Card';
 import { useIsWide } from './ui/Screen';
@@ -92,7 +92,7 @@ export function LessonCards({
         })}
       </View>
 
-      <LessonDetailSheet
+      <BookingDetailSheet
         booking={openBooking}
         visible={openBooking !== null}
         canManage={isCoach(currentUser)}

@@ -2,13 +2,13 @@
 // periodekiezer — je wilt hier juist niets missen — en geen export: een agenda vooruit is
 // geen afrekening. Geannuleerde lessen staan er niet bij; die komen niet meer.
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Text, StyleSheet } from 'react-native';
 
 import { LessonCards } from '../../components/LessonCards';
 import { Screen } from '../../components/ui/Screen';
 import { CoachFilter } from '../../components/ui/CoachFilter';
-import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { useSchoneLei, useSimpleData } from '../../providers/SimpleDataProvider';
 import { useAgendaScope } from '../../providers/agendaScope';
 import { upcomingBookings } from '../../lib/period';
 import { tennisColors } from '../../constants/tennis-colors';
@@ -17,17 +17,14 @@ import { useT } from '../../lib/i18n';
 
 export default function KomendScreen(): React.JSX.Element {
   const t = useT();
-  const { error, clearError } = useSimpleData();
+  const { error } = useSimpleData();
   const { coachId, setCoachId, coaches, bookings } = useAgendaScope();
+  useSchoneLei();
 
   const now = useMemo(() => new Date(), []);
 
   const shown = useMemo(() => upcomingBookings(bookings, now), [bookings, now]);
 
-  // De fout is één globale bak: wis bij binnenkomst wat een ander scherm achterliet.
-  useEffect(() => {
-    clearError();
-  }, []);
 
   return (
     <Screen>

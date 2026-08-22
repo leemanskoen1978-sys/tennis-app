@@ -12,6 +12,7 @@ import { Badge } from './ui/Badge';
 import type { Role, User } from '../lib/types';
 import { isValidEmail, normalizePhone } from '../lib/contact';
 import { useSimpleData } from '../providers/SimpleDataProvider';
+import { roleLabel } from '../lib/rechten';
 
 interface UserManagementProps {
   visible: boolean;
@@ -29,12 +30,6 @@ interface UserManagementProps {
    */
   onCreated?: (user: User) => void;
 }
-
-const ROLE_LABELS: Record<Role, string> = {
-  player: 'Speler',
-  coach: 'Trainer',
-  parent: 'Ouder',
-};
 
 const ROLE_BADGE_COLORS: Record<Role, string> = {
   player: tennisColors.primaryFill,
@@ -154,7 +149,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
           {(['player', 'coach', 'parent'] as Role[]).map((r) => (
             <Chip
               key={r}
-              label={t(ROLE_LABELS[r])}
+              label={roleLabel(r)}
               selected={role === r}
               onPress={() => setRole(r)}
             />
@@ -242,7 +237,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
                 {user.name}
               </Text>
               <Badge
-                label={t(ROLE_LABELS[user.role])}
+                label={roleLabel(user.role)}
                 color={ROLE_BADGE_COLORS[user.role]}
                 subtle={isSubtleRole(user.role)}
               />

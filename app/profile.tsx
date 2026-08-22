@@ -25,15 +25,9 @@ import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDat
 import { bookingsToday } from '../lib/hub';
 import { bookingsFor, openBalanceFor } from '../lib/payments';
 import { coachPayoutThisMonth } from '../lib/reports';
-import { formatEuro } from '../lib/csv';
+import { formatEuro } from '../lib/money';
 import { useT } from '../lib/i18n';
-import { isCoach } from '../lib/rechten';
-
-const ROLE_LABELS: Record<string, string> = {
-  player: 'Speler',
-  coach: 'Trainer',
-  parent: 'Ouder',
-};
+import { isCoach, roleLabel } from '../lib/rechten';
 
 interface Row {
   key: string;
@@ -114,7 +108,7 @@ export default function ProfileScreen(): React.JSX.Element {
     );
   }
 
-  const roleLabel = t(ROLE_LABELS[currentUser.role] ?? currentUser.role);
+  const rol = roleLabel(currentUser.role);
 
   // Dezelfde twee getallen als op het hoofdscherm, en langs dezelfde weg berekend: een
   // trainer kijkt naar de agenda van de dag, een speler naar zijn eigen lessen.
@@ -202,7 +196,7 @@ export default function ProfileScreen(): React.JSX.Element {
           <Text style={styles.heroName} numberOfLines={2}>
             {currentUser.name}
           </Text>
-          <Text style={styles.heroRole}>{roleLabel}</Text>
+          <Text style={styles.heroRole}>{rol}</Text>
         </View>
       </LinearGradient>
 

@@ -10,30 +10,28 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { useSimpleData } from '../providers/SimpleDataProvider';
-import { useT, type Translate } from '../lib/i18n';
+import { useT } from '../lib/i18n';
+import { roleLabel } from '../lib/rechten';
+import type { Role } from '../lib/types';
 import {
   controleerWachtwoord, gaatOverEenBestaandAccount, magVersturen, aanmeldMelding,
   BESTAAT_AL_MELDING, type Stand,
 } from '../lib/wachtwoord';
 
-type Role = 'player' | 'coach' | 'parent';
-
-const ROLE_LABELS: Record<Role, string> = {
-  coach: 'Coach',
-  player: 'Speler',
-  parent: 'Ouder',
-};
-
-/** Role badge props: coach = primary, player = subtle, parent = court. */
-function roleBadgeProps(t: Translate, role: string): { label: string; color?: string; subtle?: boolean } {
+/**
+ * Role badge props: coach = primary, player = subtle, parent = court. De naam zelf komt uit
+ * lib/rechten — dit scherm noemde een trainer eerder "Coach" terwijl de rest van de app hem
+ * "Trainer" noemt, en dit is nu net het eerste scherm dat iemand ziet.
+ */
+function roleBadgeProps(role: Role): { label: string; color?: string; subtle?: boolean } {
   switch (role) {
     case 'coach':
-      return { label: t(ROLE_LABELS.coach), color: tennisColors.primaryFill };
+      return { label: roleLabel('coach'), color: tennisColors.primaryFill };
     case 'parent':
-      return { label: t(ROLE_LABELS.parent), color: tennisColors.courtFill };
+      return { label: roleLabel('parent'), color: tennisColors.courtFill };
     case 'player':
     default:
-      return { label: t(ROLE_LABELS.player ?? role), subtle: true };
+      return { label: roleLabel('player'), subtle: true };
   }
 }
 
@@ -336,7 +334,7 @@ export default function Login(): React.JSX.Element {
             </View>
           ) : (
             users.map((u) => {
-              const badge = roleBadgeProps(t, u.role);
+              const badge = roleBadgeProps(u.role);
               return (
                 <Card
                   key={u.id}

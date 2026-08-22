@@ -11,7 +11,7 @@
 // iets aanbiedt wat de databank daarna weigert.
 
 import { t } from './i18n';
-import type { User } from './types';
+import type { Role, User } from './types';
 
 /** Beheert deze gebruiker de club? */
 export function isAdmin(user: User | null | undefined): boolean {
@@ -44,9 +44,27 @@ export function magInElkeAgenda(user: User | null | undefined): boolean {
   return isAdmin(user);
 }
 
+/**
+ * Hoe een rol heet op het scherm.
+ *
+ * Vier bestanden hielden hier hun eigen tabelletje voor bij, en één daarvan (het
+ * aanmeldscherm) noemde een trainer "Coach" terwijl de rest van de app hem "Trainer"
+ * noemt. Dat is geen kleinigheid: het aanmeldscherm is het eerste wat iemand ziet.
+ */
+export const ROLE_LABELS: Record<Role, string> = {
+  player: 'Speler',
+  coach: 'Trainer',
+  parent: 'Ouder',
+};
+
+/** Diezelfde naam, vertaald. */
+export function roleLabel(role: Role): string {
+  return t(ROLE_LABELS[role]);
+}
+
 /** Hoe iemand op zijn dossier heet. Het vinkje verbergt zijn rol niet, het komt erbij. */
 export function rolLabel(user: User | null | undefined): string {
   if (!user) return t('Onbekend');
-  const rol = user.role === 'coach' ? t('Trainer') : user.role === 'parent' ? t('Ouder') : t('Speler');
+  const rol = roleLabel(user.role);
   return isAdmin(user) ? `${rol} · ${t('beheerder')}` : rol;
 }

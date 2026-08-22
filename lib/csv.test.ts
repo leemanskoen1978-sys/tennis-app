@@ -1,5 +1,6 @@
 import type { Booking, Court, User } from './types';
-import { csvRows, toCsv, formatEuro, CSV_HEADER, CSV_COLUMNS, parseCsv } from './csv';
+import { csvRows, toCsv, CSV_HEADER, CSV_COLUMNS, parseCsv } from './csv';
+import { formatEuro } from './money';
 import { bookingsInPeriod, monthPeriod } from './period';
 
 const users: User[] = [
