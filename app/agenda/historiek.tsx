@@ -13,45 +13,40 @@ import { Button } from '../../components/ui/Button';
 import { CoachFilter } from '../../components/ui/CoachFilter';
 import { PeriodPicker } from '../../components/ui/PeriodPicker';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { csvRows, toCsv, toXlsx, formatEuro } from '../../lib/csv';
+import { useAgendaScope } from '../../providers/agendaScope';
+import { csvRows, toCsv, toXlsx } from '../../lib/csv';
+import { formatEuro } from '../../lib/money';
 import {
   bookingsInPeriod, currentPeriod, pastBookings, periodFilename, periodLabel, type Period,
 } from '../../lib/period';
-import { bookingsByCoach, totalRevenue, visibleBookings } from '../../lib/payments';
+import { totalRevenue } from '../../lib/payments';
 import { shareCsv, shareXlsx, xlsxWordtOndersteund } from '../../lib/share';
-import type { User } from '../../lib/types';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
 
 export default function HistoriekScreen(): React.JSX.Element {
   const t = useT();
-  const { currentUser, bookings, users, courts, error, clearError } = useSimpleData();
+  const { currentUser, users, courts, error, clearError } = useSimpleData();
+  const { coachId, setCoachId, coaches, bookings } = useAgendaScope();
 
   const isCoach = currentUser?.role === 'coach';
 
   const [period, setPeriod] = useState<Period>(() => currentPeriod());
-  // Een trainer kijkt standaard naar zijn eigen lessen; een speler naar die van alle
-  // trainers, want het zijn sowieso alleen zijn eigen lessen.
-  const [coachId, setCoachId] = useState<string | null>(
-    () => (currentUser?.role === 'coach' ? currentUser.id : null),
-  );
   // Eigen state: een mislukte download is geen opslagfout, dus hij hoort niet in de
   // globale error van de provider thuis.
   const [exportError, setExportError] = useState<string | null>(null);
-
-  const coaches: User[] = useMemo(() => users.filter((u) => u.role === 'coach'), [users]);
 
   // Eén moment voor het hele scherm: zou "nu" bij elke tekening opnieuw gelezen worden, dan
   // kon een les tijdens het kijken van de historiek naar "nog te komen" springen.
   const now = useMemo(() => new Date(), []);
 
-  // De volgorde is bewust deze: eerst wie wat mag zien (een speler blijft bij zijn eigen
-  // lessen), dan de trainerfilter, dan de periode, en pas dan "al geweest".
-  const shown = useMemo(() => {
-    const allowed = bookingsByCoach(visibleBookings(currentUser ?? null, bookings), coachId);
-    return pastBookings(bookingsInPeriod(allowed, period), now);
-  }, [currentUser, bookings, coachId, period, now]);
+  // `bookings` uit de hook is al afgebakend op wie mag kijken en op de gekozen trainer;
+  // hier komt alleen de periode en "al geweest" er nog overheen.
+  const shown = useMemo(
+    () => pastBookings(bookingsInPeriod(bookings, period), now),
+    [bookings, period, now],
+  );
 
   const rows = useMemo(() => csvRows(shown, users, courts), [shown, users, courts]);
 

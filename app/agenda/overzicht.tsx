@@ -10,27 +10,23 @@ import { CalendarClock, History } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { useAgendaScope } from '../../providers/agendaScope';
 import {
   bookingsInPeriod, currentPeriod, pastBookings, periodLabel, upcomingBookings,
 } from '../../lib/period';
-import { bookingsByCoach, visibleBookings } from '../../lib/payments';
 import { useT } from '../../lib/i18n';
 
 export default function OverzichtScreen(): React.JSX.Element {
   const t = useT();
-  const { currentUser, bookings, clearError } = useSimpleData();
+  const { clearError } = useSimpleData();
   const router = useRouter();
+  // Dezelfde beginstand als de twee schermen erachter — het is letterlijk dezelfde hook.
+  // Anders belooft de tegel een aantal dat je daarna niet terugziet. Er staat hier geen
+  // trainerbalk, dus de filter blijft op zijn beginstand staan.
+  const { bookings: scoped } = useAgendaScope();
 
   const now = useMemo(() => new Date(), []);
   const thisMonth = useMemo(() => currentPeriod(now), [now]);
-
-  // Dezelfde beginstand als de twee schermen erachter: een trainer bij zijn eigen lessen,
-  // een speler bij alle trainers. Anders belooft de tegel een aantal dat je daarna niet
-  // terugziet.
-  const scoped = useMemo(() => {
-    const coachId = currentUser?.role === 'coach' ? currentUser.id : null;
-    return bookingsByCoach(visibleBookings(currentUser ?? null, bookings), coachId);
-  }, [currentUser, bookings]);
 
   const pastCount = useMemo(
     () => pastBookings(bookingsInPeriod(scoped, thisMonth), now).length,

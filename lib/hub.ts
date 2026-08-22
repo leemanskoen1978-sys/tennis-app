@@ -30,5 +30,14 @@ export function countPlayers(users: User[]): number {
 }
 
 export function countCoaches(users: User[]): number {
-  return users.filter((u) => u.role === 'coach').length;
+  return coachesOf(users).length;
+}
+
+/**
+ * De trainers uit de ledenlijst, in de volgorde waarin ze binnenkwamen. Vier schermen
+ * schreven deze filter los uit voor hun trainerbalk; dat is precies één plek waar "wie is
+ * een trainer" kan gaan afwijken van de rest van de app.
+ */
+export function coachesOf(users: User[]): User[] {
+  return users.filter((u) => u.role === 'coach');
 }

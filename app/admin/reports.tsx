@@ -19,16 +19,15 @@ import { CoachFilter } from '../../components/ui/CoachFilter';
 import { PeriodPicker } from '../../components/ui/PeriodPicker';
 import { StatCard, StatCardRow } from '../../components/ui/StatCard';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { formatEuro } from '../../lib/csv';
+import { useAgendaScope } from '../../providers/agendaScope';
+import { formatEuro } from '../../lib/money';
 import {
   PAYMENT_METHODS,
   PAYMENT_LABELS,
-  bookingsByCoach,
   filterPendingPayment,
   paymentMeta,
   totalCoachPayout,
   totalRevenue,
-  visibleBookings,
 } from '../../lib/payments';
 import {
   bookingsInPeriod, currentPeriod, periodLabel, shortMonthName, type Period,
@@ -36,7 +35,6 @@ import {
 import {
   countByPaymentMethod, countedBookings, monthlySeries, payoutsByCoach, totalsByPlayer,
 } from '../../lib/reports';
-import type { User } from '../../lib/types';
 
 /**
  * Zes maanden verloop. Genoeg om een seizoen te zien aankomen en weer weg te zakken, en nog
@@ -46,7 +44,11 @@ const CHART_MONTHS = 6;
 
 export default function ReportsScreen(): React.JSX.Element {
   const t = useT();
-  const { currentUser, bookings, users, courts } = useSimpleData();
+  const { currentUser, users, courts } = useSimpleData();
+  // Eerst wie wat mag zien, dan de trainerfilter — dezelfde hook als op Historiek en
+  // Komend, zodat de regel "een speler ziet alleen zijn eigen lessen" nergens omzeild kan
+  // worden.
+  const { coachId, setCoachId, coaches, bookings: allowed } = useAgendaScope();
 
   const isCoach = currentUser?.role === 'coach';
 
@@ -54,20 +56,6 @@ export default function ReportsScreen(): React.JSX.Element {
   // is dezelfde stand waarin Historiek opent. Dat de maand aan het begin nog leeg kan zijn,
   // vangt de grafiek op: die kijkt altijd een half jaar terug, ongeacht de gekozen periode.
   const [period, setPeriod] = useState<Period>(() => currentPeriod());
-  // Een trainer kijkt standaard naar zijn eigen lessen; bij een speler doet de filter er niet
-  // toe, want hij ziet sowieso alleen zijn eigen lessen.
-  const [coachId, setCoachId] = useState<string | null>(
-    () => (currentUser?.role === 'coach' ? currentUser.id : null),
-  );
-
-  const coaches: User[] = useMemo(() => users.filter((u) => u.role === 'coach'), [users]);
-
-  // Eerst wie wat mag zien, dan de trainerfilter: dezelfde volgorde als op Historiek, zodat
-  // de regel "een speler ziet alleen zijn eigen lessen" nergens omzeild kan worden.
-  const allowed = useMemo(
-    () => bookingsByCoach(visibleBookings(currentUser ?? null, bookings), coachId),
-    [currentUser, bookings, coachId],
-  );
 
   const shown = useMemo(() => bookingsInPeriod(allowed, period), [allowed, period]);
 

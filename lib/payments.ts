@@ -234,6 +234,33 @@ export function bookingsByCoach(bookings: Booking[], coachId: string | null): Bo
 }
 
 /**
+ * De twee vragen hierboven in de enige volgorde waarin ze kloppen: eerst wie wat mag zien,
+ * dan waar je op filtert.
+ *
+ * Vijf schermen (Agenda, Komend, Overzicht, Historiek en Rapport) schreven dit ieder apart
+ * uit. Dat ging tot nu toe goed, maar de volgorde is precies het soort ding dat één keer
+ * omdraait: filter je eerst op trainer en pas dan op wie mag kijken, dan is de tussenstand
+ * de agenda van een collega. Nu staat de volgorde één keer vast.
+ */
+export function bookingsInScope(
+  user: User | null,
+  bookings: Booking[],
+  coachId: string | null,
+): Booking[] {
+  return bookingsByCoach(visibleBookings(user, bookings), coachId);
+}
+
+/**
+ * Waar de trainerfilter op begint te staan: een trainer bij zichzelf, ieder ander bij "alle
+ * trainers". Voor een speler maakt dat niets uit — hij ziet toch alleen zijn eigen lessen —
+ * maar zou hij op één trainer beginnen, dan miste hij zonder het te zien de lessen die hij
+ * bij iemand anders heeft.
+ */
+export function defaultCoachFilter(user: User | null | undefined): string | null {
+  return user?.role === 'coach' ? user.id : null;
+}
+
+/**
  * De betalingen die een gebruiker mag afhandelen. Geld blijft per trainer: een trainer
  * handelt zijn eigen lessen af, een speler ziet alleen die van hemzelf.
  */
