@@ -823,4 +823,8 @@ export const EN: Record<string, string> = {
   'Naam (mag leeg)': 'Name (optional)',
   'Staat je naam al in de ledenlijst, dan blijft die gewoon staan.':
     'If your name is already on the member list, it stays as it is.',
+  // Bladeren door de openstaande betalingen.
+  '{n} van {totaal}': '{n} of {totaal}',
+  'Vorige betaling': 'Previous payment',
+  'Volgende betaling': 'Next payment',
 };
