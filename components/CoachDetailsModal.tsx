@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet,
-} from 'react-native';
-import { X, Save } from 'lucide-react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet } from 'react-native';
+import { Save } from 'lucide-react-native';
 import { Chip } from './ui/Chip';
 import { Button } from './ui/Button';
+import { DetailSheet } from './ui/DetailSheet';
 import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, typography, radius, webCursor, contentMaxWidth } from '../constants/theme';
+import { spacing, typography, radius } from '../constants/theme';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { generateSlots, DAY_LABELS } from '../lib/slots';
 import type { User } from '../lib/types';
@@ -84,132 +83,93 @@ export function CoachDetailsModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{t('Mijn gegevens')}</Text>
-            <Pressable
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel={t('Sluiten')}
-              style={[styles.closeButton, webCursor]}
-            >
-              <X size={22} color={tennisColors.textMuted} />
-            </Pressable>
-          </View>
+    <DetailSheet title={t('Mijn gegevens')} visible={visible} onClose={onClose}>
+      <Text style={styles.label}>{t('E-mailadres')}</Text>
+      <TextInput
+        style={styles.input}
+        value={email}
+        onChangeText={setEmail}
+        placeholder={t('naam@club.be')}
+        placeholderTextColor={tennisColors.textMuted}
+        autoCapitalize="none"
+        keyboardType="email-address"
+      />
 
-          <ScrollView contentContainerStyle={styles.body}>
-            <Text style={styles.label}>{t('E-mailadres')}</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder={t('naam@club.be')}
-              placeholderTextColor={tennisColors.textMuted}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
+      <Text style={styles.label}>{t('Gsm')}</Text>
+      <TextInput
+        style={styles.input}
+        value={phone}
+        onChangeText={setPhone}
+        placeholder={t('0470 12 34 56')}
+        placeholderTextColor={tennisColors.textMuted}
+        keyboardType="phone-pad"
+      />
 
-            <Text style={styles.label}>{t('Gsm')}</Text>
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder={t('0470 12 34 56')}
-              placeholderTextColor={tennisColors.textMuted}
-              keyboardType="phone-pad"
-            />
-
-            <Text style={styles.label}>{t('Lesdagen')}</Text>
-            <View style={styles.chipRow}>
-              {DAY_ORDER.map((d) => (
-                <Chip
-                  key={d}
-                  label={t(DAY_LABELS[d])}
-                  selected={days.includes(d)}
-                  onPress={() => toggleDay(d)}
-                />
-              ))}
-            </View>
-            <Text style={styles.helper}>
-              Niets aangevinkt betekent: elke dag beschikbaar.
-            </Text>
-
-            <Text style={styles.label}>{t('Lesuren')}</Text>
-            <View style={styles.chipRow}>
-              <Chip label={t('Hele dag')} selected={start === null} onPress={clearHours} />
-            </View>
-            <Text style={styles.subLabel}>{t('Van')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.chipRow}>
-                {startOptions.map((h) => (
-                  <Chip key={h} label={h} selected={start === h} onPress={() => setStart(h)} />
-                ))}
-              </View>
-            </ScrollView>
-            <Text style={styles.subLabel}>{t('Tot')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.chipRow}>
-                {endOptions.map((h) => (
-                  <Chip key={h} label={h} selected={end === h} onPress={() => setEnd(h)} />
-                ))}
-              </View>
-            </ScrollView>
-            {!hoursOk ? (
-              <Text style={styles.error}>
-                Kies een van-uur en een tot-uur, met het van-uur eerst.
-              </Text>
-            ) : null}
-
-            <Text style={styles.label}>{t('Uurtarief (€)')}</Text>
-            <TextInput
-              style={styles.input}
-              value={rate}
-              onChangeText={setRate}
-              placeholder="45"
-              placeholderTextColor={tennisColors.textMuted}
-              keyboardType="decimal-pad"
-            />
-            {!rateOk ? <Text style={styles.error}>{t('Vul een getal in, of laat leeg.')}</Text> : null}
-
-            <Button
-              label={t('Opslaan')}
-              variant="primary"
-              icon={<Save size={18} color={tennisColors.onFill} />}
-              disabled={!canSave}
-              onPress={() => { void save(); }}
-              style={styles.saveButton}
-            />
-          </ScrollView>
-        </View>
+      <Text style={styles.label}>{t('Lesdagen')}</Text>
+      <View style={styles.chipRow}>
+        {DAY_ORDER.map((d) => (
+          <Chip
+            key={d}
+            label={t(DAY_LABELS[d])}
+            selected={days.includes(d)}
+            onPress={() => toggleDay(d)}
+          />
+        ))}
       </View>
-    </Modal>
+      <Text style={styles.helper}>
+        Niets aangevinkt betekent: elke dag beschikbaar.
+      </Text>
+
+      <Text style={styles.label}>{t('Lesuren')}</Text>
+      <View style={styles.chipRow}>
+        <Chip label={t('Hele dag')} selected={start === null} onPress={clearHours} />
+      </View>
+      <Text style={styles.subLabel}>{t('Van')}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={styles.chipRow}>
+          {startOptions.map((h) => (
+            <Chip key={h} label={h} selected={start === h} onPress={() => setStart(h)} />
+          ))}
+        </View>
+      </ScrollView>
+      <Text style={styles.subLabel}>{t('Tot')}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={styles.chipRow}>
+          {endOptions.map((h) => (
+            <Chip key={h} label={h} selected={end === h} onPress={() => setEnd(h)} />
+          ))}
+        </View>
+      </ScrollView>
+      {!hoursOk ? (
+        <Text style={styles.error}>
+          Kies een van-uur en een tot-uur, met het van-uur eerst.
+        </Text>
+      ) : null}
+
+      <Text style={styles.label}>{t('Uurtarief (€)')}</Text>
+      <TextInput
+        style={styles.input}
+        value={rate}
+        onChangeText={setRate}
+        placeholder="45"
+        placeholderTextColor={tennisColors.textMuted}
+        keyboardType="decimal-pad"
+      />
+      {!rateOk ? <Text style={styles.error}>{t('Vul een getal in, of laat leeg.')}</Text> : null}
+
+      <Button
+        label={t('Opslaan')}
+        variant="primary"
+        icon={<Save size={18} color={tennisColors.onFill} />}
+        disabled={!canSave}
+        onPress={() => { void save(); }}
+        style={styles.saveButton}
+      />
+    </DetailSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(28, 43, 30, 0.55)', justifyContent: 'flex-end' },
-  // Zelfde breedte-cap als de andere bladen: gecentreerd, niet over de volle breedte.
-  sheet: {
-    width: '100%',
-    maxWidth: contentMaxWidth,
-    alignSelf: 'center',
-    backgroundColor: tennisColors.background,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xl,
-    maxHeight: '85%',
-  },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-  },
-  title: { ...typography.h2, color: tennisColors.text },
-  closeButton: { padding: spacing.xs, borderRadius: radius.sm },
-  body: { paddingBottom: spacing.lg },
   label: {
     ...typography.label, color: tennisColors.textMuted,
     marginTop: spacing.lg, marginBottom: spacing.sm,

@@ -1,15 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-} from 'react-native';
-import { UserPlus, X } from 'lucide-react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet } from 'react-native';
+import { UserPlus } from 'lucide-react-native';
 import { Chip } from './ui/Chip';
+import { DetailSheet } from './ui/DetailSheet';
 import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, radius } from '../constants/theme';
@@ -148,166 +141,121 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
   };
 
   return (
-    <Modal
+    // Geen scrollblad: het invulblok staat vast en alleen de ledenlijst eronder scrolt.
+    <DetailSheet
+      title={role === 'coach' ? t('Trainer toevoegen') : t('Speler toevoegen')}
       visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
+      onClose={onClose}
+      scroll={false}
     >
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Text style={styles.title}>
-              {role === 'coach' ? t('Trainer toevoegen') : t('Speler toevoegen')}
-            </Text>
-            <Pressable
-              onPress={onClose}
-              style={styles.closeButton}
-              accessibilityLabel={t('Sluiten')}
-              accessibilityRole="button"
-            >
-              <X size={22} color={tennisColors.text} />
-            </Pressable>
-          </View>
-
-          <View style={styles.form}>
-            <Text style={styles.label}>{t('Rol')}</Text>
-            <View style={styles.roleRow}>
-              {(['player', 'coach', 'parent'] as Role[]).map((r) => (
-                <Chip
-                  key={r}
-                  label={t(ROLE_LABELS[r])}
-                  selected={role === r}
-                  onPress={() => setRole(r)}
-                />
-              ))}
-            </View>
-
-            <Text style={styles.label}>{t('Naam')}</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder={t('Naam')}
-              placeholderTextColor={tennisColors.textMuted}
-              style={styles.input}
+      <View style={styles.form}>
+        <Text style={styles.label}>{t('Rol')}</Text>
+        <View style={styles.roleRow}>
+          {(['player', 'coach', 'parent'] as Role[]).map((r) => (
+            <Chip
+              key={r}
+              label={t(ROLE_LABELS[r])}
+              selected={role === r}
+              onPress={() => setRole(r)}
             />
-            <Text style={[styles.label, styles.labelSpaced]}>{t('E-mailadres')}</Text>
+          ))}
+        </View>
+
+        <Text style={styles.label}>{t('Naam')}</Text>
+        <TextInput
+          value={name}
+          onChangeText={setName}
+          placeholder={t('Naam')}
+          placeholderTextColor={tennisColors.textMuted}
+          style={styles.input}
+        />
+        <Text style={[styles.label, styles.labelSpaced]}>{t('E-mailadres')}</Text>
+        <TextInput
+          value={email}
+          onChangeText={handleEmailChange}
+          placeholder={t('naam@club.be')}
+          placeholderTextColor={tennisColors.textMuted}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={styles.input}
+        />
+        <Text style={styles.helper}>
+          {t('Wordt afgeleid van de naam. Zelf iets invullen mag: dan blijft dat staan.')}
+        </Text>
+        {!emailOk ? (
+          <Text style={styles.error}>{t('Dit lijkt geen geldig e-mailadres.')}</Text>
+        ) : null}
+
+        <Text style={[styles.label, styles.labelSpaced]}>{t('Gsm-nummer (optioneel)')}</Text>
+        <TextInput
+          value={phone}
+          onChangeText={setPhone}
+          placeholder={t('0470 12 34 56')}
+          placeholderTextColor={tennisColors.textMuted}
+          keyboardType="phone-pad"
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={styles.input}
+        />
+
+        {role === 'coach' ? (
+          <>
+            <Text style={styles.label}>{t('Uurtarief (optioneel)')}</Text>
             <TextInput
-              value={email}
-              onChangeText={handleEmailChange}
-              placeholder={t('naam@club.be')}
+              value={rate}
+              onChangeText={setRate}
+              placeholder={t('bv. 45')}
               placeholderTextColor={tennisColors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
+              keyboardType="numeric"
               style={styles.input}
             />
             <Text style={styles.helper}>
-              {t('Wordt afgeleid van de naam. Zelf iets invullen mag: dan blijft dat staan.')}
+              {t('Alleen ter informatie — de omzet loopt op het baantarief.')}
             </Text>
-            {!emailOk ? (
-              <Text style={styles.error}>{t('Dit lijkt geen geldig e-mailadres.')}</Text>
-            ) : null}
+          </>
+        ) : null}
 
-            <Text style={[styles.label, styles.labelSpaced]}>{t('Gsm-nummer (optioneel)')}</Text>
-            <TextInput
-              value={phone}
-              onChangeText={setPhone}
-              placeholder={t('0470 12 34 56')}
-              placeholderTextColor={tennisColors.textMuted}
-              keyboardType="phone-pad"
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.input}
-            />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-            {role === 'coach' ? (
-              <>
-                <Text style={styles.label}>{t('Uurtarief (optioneel)')}</Text>
-                <TextInput
-                  value={rate}
-                  onChangeText={setRate}
-                  placeholder={t('bv. 45')}
-                  placeholderTextColor={tennisColors.textMuted}
-                  keyboardType="numeric"
-                  style={styles.input}
-                />
-                <Text style={styles.helper}>
-                  {t('Alleen ter informatie — de omzet loopt op het baantarief.')}
-                </Text>
-              </>
-            ) : null}
-
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-
-            <Button
-              label={role === 'coach' ? t('Trainer toevoegen') : t('Toevoegen')}
-              onPress={handleAdd}
-              disabled={!canSubmit}
-              icon={<UserPlus size={18} color={tennisColors.onFill} />}
-              style={styles.addButton}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          <ScrollView
-            style={styles.list}
-            contentContainerStyle={styles.listContent}
-          >
-            {users.length === 0 ? (
-              <Text style={styles.empty}>{t('Nog geen gebruikers.')}</Text>
-            ) : (
-              users.map((user) => (
-                <View key={user.id} style={styles.userRow}>
-                  <Text style={styles.userName} numberOfLines={1}>
-                    {user.name}
-                  </Text>
-                  <Badge
-                    label={t(ROLE_LABELS[user.role])}
-                    color={ROLE_BADGE_COLORS[user.role]}
-                    subtle={isSubtleRole(user.role)}
-                  />
-                </View>
-              ))
-            )}
-          </ScrollView>
-        </View>
+        <Button
+          label={role === 'coach' ? t('Trainer toevoegen') : t('Toevoegen')}
+          onPress={handleAdd}
+          disabled={!canSubmit}
+          icon={<UserPlus size={18} color={tennisColors.onFill} />}
+          style={styles.addButton}
+        />
       </View>
-    </Modal>
+
+      <View style={styles.divider} />
+
+      <ScrollView
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+      >
+        {users.length === 0 ? (
+          <Text style={styles.empty}>{t('Nog geen gebruikers.')}</Text>
+        ) : (
+          users.map((user) => (
+            <View key={user.id} style={styles.userRow}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {user.name}
+              </Text>
+              <Badge
+                label={t(ROLE_LABELS[user.role])}
+                color={ROLE_BADGE_COLORS[user.role]}
+                subtle={isSubtleRole(user.role)}
+              />
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </DetailSheet>
   );
 }
 
 const styles = StyleSheet.create({
   roleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(28, 43, 30, 0.55)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: tennisColors.background,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xl,
-    maxHeight: '85%',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-  },
-  title: {
-    ...typography.h2,
-    color: tennisColors.text,
-  },
-  closeButton: {
-    padding: spacing.xs,
-    borderRadius: radius.sm,
-  },
   form: {
     backgroundColor: tennisColors.surface,
     borderRadius: radius.lg,

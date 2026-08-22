@@ -2,18 +2,19 @@
 // blokken met alle invulvelden open; daardoor was er van "Binnen 10 lessen" nauwelijks meer
 // te zien dan de kop. Nu draagt de regel in het dossier alleen wat je nodig hebt om te zien
 // of er iets is afgesproken, en wonen de velden — met toevoegen en verwijderen — hier.
-// Zelfde opbouw als het detailblad van het maandoverzicht (components/LessonDetailSheet).
+// De omhulling komt van components/ui/DetailSheet — hetzelfde blad als overal elders.
 
 import React, { useEffect, useState } from 'react';
-import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { Plus, Trash2, X } from 'lucide-react-native';
+import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { Plus, Trash2 } from 'lucide-react-native';
 
+import { DetailSheet } from './ui/DetailSheet';
 import { OptionCombobox } from './ui/OptionCombobox';
 import { horizonLabel, HORIZON_LABELS, isEmptyGoal } from '../lib/goals';
 import type { GoalHorizon, PlayerGoal } from '../lib/types';
 import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, radius, typography, shadow, minTapTarget, webCursor, contentMaxWidth } from '../constants/theme';
+import { spacing, radius, typography, webCursor } from '../constants/theme';
 
 export function GoalHorizonSheet({
   horizon, goals, shots, changes, canEdit, visible, onClose, onSave, onDelete, onAdd,
@@ -69,142 +70,91 @@ export function GoalHorizonSheet({
   const shown = canEdit ? goals : goals.filter((g) => !isEmptyGoal(g));
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={closeAndSave}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <View style={styles.header}>
-            <Text style={styles.title}>{horizonLabel(horizon)}</Text>
-            <Pressable
-              onPress={closeAndSave}
-              accessibilityRole="button"
-              accessibilityLabel={t('Sluiten')}
-              style={[styles.close, webCursor]}
-            >
-              <X size={20} color={tennisColors.textMuted} />
-            </Pressable>
-          </View>
+    <DetailSheet title={horizonLabel(horizon)} visible={visible} onClose={closeAndSave}>
+      {shown.length === 0 ? (
+        <Text style={styles.muted}>{t('Nog geen doel afgesproken.')}</Text>
+      ) : null}
 
-          <ScrollView contentContainerStyle={styles.body}>
-            {shown.length === 0 ? (
-              <Text style={styles.muted}>{t('Nog geen doel afgesproken.')}</Text>
-            ) : null}
-
-            {shown.map((goal, i) => {
-              const where = t('doel {nr} — {horizon}', { nr: i + 1, horizon: horizonLabel(horizon) });
-              if (!canEdit) {
-                return (
-                  <View key={goal.id} style={styles.goal}>
-                    <Text style={styles.goalNr}>{t('Doel {nr}', { nr: i + 1 })}</Text>
-                    {goal.shot_type ? (
-                      <Text style={styles.readValue}>{t('Slag')}: {goal.shot_type}</Text>
-                    ) : null}
-                    {goal.change_type ? (
-                      <Text style={styles.readValue}>{t('Wijziging')}: {goal.change_type}</Text>
-                    ) : null}
-                    {goal.notes ? <Text style={styles.readNotes}>{goal.notes}</Text> : null}
-                  </View>
-                );
-              }
-              return (
-                <View key={goal.id} style={styles.goal}>
-                  <View style={styles.goalHead}>
-                    <Text style={styles.goalNr}>{t('Doel {nr}', { nr: i + 1 })}</Text>
-                    <Pressable
-                      onPress={() => onDelete(goal.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('Verwijder {wat}', { wat: where })}
-                      style={[styles.removeBtn, webCursor]}
-                    >
-                      <Trash2 size={16} color={tennisColors.danger} />
-                      <Text style={styles.removeText}>{t('Verwijderen')}</Text>
-                    </Pressable>
-                  </View>
-
-                  <Text style={styles.label}>{t('Type slag')}</Text>
-                  <OptionCombobox
-                    label={t('Type slag — {wat}', { wat: where })}
-                    options={shots}
-                    value={goal.shot_type ?? null}
-                    onChange={(v) => onSave({ ...goal, shot_type: v ?? undefined })}
-                    placeholder={t('Forehand, Backhand…')}
-                  />
-
-                  <Text style={styles.label}>{t('Type wijziging')}</Text>
-                  <OptionCombobox
-                    label={t('Type wijziging — {wat}', { wat: where })}
-                    options={changes}
-                    value={goal.change_type ?? null}
-                    onChange={(v) => onSave({ ...goal, change_type: v ?? undefined })}
-                    placeholder={t('Greepwissel, Regelmaat…')}
-                  />
-
-                  <Text style={styles.label}>{t('Opmerkingen')}</Text>
-                  <TextInput
-                    style={[styles.input, styles.multiline]}
-                    value={notesOf(goal)}
-                    onChangeText={(t) => setDrafts((d) => ({ ...d, [goal.id]: t }))}
-                    onBlur={() => saveNotes(goal, notesOf(goal))}
-                    placeholder={t('Wat spreek je af?')}
-                    placeholderTextColor={tennisColors.textMuted}
-                    accessibilityLabel={t('Opmerkingen — {wat}', { wat: where })}
-                    multiline
-                  />
-                </View>
-              );
-            })}
-
-            {canEdit ? (
+      {shown.map((goal, i) => {
+        const where = t('doel {nr} — {horizon}', { nr: i + 1, horizon: horizonLabel(horizon) });
+        if (!canEdit) {
+          return (
+            <View key={goal.id} style={styles.goal}>
+              <Text style={styles.goalNr}>{t('Doel {nr}', { nr: i + 1 })}</Text>
+              {goal.shot_type ? (
+                <Text style={styles.readValue}>{t('Slag')}: {goal.shot_type}</Text>
+              ) : null}
+              {goal.change_type ? (
+                <Text style={styles.readValue}>{t('Wijziging')}: {goal.change_type}</Text>
+              ) : null}
+              {goal.notes ? <Text style={styles.readNotes}>{goal.notes}</Text> : null}
+            </View>
+          );
+        }
+        return (
+          <View key={goal.id} style={styles.goal}>
+            <View style={styles.goalHead}>
+              <Text style={styles.goalNr}>{t('Doel {nr}', { nr: i + 1 })}</Text>
               <Pressable
-                onPress={onAdd}
+                onPress={() => onDelete(goal.id)}
                 accessibilityRole="button"
-                accessibilityLabel={t('Doel toevoegen — {horizon}', { horizon: horizonLabel(horizon) })}
-                style={[styles.addBtn, webCursor]}
+                accessibilityLabel={t('Verwijder {wat}', { wat: where })}
+                style={[styles.removeBtn, webCursor]}
               >
-                <Plus size={18} color={tennisColors.primary} />
-                <Text style={styles.addText}>{t('Doel toevoegen')}</Text>
+                <Trash2 size={16} color={tennisColors.danger} />
+                <Text style={styles.removeText}>{t('Verwijderen')}</Text>
               </Pressable>
-            ) : null}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+            </View>
+
+            <Text style={styles.label}>{t('Type slag')}</Text>
+            <OptionCombobox
+              label={t('Type slag — {wat}', { wat: where })}
+              options={shots}
+              value={goal.shot_type ?? null}
+              onChange={(v) => onSave({ ...goal, shot_type: v ?? undefined })}
+              placeholder={t('Forehand, Backhand…')}
+            />
+
+            <Text style={styles.label}>{t('Type wijziging')}</Text>
+            <OptionCombobox
+              label={t('Type wijziging — {wat}', { wat: where })}
+              options={changes}
+              value={goal.change_type ?? null}
+              onChange={(v) => onSave({ ...goal, change_type: v ?? undefined })}
+              placeholder={t('Greepwissel, Regelmaat…')}
+            />
+
+            <Text style={styles.label}>{t('Opmerkingen')}</Text>
+            <TextInput
+              style={[styles.input, styles.multiline]}
+              value={notesOf(goal)}
+              onChangeText={(t) => setDrafts((d) => ({ ...d, [goal.id]: t }))}
+              onBlur={() => saveNotes(goal, notesOf(goal))}
+              placeholder={t('Wat spreek je af?')}
+              placeholderTextColor={tennisColors.textMuted}
+              accessibilityLabel={t('Opmerkingen — {wat}', { wat: where })}
+              multiline
+            />
+          </View>
+        );
+      })}
+
+      {canEdit ? (
+        <Pressable
+          onPress={onAdd}
+          accessibilityRole="button"
+          accessibilityLabel={t('Doel toevoegen — {horizon}', { horizon: horizonLabel(horizon) })}
+          style={[styles.addBtn, webCursor]}
+        >
+          <Plus size={18} color={tennisColors.primary} />
+          <Text style={styles.addText}>{t('Doel toevoegen')}</Text>
+        </Pressable>
+      ) : null}
+    </DetailSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
-  // Zonder breedte-cap plakt een blad in een breed venster over de volle breedte, terwijl
-  // de rest van de app gecentreerd op zijn maximum staat. Een blad hoort bij het scherm
-  // eronder, dus het houdt dezelfde maat aan.
-  sheet: {
-    width: '100%',
-    maxWidth: contentMaxWidth,
-    alignSelf: 'center',
-    backgroundColor: tennisColors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
-    maxHeight: '85%',
-    ...shadow('lg'),
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: radius.sm,
-    backgroundColor: tennisColors.border,
-    marginBottom: spacing.sm,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { ...typography.h2, color: tennisColors.text, flexShrink: 1 },
-  close: {
-    minHeight: minTapTarget, minWidth: minTapTarget,
-    alignItems: 'flex-end', justifyContent: 'center',
-  },
-  body: { gap: spacing.xs, paddingBottom: spacing.lg },
   muted: { ...typography.body, color: tennisColors.textMuted },
   goal: {
     backgroundColor: tennisColors.surfaceAlt,

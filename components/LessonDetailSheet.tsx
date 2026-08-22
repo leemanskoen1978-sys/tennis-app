@@ -4,13 +4,14 @@
 // en woont de rest — met de handelingen — hier.
 
 import React, { useState } from 'react';
-import { Modal, View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronRight, X } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
+import { DetailSheet } from './ui/DetailSheet';
 import { ParticipantPicker } from './ParticipantPicker';
 import { PaymentMethodSheet } from './PaymentMethodSheet';
 import { useSimpleData } from '../providers/SimpleDataProvider';
@@ -28,7 +29,7 @@ import { isAwaitingApproval } from '../lib/inbox';
 import type { Beurtenkaart, Booking, BookingStatus, PaymentMethod } from '../lib/types';
 import { useT, t as tr } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, radius, typography, shadow, minTapTarget, webCursor, contentMaxWidth } from '../constants/theme';
+import { spacing, typography, minTapTarget, webCursor } from '../constants/theme';
 
 /** De kleur bij een status; dezelfde die het maandoverzicht ooit op de kaart zette. */
 const STATUS_COLORS: Record<BookingStatus, string> = {
@@ -199,304 +200,284 @@ export function LessonDetailSheet({
 
   return (
     <>
-      <Modal
+      <DetailSheet
+        title={formatDayTimeRange(booking.start_time, booking.end_time)}
         visible={visible && !choosing}
-        transparent
-        animationType="slide"
-        onRequestClose={close}
+        onClose={close}
       >
-        <View style={styles.backdrop}>
-          <View style={styles.sheet}>
-            <View style={styles.handle} />
-            <View style={styles.header}>
-              <Text style={styles.title}>{formatDayTimeRange(booking.start_time, booking.end_time)}</Text>
-              <Pressable
-                onPress={close}
-                accessibilityRole="button"
-                accessibilityLabel={t('Sluiten')}
-                style={[styles.close, webCursor]}
-              >
-                <X size={20} color={tennisColors.textMuted} />
-              </Pressable>
-            </View>
+        <Text style={styles.court}>{courtName}</Text>
+        {/* Een les uit een reeks ziet er verder uit als elke andere les. Zeg het dus,
+            vóór iemand hem annuleert in de veronderstelling dat het er één was. */}
+        {inSeries ? (
+          <Text style={styles.hint}>
+            {t('Onderdeel van {reeks} · {lessen} vanaf deze.', {
+              reeks: seriesName(sameSeries),
+              lessen: lessons(tail.length),
+            })}
+          </Text>
+        ) : null}
 
-            <ScrollView contentContainerStyle={styles.body}>
-              <Text style={styles.court}>{courtName}</Text>
-              {/* Een les uit een reeks ziet er verder uit als elke andere les. Zeg het dus,
-                  vóór iemand hem annuleert in de veronderstelling dat het er één was. */}
-              {inSeries ? (
-                <Text style={styles.hint}>
-                  {t('Onderdeel van {reeks} · {lessen} vanaf deze.', {
-                    reeks: seriesName(sameSeries),
-                    lessen: lessons(tail.length),
-                  })}
-                </Text>
-              ) : null}
-
-              {/* Beide namen klikken door: een les is het raakpunt van Spelers en Trainers,
-                  dus dit is de natuurlijke sprong tussen die twee delen. */}
+        {/* Beide namen klikken door: een les is het raakpunt van Spelers en Trainers,
+            dus dit is de natuurlijke sprong tussen die twee delen. */}
+        <Pressable
+          onPress={() => goTo(`/players/${booking.player_id}`)}
+          accessibilityRole="button"
+          accessibilityLabel={t('Open dossier van {naam}', { naam: playerName })}
+          style={[styles.partyLine, webCursor]}
+        >
+          <Text style={styles.partyLink}>
+            {isGroup ? t('Betaalt') : t('Speler')}: {playerName}
+            {isGroup ? ` · € ${formatEuro(amountOf(booking.player_id) ?? 0)}` : ''}
+          </Text>
+          <ChevronRight size={16} color={tennisColors.textMuted} />
+        </Pressable>
+        {isGroup ? (
+          <>
+            <Text style={styles.label}>{t('Medespelers')}</Text>
+            {participantIdsOf(booking).map((id) => (
               <Pressable
-                onPress={() => goTo(`/players/${booking.player_id}`)}
+                key={id}
+                onPress={() => goTo(`/players/${id}`)}
                 accessibilityRole="button"
-                accessibilityLabel={t('Open dossier van {naam}', { naam: playerName })}
+                accessibilityLabel={t('Open dossier van {naam}', { naam: nameOf(id) })}
                 style={[styles.partyLine, webCursor]}
               >
                 <Text style={styles.partyLink}>
-                  {isGroup ? t('Betaalt') : t('Speler')}: {playerName}
-                  {isGroup ? ` · € ${formatEuro(amountOf(booking.player_id) ?? 0)}` : ''}
+                  {nameOf(id)}
+                  {amountOf(id) !== null ? ` · € ${formatEuro(amountOf(id) as number)}` : ''}
                 </Text>
                 <ChevronRight size={16} color={tennisColors.textMuted} />
               </Pressable>
-              {isGroup ? (
-                <>
-                  <Text style={styles.label}>{t('Medespelers')}</Text>
-                  {participantIdsOf(booking).map((id) => (
-                    <Pressable
-                      key={id}
-                      onPress={() => goTo(`/players/${id}`)}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('Open dossier van {naam}', { naam: nameOf(id) })}
-                      style={[styles.partyLine, webCursor]}
-                    >
-                      <Text style={styles.partyLink}>
-                        {nameOf(id)}
-                        {amountOf(id) !== null ? ` · € ${formatEuro(amountOf(id) as number)}` : ''}
-                      </Text>
-                      <ChevronRight size={16} color={tennisColors.textMuted} />
-                    </Pressable>
-                  ))}
-                </>
-              ) : null}
+            ))}
+          </>
+        ) : null}
 
-              <Pressable
-                onPress={() => goTo(`/coaches/${booking.coach_id}`)}
-                accessibilityRole="button"
-                accessibilityLabel={t('Open dossier van trainer {naam}', { naam: coachName })}
-                style={[styles.partyLine, webCursor]}
-              >
-                <Text style={styles.partyLink}>{t('Trainer')}: {coachName}</Text>
-                <ChevronRight size={16} color={tennisColors.textMuted} />
-              </Pressable>
+        <Pressable
+          onPress={() => goTo(`/coaches/${booking.coach_id}`)}
+          accessibilityRole="button"
+          accessibilityLabel={t('Open dossier van trainer {naam}', { naam: coachName })}
+          style={[styles.partyLine, webCursor]}
+        >
+          <Text style={styles.partyLink}>{t('Trainer')}: {coachName}</Text>
+          <ChevronRight size={16} color={tennisColors.textMuted} />
+        </Pressable>
 
-              <View style={styles.badgeRow}>
-                <Badge label={bookingStatusLabel(booking.status)} color={STATUS_COLORS[booking.status]} />
-                {canPay && !isGroup ? (
-                  <Pressable
-                    onPress={() => {
-                      clearError();
-                      setChoosing(true);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('Betaalwijze wijzigen, nu {wijze}', { wijze: paymentLabel })}
-                    style={[styles.paymentTap, webCursor]}
-                  >
-                    <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
-                  </Pressable>
-                ) : (
-                  <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
-                )}
+        <View style={styles.badgeRow}>
+          <Badge label={bookingStatusLabel(booking.status)} color={STATUS_COLORS[booking.status]} />
+          {canPay && !isGroup ? (
+            <Pressable
+              onPress={() => {
+                clearError();
+                setChoosing(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={t('Betaalwijze wijzigen, nu {wijze}', { wijze: paymentLabel })}
+              style={[styles.paymentTap, webCursor]}
+            >
+              <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
+            </Pressable>
+          ) : (
+            <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
+          )}
+        </View>
+        {isGroup ? (
+          <Text style={styles.hint}>
+            {t('{regel} Een beurtenkaart en het sponsorbudget gelden alleen voor een '
+              + 'privéles.', { regel: t(GROEPSLES_ALLEEN_FACTUUR) })}
+          </Text>
+        ) : null}
+
+        <Text style={styles.price}>{lessonPriceLine(booking, court)}</Text>
+
+        {isGroup && canManage && !isCancelled ? (
+          <>
+            <Text style={styles.label}>{t('Factuur')}</Text>
+            <View style={styles.chipRow}>
+              <Chip
+                label={t('Samen')}
+                selected={splitOf(booking) === 'together'}
+                onPress={() => {
+                  void setPaymentSplit(booking.id, 'together');
+                }}
+              />
+              <Chip
+                label={t('Apart')}
+                selected={splitOf(booking) === 'separate'}
+                onPress={() => {
+                  void setPaymentSplit(booking.id, 'separate');
+                }}
+              />
+            </View>
+          </>
+        ) : null}
+
+        {canManage && !isCancelled ? (
+          editingPlayers ? (
+            <>
+              <Text style={styles.label}>{t('Medespelers')}</Text>
+              <ParticipantPicker
+                players={players}
+                payerId={booking.player_id}
+                value={participantIdsOf(booking)}
+                onChange={(ids) => {
+                  clearError();
+                  void setParticipants(booking.id, ids).then(setNotice);
+                }}
+              />
+              <View style={styles.actions}>
+                <Button
+                  label={t('Klaar')}
+                  variant="secondary"
+                  fullWidth={false}
+                  onPress={() => setEditingPlayers(false)}
+                />
               </View>
-              {isGroup ? (
-                <Text style={styles.hint}>
-                  {t('{regel} Een beurtenkaart en het sponsorbudget gelden alleen voor een '
-                    + 'privéles.', { regel: t(GROEPSLES_ALLEEN_FACTUUR) })}
-                </Text>
-              ) : null}
+            </>
+          ) : (
+            <View style={styles.actions}>
+              <Button
+                label={isGroup ? t('Medespelers wijzigen') : t('Medespeler toevoegen')}
+                variant="secondary"
+                fullWidth={false}
+                onPress={() => {
+                  clearError();
+                  setEditingPlayers(true);
+                }}
+              />
+            </View>
+          )
+        ) : null}
 
-              <Text style={styles.price}>{lessonPriceLine(booking, court)}</Text>
+        {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
-              {isGroup && canManage && !isCancelled ? (
-                <>
-                  <Text style={styles.label}>{t('Factuur')}</Text>
-                  <View style={styles.chipRow}>
-                    <Chip
-                      label={t('Samen')}
-                      selected={splitOf(booking) === 'together'}
-                      onPress={() => {
-                        void setPaymentSplit(booking.id, 'together');
-                      }}
-                    />
-                    <Chip
-                      label={t('Apart')}
-                      selected={splitOf(booking) === 'separate'}
-                      onPress={() => {
-                        void setPaymentSplit(booking.id, 'separate');
-                      }}
-                    />
-                  </View>
-                </>
-              ) : null}
+        {booking.notes ? (
+          <>
+            <Text style={styles.label}>{t('Notitie')}</Text>
+            <Text style={styles.notes}>{booking.notes}</Text>
+          </>
+        ) : null}
 
-              {canManage && !isCancelled ? (
-                editingPlayers ? (
-                  <>
-                    <Text style={styles.label}>{t('Medespelers')}</Text>
-                    <ParticipantPicker
-                      players={players}
-                      payerId={booking.player_id}
-                      value={participantIdsOf(booking)}
-                      onChange={(ids) => {
-                        clearError();
-                        void setParticipants(booking.id, ids).then(setNotice);
-                      }}
-                    />
-                    <View style={styles.actions}>
-                      <Button
-                        label={t('Klaar')}
-                        variant="secondary"
-                        fullWidth={false}
-                        onPress={() => setEditingPlayers(false)}
-                      />
-                    </View>
-                  </>
-                ) : (
-                  <View style={styles.actions}>
-                    <Button
-                      label={isGroup ? t('Medespelers wijzigen') : t('Medespeler toevoegen')}
-                      variant="secondary"
-                      fullWidth={false}
-                      onPress={() => {
-                        clearError();
-                        setEditingPlayers(true);
-                      }}
-                    />
-                  </View>
-                )
-              ) : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-              {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+        {/* Een aangevraagde les gaat pas door als de trainer ja zegt. Dat kan ook hier
+            en niet alleen op het agendascherm: wie de les opent, wil hem hier kunnen
+            afhandelen in plaats van eerst terug te moeten. */}
+        {canManage && isAwaitingApproval(booking) ? (
+          <View style={styles.actions}>
+            <Button
+              label={t('Goedkeuren')}
+              variant="primary"
+              fullWidth={false}
+              onPress={() => {
+                void approveBooking(booking.id);
+              }}
+            />
+            <Button
+              label={t('Weigeren')}
+              variant="secondary"
+              fullWidth={false}
+              onPress={() => {
+                void rejectBooking(booking.id);
+              }}
+            />
+          </View>
+        ) : null}
 
-              {booking.notes ? (
-                <>
-                  <Text style={styles.label}>{t('Notitie')}</Text>
-                  <Text style={styles.notes}>{booking.notes}</Text>
-                </>
-              ) : null}
+        {/* Een losse les gaat rechtstreeks: één les annuleren is geen vraag waard, en
+            verwijderen bestond hier niet. Bij een reeks wél, want daar kan één druk
+            een half seizoen meenemen — dus eerst vragen wat je bedoelt. */}
+        {canManage && canCancel && !inSeries ? (
+          <View style={styles.actions}>
+            <Button
+              label={t('Annuleren')}
+              variant="danger"
+              fullWidth={false}
+              onPress={() => {
+                void updateBooking(booking.id, { status: 'cancelled' });
+              }}
+            />
+          </View>
+        ) : null}
 
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-
-              {/* Een aangevraagde les gaat pas door als de trainer ja zegt. Dat kan ook hier
-                  en niet alleen op het agendascherm: wie de les opent, wil hem hier kunnen
-                  afhandelen in plaats van eerst terug te moeten. */}
-              {canManage && isAwaitingApproval(booking) ? (
-                <View style={styles.actions}>
+        {canManage && inSeries ? (
+          confirming ? (
+            <View style={styles.confirmBox}>
+              <Text style={styles.confirmText}>
+                {confirming === 'cancel' ? t('Annuleren') : t('Verwijderen')}:{' '}
+                {tailOnlyThis
+                  ? t('dit is de laatste les van de reeks.')
+                  : t('alleen deze les, of deze en alle volgende ({lessen})?', {
+                    lessen: lessons(tail.length),
+                  })}
+                {confirming === 'delete' ? ` ${t('Weg is weg.')}` : ''}
+              </Text>
+              <View style={styles.confirmRow}>
+                <Button
+                  label={tailOnlyThis ? t('Ja, deze les') : t('Alleen deze les')}
+                  variant="danger"
+                  fullWidth={false}
+                  onPress={() => {
+                    setConfirming(null);
+                    if (confirming === 'cancel') {
+                      void updateBooking(booking.id, { status: 'cancelled' });
+                      return;
+                    }
+                    // De les bestaat straks niet meer; het blad zou naar een lege
+                    // boeking staan te kijken, dus het gaat mee dicht.
+                    void deleteBooking(booking.id);
+                    close();
+                  }}
+                />
+                {tailOnlyThis ? null : (
                   <Button
-                    label={t('Goedkeuren')}
-                    variant="primary"
-                    fullWidth={false}
-                    onPress={() => {
-                      void approveBooking(booking.id);
-                    }}
-                  />
-                  <Button
-                    label={t('Weigeren')}
-                    variant="secondary"
-                    fullWidth={false}
-                    onPress={() => {
-                      void rejectBooking(booking.id);
-                    }}
-                  />
-                </View>
-              ) : null}
-
-              {/* Een losse les gaat rechtstreeks: één les annuleren is geen vraag waard, en
-                  verwijderen bestond hier niet. Bij een reeks wél, want daar kan één druk
-                  een half seizoen meenemen — dus eerst vragen wat je bedoelt. */}
-              {canManage && canCancel && !inSeries ? (
-                <View style={styles.actions}>
-                  <Button
-                    label={t('Annuleren')}
+                    label={t('Deze en alle volgende ({n})', { n: tail.length })}
                     variant="danger"
                     fullWidth={false}
                     onPress={() => {
-                      void updateBooking(booking.id, { status: 'cancelled' });
+                      setConfirming(null);
+                      if (confirming === 'cancel') {
+                        void cancelSeriesFrom(booking.id);
+                        return;
+                      }
+                      void deleteSeriesFrom(booking.id);
+                      close();
                     }}
                   />
-                </View>
+                )}
+                <Button
+                  label={t('Nee')}
+                  variant="secondary"
+                  fullWidth={false}
+                  onPress={() => setConfirming(null)}
+                />
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.actions, styles.confirmRow]}>
+              {canCancel ? (
+                <Button
+                  label={t('Annuleren')}
+                  variant="danger"
+                  fullWidth={false}
+                  onPress={() => {
+                    clearError();
+                    setConfirming('cancel');
+                  }}
+                />
               ) : null}
-
-              {canManage && inSeries ? (
-                confirming ? (
-                  <View style={styles.confirmBox}>
-                    <Text style={styles.confirmText}>
-                      {confirming === 'cancel' ? t('Annuleren') : t('Verwijderen')}:{' '}
-                      {tailOnlyThis
-                        ? t('dit is de laatste les van de reeks.')
-                        : t('alleen deze les, of deze en alle volgende ({lessen})?', {
-                          lessen: lessons(tail.length),
-                        })}
-                      {confirming === 'delete' ? ` ${t('Weg is weg.')}` : ''}
-                    </Text>
-                    <View style={styles.confirmRow}>
-                      <Button
-                        label={tailOnlyThis ? t('Ja, deze les') : t('Alleen deze les')}
-                        variant="danger"
-                        fullWidth={false}
-                        onPress={() => {
-                          setConfirming(null);
-                          if (confirming === 'cancel') {
-                            void updateBooking(booking.id, { status: 'cancelled' });
-                            return;
-                          }
-                          // De les bestaat straks niet meer; het blad zou naar een lege
-                          // boeking staan te kijken, dus het gaat mee dicht.
-                          void deleteBooking(booking.id);
-                          close();
-                        }}
-                      />
-                      {tailOnlyThis ? null : (
-                        <Button
-                          label={t('Deze en alle volgende ({n})', { n: tail.length })}
-                          variant="danger"
-                          fullWidth={false}
-                          onPress={() => {
-                            setConfirming(null);
-                            if (confirming === 'cancel') {
-                              void cancelSeriesFrom(booking.id);
-                              return;
-                            }
-                            void deleteSeriesFrom(booking.id);
-                            close();
-                          }}
-                        />
-                      )}
-                      <Button
-                        label={t('Nee')}
-                        variant="secondary"
-                        fullWidth={false}
-                        onPress={() => setConfirming(null)}
-                      />
-                    </View>
-                  </View>
-                ) : (
-                  <View style={[styles.actions, styles.confirmRow]}>
-                    {canCancel ? (
-                      <Button
-                        label={t('Annuleren')}
-                        variant="danger"
-                        fullWidth={false}
-                        onPress={() => {
-                          clearError();
-                          setConfirming('cancel');
-                        }}
-                      />
-                    ) : null}
-                    <Button
-                      label={t('Verwijderen')}
-                      variant="danger"
-                      fullWidth={false}
-                      onPress={() => {
-                        clearError();
-                        setConfirming('delete');
-                      }}
-                    />
-                  </View>
-                )
-              ) : null}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+              <Button
+                label={t('Verwijderen')}
+                variant="danger"
+                fullWidth={false}
+                onPress={() => {
+                  clearError();
+                  setConfirming('delete');
+                }}
+              />
+            </View>
+          )
+        ) : null}
+      </DetailSheet>
 
       <PaymentMethodSheet
         visible={visible && choosing}
@@ -518,35 +499,6 @@ export function LessonDetailSheet({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
-  // Zonder breedte-cap plakt een blad in een breed venster over de volle breedte, terwijl
-  // de rest van de app gecentreerd op zijn maximum staat. Een blad hoort bij het scherm
-  // eronder, dus het houdt dezelfde maat aan.
-  sheet: {
-    width: '100%',
-    maxWidth: contentMaxWidth,
-    alignSelf: 'center',
-    backgroundColor: tennisColors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
-    maxHeight: '85%',
-    ...shadow('lg'),
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: radius.sm,
-    backgroundColor: tennisColors.border,
-    marginBottom: spacing.sm,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { ...typography.h2, color: tennisColors.text, flexShrink: 1 },
-  close: { minHeight: minTapTarget, minWidth: minTapTarget, alignItems: 'flex-end', justifyContent: 'center' },
-  body: { gap: spacing.xs, paddingBottom: spacing.lg },
   court: { ...typography.body, color: tennisColors.textMuted },
   partyLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: minTapTarget },
   partyLink: { ...typography.body, color: tennisColors.primary, fontWeight: '600' },

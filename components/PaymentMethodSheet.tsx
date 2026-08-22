@@ -1,10 +1,11 @@
 import React from 'react';
-import { Modal, View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
 import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, radius, typography, shadow, contentMaxWidth } from '../constants/theme';
+import { spacing, typography } from '../constants/theme';
 import { Button } from './ui/Button';
+import { DetailSheet } from './ui/DetailSheet';
 import { Chip } from './ui/Chip';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../lib/payments';
 import { GROEPSLES_ALLEEN_FACTUUR, GROEPSLES_METHOD } from '../lib/beurtenkaart';
@@ -41,68 +42,38 @@ export function PaymentMethodSheet({
 }: Props): React.JSX.Element {
   const t = useT();
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-          <Text style={styles.title}>{t('Betaalwijze')}</Text>
-
-          <View style={styles.chipRow}>
-            {PAYMENT_METHODS.map((method) => (
-              <Chip
-                key={method}
-                label={t(PAYMENT_LABELS[method])}
-                selected={method === current}
-                disabled={groupLesson && method !== GROEPSLES_METHOD}
-                onPress={() => onPick(method)}
-              />
-            ))}
-          </View>
-
-          {groupLesson ? (
-            <Text style={styles.hint}>
-              {t('{regel} Een beurtenkaart en het sponsorbudget gelden alleen voor een '
-                + 'privéles.', { regel: t(GROEPSLES_ALLEEN_FACTUUR) })}
-            </Text>
-          ) : null}
-          {!groupLesson && cardHint ? <Text style={styles.hint}>{cardHint}</Text> : null}
-          {/* Twee saldo's onder elkaar: beurten voor de kaart, euro's voor de sponsor.
-              Allebei het antwoord op dezelfde vraag — kan deze les hier nog bij? */}
-          {!groupLesson && sponsorHint ? <Text style={styles.hint}>{sponsorHint}</Text> : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <Button label={t('Sluiten')} variant="secondary" onPress={onClose} />
-        </View>
+    // Geen scrollblad: zes chips en hooguit twee hintregels passen altijd op één scherm.
+    <DetailSheet title={t('Betaalwijze')} visible={visible} onClose={onClose} scroll={false}>
+      <View style={styles.chipRow}>
+        {PAYMENT_METHODS.map((method) => (
+          <Chip
+            key={method}
+            label={t(PAYMENT_LABELS[method])}
+            selected={method === current}
+            disabled={groupLesson && method !== GROEPSLES_METHOD}
+            onPress={() => onPick(method)}
+          />
+        ))}
       </View>
-    </Modal>
+
+      {groupLesson ? (
+        <Text style={styles.hint}>
+          {t('{regel} Een beurtenkaart en het sponsorbudget gelden alleen voor een '
+            + 'privéles.', { regel: t(GROEPSLES_ALLEEN_FACTUUR) })}
+        </Text>
+      ) : null}
+      {!groupLesson && cardHint ? <Text style={styles.hint}>{cardHint}</Text> : null}
+      {/* Twee saldo's onder elkaar: beurten voor de kaart, euro's voor de sponsor.
+          Allebei het antwoord op dezelfde vraag — kan deze les hier nog bij? */}
+      {!groupLesson && sponsorHint ? <Text style={styles.hint}>{sponsorHint}</Text> : null}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <Button label={t('Sluiten')} variant="secondary" onPress={onClose} />
+    </DetailSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
-  // Zelfde breedte-cap als de andere bladen: gecentreerd, niet over de volle breedte.
-  sheet: {
-    width: '100%',
-    maxWidth: contentMaxWidth,
-    alignSelf: 'center',
-    backgroundColor: tennisColors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
-    gap: spacing.md,
-    ...shadow('lg'),
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: radius.sm,
-    backgroundColor: tennisColors.border,
-    marginBottom: spacing.sm,
-  },
-  title: { ...typography.h2, color: tennisColors.text },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   hint: { ...typography.body, fontSize: 14, color: tennisColors.textMuted, fontStyle: 'italic' },
   error: { color: tennisColors.danger, fontSize: 14 },

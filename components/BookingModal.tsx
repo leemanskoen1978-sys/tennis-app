@@ -1,17 +1,11 @@
 import React, { useState } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-} from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView } from 'react-native';
 import { useT, t as tr } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, radius, typography, shadow } from '../constants/theme';
+import { spacing, radius, typography } from '../constants/theme';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
+import { DetailSheet } from './ui/DetailSheet';
 import { ParticipantPicker } from './ParticipantPicker';
 import { UserManagement } from './UserManagement';
 import type { Court, PaymentMethod, PaymentSplit } from '../lib/types';
@@ -307,16 +301,10 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
 
   return (
     <>
-      <Modal
-        visible={visible}
-        transparent
-        animationType="slide"
-        onRequestClose={handleClose}
-      >
-        <View style={styles.backdrop}>
-          <View style={styles.sheet}>
-            <View style={styles.handle} />
-            <Text style={styles.title}>{t('Les boeken')}</Text>
+      <DetailSheet
+        title={t('Les boeken')}
+        subtitle={(
+          <>
             <Text style={styles.subtitle}>
               {formatDay(date)} · {slot}–{slotEndLabel}
             </Text>
@@ -328,220 +316,13 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                 })}
               </Text>
             ) : null}
-
-            <ScrollView
-              style={styles.body}
-              contentContainerStyle={styles.bodyContent}
-              keyboardShouldPersistTaps="handled"
-            >
-              {seriesNotice ? (
-                // De reeks staat er; alleen het geld klopte niet overal. De velden zijn niet
-                // meer van toepassing, de melding is het enige wat hier nog telt.
-                <Text style={styles.notice}>{seriesNotice}</Text>
-              ) : bookedWithoutBeurt ? (
-                // De les staat er al. De velden zijn niet meer van toepassing: wat hier nog
-                // ontbreekt is de beurt, niet de boeking.
-                <Text style={styles.notice}>
-                  {t('De les is geboekt, maar “{gekozen}” ging er niet op: de betaalwijze staat '
-                    + 'nog op “{open}”. Bevestigen probeert het alsnog — er komt geen tweede les '
-                    + 'bij. Sluiten mag ook; je kunt de betaalwijze later bij de les zelf zetten.', {
-                    gekozen: t(PAYMENT_LABELS[method]),
-                    open: t(PAYMENT_LABELS.open),
-                  })}
-                </Text>
-              ) : (
-                <>
-                  <Text style={styles.label}>{t('Terrein')}</Text>
-                  <View style={styles.chipRow}>
-                    {courts.map((court) => (
-                      <Chip
-                        key={court.id}
-                        label={court.name}
-                        selected={court.id === selectedCourtId}
-                        onPress={() => setSelectedCourtId(court.id)}
-                      />
-                    ))}
-                  </View>
-
-                  <Text style={styles.label}>{t('Medespelers (optioneel)')}</Text>
-                  <ParticipantPicker
-                    players={players}
-                    payerId={forPlayerId}
-                    value={participants}
-                    onChange={setParticipants}
-                    onRequestCreate={setNewPlayerName}
-                  />
-
-                  {/* Wat de les kost, meteen onder de namen: hier ziet de trainer de staffel
-                      in werking zodra hij er iemand bij zet. */}
-                  <Text style={styles.price}>{priceLine}</Text>
-
-                  {isGroup ? (
-                    <>
-                      <Text style={styles.label}>{t('Factuur')}</Text>
-                      <View style={styles.chipRow}>
-                        <Chip
-                          label={t('Samen')}
-                          selected={split === 'together'}
-                          onPress={() => setSplit('together')}
-                        />
-                        <Chip
-                          label={t('Apart')}
-                          selected={split === 'separate'}
-                          onPress={() => setSplit('separate')}
-                        />
-                      </View>
-                      <Text style={styles.hint}>
-                        {split === 'together'
-                          ? t('Het hele bedrag gaat naar {naam}.', {
-                            naam: users.find((u) => u.id === forPlayerId)?.name ?? t('de betaler'),
-                          })
-                          : t('Elke speler krijgt zijn eigen deel gefactureerd.')}
-                      </Text>
-                    </>
-                  ) : null}
-
-                  <Text style={styles.label}>{t('Betaalwijze')}</Text>
-                  {isGroup ? (
-                    // Bij een groepsles valt er niets te kiezen; een rij chips die allemaal
-                    // weigeren is erger dan geen rij.
-                    <Text style={styles.hint}>
-                      {t('{factuur}. {regel} Een beurtenkaart en het sponsorbudget gelden '
-                        + 'alleen voor een privéles.', {
-                        factuur: t(PAYMENT_LABELS[GROEPSLES_METHOD]),
-                        regel: t(GROEPSLES_ALLEEN_FACTUUR),
-                      })}
-                    </Text>
-                  ) : (
-                    <>
-                      <View style={styles.chipRow}>
-                        {PAYMENT_METHODS.map((m) => (
-                          <Chip
-                            key={m}
-                            label={t(PAYMENT_LABELS[m])}
-                            selected={m === method}
-                            onPress={() => setChosenMethod(m)}
-                          />
-                        ))}
-                      </View>
-                      {method === 'beurtenkaart' ? (
-                        <Text style={styles.hint}>
-                          {t('Er gaat een beurt af.')} {beurtenHint()}
-                        </Text>
-                      ) : null}
-                      {method === 'sponsor' ? (
-                        <Text style={styles.hint}>
-                          {t('De les gaat van het sponsorcontract af.')} {sponsorTekst()}
-                        </Text>
-                      ) : null}
-                    </>
-                  )}
-
-                  <Text style={styles.label}>{t('Notities (optioneel)')}</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={notes}
-                    onChangeText={setNotes}
-                    placeholder={t('Voeg een notitie toe…')}
-                    placeholderTextColor={tennisColors.textMuted}
-                    multiline
-                  />
-
-                  <Text style={styles.label}>{t('Herhalen')}</Text>
-                  <View style={styles.chipRow}>
-                    <Chip
-                      label={t('Niet herhalen')}
-                      selected={repeat === null}
-                      onPress={() => kiesHerhaling(null)}
-                    />
-                    <Chip
-                      label={t('Wekelijks')}
-                      selected={repeat === 'weekly'}
-                      onPress={() => kiesHerhaling('weekly')}
-                    />
-                    <Chip
-                      label={t('Tweewekelijks')}
-                      selected={repeat === 'biweekly'}
-                      onPress={() => kiesHerhaling('biweekly')}
-                    />
-                  </View>
-
-                  {repeat ? (
-                    <>
-                      <Text style={styles.fieldLabel}>{t('Hoeveel lessen?')}</Text>
-                      {/* Vaste stappen voor wat een trainer meestal kiest, en een veld voor
-                          de rest. Sneller dan tikken, en niemand hoeft een datum uit te
-                          rekenen. */}
-                      <View style={styles.chipRow}>
-                        {[6, 10, 12, 20].map((n) => (
-                          <Chip
-                            key={n}
-                            label={t('{n}×', { n })}
-                            selected={aantal === n}
-                            onPress={() => setAantalText(String(n))}
-                          />
-                        ))}
-                      </View>
-                      <TextInput
-                        style={styles.dayInput}
-                        value={aantalText}
-                        onChangeText={setAantalText}
-                        placeholder={t('aantal')}
-                        placeholderTextColor={tennisColors.textMuted}
-                        accessibilityLabel={t('Aantal lessen in de reeks')}
-                        inputMode="numeric"
-                      />
-                      {!aantalDeugt ? (
-                        <Text style={styles.hint}>
-                          {t('Vul een aantal in van 2 tot {max}.', { max: MAX_LESSONS })}
-                        </Text>
-                      ) : (
-                        <Text style={styles.hint}>
-                          {t('Laatste les op {dag}.', { dag: formatDay(untilDate as Date) })}
-                        </Text>
-                      )}
-
-                      {/* Wat er gaat gebeuren, vóór het bevestigen. De overgeslagen dagen
-                          staan er met datum bij: "3 overgeslagen" zonder te zeggen welke
-                          laat de trainer met een raadsel achter. */}
-                      {plan && rule ? (
-                        <>
-                          <Text style={styles.price}>{seriesSummary(plan, rule)}</Text>
-                          {plan.skipped.length > 0 ? (
-                            <Text style={styles.hint}>
-                              {t('{lessen} overgeslagen omdat de trainer dan al bezet is: {dagen}.', {
-                                lessen: lessons(plan.skipped.length),
-                                dagen: plan.skipped.map((s) => formatDay(s.start_time)).join(', '),
-                              })}
-                            </Text>
-                          ) : null}
-                          {plan.usable.length === 0 ? (
-                            <Text style={styles.error}>
-                              {t('Geen enkel moment van deze reeks is nog vrij; er valt niets te boeken.')}
-                            </Text>
-                          ) : null}
-                          {plan.usable.length + plan.skipped.length >= MAX_LESSONS ? (
-                            <Text style={styles.hint}>
-                              {t('Een reeks gaat tot {n} lessen; wat daarna komt valt erbuiten.', { n: MAX_LESSONS })}
-                            </Text>
-                          ) : null}
-                        </>
-                      ) : null}
-                    </>
-                  ) : null}
-                </>
-              )}
-
-              {/* Bij een afgeronde reeks zegt de melding hierboven al wat er misging; de
-                  foutregel van de provider zou dat woord voor woord herhalen. */}
-              {isAanvraag && !seriesNotice ? (
-                <Text style={styles.hint}>
-                  {t('Je trainer moet deze les nog goedkeuren. Het uur blijft zolang voor je vrijgehouden.')}
-                </Text>
-              ) : null}
-
-            </ScrollView>
-
+          </>
+        )}
+        visible={visible}
+        onClose={handleClose}
+        scroll={false}
+        footer={(
+          <>
             {/* De foutregel hoort bij de knop die hem veroorzaakte. Hij stond in het
                 scrollbare deel terwijl de knoppen eronder vastgepind staan — dan druk je
                 op Bevestigen, gebeurt er niets, en staat de uitleg buiten beeld. */}
@@ -574,9 +355,222 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                 </>
               )}
             </View>
-          </View>
-        </View>
-      </Modal>
+          </>
+        )}
+      >
+        <ScrollView
+          style={styles.body}
+          contentContainerStyle={styles.bodyContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {seriesNotice ? (
+            // De reeks staat er; alleen het geld klopte niet overal. De velden zijn niet
+            // meer van toepassing, de melding is het enige wat hier nog telt.
+            <Text style={styles.notice}>{seriesNotice}</Text>
+          ) : bookedWithoutBeurt ? (
+            // De les staat er al. De velden zijn niet meer van toepassing: wat hier nog
+            // ontbreekt is de beurt, niet de boeking.
+            <Text style={styles.notice}>
+              {t('De les is geboekt, maar “{gekozen}” ging er niet op: de betaalwijze staat '
+                + 'nog op “{open}”. Bevestigen probeert het alsnog — er komt geen tweede les '
+                + 'bij. Sluiten mag ook; je kunt de betaalwijze later bij de les zelf zetten.', {
+                gekozen: t(PAYMENT_LABELS[method]),
+                open: t(PAYMENT_LABELS.open),
+              })}
+            </Text>
+          ) : (
+            <>
+              <Text style={styles.label}>{t('Terrein')}</Text>
+              <View style={styles.chipRow}>
+                {courts.map((court) => (
+                  <Chip
+                    key={court.id}
+                    label={court.name}
+                    selected={court.id === selectedCourtId}
+                    onPress={() => setSelectedCourtId(court.id)}
+                  />
+                ))}
+              </View>
+
+              <Text style={styles.label}>{t('Medespelers (optioneel)')}</Text>
+              <ParticipantPicker
+                players={players}
+                payerId={forPlayerId}
+                value={participants}
+                onChange={setParticipants}
+                onRequestCreate={setNewPlayerName}
+              />
+
+              {/* Wat de les kost, meteen onder de namen: hier ziet de trainer de staffel
+                  in werking zodra hij er iemand bij zet. */}
+              <Text style={styles.price}>{priceLine}</Text>
+
+              {isGroup ? (
+                <>
+                  <Text style={styles.label}>{t('Factuur')}</Text>
+                  <View style={styles.chipRow}>
+                    <Chip
+                      label={t('Samen')}
+                      selected={split === 'together'}
+                      onPress={() => setSplit('together')}
+                    />
+                    <Chip
+                      label={t('Apart')}
+                      selected={split === 'separate'}
+                      onPress={() => setSplit('separate')}
+                    />
+                  </View>
+                  <Text style={styles.hint}>
+                    {split === 'together'
+                      ? t('Het hele bedrag gaat naar {naam}.', {
+                        naam: users.find((u) => u.id === forPlayerId)?.name ?? t('de betaler'),
+                      })
+                      : t('Elke speler krijgt zijn eigen deel gefactureerd.')}
+                  </Text>
+                </>
+              ) : null}
+
+              <Text style={styles.label}>{t('Betaalwijze')}</Text>
+              {isGroup ? (
+                // Bij een groepsles valt er niets te kiezen; een rij chips die allemaal
+                // weigeren is erger dan geen rij.
+                <Text style={styles.hint}>
+                  {t('{factuur}. {regel} Een beurtenkaart en het sponsorbudget gelden '
+                    + 'alleen voor een privéles.', {
+                    factuur: t(PAYMENT_LABELS[GROEPSLES_METHOD]),
+                    regel: t(GROEPSLES_ALLEEN_FACTUUR),
+                  })}
+                </Text>
+              ) : (
+                <>
+                  <View style={styles.chipRow}>
+                    {PAYMENT_METHODS.map((m) => (
+                      <Chip
+                        key={m}
+                        label={t(PAYMENT_LABELS[m])}
+                        selected={m === method}
+                        onPress={() => setChosenMethod(m)}
+                      />
+                    ))}
+                  </View>
+                  {method === 'beurtenkaart' ? (
+                    <Text style={styles.hint}>
+                      {t('Er gaat een beurt af.')} {beurtenHint()}
+                    </Text>
+                  ) : null}
+                  {method === 'sponsor' ? (
+                    <Text style={styles.hint}>
+                      {t('De les gaat van het sponsorcontract af.')} {sponsorTekst()}
+                    </Text>
+                  ) : null}
+                </>
+              )}
+
+              <Text style={styles.label}>{t('Notities (optioneel)')}</Text>
+              <TextInput
+                style={styles.input}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder={t('Voeg een notitie toe…')}
+                placeholderTextColor={tennisColors.textMuted}
+                multiline
+              />
+
+              <Text style={styles.label}>{t('Herhalen')}</Text>
+              <View style={styles.chipRow}>
+                <Chip
+                  label={t('Niet herhalen')}
+                  selected={repeat === null}
+                  onPress={() => kiesHerhaling(null)}
+                />
+                <Chip
+                  label={t('Wekelijks')}
+                  selected={repeat === 'weekly'}
+                  onPress={() => kiesHerhaling('weekly')}
+                />
+                <Chip
+                  label={t('Tweewekelijks')}
+                  selected={repeat === 'biweekly'}
+                  onPress={() => kiesHerhaling('biweekly')}
+                />
+              </View>
+
+              {repeat ? (
+                <>
+                  <Text style={styles.fieldLabel}>{t('Hoeveel lessen?')}</Text>
+                  {/* Vaste stappen voor wat een trainer meestal kiest, en een veld voor
+                      de rest. Sneller dan tikken, en niemand hoeft een datum uit te
+                      rekenen. */}
+                  <View style={styles.chipRow}>
+                    {[6, 10, 12, 20].map((n) => (
+                      <Chip
+                        key={n}
+                        label={t('{n}×', { n })}
+                        selected={aantal === n}
+                        onPress={() => setAantalText(String(n))}
+                      />
+                    ))}
+                  </View>
+                  <TextInput
+                    style={styles.dayInput}
+                    value={aantalText}
+                    onChangeText={setAantalText}
+                    placeholder={t('aantal')}
+                    placeholderTextColor={tennisColors.textMuted}
+                    accessibilityLabel={t('Aantal lessen in de reeks')}
+                    inputMode="numeric"
+                  />
+                  {!aantalDeugt ? (
+                    <Text style={styles.hint}>
+                      {t('Vul een aantal in van 2 tot {max}.', { max: MAX_LESSONS })}
+                    </Text>
+                  ) : (
+                    <Text style={styles.hint}>
+                      {t('Laatste les op {dag}.', { dag: formatDay(untilDate as Date) })}
+                    </Text>
+                  )}
+
+                  {/* Wat er gaat gebeuren, vóór het bevestigen. De overgeslagen dagen
+                      staan er met datum bij: "3 overgeslagen" zonder te zeggen welke
+                      laat de trainer met een raadsel achter. */}
+                  {plan && rule ? (
+                    <>
+                      <Text style={styles.price}>{seriesSummary(plan, rule)}</Text>
+                      {plan.skipped.length > 0 ? (
+                        <Text style={styles.hint}>
+                          {t('{lessen} overgeslagen omdat de trainer dan al bezet is: {dagen}.', {
+                            lessen: lessons(plan.skipped.length),
+                            dagen: plan.skipped.map((s) => formatDay(s.start_time)).join(', '),
+                          })}
+                        </Text>
+                      ) : null}
+                      {plan.usable.length === 0 ? (
+                        <Text style={styles.error}>
+                          {t('Geen enkel moment van deze reeks is nog vrij; er valt niets te boeken.')}
+                        </Text>
+                      ) : null}
+                      {plan.usable.length + plan.skipped.length >= MAX_LESSONS ? (
+                        <Text style={styles.hint}>
+                          {t('Een reeks gaat tot {n} lessen; wat daarna komt valt erbuiten.', { n: MAX_LESSONS })}
+                        </Text>
+                      ) : null}
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+            </>
+          )}
+
+          {/* Bij een afgeronde reeks zegt de melding hierboven al wat er misging; de
+              foutregel van de provider zou dat woord voor woord herhalen. */}
+          {isAanvraag && !seriesNotice ? (
+            <Text style={styles.hint}>
+              {t('Je trainer moet deze les nog goedkeuren. Het uur blijft zolang voor je vrijgehouden.')}
+            </Text>
+          ) : null}
+
+        </ScrollView>
+      </DetailSheet>
 
       {/* Het volledige invulscherm voor een nieuwe speler. Bewust naast het boekvenster en
           niet erin: twee bladen in elkaar geschoven raakt op web en Android in de knoop.
@@ -595,33 +589,6 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: tennisColors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
-    maxHeight: '85%',
-    ...shadow('lg'),
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: radius.sm,
-    backgroundColor: tennisColors.border,
-    marginBottom: spacing.lg,
-  },
-  title: {
-    ...typography.h2,
-    color: tennisColors.text,
-  },
   subtitle: {
     ...typography.body,
     fontSize: 14,

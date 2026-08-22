@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { X } from 'lucide-react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { Button } from './ui/Button';
+import { DetailSheet } from './ui/DetailSheet';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, radius, typography, shadow, webCursor, contentMaxWidth } from '../constants/theme';
+import { spacing, radius } from '../constants/theme';
 
 /** Een les aan een speler hangen: nieuw aanmaken, of er een uit de gedeelde bibliotheek kiezen. */
 export function AssignLessonModal({ visible, onClose, playerId }: {
@@ -40,55 +40,31 @@ export function AssignLessonModal({ visible, onClose, playerId }: {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>{t('Les toewijzen')}</Text>
-            <Pressable onPress={onClose} style={webCursor} accessibilityRole="button" accessibilityLabel={t('Sluiten')}><X size={22} color={tennisColors.textMuted} /></Pressable>
-          </View>
-          <ScrollView contentContainerStyle={styles.sheetBody}>
-            <Text style={styles.label}>{t('Nieuwe les')}</Text>
-            <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder={t('Titel')} placeholderTextColor={tennisColors.textMuted} />
-            <TextInput style={styles.input} value={url} onChangeText={setUrl} placeholder={t('Video-URL (optioneel)')} placeholderTextColor={tennisColors.textMuted} autoCapitalize="none" />
-            <Button label={t('Aanmaken & toewijzen')} variant="primary" onPress={create} disabled={!title.trim()} />
+    <DetailSheet title={t('Les toewijzen')} visible={visible} onClose={onClose}>
+      <Text style={styles.label}>{t('Nieuwe les')}</Text>
+      <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder={t('Titel')} placeholderTextColor={tennisColors.textMuted} />
+      <TextInput style={styles.input} value={url} onChangeText={setUrl} placeholder={t('Video-URL (optioneel)')} placeholderTextColor={tennisColors.textMuted} autoCapitalize="none" />
+      <Button label={t('Aanmaken & toewijzen')} variant="primary" onPress={create} disabled={!title.trim()} />
 
-            {library.length > 0 ? (
-              <>
-                <Text style={[styles.label, { marginTop: spacing.lg }]}>{t('Uit bibliotheek')}</Text>
-                {library.map((l) => (
-                  <View key={l.id} style={styles.libRow}>
-                    <View style={styles.libTitleWrap}>
-                      <Text style={styles.libTitle} numberOfLines={1}>{l.title}</Text>
-                      <Text style={styles.libOwner}>van {ownerName(l.coach_id ?? l.uploaded_by)}</Text>
-                    </View>
-                    <Button label={t('Toewijzen')} variant="secondary" fullWidth={false} onPress={() => { assign(l.id); onClose(); }} />
-                  </View>
-                ))}
-              </>
-            ) : null}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+      {library.length > 0 ? (
+        <>
+          <Text style={[styles.label, { marginTop: spacing.lg }]}>{t('Uit bibliotheek')}</Text>
+          {library.map((l) => (
+            <View key={l.id} style={styles.libRow}>
+              <View style={styles.libTitleWrap}>
+                <Text style={styles.libTitle} numberOfLines={1}>{l.title}</Text>
+                <Text style={styles.libOwner}>van {ownerName(l.coach_id ?? l.uploaded_by)}</Text>
+              </View>
+              <Button label={t('Toewijzen')} variant="secondary" fullWidth={false} onPress={() => { assign(l.id); onClose(); }} />
+            </View>
+          ))}
+        </>
+      ) : null}
+    </DetailSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  // Zonder breedte-cap plakt een blad in een breed venster over de volle breedte, terwijl
-  // de rest van de app gecentreerd op zijn maximum staat. Een blad hoort bij het scherm
-  // eronder, dus het houdt dezelfde maat aan.
-  sheet: {
-    width: '100%',
-    maxWidth: contentMaxWidth,
-    alignSelf: 'center',
-    backgroundColor: tennisColors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl, maxHeight: '85%', ...shadow('lg'),
-  },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
-  sheetTitle: { ...typography.h2, color: tennisColors.text },
-  sheetBody: { paddingBottom: spacing.lg },
   label: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted, marginTop: spacing.md, marginBottom: spacing.xs },
   input: {
     borderWidth: 1, borderColor: tennisColors.border, borderRadius: radius.sm,

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Modal, View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { Star, X } from 'lucide-react-native';
+import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { Star } from 'lucide-react-native';
 import { Button } from '../ui/Button';
 import { Chip } from '../ui/Chip';
+import { DetailSheet } from '../ui/DetailSheet';
 import { StudentCombobox } from '../ui/StudentCombobox';
 import { UserManagement } from '../UserManagement';
 import { VoiceRecorder } from '../VoiceRecorder';
@@ -10,7 +11,7 @@ import { AudioMemo, Stars, TRAINING_TYPES, TRAINING_LABELS, formatDate } from '.
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
-import { spacing, radius, typography, shadow, webCursor, contentMaxWidth } from '../../constants/theme';
+import { spacing, radius } from '../../constants/theme';
 import type { StudentProgress, TrainingType } from '../../lib/types';
 
 const RATINGS = [1, 2, 3, 4, 5] as const;
@@ -145,180 +146,175 @@ export function ProgressForm({
     ? lessons.find((l) => l.id === entry.lesson_id)?.title
     : undefined;
 
+  // Een speler leest zijn dossier; wijzigen doet de trainer. Dezelfde regel als bij de
+  // doelen, waar het blad ook opengaat maar de velden dichtblijven.
+  const alleenLezen = !canEdit && entry !== undefined && entry !== null;
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={closeAndSave}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>{canEdit ? title : t('Voortgang')}</Text>
-            <Pressable onPress={closeAndSave} style={webCursor} accessibilityRole="button" accessibilityLabel={t('Sluiten')}>
-              <X size={22} color={tennisColors.textMuted} />
-            </Pressable>
+    <>
+      <DetailSheet
+        title={canEdit ? title : t('Voortgang')}
+        visible={visible}
+        onClose={closeAndSave}
+        // De twee knoppen staan vast onderaan het blad en scrollen niet mee: bij een lange
+        // notitie zocht je anders eerst de knop Opslaan terug. De linkerknop moet hetzelfde
+        // doen als de kruisknop, anders staan er twee wegen naast elkaar die het
+        // tegenovergestelde beloven. Bij bewerken bewaart de kruisknop dus heet de knop
+        // "Sluiten", niet "Annuleren" — er valt niets te annuleren. Bij een nieuwe notitie
+        // bewaart de kruisknop juist niets (zie closeAndSave), dus daar klopt "Annuleren".
+        footer={alleenLezen ? undefined : (
+          <View style={styles.footer}>
+            <Button
+              label={entry ? t('Sluiten') : t('Annuleren')}
+              variant="secondary"
+              fullWidth={false}
+              onPress={closeAndSave}
+              style={styles.footerBtn}
+            />
+            <Button
+              label={t('Opslaan')}
+              variant="primary"
+              fullWidth={false}
+              // Zonder speler is er niets om de notitie aan te hangen.
+              disabled={!targetId}
+              onPress={() => { void save(); }}
+              style={styles.footerBtn}
+            />
           </View>
+        )}
+      >
+        {alleenLezen && entry ? (
+          <>
+            <Text style={styles.readType}>{t(TRAINING_LABELS[entry.training_type])}</Text>
+            <Stars count={entry.rating ?? 0} />
+            {entry.created_at ? <Text style={styles.readMuted}>{formatDate(entry.created_at)}</Text> : null}
+            {lessonTitle ? <Text style={styles.readMuted}>{t('Les')}: {lessonTitle}</Text> : null}
+            {entry.notes ? (
+              <>
+                <Text style={styles.label}>{t('Notities')}</Text>
+                <Text style={styles.readValue}>{entry.notes}</Text>
+              </>
+            ) : null}
+            {entry.homework ? (
+              <>
+                <Text style={styles.label}>{t('Huiswerk')}</Text>
+                <Text style={styles.readValue}>{entry.homework}</Text>
+              </>
+            ) : null}
+            {entry.voice_memo_uri ? (
+              <>
+                <Text style={styles.label}>{t('Spraakmemo')}</Text>
+                <AudioMemo uri={entry.voice_memo_uri} />
+              </>
+            ) : null}
+          </>
+        ) : (
+          <>
+            {/* Alleen als de speler nog niet vastligt. Vanuit een dossier is die keuze al
+                gemaakt en zou een keuzeveld alleen maar uitnodigen om hem te verzetten. */}
+            {studentId === undefined ? (
+              <>
+                <Text style={styles.label}>{t('Speler')}</Text>
+                <StudentCombobox
+                  students={players}
+                  value={pickedId}
+                  onChange={(id) => {
+                    setPickedId(id);
+                    // Een les van de vorige speler hoort niet aan deze notitie te blijven hangen.
+                    setLinkLessonId(null);
+                  }}
+                  placeholder={t('Typ de naam van de speler…')}
+                  onRequestCreate={setNewPlayerName}
+                />
+              </>
+            ) : null}
 
-          {/* Een speler leest zijn dossier; wijzigen doet de trainer. Dezelfde regel als
-              bij de doelen, waar het blad ook opengaat maar de velden dichtblijven. */}
-          {!canEdit && entry ? (
-            <ScrollView contentContainerStyle={styles.sheetBody}>
-              <Text style={styles.readType}>{t(TRAINING_LABELS[entry.training_type])}</Text>
-              <Stars count={entry.rating ?? 0} />
-              {entry.created_at ? <Text style={styles.readMuted}>{formatDate(entry.created_at)}</Text> : null}
-              {lessonTitle ? <Text style={styles.readMuted}>{t('Les')}: {lessonTitle}</Text> : null}
-              {entry.notes ? (
-                <>
-                  <Text style={styles.label}>{t('Notities')}</Text>
-                  <Text style={styles.readValue}>{entry.notes}</Text>
-                </>
-              ) : null}
-              {entry.homework ? (
-                <>
-                  <Text style={styles.label}>{t('Huiswerk')}</Text>
-                  <Text style={styles.readValue}>{entry.homework}</Text>
-                </>
-              ) : null}
-              {entry.voice_memo_uri ? (
-                <>
-                  <Text style={styles.label}>{t('Spraakmemo')}</Text>
-                  <AudioMemo uri={entry.voice_memo_uri} />
-                </>
-              ) : null}
-            </ScrollView>
-          ) : (
-            <>
-              <ScrollView contentContainerStyle={styles.sheetBody}>
-                {/* Alleen als de speler nog niet vastligt. Vanuit een dossier is die keuze al
-                    gemaakt en zou een keuzeveld alleen maar uitnodigen om hem te verzetten. */}
-                {studentId === undefined ? (
-                  <>
-                    <Text style={styles.label}>{t('Speler')}</Text>
-                    <StudentCombobox
-                      students={players}
-                      value={pickedId}
-                      onChange={(id) => {
-                        setPickedId(id);
-                        // Een les van de vorige speler hoort niet aan deze notitie te blijven hangen.
-                        setLinkLessonId(null);
-                      }}
-                      placeholder={t('Typ de naam van de speler…')}
-                      onRequestCreate={setNewPlayerName}
-                    />
-                  </>
-                ) : null}
+            <Text style={styles.label}>{t('Type training')}</Text>
+            <View style={styles.chipRow}>
+              {TRAINING_TYPES.map((soort) => (
+                <Chip
+                  key={soort}
+                  label={t(TRAINING_LABELS[soort])}
+                  selected={soort === type}
+                  onPress={() => setType(soort)}
+                />
+              ))}
+            </View>
 
-                <Text style={styles.label}>{t('Type training')}</Text>
+            <Text style={styles.label}>{t('Beoordeling')}</Text>
+            <View style={styles.starRow}>
+              {RATINGS.map((r) => {
+                const active = r <= rating;
+                return (
+                  <Pressable key={r} onPress={() => setRating(r === rating ? 0 : r)} style={styles.star} accessibilityRole="button" accessibilityLabel={t('{n} sterren', { n: r })}>
+                    <Star size={28} fill={active ? tennisColors.warning : 'transparent'} color={active ? tennisColors.warning : tennisColors.border} />
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {playerLessons.length > 0 ? (
+              <>
+                <Text style={styles.label}>{t('Koppel aan les (optioneel)')}</Text>
                 <View style={styles.chipRow}>
-                  {TRAINING_TYPES.map((soort) => (
-                    <Chip
-                      key={soort}
-                      label={t(TRAINING_LABELS[soort])}
-                      selected={soort === type}
-                      onPress={() => setType(soort)}
-                    />
+                  <Chip label={t('Geen')} selected={linkLessonId === null} onPress={() => setLinkLessonId(null)} />
+                  {playerLessons.map((l) => (
+                    <Chip key={l.id} label={l.title} selected={linkLessonId === l.id} onPress={() => setLinkLessonId(l.id)} />
                   ))}
                 </View>
+              </>
+            ) : null}
 
-                <Text style={styles.label}>{t('Beoordeling')}</Text>
-                <View style={styles.starRow}>
-                  {RATINGS.map((r) => {
-                    const active = r <= rating;
-                    return (
-                      <Pressable key={r} onPress={() => setRating(r === rating ? 0 : r)} style={styles.star} accessibilityRole="button" accessibilityLabel={t('{n} sterren', { n: r })}>
-                        <Star size={28} fill={active ? tennisColors.warning : 'transparent'} color={active ? tennisColors.warning : tennisColors.border} />
-                      </Pressable>
-                    );
-                  })}
+            <Text style={styles.label}>{t('Notities')}</Text>
+            {/* De voorbeeldtekst zegt wát er verwacht wordt; "Notities" alleen liet een
+                trainer raden of hier de les of de speler beschreven moet worden. */}
+            <TextInput style={[styles.input, styles.multiline]} value={notes} onChangeText={setNotes} placeholder={t('Beschrijf waar jullie deze les aan gewerkt hebben…')} placeholderTextColor={tennisColors.textMuted} accessibilityLabel={t('Notities')} multiline />
+            <Text style={styles.label}>{t('Huiswerk')}</Text>
+            <TextInput style={styles.input} value={homework} onChangeText={setHomework} placeholder={t('Huiswerk')} placeholderTextColor={tennisColors.textMuted} accessibilityLabel={t('Huiswerk')} />
+            <Text style={styles.label}>{t('Spraakmemo')}</Text>
+            <VoiceRecorder value={voiceUri} onRecorded={setVoiceUri} onClear={() => setVoiceUri(undefined)} />
+
+            {/* Verwijderen staat onderaan en achter een vraag: het is het einde van
+                deze notitie, niet iets wat je in het voorbijgaan aantikt. */}
+            {entry ? (
+              confirmingDelete ? (
+                <View style={styles.confirmBox}>
+                  <Text style={styles.confirmText}>
+                    {t('Deze voortgangsnotitie verwijderen? Dat kan niet ongedaan gemaakt worden.')}
+                  </Text>
+                  <View style={styles.confirmRow}>
+                    <Button
+                      label={t('Ja, verwijderen')}
+                      variant="danger"
+                      fullWidth={false}
+                      onPress={() => {
+                        void deleteProgress(entry.id);
+                        setConfirmingDelete(false);
+                        onClose();
+                      }}
+                    />
+                    <Button
+                      label={t('Nee')}
+                      variant="secondary"
+                      fullWidth={false}
+                      onPress={() => setConfirmingDelete(false)}
+                    />
+                  </View>
                 </View>
-
-                {playerLessons.length > 0 ? (
-                  <>
-                    <Text style={styles.label}>{t('Koppel aan les (optioneel)')}</Text>
-                    <View style={styles.chipRow}>
-                      <Chip label={t('Geen')} selected={linkLessonId === null} onPress={() => setLinkLessonId(null)} />
-                      {playerLessons.map((l) => (
-                        <Chip key={l.id} label={l.title} selected={linkLessonId === l.id} onPress={() => setLinkLessonId(l.id)} />
-                      ))}
-                    </View>
-                  </>
-                ) : null}
-
-                <Text style={styles.label}>{t('Notities')}</Text>
-                {/* De voorbeeldtekst zegt wát er verwacht wordt; "Notities" alleen liet een
-                    trainer raden of hier de les of de speler beschreven moet worden. */}
-                <TextInput style={[styles.input, styles.multiline]} value={notes} onChangeText={setNotes} placeholder={t('Beschrijf waar jullie deze les aan gewerkt hebben…')} placeholderTextColor={tennisColors.textMuted} accessibilityLabel={t('Notities')} multiline />
-                <Text style={styles.label}>{t('Huiswerk')}</Text>
-                <TextInput style={styles.input} value={homework} onChangeText={setHomework} placeholder={t('Huiswerk')} placeholderTextColor={tennisColors.textMuted} accessibilityLabel={t('Huiswerk')} />
-                <Text style={styles.label}>{t('Spraakmemo')}</Text>
-                <VoiceRecorder value={voiceUri} onRecorded={setVoiceUri} onClear={() => setVoiceUri(undefined)} />
-
-                {/* Verwijderen staat onderaan en achter een vraag: het is het einde van
-                    deze notitie, niet iets wat je in het voorbijgaan aantikt. */}
-                {entry ? (
-                  confirmingDelete ? (
-                    <View style={styles.confirmBox}>
-                      <Text style={styles.confirmText}>
-                        {t('Deze voortgangsnotitie verwijderen? Dat kan niet ongedaan gemaakt worden.')}
-                      </Text>
-                      <View style={styles.confirmRow}>
-                        <Button
-                          label={t('Ja, verwijderen')}
-                          variant="danger"
-                          fullWidth={false}
-                          onPress={() => {
-                            void deleteProgress(entry.id);
-                            setConfirmingDelete(false);
-                            onClose();
-                          }}
-                        />
-                        <Button
-                          label={t('Nee')}
-                          variant="secondary"
-                          fullWidth={false}
-                          onPress={() => setConfirmingDelete(false)}
-                        />
-                      </View>
-                    </View>
-                  ) : (
-                    <View style={styles.confirmRow}>
-                      <Button
-                        label={t('Verwijderen')}
-                        variant="danger"
-                        fullWidth={false}
-                        onPress={() => setConfirmingDelete(true)}
-                      />
-                    </View>
-                  )
-                ) : null}
-              </ScrollView>
-
-              {/* De twee knoppen staan vast onderaan het blad en scrollen niet mee: bij een
-                  lange notitie zocht je anders eerst de knop Opslaan terug. De linkerknop
-                  moet hetzelfde doen als de kruisknop, anders staan er twee wegen naast
-                  elkaar die het tegenovergestelde beloven. Bij bewerken bewaart de
-                  kruisknop dus heet de knop "Sluiten", niet "Annuleren" — er valt niets te
-                  annuleren. Bij een nieuwe notitie bewaart de kruisknop juist niets (zie
-                  closeAndSave), dus daar klopt "Annuleren" wél en doet hij hetzelfde. */}
-              <View style={styles.footer}>
-                <Button
-                  label={entry ? t('Sluiten') : t('Annuleren')}
-                  variant="secondary"
-                  fullWidth={false}
-                  onPress={closeAndSave}
-                  style={styles.footerBtn}
-                />
-                <Button
-                  label={t('Opslaan')}
-                  variant="primary"
-                  fullWidth={false}
-                  // Zonder speler is er niets om de notitie aan te hangen.
-                  disabled={!targetId}
-                  onPress={() => { void save(); }}
-                  style={styles.footerBtn}
-                />
-              </View>
-            </>
-          )}
-        </View>
-      </View>
+              ) : (
+                <View style={styles.confirmRow}>
+                  <Button
+                    label={t('Verwijderen')}
+                    variant="danger"
+                    fullWidth={false}
+                    onPress={() => setConfirmingDelete(true)}
+                  />
+                </View>
+              )
+            ) : null}
+          </>
+        )}
+      </DetailSheet>
 
       {/* Het volledige invulscherm voor een speler die nog niet bestaat. Zodra hij bewaard
           is, is hij ook meteen de speler van deze notitie. */}
@@ -332,25 +328,11 @@ export function ProgressForm({
           setNewPlayerName(null);
         }}
       />
-    </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  // Zonder breedte-cap plakt een blad in een breed venster over de volle breedte, terwijl
-  // de rest van de app gecentreerd op zijn maximum staat. Een blad hoort bij het scherm
-  // eronder, dus het houdt dezelfde maat aan.
-  sheet: {
-    width: '100%',
-    maxWidth: contentMaxWidth,
-    alignSelf: 'center',
-    backgroundColor: tennisColors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl, maxHeight: '85%', ...shadow('lg'),
-  },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
-  sheetTitle: { ...typography.h2, color: tennisColors.text },
-  sheetBody: { paddingBottom: spacing.lg },
   label: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted, marginTop: spacing.md, marginBottom: spacing.xs },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   starRow: { flexDirection: 'row', flexWrap: 'wrap' },

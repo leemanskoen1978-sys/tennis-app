@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Modal, View, Text, TextInput, Pressable, Linking, Platform, Alert, StyleSheet, ScrollView } from 'react-native';
-import { X, ExternalLink, Pencil, Trash2, PenLine, Plus } from 'lucide-react-native';
+import { View, Text, TextInput, Pressable, Linking, Platform, Alert, StyleSheet } from 'react-native';
+import { ExternalLink, Pencil, Trash2, PenLine, Plus } from 'lucide-react-native';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { StudentCombobox } from './ui/StudentCombobox';
 import { Button } from './ui/Button';
+import { DetailSheet } from './ui/DetailSheet';
 import { AttachmentList, LessonAttachments } from './LessonAttachments';
 import { CourtScene } from './court/CourtScene';
 import { LessonExplanation } from './LessonExplanation';
@@ -13,7 +14,7 @@ import {
 } from './LessonTraining';
 import { useT, type Translate } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, radius, typography, shadow, webCursor, contentMaxWidth } from '../constants/theme';
+import { spacing, radius, typography, webCursor } from '../constants/theme';
 import type { Lesson, LessonAttachment } from '../lib/types';
 
 function confirmDelete(t: Translate, message: string, onYes: () => void) {
@@ -104,129 +105,106 @@ export function LessonDetailModal({
   const close = () => { setEditing(false); onClose(); };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{editing ? t('Les bewerken') : t('Lesdetails')}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel={t('Sluiten')} onPress={close} style={webCursor}>
-              <X size={22} color={tennisColors.textMuted} />
-            </Pressable>
+    <DetailSheet
+      title={editing ? t('Les bewerken') : t('Lesdetails')}
+      visible={visible}
+      onClose={close}
+    >
+      {editing ? (
+        <>
+          <Text style={styles.label}>{t('Titel')}</Text>
+          <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder={t('Titel')} placeholderTextColor={tennisColors.textMuted} />
+          <Text style={styles.label}>{t('Video-URL')}</Text>
+          <TextInput style={styles.input} value={url} onChangeText={setUrl} placeholder="https://…" placeholderTextColor={tennisColors.textMuted} autoCapitalize="none" />
+          <Text style={styles.label}>{t('Beschrijving')}</Text>
+          <TextInput style={[styles.input, styles.multiline]} value={description} onChangeText={setDescription} placeholder={t('Beschrijving')} placeholderTextColor={tennisColors.textMuted} multiline />
+          <TrainingPlanEditor key={editSession} value={plan} onChange={setPlan} />
+          <Text style={styles.label}>{t('PDF-bijlagen')}</Text>
+          <LessonAttachments attachments={attachments} onChange={setAttachments} />
+          <Text style={styles.label}>{t('Voor wie')}</Text>
+          <StudentCombobox students={students} value={studentId} onChange={setStudentId} />
+          <View style={styles.actions}>
+            <Button label={t('Annuleren')} variant="secondary" onPress={() => setEditing(false)} />
+            <Button label={t('Opslaan')} variant="primary" onPress={save} disabled={!title.trim()} />
           </View>
+        </>
+      ) : (
+        <>
+          <Text style={styles.lessonTitle}>{lesson.title}</Text>
+          <Text style={styles.meta}>{t('Voor')}: {studentName}</Text>
+          {lesson.description ? <Text style={styles.desc}>{lesson.description}</Text> : <Text style={styles.descMuted}>{t('Geen beschrijving.')}</Text>}
 
-          <ScrollView contentContainerStyle={styles.body}>
-            {editing ? (
-              <>
-                <Text style={styles.label}>{t('Titel')}</Text>
-                <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder={t('Titel')} placeholderTextColor={tennisColors.textMuted} />
-                <Text style={styles.label}>{t('Video-URL')}</Text>
-                <TextInput style={styles.input} value={url} onChangeText={setUrl} placeholder="https://…" placeholderTextColor={tennisColors.textMuted} autoCapitalize="none" />
-                <Text style={styles.label}>{t('Beschrijving')}</Text>
-                <TextInput style={[styles.input, styles.multiline]} value={description} onChangeText={setDescription} placeholder={t('Beschrijving')} placeholderTextColor={tennisColors.textMuted} multiline />
-                <TrainingPlanEditor key={editSession} value={plan} onChange={setPlan} />
-                <Text style={styles.label}>{t('PDF-bijlagen')}</Text>
-                <LessonAttachments attachments={attachments} onChange={setAttachments} />
-                <Text style={styles.label}>{t('Voor wie')}</Text>
-                <StudentCombobox students={students} value={studentId} onChange={setStudentId} />
-                <View style={styles.actions}>
-                  <Button label={t('Annuleren')} variant="secondary" onPress={() => setEditing(false)} />
-                  <Button label={t('Opslaan')} variant="primary" onPress={save} disabled={!title.trim()} />
-                </View>
-              </>
-            ) : (
-              <>
-                <Text style={styles.lessonTitle}>{lesson.title}</Text>
-                <Text style={styles.meta}>{t('Voor')}: {studentName}</Text>
-                {lesson.description ? <Text style={styles.desc}>{lesson.description}</Text> : <Text style={styles.descMuted}>{t('Geen beschrijving.')}</Text>}
+          <TrainingPlanView plan={planFrom(lesson)} />
 
-                <TrainingPlanView plan={planFrom(lesson)} />
+          {lesson.url ? (
+            <Button label={t('Video openen')} variant="primary" icon={<ExternalLink size={18} color={tennisColors.onFill} />} onPress={() => { if (lesson.url) void Linking.openURL(lesson.url); }} />
+          ) : (
+            <Text style={styles.descMuted}>{t('Geen video-link.')}</Text>
+          )}
 
-                {lesson.url ? (
-                  <Button label={t('Video openen')} variant="primary" icon={<ExternalLink size={18} color={tennisColors.onFill} />} onPress={() => { if (lesson.url) void Linking.openURL(lesson.url); }} />
-                ) : (
-                  <Text style={styles.descMuted}>{t('Geen video-link.')}</Text>
-                )}
-
-                <Text style={styles.label}>{t('Veldsituatie')}</Text>
-                {lesson.drawing ? (
-                  <>
-                    <CourtScene drawing={lesson.drawing} width={240} />
-                    {canEdit ? (
-                      <View style={styles.linkRow}>
-                        <Pressable
-                          onPress={() => openCanvas()}
-                          accessibilityRole="button"
-                          accessibilityLabel={t('Veldsituatie aanpassen')}
-                          style={[styles.link, webCursor]}
-                        >
-                          <PenLine size={16} color={tennisColors.primary} />
-                          <Text style={styles.linkText}>{t('Aanpassen')}</Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={removeDrawing}
-                          accessibilityRole="button"
-                          accessibilityLabel={t('Veldsituatie verwijderen')}
-                          style={[styles.link, webCursor]}
-                        >
-                          <Trash2 size={16} color={tennisColors.danger} />
-                          <Text style={styles.linkTextDanger}>{t('Verwijderen')}</Text>
-                        </Pressable>
-                      </View>
-                    ) : null}
-                  </>
-                ) : canEdit ? (
+          <Text style={styles.label}>{t('Veldsituatie')}</Text>
+          {lesson.drawing ? (
+            <>
+              <CourtScene drawing={lesson.drawing} width={240} />
+              {canEdit ? (
+                <View style={styles.linkRow}>
                   <Pressable
                     onPress={() => openCanvas()}
                     accessibilityRole="button"
-                    accessibilityLabel={t('Veldsituatie toevoegen')}
+                    accessibilityLabel={t('Veldsituatie aanpassen')}
                     style={[styles.link, webCursor]}
                   >
-                    <Plus size={16} color={tennisColors.primary} />
-                    <Text style={styles.linkText}>{t('Veldsituatie toevoegen')}</Text>
+                    <PenLine size={16} color={tennisColors.primary} />
+                    <Text style={styles.linkText}>{t('Aanpassen')}</Text>
                   </Pressable>
-                ) : (
-                  <Text style={styles.descMuted}>{t('Geen veldsituatie.')}</Text>
-                )}
+                  <Pressable
+                    onPress={removeDrawing}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('Veldsituatie verwijderen')}
+                    style={[styles.link, webCursor]}
+                  >
+                    <Trash2 size={16} color={tennisColors.danger} />
+                    <Text style={styles.linkTextDanger}>{t('Verwijderen')}</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </>
+          ) : canEdit ? (
+            <Pressable
+              onPress={() => openCanvas()}
+              accessibilityRole="button"
+              accessibilityLabel={t('Veldsituatie toevoegen')}
+              style={[styles.link, webCursor]}
+            >
+              <Plus size={16} color={tennisColors.primary} />
+              <Text style={styles.linkText}>{t('Veldsituatie toevoegen')}</Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.descMuted}>{t('Geen veldsituatie.')}</Text>
+          )}
 
-                <LessonExplanation
-                  lessonId={lesson.id}
-                  points={lesson.explanation ?? []}
-                  canEdit={canEdit}
-                />
+          <LessonExplanation
+            lessonId={lesson.id}
+            points={lesson.explanation ?? []}
+            canEdit={canEdit}
+          />
 
-                <Text style={styles.label}>{t('PDF-bijlagen')}</Text>
-                <AttachmentList attachments={lesson.attachments} />
+          <Text style={styles.label}>{t('PDF-bijlagen')}</Text>
+          <AttachmentList attachments={lesson.attachments} />
 
-                {canEdit ? (
-                  <View style={styles.actions}>
-                    <Button label={t('Bewerken')} variant="secondary" icon={<Pencil size={16} color={tennisColors.text} />} onPress={startEdit} />
-                    <Button label={t('Verwijderen')} variant="danger" icon={<Trash2 size={16} color={tennisColors.onFill} />} onPress={remove} />
-                  </View>
-                ) : null}
-              </>
-            )}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+          {canEdit ? (
+            <View style={styles.actions}>
+              <Button label={t('Bewerken')} variant="secondary" icon={<Pencil size={16} color={tennisColors.text} />} onPress={startEdit} />
+              <Button label={t('Verwijderen')} variant="danger" icon={<Trash2 size={16} color={tennisColors.onFill} />} onPress={remove} />
+            </View>
+          ) : null}
+        </>
+      )}
+    </DetailSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  // Zonder breedte-cap plakt een blad in een breed venster over de volle breedte, terwijl
-  // de rest van de app gecentreerd op zijn maximum staat. Een blad hoort bij het scherm
-  // eronder, dus het houdt dezelfde maat aan.
-  sheet: {
-    width: '100%',
-    maxWidth: contentMaxWidth,
-    alignSelf: 'center',
-    backgroundColor: tennisColors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl, maxHeight: '85%', ...shadow('lg'),
-  },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
-  title: { ...typography.h2, color: tennisColors.text },
-  body: { gap: spacing.sm, paddingBottom: spacing.lg },
   lessonTitle: { ...typography.h1, color: tennisColors.text },
   meta: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted },
   desc: { fontSize: 15, color: tennisColors.text, marginVertical: spacing.sm },
