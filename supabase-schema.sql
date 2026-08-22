@@ -196,6 +196,11 @@ alter table courts add column if not exists group_rates jsonb;
 -- Wie de club beheert. Bewust een vinkje en geen vierde rol: een beheerder is meestal ook
 -- gewoon trainer, met zijn eigen agenda en zijn eigen spelers. Zie lib/rechten.ts.
 alter table users add column if not exists is_admin boolean not null default false;
+-- Wanneer een lesaanvraag geweigerd is. Alleen gezet bij het weigeren, en dat is het punt:
+-- een geweigerde aanvraag en een les die later gewoon is afgezegd staan allebei op
+-- 'cancelled'. Zonder dit onderscheid kan de speler niet te horen krijgen wat er met zijn
+-- vraag gebeurd is.
+alter table bookings add column if not exists rejected_at timestamptz;
 
 -- ---------------------------------------------------------------------------
 -- Wie ben ik — één keer uitgerekend, door elke policy hieronder gebruikt

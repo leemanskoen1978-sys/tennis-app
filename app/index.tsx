@@ -8,7 +8,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import {
   CalendarDays, CalendarPlus, Users, GraduationCap, SlidersHorizontal,
-  BookOpen, TrendingUp, Wallet, ChevronRight, type LucideIcon,
+  BookOpen, TrendingUp, Wallet, ChevronRight, XCircle, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
@@ -16,9 +16,10 @@ import { ActionTile, TileGrid } from '../components/ui/ActionTile';
 import { Lesdag } from '../components/lesdag/Lesdag';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
-import { awaitingApprovalFor, awaitingApprovalOf } from '../lib/inbox';
+import { awaitingApprovalFor, awaitingApprovalOf, recentGeweigerd } from '../lib/inbox';
 import { bookingsFor, filterPendingPayment, openBalanceFor } from '../lib/payments';
 import { formatEuro } from '../lib/money';
+import { formatDayTimeRange } from '../lib/datetime';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
 import { useT } from '../lib/i18n';
@@ -58,6 +59,9 @@ export default function Hub() {
   const teKeuren = isCoach ? awaitingApprovalFor(bookings, currentUser.id).length : 0;
   // En andersom: waar de speler zelf nog op wacht.
   const gevraagd = isCoach ? 0 : awaitingApprovalOf(bookings, currentUser.id).length;
+  // Een geweigerde aanvraag is het enige dat anders nergens te zien is: de les verdwijnt
+  // en niemand zegt waarom. Een goedgekeurde les staat gewoon in zijn agenda.
+  const geweigerd = isCoach ? [] : recentGeweigerd(bookings, currentUser.id, new Date());
 
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? t(one) : t(many)}`;
 
@@ -112,6 +116,27 @@ export default function Hub() {
           van vijf uur — niet een keuzemenu. De tegels blijven eronder staan. */}
       {isCoach ? <Lesdag coachId={currentUser.id} /> : null}
 
+      {/* Wat er met een aanvraag gebeurde. Staat bovenaan en verdwijnt na een week vanzelf:
+          er valt niets weg te klikken, en een bericht van drie weken oud is geen bericht. */}
+      {geweigerd.map((les) => (
+        <Card key={les.id} style={styles.geweigerd}>
+          <View style={styles.geweigerdRij}>
+            <View style={styles.geweigerdIcoon}>
+              <XCircle size={22} color={tennisColors.danger} />
+            </View>
+            <View style={styles.geweigerdTekst}>
+              <Text style={styles.geweigerdTitel}>{t('Je aanvraag is geweigerd')}</Text>
+              <Text style={styles.geweigerdSub}>
+                {formatDayTimeRange(les.start_time, les.end_time)}
+              </Text>
+              <Text style={styles.geweigerdSub}>
+                {t('Vraag gerust een ander uur aan.')}
+              </Text>
+            </View>
+          </View>
+        </Card>
+      ))}
+
       {/* Een speler die nog moet afrekenen, ziet dat vóór de tegels — met het bedrag erbij.
           Staat er niets open, dan staat er ook niets: een kaart met "€ 0,00" is ruis. */}
       {!isCoach && balance.amount > 0 ? (
@@ -162,6 +187,17 @@ const styles = StyleSheet.create({
   q: { fontSize: 16, color: tennisColors.textMuted },
   // Een randje in de waarschuwingskleur in plaats van een volvlak: het vraagt aandacht,
   // maar een openstaand bedrag is geen fout en hoort de tegels eronder niet te overschreeuwen.
+  // Een randje in de foutkleur: het vraagt aandacht, maar het is geen ramp en het hoort de
+  // tegels eronder niet te overschreeuwen. Zelfde vorm als het openstaande saldo.
+  geweigerd: { borderWidth: 1, borderColor: tennisColors.danger },
+  geweigerdRij: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  geweigerdIcoon: {
+    width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: tennisColors.dangerTint,
+  },
+  geweigerdTekst: { flex: 1 },
+  geweigerdTitel: { ...typography.h3, color: tennisColors.text },
+  geweigerdSub: { fontSize: 13, color: tennisColors.textMuted },
   balance: { borderWidth: 1, borderColor: tennisColors.warning },
   balanceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   balanceIcon: {

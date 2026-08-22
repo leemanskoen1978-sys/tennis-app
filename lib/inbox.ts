@@ -11,6 +11,7 @@
 // kijkt alleen naar geannuleerde lessen). Anders zou de trainer een aanvraag goedkeuren die
 // intussen door iemand anders is ingepikt.
 
+import { playsIn } from './groups';
 import type { Booking, BookingStatus } from './types';
 
 /**
@@ -68,4 +69,40 @@ export function awaitingApprovalOf(
   return bookings
     .filter((b) => isAwaitingApproval(b) && b.player_id === playerId)
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+}
+
+// ---------------------------------------------------------------------------
+// Terug naar de speler: wat is er met mijn aanvraag gebeurd?
+// ---------------------------------------------------------------------------
+
+/**
+ * Hoe lang een weigering nieuws blijft. Daarna verdwijnt hij vanzelf van het startscherm —
+ * er is niets weg te klikken en niets bij te houden. Een bericht van drie weken oud is geen
+ * bericht meer, en een speler die er niets mee deed, doet er ook niets meer mee.
+ */
+export const WEIGERING_DAGEN = 7;
+
+/**
+ * De aanvragen van deze speler die de trainer onlangs geweigerd heeft, nieuwste eerst.
+ *
+ * Een goedgekeurde les staat hier niet bij: die verschijnt gewoon in zijn agenda, en dat is
+ * het bericht. Een weigering is het enige dat anders nergens te zien is — de les verdwijnt
+ * en niemand zegt waarom.
+ *
+ * Meespelers tellen mee: die stonden ook op die baan te wachten.
+ */
+export function recentGeweigerd(
+  bookings: Booking[],
+  playerId: string,
+  now: Date,
+  dagen: number = WEIGERING_DAGEN,
+): Booking[] {
+  const grens = now.getTime() - dagen * 24 * 60 * 60 * 1000;
+  return bookings
+    .filter((b) => b.status === 'cancelled' && b.rejected_at !== undefined && playsIn(b, playerId))
+    .filter((b) => {
+      const t = new Date(b.rejected_at as string).getTime();
+      return Number.isFinite(t) && t >= grens;
+    })
+    .sort((a, b) => (b.rejected_at ?? '').localeCompare(a.rejected_at ?? ''));
 }

@@ -599,7 +599,9 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     if (!store || !currentUserId) return;
     const booking = store.bookings.find((b) => b.id === id);
     if (!booking || !needsApproval(booking, currentUserId)) return;
-    await updateBooking(id, { status });
+    // Bij een weigering blijft het tijdstip achter: alleen daaraan is later te zien dat
+    // deze les niet is afgezegd maar afgewezen, en dat is wat de speler te horen krijgt.
+    await updateBooking(id, status === 'cancelled' ? { status, rejected_at: nowISO() } : { status });
   }, [currentUserId, updateBooking]);
 
   const approveBooking = useCallback(

@@ -827,4 +827,7 @@ export const EN: Record<string, string> = {
   '{n} van {totaal}': '{n} of {totaal}',
   'Vorige betaling': 'Previous payment',
   'Volgende betaling': 'Next payment',
+  // Wat er met een lesaanvraag gebeurde.
+  'Je aanvraag is geweigerd': 'Your request was declined',
+  'Vraag gerust een ander uur aan.': 'Feel free to request another time.',
 };

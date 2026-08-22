@@ -154,6 +154,14 @@ export interface Booking {
    * veld; die stonden er al en veranderen dus nergens door.
    */
   created_by?: string;
+  /**
+   * Wanneer de trainer deze aanvraag heeft geweigerd. Alleen gezet langs die ene weg
+   * (`rejectBooking`), en dat is precies waarvoor het veld bestaat: een geweigerde
+   * aanvraag en een les die later gewoon is afgezegd staan allebei op 'cancelled', en
+   * zonder dit onderscheid kan de app de speler niet vertellen wat er met zijn vraag is
+   * gebeurd. De datum doet ook het tweede werk: na een week is het geen nieuws meer.
+   */
+  rejected_at?: string;
   actual_start_time?: string;
   actual_end_time?: string;
 }

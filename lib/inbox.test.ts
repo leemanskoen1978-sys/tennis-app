@@ -1,5 +1,6 @@
 import {
   awaitingApprovalFor, awaitingApprovalOf, initialStatusFor, isAwaitingApproval, needsApproval,
+  recentGeweigerd,
 } from './inbox';
 import { filterPendingPayment, openBalanceFor, totalRevenue } from './payments';
 import type { Booking, Court, User } from './types';
@@ -84,5 +85,54 @@ describe('een les die nog niet is goedgekeurd', () => {
     const goedgekeurd: Booking = { ...base, status: 'confirmed' };
     expect(filterPendingPayment([goedgekeurd])).toHaveLength(1);
     expect(openBalanceFor(speler, [goedgekeurd], courts)).toEqual({ amount: 30, lessons: 1 });
+  });
+});
+
+describe('recentGeweigerd', () => {
+  const NU = new Date('2026-08-22T12:00:00.000Z');
+  const geleden = (uren: number): string =>
+    new Date(NU.getTime() - uren * 60 * 60 * 1000).toISOString();
+
+  const geweigerd = (id: string, over: Partial<Booking> = {}): Booking => ({
+    ...base, id, status: 'cancelled', rejected_at: geleden(2), ...over,
+  });
+
+  it('geeft de weigeringen van deze speler, nieuwste eerst', () => {
+    const lijst = [
+      geweigerd('oud', { rejected_at: geleden(48) }),
+      geweigerd('nieuw', { rejected_at: geleden(1) }),
+    ];
+    expect(recentGeweigerd(lijst, 'p1', NU).map((b) => b.id)).toEqual(['nieuw', 'oud']);
+  });
+
+  it('laat een les die gewoon is afgezegd erbuiten', () => {
+    // Zelfde status, maar niemand heeft hem afgewezen: dan is er niets te melden.
+    const lijst = [geweigerd('x', { rejected_at: undefined })];
+    expect(recentGeweigerd(lijst, 'p1', NU)).toEqual([]);
+  });
+
+  it('laat een goedgekeurde les erbuiten', () => {
+    expect(recentGeweigerd([{ ...base, status: 'confirmed' }], 'p1', NU)).toEqual([]);
+  });
+
+  it('vergeet een weigering van vorige maand', () => {
+    expect(recentGeweigerd([geweigerd('x', { rejected_at: geleden(24 * 30) })], 'p1', NU))
+      .toEqual([]);
+  });
+
+  it('houdt de grens van zeven dagen aan', () => {
+    const net = geweigerd('net', { rejected_at: geleden(24 * 7 - 1) });
+    const netNiet = geweigerd('netniet', { rejected_at: geleden(24 * 7 + 1) });
+    expect(recentGeweigerd([net, netNiet], 'p1', NU).map((b) => b.id)).toEqual(['net']);
+  });
+
+  it('is niet van een andere speler', () => {
+    expect(recentGeweigerd([geweigerd('x', { player_id: 'iemand-anders' })], 'p1', NU))
+      .toEqual([]);
+  });
+
+  it('geldt ook voor een meespeler: die stond ook te wachten', () => {
+    const groep = geweigerd('g', { player_id: 'betaler', participant_ids: ['p1'] });
+    expect(recentGeweigerd([groep], 'p1', NU).map((b) => b.id)).toEqual(['g']);
   });
 });
