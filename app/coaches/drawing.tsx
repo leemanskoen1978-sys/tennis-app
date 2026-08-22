@@ -18,6 +18,8 @@ import type {
 import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, minTapTarget, webCursor } from '../../constants/theme';
+import { isCoach } from '../../lib/rechten';
+import { playersOf } from '../../lib/hub';
 
 // The canvas keeps the situation in local state. It only becomes durable when you hand it
 // to a progress note — see "Bewaren bij voortgang" below.
@@ -146,8 +148,7 @@ export default function Drawing() {
     setStrokes([]); setObjects([]); setHistory([]); setCurrent('');
   };
 
-  const isCoach = currentUser?.role === 'coach';
-  const students = users.filter((u) => u.role !== 'coach');
+  const students = playersOf(users);
 
   const scene = (): CourtDrawing => ({
     width: size.w, height: size.h, orientation, strokes, objects,
@@ -205,7 +206,7 @@ export default function Drawing() {
         />
         <ToolButton label={t('Ongedaan')} active={false} onPress={undo} icon={<Undo2 size={18} color={tennisColors.text} />} />
         <ToolButton label={t('Wissen')} active={false} onPress={clearAll} danger icon={<Trash2 size={18} color={tennisColors.danger} />} />
-        {isCoach ? (
+        {isCoach(currentUser) ? (
           <ToolButton
             label={forLesson
               ? t('Bewaren bij "{titel}"', { titel: forLesson.title })

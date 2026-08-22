@@ -17,6 +17,8 @@ import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography } from '../../constants/theme';
 import type { Beurtenkaart, User } from '../../lib/types';
+import { playersOf } from '../../lib/hub';
+import { isCoach } from '../../lib/rechten';
 
 /**
  * Eén kaartrij. Staat apart zodat de opmerking zijn eigen tekst kan bijhouden: met één map in
@@ -167,9 +169,9 @@ export default function BeurtenkaartenScreen(): React.JSX.Element {
   // de trainer daar niet om vroeg. Zo staat het invulscherm meteen met die naam klaar.
   const [newPlayerName, setNewPlayerName] = useState<string | null>(null);
 
-  const players: User[] = useMemo(() => users.filter((u) => u.role !== 'coach'), [users]);
+  const players: User[] = useMemo(() => playersOf(users), [users]);
 
-  if (currentUser?.role !== 'coach') {
+  if (!isCoach(currentUser)) {
     return (
       <Screen scroll={false}>
         <Text style={styles.muted}>{t('Alleen een trainer beheert de beurtenkaarten.')}</Text>

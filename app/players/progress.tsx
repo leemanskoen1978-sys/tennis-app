@@ -17,6 +17,8 @@ import { UserManagement } from '../../components/UserManagement';
 import { VoiceRecorder } from '../../components/VoiceRecorder';
 import { useT } from '../../lib/i18n';
 import type { TrainingType } from '../../lib/types';
+import { isCoach } from '../../lib/rechten';
+import { playersOf } from '../../lib/hub';
 
 const RATINGS: readonly number[] = [1, 2, 3, 4, 5] as const;
 
@@ -36,8 +38,7 @@ export default function ProgressScreen(): React.JSX.Element {
   const [addPlayerOpen, setAddPlayerOpen] = useState<boolean>(false);
   const [reportStudentId, setReportStudentId] = useState<string | null>(null);
 
-  const isCoach = currentUser?.role === 'coach';
-  const students = users.filter((u) => u.role !== 'coach');
+  const students = playersOf(users);
   const studentName = (id: string): string => users.find((x) => x.id === id)?.name ?? t('Onbekend');
   const coachName = (id?: string): string => users.find((x) => x.id === id)?.name ?? t('Onbekend');
 
@@ -65,7 +66,7 @@ export default function ProgressScreen(): React.JSX.Element {
   };
 
   // All recent activity, from every coach — with a label saying who wrote it.
-  const recent = isCoach ? [...progress].sort(byDateDesc).slice(0, 5) : [];
+  const recent = isCoach(currentUser) ? [...progress].sort(byDateDesc).slice(0, 5) : [];
 
   const reportEntries = (studentId: string) =>
     progress.filter((p) => p.student_id === studentId).sort(byDateDesc);
@@ -76,7 +77,7 @@ export default function ProgressScreen(): React.JSX.Element {
     <Screen>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {isCoach && currentUser ? (
+      {isCoach(currentUser) && currentUser ? (
         <>
           <Card style={styles.formCard}>
             <Text style={styles.cardTitle}>{t('Nieuwe voortgang')}</Text>

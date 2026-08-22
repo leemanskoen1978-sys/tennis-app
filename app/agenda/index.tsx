@@ -17,7 +17,7 @@ import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
 import { bookingsOnDay } from '../../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf } from '../../lib/inbox';
-import { magInElkeAgenda } from '../../lib/rechten';
+import { isCoach, magInElkeAgenda } from '../../lib/rechten';
 import { formatDayTime } from '../../lib/datetime';
 import { formatTimeRange } from '../../lib/datetime';
 import { groupSize, shortGroupLabel } from '../../lib/groups';
@@ -41,8 +41,7 @@ export default function BookingsScreen(): React.JSX.Element {
     useSimpleData();
   const pending = usePendingPaymentBookings();
   const router = useRouter();
-
-  const isCoach = currentUser?.role === 'coach';
+  const coach = isCoach(currentUser);
 
   // Vandaag in lokale tijd; `bookingsOnDay` bepaalt wat "deze dag" is, dezelfde regel
   // die de teller op het hoofdscherm gebruikt.
@@ -54,22 +53,22 @@ export default function BookingsScreen(): React.JSX.Element {
   // Wat een speler aanvroeg en nog op een beslissing wacht. Staat bovenaan: zolang de
   // trainer niets zegt, gaat die les niet door.
   const teKeuren = useMemo(
-    () => (isCoach
+    () => (coach
       ? awaitingApprovalFor(bookings, currentUser?.id, magInElkeAgenda(currentUser))
       : []),
-    [isCoach, bookings, currentUser],
+    [coach, bookings, currentUser],
   );
   // Aan de andere kant van dezelfde vraag: waar de speler zelf nog op wacht.
   const gevraagd = useMemo(
-    () => (isCoach ? [] : awaitingApprovalOf(bookings, currentUser?.id)),
-    [isCoach, bookings, currentUser],
+    () => (coach ? [] : awaitingApprovalOf(bookings, currentUser?.id)),
+    [coach, bookings, currentUser],
   );
 
   const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
   const courtName = (id: string): string => courts.find((c) => c.id === id)?.name ?? t('Onbekende baan');
 
   const tiles: Tile[] = [];
-  if (isCoach) {
+  if (coach) {
     tiles.push(
       { key: 'new', title: t('Nieuwe afspraak'), subtitle: t('Les inplannen voor een speler'), icon: CalendarPlus, onPress: () => router.push('/agenda/new') },
       { key: 'pay', title: t('Betalingen'), subtitle: t('Openstaande lessen afhandelen'), icon: CreditCard, onPress: () => router.push('/admin/payments'), badge: pending.length },
@@ -179,7 +178,7 @@ export default function BookingsScreen(): React.JSX.Element {
               // Je hoeft je eigen naam niet te lezen: een trainer ziet de speler,
               // een speler ziet de trainer.
               // Zelfde vorm als op de leskaarten: "Mathis +2" bij een groepsles.
-              const other = isCoach
+              const other = coach
                 ? shortGroupLabel(nameOf(b.player_id), groupSize(b))
                 : nameOf(b.coach_id);
               return (

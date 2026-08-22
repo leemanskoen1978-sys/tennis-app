@@ -14,6 +14,7 @@ import { kanBestandKiezen, kiesTekstbestand } from '../../lib/bestand';
 import { shareCsv } from '../../lib/share';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
+import { isCoach } from '../../lib/rechten';
 
 // Overleeft, anders dan React-state, een her-mount van dit scherm: een trainer die tijdens
 // een grote import wegnavigeert en terugkomt krijgt zo geen tweede lus over hetzelfde
@@ -94,7 +95,7 @@ export default function LedenImport(): React.JSX.Element {
     return () => { importLuisteraars.delete(onGebeurtenis); };
   }, []);
 
-  if (currentUser?.role !== 'coach') {
+  if (!isCoach(currentUser)) {
     return (
       <Screen scroll={false}>
         <Text style={styles.muted}>{t('Beheer is alleen voor trainers.')}</Text>

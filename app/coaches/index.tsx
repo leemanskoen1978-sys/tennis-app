@@ -11,6 +11,7 @@ import { playersForCoach } from '../../lib/relations';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { useT, useLanguage } from '../../lib/i18n';
+import { coachesOf } from '../../lib/hub';
 
 export default function Coaches() {
   const t = useT();
@@ -19,8 +20,7 @@ export default function Coaches() {
   const { users, bookings, lessons, progress } = useSimpleData();
   const [addOpen, setAddOpen] = useState(false);
 
-  const coaches = users
-    .filter((u) => u.role === 'coach')
+  const coaches = coachesOf(users)
     .sort((a, b) => a.name.localeCompare(b.name, lang));
 
   return (

@@ -30,6 +30,7 @@ import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
 import type { GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
+import { isCoach } from '../../lib/rechten';
 
 /**
  * Het dossier is een kop-kaart met de speler en daaronder een raster tegels — dezelfde
@@ -58,9 +59,9 @@ export default function PlayerDossier() {
   const {
     currentUser, users, bookings, courts, lessons, progress, goals, updateLesson, updateUser,
   } = useSimpleData();
+  const coach = isCoach(currentUser);
 
   const player = users.find((u) => u.id === id) ?? null;
-  const isCoach = currentUser?.role === 'coach';
 
   // Welk onderdeel openstaat; null = je kijkt naar het raster. Niet onthouden tussen
   // bezoeken — dat zou state zijn die niemand beheert.
@@ -156,7 +157,7 @@ export default function PlayerDossier() {
           lesson={item.lesson}
           onOpen={() => openLesson(item.lesson)}
           onToggle={() => toggleGiven(item.lesson)}
-          canEdit={!!isCoach}
+          canEdit={!!coach}
           given={given}
           ownerName={nameOf(item.lesson.coach_id)}
           divided={false}
@@ -195,7 +196,7 @@ export default function PlayerDossier() {
     { key: 'lesplan', title: t('Lesplan & voortgang'), subtitle: lesplanSummary(plan), icon: BookOpen },
     { key: 'doelen', title: t('Doelen'), subtitle: doelenSummary, icon: Target },
   ];
-  if (isCoach) {
+  if (coach) {
     tiles.push({ key: 'administratie', title: t('Administratie'), subtitle: betaalwijze, icon: SlidersHorizontal });
   }
 
@@ -244,7 +245,7 @@ export default function PlayerDossier() {
 
       {/* Wat staat er gepland */}
       <DetailSheet title={t('Lesdagen')} visible={sheetOpen('lesdagen')} onClose={closeSheet}>
-        {isCoach ? (
+        {coach ? (
           <SheetAction
             icon={<CalendarPlus size={16} color={tennisColors.primaryFill} />}
             label={t('Nieuwe afspraak')}
@@ -299,7 +300,7 @@ export default function PlayerDossier() {
 
       {/* Het materiaal en wat het opleverde: één lijst, notities onder hun les */}
       <DetailSheet title={t('Lesplan & voortgang')} visible={sheetOpen('lesplan')} onClose={closeSheet}>
-        {isCoach && currentUser ? (
+        {coach && currentUser ? (
           <View style={styles.actionRow}>
             <SheetAction
               icon={<Plus size={16} color={tennisColors.primaryFill} />}
@@ -347,7 +348,7 @@ export default function PlayerDossier() {
       </DetailSheet>
 
       {/* De administratie: één keer instellen, daarna vergeten */}
-      {isCoach ? (
+      {coach ? (
         <DetailSheet title={t('Administratie')} visible={sheetOpen('administratie')} onClose={closeSheet}>
           <Text style={styles.cardTitle}>{t('Standaard betaalwijze')}</Text>
           <Text style={styles.muted}>
@@ -394,9 +395,9 @@ export default function PlayerDossier() {
 
       {/* De bladen die vanuit een blad opengaan, staan hier op het scherm zelf: een Modal
           binnen een gesloten Modal wordt door React Native niet meer getekend. */}
-      <LessonDetailModal lesson={detailLesson} visible={detailOpen} onClose={() => setDetailOpen(false)} canEdit={!!isCoach} />
+      <LessonDetailModal lesson={detailLesson} visible={detailOpen} onClose={() => setDetailOpen(false)} canEdit={!!coach} />
       <AssignLessonModal visible={assignOpen} onClose={() => setAssignOpen(false)} playerId={player.id} />
-      <PlayerGoalSheet studentId={player.id} horizon={openHorizon} canEdit={!!isCoach} onClose={() => setOpenHorizon(null)} />
+      <PlayerGoalSheet studentId={player.id} horizon={openHorizon} canEdit={!!coach} onClose={() => setOpenHorizon(null)} />
       <ProgressForm visible={progressOpen} onClose={() => setProgressOpen(false)} studentId={player.id} />
       {/* Hetzelfde blad, nu met een notitie erin: bewerken voor de trainer, lezen voor de speler. */}
       <ProgressForm
@@ -404,7 +405,7 @@ export default function PlayerDossier() {
         onClose={() => setOpenEntry(null)}
         studentId={player.id}
         entry={openEntry}
-        canEdit={!!isCoach}
+        canEdit={!!coach}
       />
     </Screen>
   );

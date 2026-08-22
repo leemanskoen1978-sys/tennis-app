@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
 import { newId, type StoreData } from './mockStore';
-import { magInElkeAgenda } from '../lib/rechten';
+import { isCoach, magInElkeAgenda } from '../lib/rechten';
 import { backend, type AuthMode } from './backend';
 import { isHerstelHash, type AanmeldUitkomst } from '../lib/wachtwoord';
 import type { AuthGebeurtenis } from './supabaseStore';
@@ -252,7 +252,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const loadFor = useCallback(async (userId: string | null): Promise<StoreData> => {
     const data = await backend.load();
     const me = userId === null ? null : data.users.find((u) => u.id === userId) ?? null;
-    if (me?.role !== 'coach') return data;
+    if (!isCoach(me)) return data;
     const merged = withCatalogue(data, me.id);
     if (merged !== data) {
       // Het boekje is nu ook van deze club: meteen bewaren, anders staat het er de volgende

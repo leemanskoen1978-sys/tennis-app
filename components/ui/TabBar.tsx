@@ -9,6 +9,7 @@ import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, minTapTarget, webCursor, contentMaxWidth } from '../../constants/theme';
 import { useT, type Translate } from '../../lib/i18n';
+import { isCoach } from '../../lib/rechten';
 
 interface TabItem {
   label: string;
@@ -53,7 +54,7 @@ export function TabBar() {
 
   if (!currentUser) return null;
 
-  const tabs = currentUser.role === 'coach' ? coachTabs(t) : playerTabs(t);
+  const tabs = isCoach(currentUser) ? coachTabs(t) : playerTabs(t);
   const active = segments[0] ?? '';
 
   return (

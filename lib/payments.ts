@@ -1,6 +1,7 @@
 import { tennisColors } from '../constants/tennis-colors';
 import { groupSize, groupSizeLabel, isGroupLesson, lessonPlayerIds, playsIn } from './groups';
 import { t } from './i18n';
+import { isCoach } from './rechten';
 import { formatEuro } from './money';
 import type {
   Booking, Court, CourtGroupRate, PaymentMethod, PaymentSplit, User,
@@ -195,7 +196,7 @@ export function bookingsFor(user: User | null, bookings: Booking[]): Booking[] {
   // Wat hij daar ziet is de les — niet de rekening; die blijft bij de betaler, zie
   // `bookingsBilledTo` hieronder.
   return bookings.filter((b) =>
-    user.role === 'coach' ? b.coach_id === user.id : playsIn(b, user.id),
+    isCoach(user) ? b.coach_id === user.id : playsIn(b, user.id),
   );
 }
 
@@ -207,7 +208,7 @@ export function bookingsFor(user: User | null, bookings: Booking[]): Booking[] {
  */
 export function bookingsBilledTo(user: User | null, bookings: Booking[]): Booking[] {
   if (!user) return [];
-  return bookings.filter((b) => (user.role === 'coach'
+  return bookings.filter((b) => (isCoach(user)
     ? b.coach_id === user.id
     : paymentEntriesOf(b).some((e) => e.player_id === user.id)));
 }
@@ -220,7 +221,7 @@ export function bookingsBilledTo(user: User | null, bookings: Booking[]): Bookin
  */
 export function visibleBookings(user: User | null, bookings: Booking[]): Booking[] {
   if (!user) return [];
-  return user.role === 'coach' ? bookings : bookingsFor(user, bookings);
+  return isCoach(user) ? bookings : bookingsFor(user, bookings);
 }
 
 /**
@@ -257,7 +258,7 @@ export function bookingsInScope(
  * bij iemand anders heeft.
  */
 export function defaultCoachFilter(user: User | null | undefined): string | null {
-  return user?.role === 'coach' ? user.id : null;
+  return isCoach(user) ? user.id : null;
 }
 
 /**
@@ -269,7 +270,7 @@ export function pendingPaymentsFor(user: User | null, bookings: Booking[]): Book
   // Bewust niet `bookingsFor`: afhandelen doet wie betaalt. Een trainer ziet elke les van
   // hemzelf waar nog iemand op 'Open' staat; een speler alleen de lessen waar zijn EIGEN
   // deel nog open staat — het deel van een ander is niet zijn rekening.
-  if (user.role === 'coach') {
+  if (isCoach(user)) {
     return bookings.filter((b) => b.coach_id === user.id && needsPayment(b));
   }
   return bookings.filter((b) =>

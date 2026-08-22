@@ -20,6 +20,7 @@ import { sponsorHint, sponsorState } from '../lib/sponsor';
 import { initialStatusFor } from '../lib/inbox';
 import { magInElkeAgenda } from '../lib/rechten';
 import { formatDay } from '../lib/datetime';
+import { playersOf } from '../lib/hub';
 import {
   MAX_LESSONS, laatsteDagVan, planSeries, seriesSummary,
   type RecurrenceFrequency, type RecurrenceRule,
@@ -141,7 +142,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const isAanvraag = currentUser !== null && currentUser !== undefined
     && initialStatusFor(currentUser.id, coachId, beheerder) === 'pending';
 
-  const players = users.filter((u) => u.role !== 'coach');
+  const players = playersOf(users);
   // Wat de les gaat kosten, met de gekozen namen erin verwerkt: zo ziet de trainer meteen
   // wat er verandert als hij er een speler bij zet.
   const priceLine = lessonPriceLine(

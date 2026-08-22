@@ -23,6 +23,8 @@ import { UserManagement } from '../../components/UserManagement';
 import { useT } from '../../lib/i18n';
 import { shortMonthName } from '../../lib/period';
 import type { User } from '../../lib/types';
+import { isCoach } from '../../lib/rechten';
+import { coachesOf, playersOf } from '../../lib/hub';
 
 /** True when the ISO timestamp falls on the same calendar day as d. */
 function sameDay(iso: string, d: Date): boolean {
@@ -47,8 +49,7 @@ export default function HomeScreen(): JSX.Element {
   const { currentUser, courts, bookings, users, settings, refresh } = useSimpleData();
   // Prefilled when you arrive from a player's dossier.
   const { playerId } = useLocalSearchParams<{ playerId?: string }>();
-
-  const isCoach = currentUser?.role === 'coach';
+  const coach = isCoach(currentUser);
 
   const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null);
   // The prefill comes from a URL, so it is checked against the real player list before
@@ -63,12 +64,12 @@ export default function HomeScreen(): JSX.Element {
   const [newPlayerName, setNewPlayerName] = useState<string | null>(null);
 
   const coaches: User[] = useMemo(
-    () => users.filter((u) => u.role === 'coach'),
+    () => coachesOf(users),
     [users],
   );
 
   const players: User[] = useMemo(
-    () => users.filter((u) => u.role !== 'coach'),
+    () => playersOf(users),
     [users],
   );
 
@@ -76,7 +77,7 @@ export default function HomeScreen(): JSX.Element {
   // op de agenda van een collega zetten (invallen, doorverwijzen). Zolang hij niets kiest
   // staat hij op zichzelf, zodat de gewone gang van zaken één klik minder blijft.
   // Een speler kan wél "Alle coaches" kiezen; dat is bij hem een bladermodus (null).
-  const bookingCoachId: string | null = isCoach
+  const bookingCoachId: string | null = coach
     ? (selectedCoachId ?? currentUser?.id ?? null)
     : selectedCoachId;
 
@@ -85,11 +86,11 @@ export default function HomeScreen(): JSX.Element {
   const hasCoach: boolean = bookingCoachId !== null;
   const validPlayerId: string | null =
     players.find((u) => u.id === selectedPlayerId)?.id ?? null;
-  const canBook: boolean = hasCoach && (!isCoach || validPlayerId !== null);
+  const canBook: boolean = hasCoach && (!coach || validPlayerId !== null);
 
   const days: Date[] = useMemo(
-    () => bookingDays(new Date(), isCoach ? DAGEN_TERUG : 0, DAGEN_VOORUIT),
-    [isCoach],
+    () => bookingDays(new Date(), coach ? DAGEN_TERUG : 0, DAGEN_VOORUIT),
+    [coach],
   );
 
   // The coach whose agenda is being filled — their own days and hours bound what is
@@ -103,7 +104,7 @@ export default function HomeScreen(): JSX.Element {
   // Een trainer kiest zelf zijn dag, verleden inbegrepen: hij weet wat er die dag nog kan,
   // en een uur dat hij gaf maar vergat in te geven moet hij alsnog kunnen invoeren. Een
   // speler begint bij morgen.
-  const magVandaag = isCoach;
+  const magVandaag = coach;
 
   const slots: string[] = useMemo(() => {
     const alle = bookingCoach
@@ -154,7 +155,7 @@ export default function HomeScreen(): JSX.Element {
         />
       </View>
 
-      {isCoach ? (
+      {coach ? (
         <>
           <Text style={styles.sectionLabel}>{t('Speler')}</Text>
           <StudentCombobox
@@ -171,7 +172,7 @@ export default function HomeScreen(): JSX.Element {
           zetten om te bladeren; een trainer boekt altijd bij een concrete collega. */}
       <Text style={styles.sectionLabel}>{t('Coach')}</Text>
       <View style={styles.chipRow}>
-        {!isCoach && (
+        {!coach && (
           <Chip
             label={t('Alle coaches')}
             selected={selectedCoachId === null}
@@ -188,7 +189,7 @@ export default function HomeScreen(): JSX.Element {
         ))}
       </View>
 
-      {isCoach && (
+      {coach && (
         <Text style={styles.hint}>
           {bookingCoachId === currentUser?.id
             ? t('De les komt op jouw agenda.')
@@ -286,7 +287,7 @@ export default function HomeScreen(): JSX.Element {
       )}
       {!canBook && (
         <Text style={styles.hint}>
-          {isCoach ? t('Kies eerst een speler om te boeken.') : t('Kies eerst een coach om te boeken.')}
+          {coach ? t('Kies eerst een speler om te boeken.') : t('Kies eerst een coach om te boeken.')}
         </Text>
       )}
       {!dayIsWorked && (
@@ -337,7 +338,7 @@ export default function HomeScreen(): JSX.Element {
         visible={modalOpen}
         onClose={closeModal}
         coachId={bookingCoachId ?? ''}
-        playerId={isCoach ? validPlayerId ?? undefined : undefined}
+        playerId={coach ? validPlayerId ?? undefined : undefined}
         date={selectedDate}
         slot={selectedSlot}
         courts={courts}

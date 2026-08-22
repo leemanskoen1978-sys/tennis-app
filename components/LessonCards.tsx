@@ -19,6 +19,7 @@ import type { Booking } from '../lib/types';
 import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
+import { isCoach } from '../lib/rechten';
 
 export function LessonCards({
   bookings,
@@ -33,8 +34,6 @@ export function LessonCards({
   const isWide = useIsWide();
   // Welke les zijn details laat zien; null = blad dicht.
   const [openBooking, setOpenBooking] = useState<Booking | null>(null);
-
-  const isCoach = currentUser?.role === 'coach';
 
   const nameOf = (id?: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
   const courtName = (id: string): string =>
@@ -58,7 +57,7 @@ export function LessonCards({
           // Bij een groepsles staat er "Mathis +2": de speler die de les op zijn naam heeft,
           // en hoeveel er nog bij stonden. De namen zelf staan in het detailblad — daar is
           // ruimte voor, op een korte kaart niet.
-          const other = isCoach
+          const other = isCoach(currentUser)
             ? shortGroupLabel(nameOf(booking.player_id), groupSize(booking))
             : nameOf(booking.coach_id);
           return (
@@ -96,7 +95,7 @@ export function LessonCards({
       <LessonDetailSheet
         booking={openBooking}
         visible={openBooking !== null}
-        canManage={isCoach}
+        canManage={isCoach(currentUser)}
         onClose={() => {
           clearError();
           setOpenBooking(null);

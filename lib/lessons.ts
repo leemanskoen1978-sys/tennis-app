@@ -5,6 +5,7 @@
 // niet op het ene scherm meer te zien krijgt dan op het andere.
 
 import type { Lesson, User } from './types';
+import { isCoach } from './rechten';
 
 /**
  * Een trainer ziet de hele databank. Een speler ziet alleen wat aan hém is toegewezen.
@@ -21,6 +22,6 @@ import type { Lesson, User } from './types';
  */
 export function visibleLessonsFor(lessons: Lesson[], user: User | null | undefined): Lesson[] {
   if (!user) return [];
-  if (user.role === 'coach') return lessons;
+  if (isCoach(user)) return lessons;
   return lessons.filter((l) => l.student_id === user.id);
 }

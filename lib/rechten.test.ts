@@ -1,4 +1,4 @@
-import { isAdmin, magInElkeAgenda, rolLabel } from './rechten';
+import { isAdmin, isCoach, magInElkeAgenda, rolLabel } from './rechten';
 import type { User } from './types';
 
 const speler: User = { id: 'p1', email: 'p@x.be', name: 'Mathis', role: 'player' };
@@ -21,6 +21,20 @@ describe('isAdmin', () => {
     // Het vinkje geeft rechten binnen de app; het maakt van een speler geen trainer.
     // Wie dit ooit op een speler zet, doet dat bewust en met dezelfde gevolgen.
     expect(isAdmin({ ...speler, is_admin: true })).toBe(true);
+  });
+});
+
+describe('isCoach', () => {
+  it('kijkt naar de rol en niet naar het beheerdersvinkje', () => {
+    expect(isCoach(trainer)).toBe(true);
+    expect(isCoach(baas)).toBe(true);
+    expect(isCoach(speler)).toBe(false);
+    expect(isCoach({ ...speler, is_admin: true })).toBe(false);
+  });
+
+  it('rekent niemand als trainer', () => {
+    expect(isCoach(null)).toBe(false);
+    expect(isCoach(undefined)).toBe(false);
   });
 });
 

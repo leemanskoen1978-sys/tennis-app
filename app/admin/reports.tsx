@@ -21,6 +21,7 @@ import { StatCard, StatCardRow } from '../../components/ui/StatCard';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { useAgendaScope } from '../../providers/agendaScope';
 import { formatEuro } from '../../lib/money';
+import { isCoach } from '../../lib/rechten';
 import {
   PAYMENT_METHODS,
   PAYMENT_LABELS,
@@ -45,12 +46,11 @@ const CHART_MONTHS = 6;
 export default function ReportsScreen(): React.JSX.Element {
   const t = useT();
   const { currentUser, users, courts } = useSimpleData();
+  const coach = isCoach(currentUser);
   // Eerst wie wat mag zien, dan de trainerfilter — dezelfde hook als op Historiek en
   // Komend, zodat de regel "een speler ziet alleen zijn eigen lessen" nergens omzeild kan
   // worden.
   const { coachId, setCoachId, coaches, bookings: allowed } = useAgendaScope();
-
-  const isCoach = currentUser?.role === 'coach';
 
   // Deze maand als beginstand: de vraag "hoe draait het" gaat over hoe het nú loopt, en het
   // is dezelfde stand waarin Historiek opent. Dat de maand aan het begin nog leeg kan zijn,
@@ -122,7 +122,7 @@ export default function ReportsScreen(): React.JSX.Element {
       {/* Een speler krijgt geen omzet te zien: dat is het verhaal van de trainer. Hij houdt
           de twee kaarten die over hemzelf gaan. */}
       <StatCardRow>
-        {isCoach ? (
+        {coach ? (
           <>
             <StatCard icon={Euro} value={`€${formatEuro(revenue)}`} label={t('Omzet')} />
             {/* Naast de omzet, niet erin: dit is wat er weer uitgaat naar de trainers. */}
@@ -133,7 +133,7 @@ export default function ReportsScreen(): React.JSX.Element {
         <StatCard icon={AlertCircle} value={pending} label={t('Openstaand')} tone="warning" />
       </StatCardRow>
 
-      {isCoach ? (
+      {coach ? (
         <Card>
           <Text style={styles.cardTitle}>{t('Per speler')}</Text>
           {perPlayer.length === 0 ? (
@@ -181,7 +181,7 @@ export default function ReportsScreen(): React.JSX.Element {
         </Card>
       ) : null}
 
-      {isCoach ? (
+      {coach ? (
         <Card>
           <Text style={styles.cardTitle}>{t('Per trainer')}</Text>
           {perCoach.length === 0 ? (
@@ -242,7 +242,7 @@ export default function ReportsScreen(): React.JSX.Element {
         <Text style={styles.note}>{t('Lessen in {periode}.', { periode: periodLabel(period) })}</Text>
       </Card>
 
-      {isCoach ? (
+      {coach ? (
         <Card>
           <Text style={styles.cardTitle}>{t('Verloop')}</Text>
           <BarChart bars={bars} accessibilityLabel={chartLabel} />

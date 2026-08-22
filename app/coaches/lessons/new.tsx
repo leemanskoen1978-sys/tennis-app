@@ -22,6 +22,8 @@ import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
 import { useSimpleData } from '../../../providers/SimpleDataProvider';
 import type { LessonAttachment, User } from '../../../lib/types';
+import { isCoach } from '../../../lib/rechten';
+import { playersOf } from '../../../lib/hub';
 
 export default function NewLessonScreen(): React.JSX.Element {
   const t = useT();
@@ -36,8 +38,7 @@ export default function NewLessonScreen(): React.JSX.Element {
   const [attachments, setAttachments] = useState<LessonAttachment[]>([]);
   const [saved, setSaved] = useState<string | null>(null);
 
-  const isCoach = currentUser?.role === 'coach';
-  const students: User[] = users.filter((u) => u.role !== 'coach');
+  const students: User[] = playersOf(users);
 
   // Wat de app zelf uit de tekst haalt, terwijl je typt.
   const auto = useMemo(
@@ -47,7 +48,7 @@ export default function NewLessonScreen(): React.JSX.Element {
   const own = useMemo(() => parseTagInput(tagInput), [tagInput]);
   const extra = auto.filter((t) => !own.some((o) => o.toLowerCase() === t.toLowerCase()));
 
-  if (!isCoach) {
+  if (!isCoach(currentUser)) {
     return (
       <Screen>
         <Text style={styles.empty}>{t('Alleen een trainer kan lesmateriaal toevoegen.')}</Text>

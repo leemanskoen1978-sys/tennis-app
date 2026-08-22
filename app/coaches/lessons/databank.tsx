@@ -10,6 +10,7 @@ import { LessonDatabase } from '../../../components/LessonDatabase';
 import { useSimpleData } from '../../../providers/SimpleDataProvider';
 import { visibleLessonsFor } from '../../../lib/lessons';
 import { tennisColors } from '../../../constants/tennis-colors';
+import { isCoach } from '../../../lib/rechten';
 
 export default function DatabankScreen(): React.JSX.Element {
   const { currentUser, lessons, error } = useSimpleData();
@@ -21,7 +22,7 @@ export default function DatabankScreen(): React.JSX.Element {
       ) : null}
       <LessonDatabase
         lessons={visibleLessonsFor(lessons, currentUser)}
-        canEdit={currentUser?.role === 'coach'}
+        canEdit={isCoach(currentUser)}
       />
     </Screen>
   );

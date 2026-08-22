@@ -12,6 +12,7 @@ import { useSimpleData, usePendingPaymentBookings } from '../../providers/Simple
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
+import { isCoach } from '../../lib/rechten';
 
 interface Tile {
   key: string;
@@ -30,7 +31,7 @@ export default function Admin() {
   const pending = usePendingPaymentBookings();
   const [addOpen, setAddOpen] = useState(false);
 
-  if (currentUser?.role !== 'coach') {
+  if (!isCoach(currentUser)) {
     return (
       <Screen scroll={false}>
         <Text style={styles.muted}>{t('Beheer is alleen voor trainers.')}</Text>

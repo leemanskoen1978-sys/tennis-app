@@ -27,6 +27,7 @@ import { bookingsFor, openBalanceFor, totalCoachPayout } from '../lib/payments';
 import { bookingsInPeriod, currentPeriod } from '../lib/period';
 import { formatEuro } from '../lib/csv';
 import { useT } from '../lib/i18n';
+import { isCoach } from '../lib/rechten';
 
 const ROLE_LABELS: Record<string, string> = {
   player: 'Speler',
@@ -99,6 +100,7 @@ export default function ProfileScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const { currentUser, logout, bookings, courts } = useSimpleData();
+  const coach = isCoach(currentUser);
   const pending = usePendingPaymentBookings();
   const isWide = useIsWide();
 
@@ -112,7 +114,6 @@ export default function ProfileScreen(): React.JSX.Element {
     );
   }
 
-  const isCoach = currentUser.role === 'coach';
   const roleLabel = t(ROLE_LABELS[currentUser.role] ?? currentUser.role);
 
   // Dezelfde twee getallen als op het hoofdscherm, en langs dezelfde weg berekend: een
@@ -120,7 +121,7 @@ export default function ProfileScreen(): React.JSX.Element {
   // `bookingsFor` en niet zelf filteren: zo ziet een speler ook de groepslessen waarin
   // hij meespeelt zonder te betalen.
   const myBookings = bookingsFor(currentUser, bookings);
-  const today = bookingsToday(isCoach ? bookings : myBookings, new Date());
+  const today = bookingsToday(coach ? bookings : myBookings, new Date());
 
   // Wat een trainer deze maand verdiende: zijn eigen uurtarief over zijn eigen lessen. Dus
   // niet de omzet — die loopt op het uurtarief van de baan en is wat de spelers betalen.
@@ -146,7 +147,7 @@ export default function ProfileScreen(): React.JSX.Element {
   ];
   // De rij staat er bij een trainer altijd, ook zonder tarief: zolang hij leeg is, is zijn
   // loon nul, en dat hoort te zien te zijn in plaats van weg te vallen met de rij.
-  if (isCoach) {
+  if (coach) {
     contactRows.push({
       key: 'rate',
       icon: Euro,
@@ -157,7 +158,7 @@ export default function ProfileScreen(): React.JSX.Element {
 
   // Alleen schermen die echt bestaan, en alleen de stukken uit Beheer die over jouw eigen
   // werk gaan. De rest van Beheer blijft één rij lager bereikbaar.
-  const settingRows: Row[] = isCoach
+  const settingRows: Row[] = coach
     ? [
         {
           key: 'set',
@@ -216,7 +217,7 @@ export default function ProfileScreen(): React.JSX.Element {
           <StatCard icon={CalendarDays} value={today} label={t('Lessen vandaag')} />
           {/* Een trainer telt lessen die hij nog moet afhandelen; een speler wil weten
               hoeveel hij nog moet betalen. Zelfde plek, ander getal. */}
-          {isCoach ? (
+          {coach ? (
             <StatCard
               icon={CreditCard}
               value={pending.length}
@@ -231,7 +232,7 @@ export default function ProfileScreen(): React.JSX.Element {
               tone={balance.amount > 0 ? 'warning' : 'primary'}
             />
           )}
-          {isCoach ? (
+          {coach ? (
             <StatCard
               icon={Wallet}
               value={`€${formatEuro(earnedThisMonth)}`}
@@ -240,7 +241,7 @@ export default function ProfileScreen(): React.JSX.Element {
             />
           ) : null}
         </StatCardRow>
-        {isCoach && rateMissing ? (
+        {coach && rateMissing ? (
           <Text style={styles.rateWarning}>
             {t('Je uurtarief is nog niet ingesteld, dus je verdiensten blijven op €0,00 staan.')}
           </Text>

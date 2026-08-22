@@ -19,6 +19,23 @@ export function isAdmin(user: User | null | undefined): boolean {
 }
 
 /**
+ * Geeft deze gebruiker les?
+ *
+ * Deze vraag stond op vijfendertig plekken los uitgeschreven als `role === 'coach'`, en
+ * daar komt precies één verwarring uit voort: op de meeste van die plekken werd "trainer"
+ * gebruikt waar "mag de cijfers van de club zien" bedoeld werd. Dat zijn twee vragen — zie
+ * `isAdmin` hierboven — en zolang ze allebei `role === 'coach'` heten, valt niet te zien
+ * welke van de twee er ergens staat.
+ *
+ * Het antwoord vertelt ook wát er dan vaststaat: een trainer bestáát en heeft `role`
+ * 'coach'. Zo hoeft wie deze vraag stelt daarna niet nóg eens te controleren of er wel
+ * iemand ingelogd is.
+ */
+export function isCoach(user: User | null | undefined): user is User & { role: 'coach' } {
+  return user?.role === 'coach';
+}
+
+/**
  * Mag deze gebruiker in de agenda van een andere trainer werken — boeken, wijzigen,
  * schrappen? Alleen een beheerder. Een gewone trainer blijft bij zijn eigen agenda, want
  * anders kan een collega jouw lessen schrappen zonder dat je het merkt.

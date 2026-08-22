@@ -24,13 +24,12 @@ import { shareCsv, shareXlsx, xlsxWordtOndersteund } from '../../lib/share';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
+import { isCoach } from '../../lib/rechten';
 
 export default function HistoriekScreen(): React.JSX.Element {
   const t = useT();
   const { currentUser, users, courts, error, clearError } = useSimpleData();
   const { coachId, setCoachId, coaches, bookings } = useAgendaScope();
-
-  const isCoach = currentUser?.role === 'coach';
 
   const [period, setPeriod] = useState<Period>(() => currentPeriod());
   // Eigen state: een mislukte download is geen opslagfout, dus hij hoort niet in de
@@ -94,14 +93,14 @@ export default function HistoriekScreen(): React.JSX.Element {
             {shown.length === 1 ? t('1 les') : t('{n} lessen', { n: shown.length })}
             {/* De bedragen gaan over geld dat binnenkomt; dat is het verhaal van de trainer.
                 Een speler krijgt de telling, niet de omzet. */}
-            {isCoach ? (
+            {isCoach(currentUser) ? (
               <>
                 {' · '}{t('€ {bedrag} geboekt', { bedrag: formatEuro(booked) })}
                 {' · '}{t('€ {bedrag} afgehandeld', { bedrag: formatEuro(handled) })}
               </>
             ) : null}
           </Text>
-          {isCoach ? (
+          {isCoach(currentUser) ? (
             <Text style={styles.summaryNote}>
               {t('Geannuleerde lessen tellen in geen van beide bedragen mee. “Afgehandeld” is '
                 + 'hetzelfde bedrag als de omzet in Beheer → Rapport.')}

@@ -17,6 +17,8 @@ import {
 import { tennisColors } from '../../constants/tennis-colors';
 import { radius, minTapTarget, spacing, typography, webCursor } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
+import { isCoach } from '../../lib/rechten';
+import { playersOf } from '../../lib/hub';
 
 /**
  * De spelerslijst is ook de plek waar een trainer na zijn lesdag zijn notities kwijt kan:
@@ -38,8 +40,8 @@ export default function Players() {
   const t = useT();
   const router = useRouter();
   const { currentUser, users, bookings, lessons, progress } = useSimpleData();
-  const players = users.filter((u) => u.role !== 'coach');
-  const isCoach = currentUser?.role === 'coach';
+  const coach = isCoach(currentUser);
+  const players = playersOf(users);
   const [progressOpen, setProgressOpen] = useState(false);
   const [scope, setScope] = useState<PlayerScope>('all');
   const [query, setQuery] = useState('');
@@ -61,13 +63,13 @@ export default function Players() {
   }, [players, currentUser?.id, bookings, lessons, progress]);
 
   // Een speler of ouder heeft geen "mijn spelers": voor hem is dit gewoon de ledenlijst.
-  const shown = isCoach ? scoped[scope] : scoped.all;
+  const shown = coach ? scoped[scope] : scoped.all;
   const visible = searchPlayers(shown, query);
 
   return (
     <Screen>
       {/* Een speler noteert geen voortgang; voor hem is dit gewoon een lijst. */}
-      {isCoach ? (
+      {coach ? (
         <>
           <TileGrid>
             <ActionTile
@@ -138,7 +140,7 @@ export default function Players() {
               leeg, of je zoekterm past op niemand in die stapel. */}
           {query !== ''
             ? t('Geen speler gevonden voor "{q}".', { q: query.trim() })
-            : emptyScopeLine(isCoach ? scope : 'all')}
+            : emptyScopeLine(coach ? scope : 'all')}
         </Text>
       ) : (
         visible.map((p) => (

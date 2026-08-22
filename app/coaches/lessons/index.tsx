@@ -16,14 +16,14 @@ import { visibleLessonsFor } from '../../../lib/lessons';
 import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
 import { spacing, typography } from '../../../constants/theme';
+import { isCoach } from '../../../lib/rechten';
 
 export default function LessonsScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const { currentUser, lessons, error } = useSimpleData();
-  const isCoach = currentUser?.role === 'coach';
 
-  if (!isCoach) {
+  if (!isCoach(currentUser)) {
     return (
       <Screen>
         {error !== undefined && error !== null && error.length > 0 ? (

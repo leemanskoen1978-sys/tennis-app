@@ -30,6 +30,7 @@ import type { Beurtenkaart, Booking, BookingStatus, PaymentMethod } from '../lib
 import { useT, t as tr } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, minTapTarget, webCursor } from '../constants/theme';
+import { playersOf } from '../lib/hub';
 
 /** De kleur bij een status; dezelfde die het maandoverzicht ooit op de kaart zette. */
 const STATUS_COLORS: Record<BookingStatus, string> = {
@@ -134,7 +135,7 @@ export function LessonDetailSheet({
   const canPay = canManage && !isCancelled;
   const isGroup = isGroupLesson(booking);
   const court = courts.find((c) => c.id === booking.court_id);
-  const players = users.filter((u) => u.role !== 'coach');
+  const players = playersOf(users);
   // Wie er meedoet en wie wat betaalt: één lijst, met de betaler vooraan. Bij samen
   // factureren staat het hele bedrag bij hem en niets bij de rest — dat is precies wat er
   // hoort te staan, want zij betalen ook niets.

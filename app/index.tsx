@@ -18,7 +18,7 @@ import { Lesdag } from '../components/lesdag/Lesdag';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf, recentGeweigerd } from '../lib/inbox';
-import { magInElkeAgenda } from '../lib/rechten';
+import { isCoach, magInElkeAgenda } from '../lib/rechten';
 import { zonderWeggeklikt } from '../lib/weggeklikt';
 import { useWeggeklikt } from '../providers/weggeklikt';
 import { bookingsFor, filterPendingPayment, openBalanceFor } from '../lib/payments';
@@ -42,15 +42,15 @@ export default function Hub() {
   const t = useT();
   const router = useRouter();
   const { currentUser, users, bookings, courts } = useSimpleData();
+  const coach = isCoach(currentUser);
   const pending = usePendingPaymentBookings();
 
   if (!currentUser) return <Redirect href="/login" />;
-  const isCoach = currentUser.role === 'coach';
 
   // `bookingsFor` en niet zelf filteren: zo ziet een speler ook de groepslessen waarin
   // hij meespeelt zonder te betalen.
   const myBookings = bookingsFor(currentUser, bookings);
-  const today = bookingsToday(isCoach ? bookings : myBookings, new Date());
+  const today = bookingsToday(coach ? bookings : myBookings, new Date());
   // Dezelfde definitie van "staat nog open" als Beheer: een geannuleerde of nog niet
   // bevestigde les hoort niet op de badge, anders loopt die juist óp bij een annulering.
   const myOpen = filterPendingPayment(myBookings).length;
@@ -60,14 +60,14 @@ export default function Hub() {
   // Wat op een beslissing van deze trainer wacht. De badge staat op Agenda, want daar staat
   // de lijst zelf ook — een melding die naar een ander scherm wijst dan waar je hem
   // afhandelt, laat je zoeken.
-  const teKeuren = isCoach
+  const teKeuren = coach
     ? awaitingApprovalFor(bookings, currentUser.id, magInElkeAgenda(currentUser)).length
     : 0;
   // En andersom: waar de speler zelf nog op wacht.
-  const gevraagd = isCoach ? 0 : awaitingApprovalOf(bookings, currentUser.id).length;
+  const gevraagd = coach ? 0 : awaitingApprovalOf(bookings, currentUser.id).length;
   // Een geweigerde aanvraag is het enige dat anders nergens te zien is: de les verdwijnt
   // en niemand zegt waarom. Een goedgekeurde les staat gewoon in zijn agenda.
-  const geweigerd = isCoach ? [] : recentGeweigerd(bookings, currentUser.id, new Date());
+  const geweigerd = coach ? [] : recentGeweigerd(bookings, currentUser.id, new Date());
   // Wat je wegklikt blijft weg — op dit toestel. Zie lib/weggeklikt voor waarom dat niet in
   // de databank staat.
   const { weggeklikt, klikWeg, klikAllesWeg } = useWeggeklikt(geweigerd);
@@ -111,7 +111,7 @@ export default function Hub() {
     { key: 'prog', title: t('Voortgang'), subtitle: t('Jouw beoordelingen'), icon: TrendingUp, onPress: () => router.push('/players/progress') },
   ];
 
-  const tiles = isCoach ? coachTiles : playerTiles;
+  const tiles = coach ? coachTiles : playerTiles;
 
   return (
     <Screen>
@@ -124,7 +124,7 @@ export default function Hub() {
 
       {/* De lesdag hoort bovenaan: wat een trainer om vijf voor vijf wil zien, is de les
           van vijf uur — niet een keuzemenu. De tegels blijven eronder staan. */}
-      {isCoach ? <Lesdag coachId={currentUser.id} /> : null}
+      {coach ? <Lesdag coachId={currentUser.id} /> : null}
 
       {/* Wat er met een aanvraag gebeurde. Staat bovenaan en verdwijnt na een week vanzelf:
           er valt niets weg te klikken, en een bericht van drie weken oud is geen bericht. */}
@@ -170,7 +170,7 @@ export default function Hub() {
 
       {/* Een speler die nog moet afrekenen, ziet dat vóór de tegels — met het bedrag erbij.
           Staat er niets open, dan staat er ook niets: een kaart met "€ 0,00" is ruis. */}
-      {!isCoach && balance.amount > 0 ? (
+      {!coach && balance.amount > 0 ? (
         <Card
           onPress={() => router.push('/agenda/overzicht')}
           accessibilityLabel={t('Openstaand saldo € {bedrag}', { bedrag: formatEuro(balance.amount) })}

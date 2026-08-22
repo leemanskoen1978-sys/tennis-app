@@ -16,6 +16,7 @@ import { useT, type Translate } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, webCursor } from '../constants/theme';
 import type { Lesson, LessonAttachment } from '../lib/types';
+import { playersOf } from '../lib/hub';
 
 function confirmDelete(t: Translate, message: string, onYes: () => void) {
   if (Platform.OS === 'web') { if (window.confirm(message)) onYes(); return; }
@@ -52,7 +53,7 @@ export function LessonDetailModal({
   // until you close and reopen the sheet.
   const lesson = selected ? (lessons.find((l) => l.id === selected.id) ?? selected) : null;
   if (!lesson) return null;
-  const students = users.filter((u) => u.role !== 'coach');
+  const students = playersOf(users);
   const studentName = lesson.student_id
     ? (users.find((u) => u.id === lesson.student_id)?.name ?? t('Onbekend'))
     : t('Iedereen');

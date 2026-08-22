@@ -13,6 +13,7 @@ import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius } from '../../constants/theme';
 import type { StudentProgress, TrainingType } from '../../lib/types';
+import { playersOf } from '../../lib/hub';
 
 const RATINGS = [1, 2, 3, 4, 5] as const;
 
@@ -86,7 +87,7 @@ export function ProgressForm({
 
   // Wie de notitie krijgt: van buiten meegegeven, anders wat er in het blad gekozen is.
   const targetId = studentId ?? pickedId;
-  const players = users.filter((u) => u.role !== 'coach');
+  const players = playersOf(users);
   const playerLessons = targetId ? lessons.filter((l) => l.student_id === targetId) : [];
 
   /** Wat er in de velden staat, in de vorm waarin het bewaard wordt. */

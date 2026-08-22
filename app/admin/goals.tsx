@@ -13,12 +13,13 @@ import {
 import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, minTapTarget, webCursor } from '../../constants/theme';
+import { isCoach } from '../../lib/rechten';
 
 export default function GoalOptions(): React.JSX.Element {
   const t = useT();
   const { currentUser, settings, saveSettings } = useSimpleData();
 
-  if (currentUser?.role !== 'coach') {
+  if (!isCoach(currentUser)) {
     return (
       <Screen scroll={false}>
         <Text style={styles.muted}>{t('Beheer is alleen voor trainers.')}</Text>
