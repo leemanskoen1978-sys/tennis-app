@@ -125,6 +125,18 @@ Op volgorde van wat ik als eerste zou doen:
   `StatCard.tsx` (cijfers), `Screen.tsx` + `useIsWide()` (breedte), `constants/theme.ts` en
   `constants/tennis-colors.ts` (maten en kleuren). Geen nieuwe kleuren of maten verzinnen.
 
+## Eén valkuil in de RLS-regels
+
+De app schrijft met een **upsert**. Postgres controleert daarbij niet alleen de
+`update`-policy maar ook de `insert`-policy — óók als de rij allang bestaat. Alles wat een
+insert-policy eist over de *maker* van een rij, geldt dus bij elke latere wijziging door
+iemand anders.
+
+Daar zijn twee fouten uit voortgekomen, allebei stil: een trainer kon een lesaanvraag van
+een speler niet goedkeuren, en een speler kon zijn eigen profiel niet bijwerken. Beide
+opgelost op 22 augustus. Wie hier een policy aanpast: lees eerst de opmerking boven
+`bookings_insert` in supabase-schema.sql.
+
 ## Opruimronde van 22 augustus
 
 Wat er weg is: `components/SpeechToText.tsx` (nergens geïmporteerd), `currentLanguage` in

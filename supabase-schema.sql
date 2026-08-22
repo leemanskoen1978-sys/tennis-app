@@ -343,9 +343,13 @@ drop policy if exists users_select on users;
 create policy users_select on users for select
   to authenticated using (true);
 
+-- Ook hier telt de upsert mee (zie de opmerking bij bookings_insert): werkt een speler zijn
+-- eigen telefoonnummer bij, dan gaat die wijziging langs déze regel. Zonder `auth_id =
+-- auth.uid()` werd dat geweigerd, terwijl users_update het uitdrukkelijk toestaat. Je mag
+-- dus schrijven aan de rij die van jou is — en aan meer niet.
 drop policy if exists users_insert on users;
 create policy users_insert on users for insert
-  to authenticated with check (is_coach() or is_admin());
+  to authenticated with check (is_coach() or is_admin() or auth_id = auth.uid());
 
 drop policy if exists users_update on users;
 create policy users_update on users for update
@@ -395,11 +399,21 @@ create policy bookings_select on bookings for select
 -- staat hier met zoveel woorden, zodat hij zichzelf niet kan goedkeuren door de app voorbij
 -- te lopen. Zie lib/inbox voor dezelfde regel in de app.
 drop policy if exists bookings_insert on bookings;
+-- LET OP bij het wijzigen: de app schrijft met een upsert (`insert ... on conflict do
+-- update`, zie saveToSupabase). Postgres controleert daarbij ook déze policy, óók als de
+-- rij allang bestaat en er alleen iets aan verandert. Alles wat hier over de *maker* van de
+-- rij wordt geëist, geldt dus ook bij elke latere wijziging door iemand anders.
+--
+-- Daarom staat er bij de trainer geen `created_by = app_user_id()` meer. Dat stond er wel,
+-- en het brak het goedkeuren: een speler vraagt een les aan (created_by = de speler), de
+-- trainer keurt goed, de rij wordt ge-upsert — en dan klopte de trainerregel niet meer
+-- omdat de maker iemand anders was. De knop deed niets en zei niets. Het beschermde ook
+-- niets: een trainer mag elke les in zijn eigen agenda sowieso al wijzigen.
 create policy bookings_insert on bookings for insert
   to authenticated with check (
     -- De beheerder maakt het rooster van de club en mag dus in elke agenda inplannen.
     is_admin()
-    or (is_coach() and coach_id = app_user_id() and created_by = app_user_id())
+    or (is_coach() and coach_id = app_user_id())
     or (player_id = app_user_id() and status = 'pending' and created_by = app_user_id())
   );
 

@@ -36,7 +36,7 @@ interface Tile {
 
 export default function BookingsScreen(): React.JSX.Element {
   const t = useT();
-  const { currentUser, bookings, users, courts, approveBooking, rejectBooking } =
+  const { currentUser, bookings, users, courts, approveBooking, rejectBooking, error } =
     useSimpleData();
   const pending = usePendingPaymentBookings();
   const router = useRouter();
@@ -117,7 +117,7 @@ export default function BookingsScreen(): React.JSX.Element {
                     variant="primary"
                     style={styles.decideButton}
                     onPress={() => {
-                      void approveBooking(b.id);
+                      void approveBooking(b.id).catch(() => undefined);
                     }}
                   />
                   <Button
@@ -125,10 +125,15 @@ export default function BookingsScreen(): React.JSX.Element {
                     variant="secondary"
                     style={styles.decideButton}
                     onPress={() => {
-                      void rejectBooking(b.id);
+                      void rejectBooking(b.id).catch(() => undefined);
                     }}
                   />
                 </View>
+
+                {/* Mislukt het opslaan, dan hoort dat hier te staan en niet alleen in de
+                    console. Zonder deze regel drukte je op Goedkeuren, gebeurde er niets,
+                    en was er niets dat je vertelde waarom. */}
+                {error ? <Text style={styles.error}>{error}</Text> : null}
               </Card>
             ))}
           </View>
@@ -197,6 +202,7 @@ export default function BookingsScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
+  error: { color: tennisColors.danger, fontSize: 13 },
   // De twee blokken onder elkaar met dezelfde tussenruimte als de rest van het scherm.
   stack: { gap: spacing.lg },
   section: { gap: spacing.md },
