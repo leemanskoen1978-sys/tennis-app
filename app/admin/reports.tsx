@@ -21,7 +21,7 @@ import { StatCard, StatCardRow } from '../../components/ui/StatCard';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { useAgendaScope } from '../../providers/agendaScope';
 import { formatEuro } from '../../lib/money';
-import { isCoach } from '../../lib/rechten';
+import { isCoach, magClubcijfersZien } from '../../lib/rechten';
 import {
   PAYMENT_METHODS,
   PAYMENT_LABELS,
@@ -47,9 +47,14 @@ export default function ReportsScreen(): React.JSX.Element {
   const t = useT();
   const { currentUser, users, courts } = useSimpleData();
   const coach = isCoach(currentUser);
+  // Wie mag de cijfers van de hele club zien? Alleen de beheerder. Een gewone trainer krijgt
+  // dit scherm over zijn eigen lessen — dat is wat "hoe draait het" voor hem betekent — en
+  // ziet dus niet wat een collega binnenbrengt of verdient.
+  const clubcijfers = magClubcijfersZien(currentUser);
   // Eerst wie wat mag zien, dan de trainerfilter — dezelfde hook als op Historiek en
   // Komend, zodat de regel "een speler ziet alleen zijn eigen lessen" nergens omzeild kan
-  // worden.
+  // worden. Zonder trainerbalk blijft de filter op zijn beginstand staan: bij een trainer is
+  // dat hijzelf, en dat is precies de afbakening die we hier willen.
   const { coachId, setCoachId, coaches, bookings: allowed } = useAgendaScope();
 
   // Deze maand als beginstand: de vraag "hoe draait het" gaat over hoe het nú loopt, en het
@@ -117,7 +122,12 @@ export default function ReportsScreen(): React.JSX.Element {
     <Screen>
       <PeriodPicker value={period} onChange={setPeriod} />
 
-      <CoachFilter coaches={coaches} value={coachId} onChange={setCoachId} />
+      {/* De trainerbalk hoort bij de clubcijfers: hij bestaat om naar een ándere trainer te
+          kijken. Voor een gewone trainer staat hij er dus niet, en blijft het scherm bij
+          zijn eigen lessen. */}
+      {clubcijfers ? (
+        <CoachFilter coaches={coaches} value={coachId} onChange={setCoachId} />
+      ) : null}
 
       {/* Een speler krijgt geen omzet te zien: dat is het verhaal van de trainer. Hij houdt
           de twee kaarten die over hemzelf gaan. */}
@@ -125,8 +135,14 @@ export default function ReportsScreen(): React.JSX.Element {
         {coach ? (
           <>
             <StatCard icon={Euro} value={`€${formatEuro(revenue)}`} label={t('Omzet')} />
-            {/* Naast de omzet, niet erin: dit is wat er weer uitgaat naar de trainers. */}
-            <StatCard icon={Wallet} value={`€${formatEuro(payout)}`} label={t('Trainersloon')} />
+            {/* Naast de omzet, niet erin: dit is wat er weer uitgaat naar de trainers. Bij
+                een gewone trainer gaat het maar over één iemand, en dan is "Trainersloon"
+                een woord dat meer belooft dan er staat. */}
+            <StatCard
+              icon={Wallet}
+              value={`€${formatEuro(payout)}`}
+              label={clubcijfers ? t('Trainersloon') : t('Mijn loon')}
+            />
           </>
         ) : null}
         <StatCard icon={CalendarDays} value={lessons} label={t('Lessen')} />
@@ -181,7 +197,9 @@ export default function ReportsScreen(): React.JSX.Element {
         </Card>
       ) : null}
 
-      {coach ? (
+      {/* Wat elke trainer verdient, naast elkaar. Dat is het loonoverzicht van de club en
+          hoort dus bij de beheerder — een trainer heeft zijn eigen bedrag hierboven al. */}
+      {clubcijfers ? (
         <Card>
           <Text style={styles.cardTitle}>{t('Per trainer')}</Text>
           {perCoach.length === 0 ? (

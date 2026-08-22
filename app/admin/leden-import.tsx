@@ -14,7 +14,7 @@ import { kanBestandKiezen, kiesTekstbestand } from '../../lib/bestand';
 import { shareCsv } from '../../lib/share';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
-import { isCoach } from '../../lib/rechten';
+import { isAdmin, isCoach } from '../../lib/rechten';
 
 // Overleeft, anders dan React-state, een her-mount van dit scherm: een trainer die tijdens
 // een grote import wegnavigeert en terugkomt krijgt zo geen tweede lus over hetzelfde
@@ -122,7 +122,7 @@ export default function LedenImport(): React.JSX.Element {
     wisLaatsteUitslag();
     setTekst(inhoud);
     setUitkomst(null);
-    setPlan(planImport(parseCsv(inhoud), users));
+    setPlan(planImport(parseCsv(inhoud), users, isAdmin(currentUser)));
   };
 
   const opnieuw = (): void => {

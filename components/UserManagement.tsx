@@ -12,7 +12,7 @@ import { Badge } from './ui/Badge';
 import type { Role, User } from '../lib/types';
 import { isValidEmail, normalizePhone } from '../lib/contact';
 import { useSimpleData } from '../providers/SimpleDataProvider';
-import { roleLabel } from '../lib/rechten';
+import { isAdmin, roleLabel } from '../lib/rechten';
 
 interface UserManagementProps {
   visible: boolean;
@@ -62,7 +62,10 @@ function slugify(name: string): string {
 export function UserManagement(props: UserManagementProps): JSX.Element {
   const t = useT();
   const { visible, onClose, defaultRole = 'player', initialName, onCreated } = props;
-  const { users, addUser, error } = useSimpleData();
+  const { currentUser, users, addUser, error } = useSimpleData();
+  // Het uurtarief is wat de club uitbetaalt: alleen de beheerder zet het. Zie rates_write
+  // in supabase-schema.sql — het veld hier laten staan zou alleen een foutmelding opleveren.
+  const magTarief = isAdmin(currentUser);
 
   const [name, setName] = useState<string>(initialName ?? '');
   const [role, setRole] = useState<Role>(defaultRole);
@@ -121,7 +124,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
       email: email.trim(),
       role,
       ...(trimmedPhone ? { phone: trimmedPhone } : {}),
-      ...(role === 'coach' && rate.trim() && Number.isFinite(parsedRate)
+      ...(magTarief && role === 'coach' && rate.trim() && Number.isFinite(parsedRate)
         ? { hourly_rate: parsedRate }
         : {}),
     });
@@ -194,7 +197,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
           style={styles.input}
         />
 
-        {role === 'coach' ? (
+        {magTarief && role === 'coach' ? (
           <>
             <Text style={styles.label}>{t('Uurtarief (optioneel)')}</Text>
             <TextInput

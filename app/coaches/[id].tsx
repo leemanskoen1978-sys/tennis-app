@@ -14,7 +14,7 @@ import { groupSize, shortGroupLabel } from '../../lib/groups';
 import { playersForCoach } from '../../lib/relations';
 import { formatWorkingDays } from '../../lib/slots';
 import { useT, useLanguage } from '../../lib/i18n';
-import { rolLabel } from '../../lib/rechten';
+import { magLoonZien, rolLabel } from '../../lib/rechten';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
@@ -67,6 +67,10 @@ export default function CoachDossier() {
 
   // Wat deze trainer deze maand verdient: zijn eigen uurtarief over zijn eigen lessen, langs
   // dezelfde weg als op zijn profiel. Geen tarief ingevuld geeft 0, met een melding erbij.
+  // Wat een trainer verdient is van hem. Een collega ziet die twee regels niet — niet
+  // leeg, niet grijs: ze staan er niet. De databank geeft het bedrag ook niet mee (zie
+  // `coach_rates` in supabase-schema.sql), dus wat hier stond zou toch leeg blijven.
+  const loonZichtbaar = magLoonZien(currentUser, coach);
   const rateMissing = coach.hourly_rate === undefined;
   const earnedThisMonth = coachPayoutThisMonth(coach, bookings);
 
@@ -113,18 +117,24 @@ export default function CoachDossier() {
 
         {/* Het uurtarief van de trainer is wat híj krijgt; wat de speler betaalt loopt op het
             uurtarief van de baan. Twee verschillende bedragen — zie lib/payments. */}
-        <Text style={styles.fieldLabel}>{t('Uurtarief')}</Text>
-        <Text style={rateMissing ? styles.warnValue : styles.fieldValue}>
-          {rateMissing ? t('Nog niet ingesteld') : t('€{bedrag} per uur', { bedrag: coach.hourly_rate ?? 0 })}
-        </Text>
+        {loonZichtbaar ? (
+          <>
+            <Text style={styles.fieldLabel}>{t('Uurtarief')}</Text>
+            <Text style={rateMissing ? styles.warnValue : styles.fieldValue}>
+              {rateMissing
+                ? t('Nog niet ingesteld')
+                : t('€{bedrag} per uur', { bedrag: coach.hourly_rate ?? 0 })}
+            </Text>
 
-        <Text style={styles.fieldLabel}>{t('Verdiend deze maand')}</Text>
-        <Text style={styles.fieldValue}>€{formatEuro(earnedThisMonth)}</Text>
-        {/* Zonder tarief is dat bedrag nul, en dat mag niet als een gewone nul overkomen. */}
-        {rateMissing ? (
-          <Text style={styles.warnValue}>
-            {t('Zolang het uurtarief leeg is, blijft dit op €0,00 staan.')}
-          </Text>
+            <Text style={styles.fieldLabel}>{t('Verdiend deze maand')}</Text>
+            <Text style={styles.fieldValue}>€{formatEuro(earnedThisMonth)}</Text>
+            {/* Zonder tarief is dat bedrag nul, en dat mag niet als een gewone nul overkomen. */}
+            {rateMissing ? (
+              <Text style={styles.warnValue}>
+                {t('Zolang het uurtarief leeg is, blijft dit op €0,00 staan.')}
+              </Text>
+            ) : null}
+          </>
         ) : null}
 
         {/* Only your own details. A colleague's card has no button at all — a control

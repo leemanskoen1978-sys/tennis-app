@@ -8,6 +8,7 @@ import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, radius } from '../constants/theme';
 import { useSimpleData } from '../providers/SimpleDataProvider';
+import { isAdmin } from '../lib/rechten';
 import { generateSlots, DAY_LABELS } from '../lib/slots';
 import type { User } from '../lib/types';
 
@@ -26,7 +27,7 @@ export function CoachDetailsModal({
   onClose: () => void;
 }) {
   const t = useT();
-  const { updateUser, settings } = useSimpleData();
+  const { currentUser, updateUser, settings } = useSimpleData();
 
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -70,6 +71,12 @@ export function CoachDetailsModal({
     (start === null && end === null) || (start !== null && end !== null && start < end);
   const canSave = email.trim().length > 0 && rateOk && hoursOk;
 
+  // Zijn eigen tarief zetten mag een trainer niet: het is wat de club hem uitbetaalt, en
+  // wie het zelf kan zetten kan zijn eigen loon verhogen. Beheer → gebruikers doet dit. De
+  // databank denkt er hetzelfde over (`rates_write`), dus het veld hier laten staan zou
+  // alleen een foutmelding opleveren bij het opslaan.
+  const magTarief = isAdmin(currentUser);
+
   const save = async () => {
     if (!canSave) return;
     await updateUser(coach.id, {
@@ -77,7 +84,9 @@ export function CoachDetailsModal({
       phone: phone.trim() || undefined,
       working_days: days.length > 0 ? [...days].sort((a, b) => a - b) : undefined,
       working_hours: start !== null && end !== null ? { start, end } : undefined,
-      hourly_rate: rate.trim() === '' ? undefined : parsedRate,
+      // Alleen meesturen als het veld er stond; anders zou een trainer die zijn nummer
+      // bijwerkt zijn eigen tarief "opnieuw zetten" en daarop stuklopen.
+      ...(magTarief ? { hourly_rate: rate.trim() === '' ? undefined : parsedRate } : {}),
     });
     onClose();
   };
@@ -146,16 +155,22 @@ export function CoachDetailsModal({
         </Text>
       ) : null}
 
-      <Text style={styles.label}>{t('Uurtarief (€)')}</Text>
-      <TextInput
-        style={styles.input}
-        value={rate}
-        onChangeText={setRate}
-        placeholder="45"
-        placeholderTextColor={tennisColors.textMuted}
-        keyboardType="decimal-pad"
-      />
-      {!rateOk ? <Text style={styles.error}>{t('Vul een getal in, of laat leeg.')}</Text> : null}
+      {magTarief ? (
+        <>
+          <Text style={styles.label}>{t('Uurtarief (€)')}</Text>
+          <TextInput
+            style={styles.input}
+            value={rate}
+            onChangeText={setRate}
+            placeholder="45"
+            placeholderTextColor={tennisColors.textMuted}
+            keyboardType="decimal-pad"
+          />
+          {!rateOk ? (
+            <Text style={styles.error}>{t('Vul een getal in, of laat leeg.')}</Text>
+          ) : null}
+        </>
+      ) : null}
 
       <Button
         label={t('Opslaan')}

@@ -606,3 +606,38 @@ describe('pasImportToe', () => {
     expect(gemeld).toEqual([[1, 2], [2, 2]]);
   });
 });
+
+describe('planImport zonder beheerdersrechten', () => {
+  const kopregel = ['naam', 'email', 'rol', 'telefoon', 'uurtarief'];
+
+  it('neemt het uurtarief niet over en zegt waarom', () => {
+    const plan = planImport(
+      [kopregel, ['Sofie Maes', 'sofie@club.be', 'trainer', '', '45']],
+      [],
+      false,
+    );
+    expect(plan.nieuw[0]?.hourly_rate).toBeUndefined();
+    expect(plan.waarschuwingen[0]?.reden).toContain('beheerder');
+  });
+
+  it('laat de rest van de rij gewoon staan', () => {
+    const plan = planImport(
+      [kopregel, ['Sofie Maes', 'sofie@club.be', 'trainer', '0470123456', '45']],
+      [],
+      false,
+    );
+    expect(plan.nieuw[0]?.name).toBe('Sofie Maes');
+    expect(plan.nieuw[0]?.phone).toBe('0470123456');
+    expect(plan.nieuw[0]?.role).toBe('coach');
+  });
+
+  it('doet als beheerder wat het altijd deed', () => {
+    const plan = planImport(
+      [kopregel, ['Sofie Maes', 'sofie@club.be', 'trainer', '', '45']],
+      [],
+      true,
+    );
+    expect(plan.nieuw[0]?.hourly_rate).toBe(45);
+    expect(plan.waarschuwingen).toEqual([]);
+  });
+});

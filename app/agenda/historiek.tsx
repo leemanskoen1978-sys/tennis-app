@@ -24,13 +24,20 @@ import { shareCsv, shareXlsx, xlsxWordtOndersteund } from '../../lib/share';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
-import { isCoach } from '../../lib/rechten';
+import { isCoach, magClubcijfersZien } from '../../lib/rechten';
 
 export default function HistoriekScreen(): React.JSX.Element {
   const t = useT();
   const { currentUser, users, courts, error } = useSimpleData();
   const { coachId, setCoachId, coaches, bookings } = useAgendaScope();
   useSchoneLei();
+
+  // Bedragen horen bij de lessen die van jou zijn. Een gewone trainer die bij een collega
+  // of bij "alle trainers" kijkt, ziet dus de lessen wél en het geld niet: wat een collega
+  // binnenbrengt is niet zijn boekhouding. De beheerder ziet altijd alles.
+  const eigenLessen = coachId !== null && coachId === currentUser?.id;
+  const bedragenZichtbaar = isCoach(currentUser)
+    && (magClubcijfersZien(currentUser) || eigenLessen);
 
   const [period, setPeriod] = useState<Period>(() => currentPeriod());
   // Eigen state: een mislukte download is geen opslagfout, dus hij hoort niet in de
@@ -89,14 +96,14 @@ export default function HistoriekScreen(): React.JSX.Element {
             {shown.length === 1 ? t('1 les') : t('{n} lessen', { n: shown.length })}
             {/* De bedragen gaan over geld dat binnenkomt; dat is het verhaal van de trainer.
                 Een speler krijgt de telling, niet de omzet. */}
-            {isCoach(currentUser) ? (
+            {bedragenZichtbaar ? (
               <>
                 {' · '}{t('€ {bedrag} geboekt', { bedrag: formatEuro(booked) })}
                 {' · '}{t('€ {bedrag} afgehandeld', { bedrag: formatEuro(handled) })}
               </>
             ) : null}
           </Text>
-          {isCoach(currentUser) ? (
+          {bedragenZichtbaar ? (
             <Text style={styles.summaryNote}>
               {t('Geannuleerde lessen tellen in geen van beide bedragen mee. “Afgehandeld” is '
                 + 'hetzelfde bedrag als de omzet in Beheer → Rapport.')}
@@ -122,19 +129,23 @@ export default function HistoriekScreen(): React.JSX.Element {
 
       {exportError ? <Text style={styles.error}>{exportError}</Text> : null}
 
-      <View style={styles.exportBlock}>
-        {/* Excel voorop: dat is wat een trainer opent. De CSV blijft ernaast staan voor wie
-            het bestand ergens anders in laadt — een boekhoudpakket vraagt er nog vaak om. */}
-        <View style={styles.exportRow}>
-          {xlsxWordtOndersteund ? (
-            <Button
-              label={t('Excel (.xlsx)')}
-              variant="primary"
-              style={styles.exportButton}
-              disabled={rows.length === 0}
-              icon={<Download size={16} color={tennisColors.onFill} />}
-              onPress={() => { void exporteer(() => shareXlsx(xlsxNaam, toXlsx(rows))); }}
-            />
+      {/* De export draagt dezelfde bedragen als het scherm — prijs per les en loon van de
+          trainer — dus hij hoort achter dezelfde grens. Kijkt een trainer naar de lessen van
+          een collega, dan is er wel een lijst maar geen bestand. */}
+      {bedragenZichtbaar ? (
+        <View style={styles.exportBlock}>
+          {/* Excel voorop: dat is wat een trainer opent. De CSV blijft ernaast staan voor wie
+              het bestand ergens anders in laadt — een boekhoudpakket vraagt er nog vaak om. */}
+          <View style={styles.exportRow}>
+            {xlsxWordtOndersteund ? (
+              <Button
+                label={t('Excel (.xlsx)')}
+                variant="primary"
+                style={styles.exportButton}
+                disabled={rows.length === 0}
+                icon={<Download size={16} color={tennisColors.onFill} />}
+                onPress={() => { void exporteer(() => shareXlsx(xlsxNaam, toXlsx(rows))); }}
+              />
           ) : null}
           <Button
             label={t('CSV')}
@@ -150,15 +161,16 @@ export default function HistoriekScreen(): React.JSX.Element {
             onPress={() => { void exporteer(() => shareCsv(csvNaam, toCsv(rows))); }}
           />
         </View>
-        <Text style={styles.exportNote}>
-          {t('Het bestand bevat precies de lessen die je hier ziet: {periode}, {trainer}.', {
-            periode: periodLabel(period),
-            trainer: coachId === null
-              ? t('alle trainers')
-              : coaches.find((c) => c.id === coachId)?.name ?? t('één trainer'),
-          })}
-        </Text>
-      </View>
+          <Text style={styles.exportNote}>
+            {t('Het bestand bevat precies de lessen die je hier ziet: {periode}, {trainer}.', {
+              periode: periodLabel(period),
+              trainer: coachId === null
+                ? t('alle trainers')
+                : coaches.find((c) => c.id === coachId)?.name ?? t('één trainer'),
+            })}
+          </Text>
+        </View>
+      ) : null}
     </Screen>
   );
 }

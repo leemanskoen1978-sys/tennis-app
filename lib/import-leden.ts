@@ -279,6 +279,13 @@ export function bestandAfgekeurd(plan: ImportPlan): boolean {
 export function planImport(
   rijen: ReadonlyArray<readonly string[]>,
   bestaande: readonly User[],
+  /**
+   * Mag deze gebruiker uurtarieven zetten? Alleen een beheerder — het uurloon is wat de
+   * club uitbetaalt, en de databank weigert het van iemand anders (`rates_write`). Staat
+   * dit uit, dan wordt de kolom gelezen maar niet overgenomen, mét een waarschuwing: een
+   * tarief dat stilzwijgend van tafel valt, laat de trainer denken dat het erin staat.
+   */
+  magTarief = true,
 ): ImportPlan {
   const plan: ImportPlan = {
     nieuw: [], bijgewerkt: [], fouten: [], nietHerkend: [], dubbel: [], waarschuwingen: [],
@@ -418,7 +425,9 @@ export function planImport(
     const lid: Omit<User, 'id'> = { name: naam, email: key, role: effectieveRol };
     const phone = normalizePhone(cel(kolommen.telefoon));
     if (phone) lid.phone = phone;
-    if (hourly_rate !== undefined && effectieveRol === 'coach') lid.hourly_rate = hourly_rate;
+    if (hourly_rate !== undefined && effectieveRol === 'coach' && magTarief) {
+      lid.hourly_rate = hourly_rate;
+    }
 
     // Pas hier waarschuwen, ná elke `continue` hierboven: een rij die toch al wordt
     // afgekeurd (dubbel adres, verkeerde rol) mag niet ook nog "kijk het tarief na" te horen
@@ -427,6 +436,11 @@ export function planImport(
       plan.waarschuwingen.push({
         regel,
         reden: 'Een uurtarief hoort bij een trainer; voor een speler laat ik het weg.',
+      });
+    } else if (hourly_rate !== undefined && !magTarief) {
+      plan.waarschuwingen.push({
+        regel,
+        reden: 'Alleen een beheerder kan een uurtarief zetten; ik laat het weg.',
       });
     }
 
