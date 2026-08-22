@@ -1,4 +1,6 @@
-import { isAdmin, isCoach, magInElkeAgenda, rolLabel } from './rechten';
+import {
+  isAdmin, isCoach, magClubcijfersZien, magInElkeAgenda, magLoonZien, rolLabel,
+} from './rechten';
 import type { User } from './types';
 
 const speler: User = { id: 'p1', email: 'p@x.be', name: 'Mathis', role: 'player' };
@@ -47,6 +49,39 @@ describe('magInElkeAgenda', () => {
     expect(magInElkeAgenda(trainer)).toBe(false);
     expect(magInElkeAgenda(speler)).toBe(false);
     expect(magInElkeAgenda(null)).toBe(false);
+  });
+});
+
+describe('magLoonZien', () => {
+  const collega: User = { id: 'sanne', email: 's@x.be', name: 'Sanne', role: 'coach' };
+
+  it('laat je je eigen loon zien', () => {
+    expect(magLoonZien(trainer, trainer)).toBe(true);
+  });
+
+  it('houdt het loon van een collega dicht', () => {
+    expect(magLoonZien(trainer, collega)).toBe(false);
+    expect(magLoonZien(collega, trainer)).toBe(false);
+  });
+
+  it('laat de beheerder alles zien', () => {
+    expect(magLoonZien(baas, collega)).toBe(true);
+    expect(magLoonZien(baas, trainer)).toBe(true);
+  });
+
+  it('zegt nee tegen een speler en tegen niemand', () => {
+    expect(magLoonZien(speler, trainer)).toBe(false);
+    expect(magLoonZien(null, trainer)).toBe(false);
+    expect(magLoonZien(trainer, null)).toBe(false);
+  });
+});
+
+describe('magClubcijfersZien', () => {
+  it('is alleen de beheerder', () => {
+    expect(magClubcijfersZien(baas)).toBe(true);
+    expect(magClubcijfersZien(trainer)).toBe(false);
+    expect(magClubcijfersZien(speler)).toBe(false);
+    expect(magClubcijfersZien(null)).toBe(false);
   });
 });
 

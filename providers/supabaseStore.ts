@@ -21,7 +21,8 @@ import type { StoreData } from './mockStore';
 import { defaultSettings } from '../lib/seed';
 import { aanmeldUitkomst, type AanmeldUitkomst } from '../lib/wachtwoord';
 import type {
-  Beurtenkaart, Booking, Court, Lesson, Memo, PlayerGoal, Settings, StudentProgress, User,
+  Beurtenkaart, Booking, Court, Lesson, Memo, OuderKind, PlayerGoal, Settings,
+  StudentProgress, User,
 } from '../lib/types';
 
 /** De tabelnaam in de databank bij elke verzameling in de app. */
@@ -34,6 +35,7 @@ const TABLES: Record<SyncTable, string> = {
   goals: 'player_goals',
   beurtenkaarten: 'beurtenkaarten',
   memos: 'memos',
+  relaties: 'ouder_kind',
 };
 
 type Row = Record<string, unknown>;
@@ -100,9 +102,36 @@ async function selectAllOptioneel<T>(table: string, drop: string[] = HOUSEKEEPIN
   return (data ?? []).map((row) => clean<T>(row as Row, drop));
 }
 
+/** Eén rij uit `coach_rates`. Geen `id`: de trainer ís de sleutel. */
+interface RateRow {
+  coach_id: string;
+  hourly_rate: number;
+}
+
+/**
+ * Het uurloon terug op de gebruiker plakken.
+ *
+ * In de databank woont het apart (zie `coach_rates` in supabase-schema.sql), want RLS kan
+ * geen enkele kolom afschermen. Voor de rest van de app is het gewoon een veld op `User`,
+ * en dat blijft zo: hier is de enige plek die van het verschil weet.
+ *
+ * Wat je niet mag zien, komt niet mee terug — dan blijft het veld leeg. Een collega ziet
+ * dus geen bedrag van nul maar geen bedrag, en dat is precies het verschil dat de schermen
+ * ook maken.
+ */
+function metTarief(users: User[], rates: RateRow[]): User[] {
+  const byId = new Map(rates.map((r) => [r.coach_id, r.hourly_rate]));
+  return users.map((u) => {
+    const rate = byId.get(u.id);
+    return rate === undefined ? u : { ...u, hourly_rate: rate };
+  });
+}
+
 /** Alles ophalen wat deze gebruiker mag zien. */
 export async function loadFromSupabase(): Promise<StoreData> {
-  const [users, courts, bookings, lessons, progress, goals, beurtenkaarten, memos] = await Promise.all([
+  const [
+    users, courts, bookings, lessons, progress, goals, beurtenkaarten, memos, relaties, rates,
+  ] = await Promise.all([
     selectAll<User>('users'),
     selectAll<Court>('courts'),
     selectAll<Booking>('bookings'),
@@ -113,6 +142,10 @@ export async function loadFromSupabase(): Promise<StoreData> {
     selectAll<Beurtenkaart>('beurtenkaarten', ['auth_id']),
     // `created_at` hoort hier wél bij de app: de uitwerklijst zet de oudste bovenaan.
     selectAllOptioneel<Memo>('memos', ['auth_id']),
+    // Deze twee kwamen later dan de rest van het schema; een club die de nieuwe SQL nog
+    // niet draaide kent ze niet, en dan mag de hele lading daar niet op stuklopen.
+    selectAllOptioneel<OuderKind>('ouder_kind', ['auth_id']),
+    selectAllOptioneel<RateRow>('coach_rates', ['auth_id', 'updated_at']),
   ]);
 
   const [settingsRow, catalogueRows] = await Promise.all([
@@ -125,7 +158,7 @@ export async function loadFromSupabase(): Promise<StoreData> {
   const stored = (settingsRow.data?.value ?? {}) as Partial<Settings>;
 
   return {
-    users,
+    users: metTarief(users, rates),
     courts,
     bookings,
     lessons,
@@ -133,6 +166,7 @@ export async function loadFromSupabase(): Promise<StoreData> {
     goals,
     beurtenkaarten,
     memos,
+    relaties,
     // De club heeft één rij instellingen; ontbrekende velden vallen terug op de standaard,
     // zodat een nieuw veld geen lege plek in een scherm oplevert.
     settings: { ...defaultSettings, ...stored },
@@ -149,6 +183,51 @@ export async function loadFromSupabase(): Promise<StoreData> {
  * mis, dan meldt de app de fout en klopt het scherm nog met wat de databank heeft, want de
  * volgende keer opslaan vertrekt van dezelfde vergelijking.
  */
+/** Dezelfde rij zonder het uurloon: dat gaat naar `coach_rates`. */
+function zonderTarief(row: Row): Row {
+  const { hourly_rate: _weg, ...rest } = row;
+  return rest;
+}
+
+/**
+ * De uurlonen wegschrijven — alleen die van trainers bij wie het bedrag écht veranderd is.
+ *
+ * Bewust langs de vórige toestand en niet langs de gewijzigde gebruikersrijen: werkt een
+ * trainer zijn telefoonnummer bij, dan staat hij wél in die lijst maar is zijn tarief niet
+ * veranderd. Zouden we het dan toch wegschrijven, dan liep het opslaan van zijn nummer stuk
+ * op `rates_write` — want schrijven mag alleen de beheerder, en dat is hij meestal niet.
+ *
+ * Een leeggemaakt tarief is een verwijderde rij en niet een rij met nul: nul is een
+ * ingevuld tarief ("deze trainer werkt gratis") en dat is iets anders dan "nog niet
+ * ingesteld" — de schermen zeggen dat verschil ook hardop.
+ */
+async function bewaarTarieven(before: User[], after: User[]): Promise<void> {
+  const was = new Map(before.map((u) => [u.id, u.hourly_rate]));
+  const veranderd = after.filter((u) => u.hourly_rate !== was.get(u.id));
+
+  const metBedrag = veranderd.filter((u) => u.hourly_rate !== undefined);
+  const leeggemaakt = veranderd.filter((u) => u.hourly_rate === undefined);
+
+  if (metBedrag.length > 0) {
+    const { error } = await supabase.from('coach_rates').upsert(
+      metBedrag.map((u) => ({
+        coach_id: u.id,
+        hourly_rate: u.hourly_rate,
+        updated_at: new Date().toISOString(),
+      })),
+    );
+    if (error) throw new Error(`coach_rates: ${error.message}`);
+  }
+
+  if (leeggemaakt.length > 0) {
+    const { error } = await supabase
+      .from('coach_rates')
+      .delete()
+      .in('coach_id', leeggemaakt.map((u) => u.id));
+    if (error) throw new Error(`coach_rates: ${error.message}`);
+  }
+}
+
 export async function saveToSupabase(
   previous: StoreData | null,
   next: StoreData,
@@ -156,10 +235,23 @@ export async function saveToSupabase(
   const change = diffStores(previous, next);
   if (change.empty) return;
 
+  // Het uurloon heeft een eigen tabel, dus een eigen vergelijking. Vóór de rest: gaat het
+  // mis, dan is er nog niets anders geschreven.
+  //
+  // Zonder vorige toestand slaan we het over. Er valt dan niets te vergelijken, en "dus
+  // alles schrijven" zou een gewone trainer bij zijn eerste bewerking op `rates_write`
+  // laten stuklopen — terwijl hij misschien alleen zijn telefoonnummer invulde.
+  if (previous !== null) await bewaarTarieven(previous.users, next.users);
+
   for (const { table, upsert, remove } of change.tables) {
     const name = TABLES[table];
     if (upsert.length > 0) {
-      const { error } = await supabase.from(name).upsert(upsert as unknown as Row[]);
+      // Het uurloon woont in een eigen tabel, dus het mag niet mee in de gebruikersrij —
+      // die kolom bestaat daar niet meer. Zie `bewaarTarieven` hieronder.
+      const rows = table === 'users'
+        ? (upsert as unknown as Row[]).map(zonderTarief)
+        : (upsert as unknown as Row[]);
+      const { error } = await supabase.from(name).upsert(rows);
       if (error) throw new Error(`${name}: ${error.message}`);
     }
     if (remove.length > 0) {

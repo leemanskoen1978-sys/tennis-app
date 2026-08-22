@@ -51,7 +51,16 @@ export interface User {
    * `is_admin()` in supabase-schema.sql.
    */
   is_admin?: boolean;
-  /** Coach only, display-only: revenue is computed from the court rate, not from this. */
+  /**
+   * Wat deze trainer per uur verdient. Alleen ter informatie: de omzet loopt op het
+   * uurtarief van de baan, niet hierop.
+   *
+   * In de databank staat dit NIET in de gebruikersrij maar in een eigen tabel
+   * (`coach_rates`), want RLS kan geen enkele kolom afschermen en de ledenlijst staat open
+   * voor iedereen die ingelogd is. De opslag plakt het bij het laden terug op de gebruiker,
+   * zodat de rest van de app er niets van merkt. Leeg betekent dus twee dingen die op
+   * hetzelfde neerkomen: niet ingevuld, óf niet aan jou.
+   */
   hourly_rate?: number;
   /** Speler: de betaalwijze die een nieuwe les standaard krijgt. */
   default_payment_method?: PaymentMethod;
@@ -339,4 +348,25 @@ export interface Beurtenkaart {
   remarks?: string;
   created_at: string; // ISO
   uses: BeurtenkaartUse[];
+}
+
+/**
+ * Welke ouder bij welk kind hoort.
+ *
+ * Een ouder vraagt de koppeling aan, een trainer beslist — dezelfde vorm als een
+ * lesaanvraag, en om dezelfde reden: zonder die stap kon iedereen die zich als ouder
+ * aanmeldt het dossier van elk kind van de club openen door de naam te kiezen.
+ *
+ * Een geweigerde aanvraag blijft staan in plaats van te verdwijnen, zodat de ouder te horen
+ * krijgt wat er met zijn vraag gebeurd is.
+ */
+export interface OuderKind {
+  id: string;
+  parent_id: string;
+  child_id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at?: string;
+  decided_at?: string;
+  /** De trainer die besliste. Leeg zolang er niets beslist is. */
+  decided_by?: string;
 }

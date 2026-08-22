@@ -45,6 +45,38 @@ export function magInElkeAgenda(user: User | null | undefined): boolean {
 }
 
 /**
+ * Mag deze kijker zien wat die trainer verdient — zijn uurtarief én wat het deze maand
+ * opleverde?
+ *
+ * Alleen jijzelf, of wie de club beheert. Een trainer is geen collega-boekhouder: wat een
+ * ander verdient hoort niet bij het werk dat hij doet, en het stond nota bene in het
+ * dossier van elke trainer, open voor iedereen die het opende.
+ *
+ * De databank bewaakt dit zelf (`rates_select` in supabase-schema.sql, op de tabel
+ * `coach_rates`). Deze functie zorgt alleen dat het scherm niets aanbiedt wat daarna toch
+ * leeg blijft.
+ */
+export function magLoonZien(
+  kijker: User | null | undefined,
+  trainer: User | null | undefined,
+): boolean {
+  if (!kijker || !trainer) return false;
+  return isAdmin(kijker) || kijker.id === trainer.id;
+}
+
+/**
+ * Mag deze gebruiker de cijfers van de hele club zien — de omzet, het loon van elke
+ * trainer, de lijst per speler?
+ *
+ * Alleen een beheerder. Een gewone trainer krijgt in het rapport zijn eigen lessen te zien;
+ * dat is wat "hoe draait het" voor hem betekent. Dit stond eerder als `role === 'coach'` in
+ * het rapport, en dat is precies de verwarring die `isCoach` hierboven beschrijft.
+ */
+export function magClubcijfersZien(user: User | null | undefined): boolean {
+  return isAdmin(user);
+}
+
+/**
  * Hoe een rol heet op het scherm.
  *
  * Vier bestanden hielden hier hun eigen tabelletje voor bij, en één daarvan (het

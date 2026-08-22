@@ -21,6 +21,7 @@ const store = (extra: Partial<SyncableStore> = {}): SyncableStore => ({
   goals: [],
   beurtenkaarten: [],
   memos: [],
+  relaties: [],
   settings,
   installed_catalogues: ['u9-kdt-v1'],
   ...extra,
