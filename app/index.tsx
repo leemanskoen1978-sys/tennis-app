@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
 import { ActionTile, TileGrid } from '../components/ui/ActionTile';
 import { Lesdag } from '../components/lesdag/Lesdag';
 import { useSimpleData, usePendingPaymentBookings } from '../providers/SimpleDataProvider';
@@ -69,7 +70,7 @@ export default function Hub() {
   const geweigerd = isCoach ? [] : recentGeweigerd(bookings, currentUser.id, new Date());
   // Wat je wegklikt blijft weg — op dit toestel. Zie lib/weggeklikt voor waarom dat niet in
   // de databank staat.
-  const { weggeklikt, klikWeg } = useWeggeklikt(geweigerd);
+  const { weggeklikt, klikWeg, klikAllesWeg } = useWeggeklikt(geweigerd);
   const teTonen = zonderWeggeklikt(geweigerd, weggeklikt);
 
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? t(one) : t(many)}`;
@@ -156,6 +157,16 @@ export default function Hub() {
           </View>
         </Card>
       ))}
+
+      {/* Bij meer dan één bericht: alles in één keer weg. Ze stuk voor stuk wegtikken is
+          werk dat niets oplevert — je hebt ze toch al gelezen. */}
+      {teTonen.length > 1 ? (
+        <Button
+          label={t('Geweigerde aanvragen wissen')}
+          variant="secondary"
+          onPress={() => klikAllesWeg(teTonen.map((les) => les.id))}
+        />
+      ) : null}
 
       {/* Een speler die nog moet afrekenen, ziet dat vóór de tegels — met het bedrag erbij.
           Staat er niets open, dan staat er ook niets: een kaart met "€ 0,00" is ruis. */}

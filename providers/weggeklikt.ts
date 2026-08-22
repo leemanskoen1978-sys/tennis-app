@@ -36,6 +36,7 @@ async function schrijf(ids: string[]): Promise<void> {
 export function useWeggeklikt(zichtbaar: Booking[]): {
   weggeklikt: string[];
   klikWeg: (id: string) => void;
+  klikAllesWeg: (ids: string[]) => void;
 } {
   const [weggeklikt, setWeggeklikt] = useState<string[]>([]);
 
@@ -65,5 +66,16 @@ export function useWeggeklikt(zichtbaar: Booking[]): {
     });
   }, []);
 
-  return { weggeklikt, klikWeg };
+  // In één keer opruimen. Als los ding en niet als lusje over `klikWeg`: dat zou per
+  // bericht een keer wegschrijven, en dan wint bij een trage opslag de laatste van de rest.
+  const klikAllesWeg = useCallback((ids: string[]) => {
+    setWeggeklikt((huidig) => {
+      const volgende = [...new Set([...huidig, ...ids])];
+      if (volgende.length === huidig.length) return huidig;
+      void schrijf(volgende);
+      return volgende;
+    });
+  }, []);
+
+  return { weggeklikt, klikWeg, klikAllesWeg };
 }

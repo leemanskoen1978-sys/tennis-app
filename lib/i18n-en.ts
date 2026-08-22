@@ -829,4 +829,5 @@ export const EN: Record<string, string> = {
   'Vraag gerust een ander uur aan.': 'Feel free to request another time.',
   'In de agenda van {trainer}': 'In {trainer}\u2019s calendar',
   'Bericht wegklikken': 'Dismiss message',
+  'Geweigerde aanvragen wissen': 'Clear declined requests',
 };
