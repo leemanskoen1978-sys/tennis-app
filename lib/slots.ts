@@ -21,11 +21,42 @@ export function generateSlots(endTime: string): string[] {
   return slots;
 }
 
-/** Booking is not allowed on the day itself or in the past. */
-export function isDateBookable(date: Date, now: Date = new Date()): boolean {
+/**
+ * Mag er op deze dag geboekt worden? Het verleden nooit, en vandaag alleen als
+ * `todayAllowed` het toestaat.
+ *
+ * Die uitzondering is er voor de trainer. Een speler die vanochtend nog snel een uur wil
+ * vastleggen, zet zijn trainer voor een voldongen feit; die staat misschien al ergens
+ * anders. Maar de trainer zelf weet wat er die dag nog kan — belt een leerling om half
+ * negen voor een uur om elf, dan moet hij dat gewoon kunnen inzetten. Vandaar dat de app
+ * dit niet voor iedereen dichtzet, maar per persoon.
+ */
+export function isDateBookable(
+  date: Date,
+  now: Date = new Date(),
+  todayAllowed = false,
+): boolean {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (d.getTime() === t.getTime()) return todayAllowed;
   return d.getTime() > t.getTime();
+}
+
+/**
+ * De uren die op deze dag nog kunnen. Op een andere dag dan vandaag zijn dat ze allemaal;
+ * vandaag vallen de uren weg die al begonnen zijn.
+ *
+ * Zonder dit zou de trainer die vandaag mag boeken om drie uur 's middags nog een les van
+ * negen uur 's ochtends kunnen inzetten — een les die al voorbij is voor hij bestaat.
+ */
+export function slotsStillToCome(slots: string[], day: Date, now: Date): string[] {
+  const zelfdeDag = day.getFullYear() === now.getFullYear()
+    && day.getMonth() === now.getMonth()
+    && day.getDate() === now.getDate();
+  if (!zelfdeDag) return slots;
+  const nu = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  // Tijden staan als 'HH:MM' met een voorloopnul, dus gewoon vergelijken klopt hier.
+  return slots.filter((slot) => slot > nu);
 }
 
 /**

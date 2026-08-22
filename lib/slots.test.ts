@@ -3,6 +3,7 @@ import {
   isDateBookable,
   worksOnDay,
   slotsForCoach,
+  slotsStillToCome,
   formatWorkingDays,
   DAY_LABELS,
 } from './slots';
@@ -107,5 +108,57 @@ describe('DAY_LABELS', () => {
     expect(DAY_LABELS[0]).toBe('Zo');
     expect(DAY_LABELS[1]).toBe('Ma');
     expect(DAY_LABELS[6]).toBe('Za');
+  });
+});
+
+describe('isDateBookable — vandaag', () => {
+  const nu = new Date(2026, 7, 22, 13, 0);
+  const vandaag = new Date(2026, 7, 22);
+  const morgen = new Date(2026, 7, 23);
+  const gisteren = new Date(2026, 7, 21);
+
+  it('houdt vandaag dicht voor wie de uitzondering niet heeft', () => {
+    expect(isDateBookable(vandaag, nu)).toBe(false);
+    expect(isDateBookable(vandaag, nu, false)).toBe(false);
+  });
+
+  it('laat vandaag toe voor wie hem wel heeft', () => {
+    expect(isDateBookable(vandaag, nu, true)).toBe(true);
+  });
+
+  it('houdt het verleden altijd dicht, ook met de uitzondering', () => {
+    expect(isDateBookable(gisteren, nu, true)).toBe(false);
+  });
+
+  it('laat morgen voor iedereen toe', () => {
+    expect(isDateBookable(morgen, nu)).toBe(true);
+    expect(isDateBookable(morgen, nu, true)).toBe(true);
+  });
+});
+
+describe('slotsStillToCome', () => {
+  const uren = ['09:00', '10:00', '11:00', '12:00', '13:00'];
+
+  it('laat op een andere dag alle uren staan', () => {
+    const morgen = new Date(2026, 7, 23);
+    const nu = new Date(2026, 7, 22, 13, 0);
+    expect(slotsStillToCome(uren, morgen, nu)).toEqual(uren);
+  });
+
+  it('gooit vandaag de uren weg die al begonnen zijn', () => {
+    const vandaag = new Date(2026, 7, 22);
+    const nu = new Date(2026, 7, 22, 10, 30);
+    expect(slotsStillToCome(uren, vandaag, nu)).toEqual(['11:00', '12:00', '13:00']);
+  });
+
+  it('rekent het uur dat nu net begint niet meer mee', () => {
+    const vandaag = new Date(2026, 7, 22);
+    const nu = new Date(2026, 7, 22, 11, 0);
+    expect(slotsStillToCome(uren, vandaag, nu)).toEqual(['12:00', '13:00']);
+  });
+
+  it('houdt niets over als de dag erop zit', () => {
+    const vandaag = new Date(2026, 7, 22);
+    expect(slotsStillToCome(uren, vandaag, new Date(2026, 7, 22, 23, 0))).toEqual([]);
   });
 });

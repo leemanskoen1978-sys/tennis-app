@@ -11,7 +11,8 @@ import {
 } from '../../constants/theme';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import {
-  generateSlots, isDateBookable, slotsForCoach, worksOnDay, formatWorkingDays, DAY_LABELS,
+  generateSlots, isDateBookable, slotsForCoach, slotsStillToCome, worksOnDay,
+  formatWorkingDays, DAY_LABELS,
 } from '../../lib/slots';
 import { Screen } from '../../components/ui/Screen';
 import { Button } from '../../components/ui/Button';
@@ -106,12 +107,19 @@ export default function HomeScreen(): JSX.Element {
     [coaches, bookingCoachId],
   );
 
-  const slots: string[] = useMemo(
-    () => (bookingCoach
+  // Alleen een trainer mag een les van vandaag inzetten. Een speler die vanochtend nog snel
+  // een uur vastlegt, zet zijn trainer voor een voldongen feit; de trainer weet zelf wat er
+  // die dag nog kan.
+  const magVandaag = isCoach;
+
+  const slots: string[] = useMemo(() => {
+    const alle = bookingCoach
       ? slotsForCoach(bookingCoach, settings.booking_end_time)
-      : generateSlots(settings.booking_end_time)),
-    [bookingCoach, settings.booking_end_time],
-  );
+      : generateSlots(settings.booking_end_time);
+    // Vandaag vallen de uren weg die al begonnen zijn: een les inzetten die voorbij is
+    // voordat hij bestaat, heeft geen betekenis.
+    return selectedDate ? slotsStillToCome(alle, selectedDate, new Date()) : alle;
+  }, [bookingCoach, settings.booking_end_time, selectedDate]);
 
   const dayIsWorked: boolean =
     selectedDate === null || bookingCoach === null || worksOnDay(bookingCoach, selectedDate);
@@ -206,7 +214,7 @@ export default function HomeScreen(): JSX.Element {
       >
         {days.map((day) => {
           const worked = bookingCoach === null || worksOnDay(bookingCoach, day);
-          const bookable = isDateBookable(day) && worked;
+          const bookable = isDateBookable(day, new Date(), magVandaag) && worked;
           const active =
             selectedDate !== null &&
             selectedDate.getFullYear() === day.getFullYear() &&
