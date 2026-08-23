@@ -10,3 +10,6 @@ expo-env.d.ts
 # Schermafbeeldingen van de Rork-versie, als voorbeeld gebruikt bij het profielscherm.
 # Ze horen bij het werk, niet in de geschiedenis van de code.
 PHOTO-*.jpg
+
+# Bevat een wachtwoord in platte tekst: nooit committen.
+leslie-login.sql
