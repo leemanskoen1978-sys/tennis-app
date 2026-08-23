@@ -71,6 +71,8 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   { name: 'coaches/lessons/index', title: t('Lesmateriaal') },
   { name: 'coaches/lessons/new', title: t('Nieuw lesmateriaal') },
   { name: 'coaches/lessons/databank', title: t('Databank') },
+  { name: 'coaches/lessons/keymoments/index', title: t('Keymoments') },
+  { name: 'coaches/lessons/keymoments/[slag]', title: t('Keymoments') },
   { name: 'coaches/drawing', title: t('Tekenveld') },
   { name: 'admin/index', title: t('Beheer') },
   { name: 'admin/payments', title: t('Betalingen') },

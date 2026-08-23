@@ -15,5 +15,9 @@ PHOTO-*.jpg
 leslie-login.sql
 koen-rooster.sql
 koen.xlsx
-~$koen.xlsx
 trainersgids.html
+
+# Het bronbestand van de keymoments: 25 MB aan foto's die verkleind in assets/ staan.
+# Word laat er ook een ~$-slotbestand naast liggen.
+KEYMOMENT 1.docx
+~$*

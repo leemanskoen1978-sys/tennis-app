@@ -1,4 +1,5 @@
-// Lesmateriaal: twee tegels voor een trainer — iets nieuws maken, of zoeken in wat er is.
+// Lesmateriaal: drie tegels voor een trainer — iets nieuws maken, zoeken in wat er is, of
+// de keymoments van een slag erbij halen.
 //
 // Een speler krijgt geen tegels: hij kan niets toevoegen, dus zou de keuze uit één tegel
 // alleen een extra tik zijn voor de lijst die hij komt halen. Hij ziet de databank meteen.
@@ -6,7 +7,7 @@
 import React from 'react';
 import { Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, Library } from 'lucide-react-native';
+import { Plus, Library, Camera } from 'lucide-react-native';
 
 import { Screen } from '../../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../../components/ui/ActionTile';
@@ -69,6 +70,12 @@ export default function LessonsScreen(): React.JSX.Element {
           }
           icon={Library}
           onPress={() => router.push('/coaches/lessons/databank')}
+        />
+        <ActionTile
+          title={t('Keymoments')}
+          subtitle={t('De ijkpunten van een slag in beeld')}
+          icon={Camera}
+          onPress={() => router.push('/coaches/lessons/keymoments')}
         />
       </TileGrid>
     </Screen>
