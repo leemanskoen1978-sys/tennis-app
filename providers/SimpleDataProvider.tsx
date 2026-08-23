@@ -1,13 +1,14 @@
 import React, {
   createContext, useContext, useEffect, useState, useCallback, useMemo, useRef,
 } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
 import { newId, type StoreData } from './mockStore';
 import { isCoach, magInElkeAgenda } from '../lib/rechten';
 import { backend, type AuthMode } from './backend';
 import { isHerstelHash, type AanmeldUitkomst } from '../lib/wachtwoord';
+import { magStilVerversen } from '../lib/verversen';
 import type { AuthGebeurtenis } from './supabaseStore';
 import { installCatalogue } from '../lib/catalogue';
 import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
@@ -224,12 +225,22 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   // laatste de eerste — met een verdwenen beurt tot gevolg.
   const storeRef = useRef<StoreData | null>(null);
 
+  // De drie dingen die `magStilVerversen` moet weten en die geen state hoeven te zijn: ze
+  // sturen geen enkel scherm aan, ze beantwoorden alleen de vraag "mag er nu opgehaald
+  // worden". Als state zouden ze bij elke schrijfactie de hele boom hertekenen.
+  const laatsteLading = useRef<number>(0);
+  const ladingBezig = useRef(false);
+  const schrijfBezig = useRef(false);
+
   // Persist then update state; surface any failure instead of swallowing it.
   const commit = useCallback(async (next: StoreData) => {
     const previous = storeRef.current;
     // De ref loopt vooruit op de state: het wegschrijven is async, en een volgende actie
     // moet meteen op deze wijziging verder kunnen bouwen.
     storeRef.current = next;
+    // Zolang dit loopt, haalt de stille verversing niets op: de databank heeft deze
+    // wijziging nog niet, en het antwoord zou de stand van ervoor terugzetten.
+    schrijfBezig.current = true;
     try {
       await backend.save(previous, next);
       setStore(next);
@@ -237,6 +248,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       storeRef.current = previous;
       setError(e instanceof Error ? e.message : 'Opslaan mislukt');
       throw e;
+    } finally {
+      schrijfBezig.current = false;
     }
   }, []);
 
@@ -288,6 +301,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
+    ladingBezig.current = true;
     try {
       const id = backend.authMode === 'wachtwoord'
         ? await backend.currentUserId()
@@ -296,12 +310,74 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       storeRef.current = data;
       setStore(data);
       setCurrentUserId(id);
+      laatsteLading.current = Date.now();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Kon data niet laden');
     } finally {
+      ladingBezig.current = false;
       setLoading(false);
     }
   }, [currentUserId, loadFor]);
+
+  /**
+   * Hetzelfde ophalen, maar zonder dat het scherm het merkt.
+   *
+   * Niet `refresh`: die zet `loading` aan, en daar hangt het laadscherm van de hele app
+   * aan. Elke keer dat je terugkomt op je tabblad de spinner over je scherm krijgen is
+   * erger dan de verouderde lijst die het moest oplossen.
+   *
+   * Een mislukte poging blijft ook stil. Ze is niet gevraagd, dus een rode regel zou gaan
+   * over iets waar de gebruiker op dat moment niets mee te maken heeft; het scherm dat er
+   * al stond, klopte een minuut geleden nog. De volgende keer terugkomen probeert opnieuw,
+   * en een echte actie geeft zijn fout gewoon zelf.
+   */
+  const stilVerversen = useCallback(async () => {
+    if (!magStilVerversen({
+      ingelogd: currentUserId !== null,
+      laadt: ladingBezig.current,
+      schrijft: schrijfBezig.current,
+      sindsLaatsteLading: Date.now() - laatsteLading.current,
+    })) return;
+
+    ladingBezig.current = true;
+    try {
+      const data = await loadFor(currentUserId);
+      storeRef.current = data;
+      setStore(data);
+      laatsteLading.current = Date.now();
+    } catch (e: unknown) {
+      console.warn('Stil verversen mislukt:', e);
+    } finally {
+      ladingBezig.current = false;
+    }
+  }, [currentUserId, loadFor]);
+
+  /**
+   * Terugkomen bij de app is het moment om opnieuw op te halen: het tabblad weer op de
+   * voorgrond, of de app op de telefoon weer geopend. `AppState` doet allebei — op web
+   * hangt hij aan de zichtbaarheid van het tabblad, op een toestel aan de app zelf — dus
+   * hier staat één regel voor beide.
+   */
+  useEffect(() => {
+    const terug = (): void => { void stilVerversen(); };
+    // `AppState` geeft op web niets terug als het document geen zichtbaarheid kent (een
+    // test zonder DOM); dan is er ook niets af te melden.
+    const sub = AppState.addEventListener('change', (stand) => {
+      if (stand === 'active') terug();
+    });
+
+    // Op web hangt `AppState` alleen aan de zichtbaarheid van het tabblad. Wie naar een
+    // ánder programma ging en terugkomt terwijl het tabblad al zichtbaar was, valt daar
+    // buiten — en dat is juist de langste afwezigheid. `focus` vangt dat op. Vuren ze
+    // allebei, dan houdt de pauze in `magStilVerversen` de tweede tegen.
+    const web = Platform.OS === 'web' && typeof window !== 'undefined';
+    if (web) window.addEventListener('focus', terug);
+
+    return () => {
+      sub?.remove();
+      if (web) window.removeEventListener('focus', terug);
+    };
+  }, [stilVerversen]);
 
   // Opstarten, en daarna bij elke wisseling van login opnieuw. Die twee zijn hetzelfde werk:
   // uitzoeken wie er is en dan ophalen wat hij mag zien. Bij de lokale opslag verandert de
@@ -310,6 +386,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     let stopped = false;
 
     const start = async (): Promise<void> => {
+      ladingBezig.current = true;
       try {
         const id = backend.authMode === 'wachtwoord'
           ? await backend.currentUserId()
@@ -327,9 +404,11 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
         // Een profiel dat niet (meer) bestaat, is geen geldige login.
         const known = id !== null && (data?.users.some((u) => u.id === id) ?? false);
         setCurrentUserId(known ? id : null);
+        laatsteLading.current = Date.now();
       } catch (e: unknown) {
         if (!stopped) setError(e instanceof Error ? e.message : 'Kon data niet laden');
       } finally {
+        ladingBezig.current = false;
         if (!stopped) setLoading(false);
       }
     };
