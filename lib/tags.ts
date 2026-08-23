@@ -83,8 +83,20 @@ function normalise(text: string): string {
     .trim()} `;
 }
 
+/**
+ * De velden waar de tags van een les uit komen. Bewust niet `Lesson` zelf: het nieuw-scherm
+ * moet dit al kunnen uitrekenen terwijl de les nog niet bestaat en dus geen `id` heeft.
+ */
+export interface TagbareLes {
+  title: string;
+  description?: string;
+  focus_points?: string[];
+  materials?: string[];
+  exercises?: TrainingExercise[];
+}
+
 /** Alle tekst van een les op één hoop — dat is waar de tags uit komen. */
-function lessonText(lesson: Lesson): string {
+function lessonText(lesson: TagbareLes): string {
   const parts: string[] = [lesson.title];
   if (lesson.description) parts.push(lesson.description);
   if (lesson.focus_points) parts.push(...lesson.focus_points);
@@ -107,6 +119,18 @@ export function tagsForText(text: string): string[] {
 }
 
 /**
+ * Wat de app zelf uit een les afleidt, zonder de tags die de trainer opgaf.
+ *
+ * Het nieuw-scherm toont dit live onder het tagveld, zodat een trainer niet gaat overtypen
+ * wat er al herkend is. Het moet dus langs dezelfde tekst kijken als `lessonTags` hieronder
+ * — inclusief de aandachtspunten, het materiaal en de oefeningen. Deed het dat niet, dan
+ * beloofde het scherm minder tags dan de les er straks blijkt te hebben.
+ */
+export function tagsForLesson(lesson: TagbareLes): string[] {
+  return tagsForText(lessonText(lesson));
+}
+
+/**
  * De tags van een les: eerst wat de trainer zelf opgaf, daarna wat er uit de tekst volgt.
  *
  * De eigen tags staan vooraan omdat ze het meest bewust gekozen zijn; dubbele worden
@@ -114,7 +138,7 @@ export function tagsForText(text: string): string[] {
  */
 export function lessonTags(lesson: Lesson): string[] {
   const manual = (lesson.tags ?? []).map((t) => t.trim()).filter((t) => t.length > 0);
-  const derived = tagsForText(lessonText(lesson));
+  const derived = tagsForLesson(lesson);
   const seen = new Set(manual.map((t) => t.toLowerCase()));
   return [...manual, ...derived.filter((t) => !seen.has(t.toLowerCase()))];
 }

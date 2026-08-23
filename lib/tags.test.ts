@@ -6,6 +6,7 @@ import {
   filterLessons,
   lessonTags,
   parseTagInput,
+  tagsForLesson,
   tagsForText,
 } from './tags';
 import { u9Trainings } from './trainings-u9';
@@ -137,5 +138,24 @@ describe('parseTagInput', () => {
 
   it('geeft een lege lijst bij lege invoer', () => {
     expect(parseTagInput('  ,  ')).toEqual([]);
+  });
+});
+
+describe('tagsForLesson', () => {
+  it('kijkt ook naar de aandachtspunten, het materiaal en de oefeningen', () => {
+    // Het nieuw-scherm toont dit live onder het tagveld. Keek het alleen naar titel en
+    // beschrijving, dan beloofde het minder tags dan de les er straks blijkt te hebben.
+    const uitOefening = tagsForLesson({
+      title: 'Naamloos',
+      exercises: [{
+        nr: '1', duration: '10', situation: 'Rally vanaf de opslag',
+        purpose: '', description: '', quality: '', organisation: '',
+      }],
+    });
+    expect(uitOefening.length).toBeGreaterThan(0);
+  });
+
+  it('vindt niets in een les zonder herkenbare woorden', () => {
+    expect(tagsForLesson({ title: 'Zzz', description: 'Qqq' })).toEqual([]);
   });
 });

@@ -1,9 +1,15 @@
 // Nieuw lesmateriaal toevoegen. Alleen het formulier: wat er al is, staat in de databank.
 //
+// Dezelfde velden als bij het bewerken van een bestaande les, en dat is het punt: duur,
+// aandachtspunten, materiaal en oefeningen stonden hier niet, dus moest een trainer eerst
+// opslaan en dan meteen weer bewerken om zijn lesplan kwijt te kunnen. Het invulblok komt
+// uit components/LessonTraining, precies zoals in het bewerkscherm — één formulier op twee
+// plekken, zodat een veld dat erbij komt niet op één van de twee vergeten wordt.
+//
 // De tags onderaan zijn geen verplicht invoerveld. De app leidt ze af uit titel,
-// beschrijving en oefeningen (lib/tags); het veld is er voor wat níet in de tekst staat —
-// "U9", de naam van een oefenreeks. Wat de app zelf al herkent, staat er live onder, zodat
-// een trainer niet gaat overtypen wat hij al geschreven heeft.
+// beschrijving, aandachtspunten, materiaal en oefeningen (lib/tags); het veld is er voor wat
+// níet in de tekst staat — "U9", de naam van een oefenreeks. Wat de app zelf al herkent,
+// staat er live onder, zodat een trainer niet gaat overtypen wat hij al geschreven heeft.
 
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
@@ -16,7 +22,10 @@ import { Button } from '../../../components/ui/Button';
 import { StudentCombobox } from '../../../components/ui/StudentCombobox';
 import { LessonAttachments } from '../../../components/LessonAttachments';
 import { TagPill } from '../../../components/LessonDatabase';
-import { parseTagInput, tagsForText } from '../../../lib/tags';
+import {
+  TrainingPlanEditor, planPatch, type TrainingPlan,
+} from '../../../components/LessonTraining';
+import { parseTagInput, tagsForLesson } from '../../../lib/tags';
 import { spacing, typography, webCursor } from '../../../constants/theme';
 import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
@@ -24,6 +33,9 @@ import { useSimpleData } from '../../../providers/SimpleDataProvider';
 import type { LessonAttachment, User } from '../../../lib/types';
 import { isCoach } from '../../../lib/rechten';
 import { playersOf } from '../../../lib/hub';
+
+/** Een leeg lesplan. Eén plek, zodat het beginnen en het opnieuw beginnen niet uiteenlopen. */
+const leegPlan = (): TrainingPlan => ({ focus_points: [], materials: [], exercises: [] });
 
 export default function NewLessonScreen(): React.JSX.Element {
   const t = useT();
@@ -36,14 +48,20 @@ export default function NewLessonScreen(): React.JSX.Element {
   const [tagInput, setTagInput] = useState<string>('');
   const [studentId, setStudentId] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<LessonAttachment[]>([]);
+  const [plan, setPlan] = useState<TrainingPlan>(leegPlan);
+  // Loopt op na elk opslaan, zodat het invulblok opnieuw opgebouwd wordt met lege velden.
+  // Zonder dit blijven de tekstvakjes van de vorige les staan — dezelfde truc als in het
+  // bewerkscherm.
+  const [ronde, setRonde] = useState<number>(0);
   const [saved, setSaved] = useState<string | null>(null);
 
   const students: User[] = playersOf(users);
 
-  // Wat de app zelf uit de tekst haalt, terwijl je typt.
+  // Wat de app zelf uit de tekst haalt, terwijl je typt — langs precies dezelfde velden als
+  // waar de les straks zijn tags uit krijgt.
   const auto = useMemo(
-    () => tagsForText(`${title} ${description}`),
-    [title, description],
+    () => tagsForLesson({ title, description, ...planPatch(plan) }),
+    [title, description, plan],
   );
   const own = useMemo(() => parseTagInput(tagInput), [tagInput]);
   const extra = auto.filter((t) => !own.some((o) => o.toLowerCase() === t.toLowerCase()));
@@ -66,6 +84,7 @@ export default function NewLessonScreen(): React.JSX.Element {
       url: url.trim().length > 0 ? url.trim() : undefined,
       description: description.trim().length > 0 ? description.trim() : undefined,
       tags: own.length > 0 ? own : undefined,
+      ...planPatch(plan),
       uploaded_by: currentUser.id,
       coach_id: currentUser.id,
       student_id: studentId ?? undefined,
@@ -79,6 +98,8 @@ export default function NewLessonScreen(): React.JSX.Element {
     setTagInput('');
     setStudentId(null);
     setAttachments([]);
+    setPlan(leegPlan());
+    setRonde((n) => n + 1);
   };
 
   return (
@@ -130,6 +151,10 @@ export default function NewLessonScreen(): React.JSX.Element {
           placeholderTextColor={tennisColors.textMuted}
           multiline
         />
+
+        {/* Het lesplan: duur, aandachtspunten, materiaal en de oefeningentabel. Hetzelfde
+            blok als in het bewerkscherm. */}
+        <TrainingPlanEditor key={ronde} value={plan} onChange={setPlan} />
 
         <Text style={styles.label}>{t('Tags (optioneel)')}</Text>
         <TextInput
