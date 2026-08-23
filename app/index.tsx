@@ -17,7 +17,7 @@ import { ActionTile, TileGrid } from '../components/ui/ActionTile';
 import { Lesdag } from '../components/lesdag/Lesdag';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { useKindkeuze, useOpenstaandeBetalingen } from '../providers/kindkeuze';
-import { KindKiezer } from '../components/ui/KindKiezer';
+import { SpelerKiezer } from '../components/ui/SpelerKiezer';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf, recentGeweigerd } from '../lib/inbox';
 import { isCoach, magInElkeAgenda } from '../lib/rechten';
@@ -143,13 +143,14 @@ export default function Hub() {
         </View>
       </View>
 
-      {/* Voor een ouder met meer dan één kind: waar gaat dit scherm over? Alles eronder
-          volgt die keuze. Zie providers/kindkeuze. */}
-      <KindKiezer />
+      {/* Voor een ouder: gaat dit scherm over hemzelf of over een van zijn kinderen? Alles
+          eronder volgt die keuze. Zie providers/kindkeuze. */}
+      <SpelerKiezer />
 
-      {/* Een ouder zonder goedgekeurd kind ziet een lege app, en dat is geen kapotte app
-          maar een onbeantwoorde vraag. Zeg dus wat er moet gebeuren. */}
-      {viaOuder && kinderen.length === 0 ? (
+      {/* Een ouder die niets ziet, kijkt naar een app die kapot lijkt terwijl er alleen een
+          vraag openstaat. Alleen als er écht niets is: geen kind gekoppeld én zelf geen
+          lessen — want een ouder die voor zichzelf boekt, heeft hier niets aan. */}
+      {viaOuder && kinderen.length === 0 && myBookings.length === 0 ? (
         <Card onPress={() => router.push('/ouder/kinderen')} accessibilityLabel={t('Kind toevoegen')}>
           <Text style={styles.leegTitel}>{t('Nog geen kind gekoppeld')}</Text>
           <Text style={styles.leegTekst}>

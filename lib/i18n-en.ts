@@ -871,4 +871,7 @@ export const EN: Record<string, string> = {
   'Mijn loon': 'My pay',
   'Alleen een beheerder kan een uurtarief zetten; ik laat het weg.':
     'Only an administrator can set an hourly rate; I am leaving it out.',
+  // De kiezer bovenaan bij een ouder: hijzelf of een van zijn kinderen. 'Voor wie' staat al
+  // hierboven, bij het boeken — dezelfde vraag, dus dezelfde vertaling.
+  'Ikzelf': 'Myself',
 };

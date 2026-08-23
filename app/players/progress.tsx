@@ -20,7 +20,7 @@ import type { TrainingType } from '../../lib/types';
 import { isCoach } from '../../lib/rechten';
 import { playersOf } from '../../lib/hub';
 import { useActieveSpeler } from '../../providers/kindkeuze';
-import { KindKiezer } from '../../components/ui/KindKiezer';
+import { SpelerKiezer } from '../../components/ui/SpelerKiezer';
 
 const RATINGS: readonly number[] = [1, 2, 3, 4, 5] as const;
 
@@ -80,7 +80,7 @@ export default function ProgressScreen(): React.JSX.Element {
   return (
     <Screen>
       {/* Voor een ouder met meer dan één kind: wiens voortgang lees je? */}
-      <KindKiezer />
+      <SpelerKiezer />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 

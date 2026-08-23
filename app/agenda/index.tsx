@@ -16,7 +16,7 @@ import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { useActieveSpeler, useOpenstaandeBetalingen } from '../../providers/kindkeuze';
-import { KindKiezer } from '../../components/ui/KindKiezer';
+import { SpelerKiezer } from '../../components/ui/SpelerKiezer';
 import { bookingsOnDay } from '../../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf } from '../../lib/inbox';
 import { isCoach, magInElkeAgenda } from '../../lib/rechten';
@@ -91,7 +91,7 @@ export default function BookingsScreen(): React.JSX.Element {
   return (
     <Screen>
       {/* Voor een ouder met meer dan één kind: over wie gaat deze agenda? */}
-      <KindKiezer />
+      <SpelerKiezer />
 
       {/* Eén kolom, op elk venster: Vandaag boven, de tegels daaronder. Twee kolomen naast
           elkaar leverde op een rustige dag links één regel met een zee van wit op, en
