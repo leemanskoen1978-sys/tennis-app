@@ -70,7 +70,9 @@ export const EN: Record<string, string> = {
   'Nog te komen': 'Upcoming',
   'Weekagenda': 'Week schedule',
   'Deze week': 'This week',
-  'Geen lessen.': 'No lessons.',
+  'Geen lessen deze week.': 'No lessons this week.',
+  'Les van {dag} {tijd} met {ander}, details openen':
+    'Lesson on {dag} {tijd} with {ander}, open details',
   // De eenheid staat los van het getal, zodat de komma van 12,5 uit de taal komt en de
   // "u" er niet aan vastgeplakt zit — zie formatUren in lib/week.
   '{uren} u': '{uren} h',

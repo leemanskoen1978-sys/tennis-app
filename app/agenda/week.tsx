@@ -3,14 +3,19 @@
 // hier níet wilt weten. Geannuleerde lessen staan er niet tussen: die kosten geen uur op de
 // baan, dus ze horen niet in een agenda die "effectief" heet.
 //
+// Het beeld is een kalender en geen lijst: zeven kolommen naast een uren-as, elke les een
+// blok waarvan de hoogte zijn duur is. Een lijst zegt wel hoeveel uur er staat, maar niet
+// hoe die uren liggen — en of je week vol is, zie je juist aan de gaten. Het raster zelf
+// staat in components/WeekRaster, het rekenwerk in lib/week; dit bestand kiest de week.
+//
 // Bladeren gaat per week, met dezelfde knoppen en dezelfde volgorde als de periodekiezer op
-// Historiek en Rapport. Het rekenwerk staat in lib/week; hier staat alleen opmaak.
+// Historiek en Rapport.
 
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
-import { LessonCards } from '../../components/LessonCards';
+import { WeekRaster } from '../../components/WeekRaster';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -20,9 +25,8 @@ import { useSchoneLei, useSimpleData } from '../../providers/SimpleDataProvider'
 import { useAgendaScope } from '../../providers/agendaScope';
 import { periodLabel, shiftPeriod, type Period } from '../../lib/period';
 import {
-  formatUren, isDezeWeek, weekAgenda, weekLessen, weekMinuten, weekPeriod,
+  formatUren, isDezeWeek, weekAgenda, weekLessen, weekMinuten, weekPeriod, weekRooster,
 } from '../../lib/week';
-import { formatDay } from '../../lib/datetime';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
@@ -41,6 +45,7 @@ export default function WeekScreen(): React.JSX.Element {
   // `bookings` is al afgebakend op wie mag kijken en op de gekozen trainer; hier komt
   // alleen de week er nog overheen.
   const dagen = useMemo(() => weekAgenda(bookings, week), [bookings, week]);
+  const rooster = useMemo(() => weekRooster(dagen), [dagen]);
   const minuten = weekMinuten(dagen);
   const lessen = weekLessen(dagen);
 
@@ -89,23 +94,14 @@ export default function WeekScreen(): React.JSX.Element {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {/* Alle zeven dagen, ook de lege: juist het gat op donderdag is iets wat je wilt zien
-          als je naar je week kijkt. */}
-      {dagen.map((d) => (
-        <View key={d.dag.toISOString()} style={styles.dag}>
-          <View style={styles.dagKop}>
-            <Text style={styles.dagNaam}>{formatDay(d.dag)}</Text>
-            <Text style={d.minuten === 0 ? styles.dagUrenLeeg : styles.dagUren}>
-              {formatUren(d.minuten)}
-            </Text>
-          </View>
-          {d.bookings.length === 0 ? (
-            <Text style={styles.leeg}>{t('Geen lessen.')}</Text>
-          ) : (
-            <LessonCards bookings={d.bookings} empty={t('Geen lessen.')} />
-          )}
-        </View>
-      ))}
+      {/* Het raster tekent alle zeven dagen, ook de lege: juist het gat op donderdag is
+          iets wat je wilt zien als je naar je week kijkt. */}
+      <WeekRaster rooster={rooster} now={now} />
+
+      {lessen === 0 ? (
+        <Text style={styles.leeg}>{t('Geen lessen deze week.')}</Text>
+      ) : null}
+
     </Screen>
   );
 }
@@ -121,15 +117,6 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   total: { ...typography.body, color: tennisColors.text, fontWeight: '600' },
   totalNote: { ...typography.label, color: tennisColors.textMuted, marginTop: spacing.xs },
-  dag: { gap: spacing.sm },
-  dagKop: {
-    flexDirection: 'row', alignItems: 'baseline',
-    justifyContent: 'space-between', gap: spacing.sm,
-  },
-  dagNaam: { ...typography.h3, color: tennisColors.text },
-  dagUren: { ...typography.body, color: tennisColors.text, fontWeight: '600' },
-  // Een lege dag zegt "0 u" in dezelfde vorm, maar vraagt geen aandacht.
-  dagUrenLeeg: { ...typography.body, color: tennisColors.textMuted },
-  leeg: { ...typography.label, color: tennisColors.textMuted },
+  leeg: { ...typography.body, color: tennisColors.textMuted, textAlign: 'center' },
   error: { color: tennisColors.danger, fontSize: 14 },
 });
