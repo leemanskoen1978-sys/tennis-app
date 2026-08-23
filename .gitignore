@@ -13,3 +13,7 @@ PHOTO-*.jpg
 
 # Bevat een wachtwoord in platte tekst: nooit committen.
 leslie-login.sql
+koen-rooster.sql
+koen.xlsx
+~$koen.xlsx
+trainersgids.html

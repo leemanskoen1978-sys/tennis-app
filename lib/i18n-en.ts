@@ -878,4 +878,17 @@ export const EN: Record<string, string> = {
   'Ouder is geen rol meer; ik zet deze persoon als speler. Zijn kinderen koppelt hij daarna zelf.':
     'Parent is no longer a role; I am adding this person as a player. '
     + 'They can link their children themselves afterwards.',
+  // De handleiding. Alleen de knoppen eromheen: de gids zelf staat in lib/handleiding en
+  // gaat door t() heen, dus wie de app in het Engels zet en de gids wil vertalen, vult die
+  // zinnen hier aan.
+  'Handleiding': 'Manual',
+  'Voor trainers en voor spelers': 'For coaches and for players',
+  'Voor trainers': 'For coaches',
+  'Voor spelers': 'For players',
+  'Kopieer als tekst': 'Copy as text',
+  'De hele gids staat op je klembord. Plak hem in een mail.':
+    'The whole guide is on your clipboard. Paste it into an email.',
+  'De gids is klaargezet om te delen.': 'The guide is ready to share.',
+  'Kopiëren lukte niet. Selecteer de tekst hieronder en kopieer hem zelf.':
+    'Copying failed. Select the text below and copy it yourself.',
 };

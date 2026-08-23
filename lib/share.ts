@@ -67,3 +67,30 @@ export async function shareXlsx(filename: string, bytes: Uint8Array): Promise<vo
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   }));
 }
+
+/**
+ * Tekst klaarzetten om ergens anders in te plakken — een mail, een bericht.
+ *
+ * Op web gaat hij naar het klembord: dat is één toets verder dan een bestand downloaden en
+ * daarna weer openen. Op een telefoon bestaat er geen klembord-API die overal werkt, dus
+ * daar gaat hij het deelmenu in — dan kies je zelf Mail, WhatsApp of Notities.
+ *
+ * Geeft terug wat er gebeurd is, zodat het scherm het juiste kan zeggen. Een knop die
+ * "Gekopieerd" meldt terwijl er een deelmenu opengaat, laat je zoeken naar iets dat op je
+ * klembord had moeten staan.
+ */
+export async function kopieerOfDeel(
+  titel: string,
+  tekst: string,
+): Promise<'klembord' | 'gedeeld'> {
+  const klembord = Platform.OS === 'web'
+    && typeof navigator !== 'undefined'
+    && navigator.clipboard !== undefined;
+
+  if (klembord) {
+    await navigator.clipboard.writeText(tekst);
+    return 'klembord';
+  }
+  await Share.share({ message: tekst, title: titel });
+  return 'gedeeld';
+}

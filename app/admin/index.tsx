@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
-  Upload, Users, type LucideIcon,
+  Upload, Users, BookOpen, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
@@ -70,6 +70,9 @@ export default function Admin() {
       label: t('Systeem'),
       tiles: [
         { key: 'set', title: t('Instellingen'), subtitle: t('Boekingstijden, thema en taal'), icon: SettingsIcon, onPress: () => router.push('/admin/settings') },
+        // Ook de gids voor spelers staat erin: "wat ziet mijn speler eigenlijk" is een vraag
+        // die je aan de baan krijgt, en dan wil je het kunnen laten zien.
+        { key: 'help', title: t('Handleiding'), subtitle: t('Voor trainers en voor spelers'), icon: BookOpen, onPress: () => router.push('/admin/handleiding') },
       ],
     },
   ];
