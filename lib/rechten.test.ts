@@ -1,5 +1,5 @@
 import {
-  isAdmin, isCoach, magClubcijfersZien, magInElkeAgenda, magLoonZien, rolLabel,
+  isAdmin, isCoach, magClubcijfersZien, magInElkeAgenda, magLoonZien, roleLabel, rolLabel,
 } from './rechten';
 import type { User } from './types';
 
@@ -90,5 +90,19 @@ describe('rolLabel', () => {
     expect(rolLabel(baas)).toBe('Trainer · beheerder');
     expect(rolLabel(trainer)).toBe('Trainer');
     expect(rolLabel(speler)).toBe('Speler');
+  });
+});
+
+describe('roleLabel', () => {
+  it('noemt de twee rollen bij naam', () => {
+    expect(roleLabel('player')).toBe('Speler');
+    expect(roleLabel('coach')).toBe('Trainer');
+  });
+
+  it('valt terug op Speler bij een rol die deze app niet kent', () => {
+    // De rol komt uit de databank. Draaide een club het schema nog niet opnieuw, dan staat
+    // daar mogelijk nog 'parent'. Een leeg label of een fout op iemands profiel is een
+    // slechter antwoord dan "Speler".
+    expect(roleLabel('parent' as unknown as 'player')).toBe('Speler');
   });
 });

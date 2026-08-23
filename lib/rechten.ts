@@ -91,9 +91,16 @@ export const ROLE_LABELS: Record<Role, string> = {
   coach: 'Trainer',
 };
 
-/** Diezelfde naam, vertaald. */
+/**
+ * Diezelfde naam, vertaald.
+ *
+ * De rol komt uit de databank en niet uit dit bestand, dus hij kan een waarde hebben die
+ * deze app niet (meer) kent — 'parent' bijvoorbeeld, zolang een club het schema nog niet
+ * opnieuw draaide. Dan is "Speler" het juiste antwoord: iedereen die geen trainer is, is
+ * een speler. Een lege naam of een fout op zijn profiel is dat zeker niet.
+ */
 export function roleLabel(role: Role): string {
-  return t(ROLE_LABELS[role]);
+  return t(ROLE_LABELS[role] ?? ROLE_LABELS.player);
 }
 
 /** Hoe iemand op zijn dossier heet. Het vinkje verbergt zijn rol niet, het komt erbij. */
