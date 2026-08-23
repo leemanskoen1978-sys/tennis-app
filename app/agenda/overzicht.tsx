@@ -1,11 +1,15 @@
 // Overzicht: de splitsing die je in je hoofd al maakt — wat is geweest, en wat komt er nog.
 // Het maandoverzicht gooide die twee op één hoop in één kalendermaand; daardoor stond een les
-// van volgende week tussen de afgehandelde betalingen van vorige week. Twee tegels, elk met
-// zijn eigen scherm en zijn eigen filters.
+// van volgende week tussen de afgehandelde betalingen van vorige week. Elke tegel heeft zijn
+// eigen scherm en zijn eigen filters.
+//
+// De derde tegel telt niet in lessen maar in uren. Dat is met opzet een ander soort getal:
+// hoe vol je week staat lees je niet af aan het aantal lessen, want een half uur en twee uur
+// tellen daarin even zwaar.
 
 import React, { useMemo } from 'react';
 import { useRouter } from 'expo-router';
-import { CalendarClock, History } from 'lucide-react-native';
+import { CalendarClock, CalendarRange, History } from 'lucide-react-native';
 
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
@@ -14,6 +18,7 @@ import { useAgendaScope } from '../../providers/agendaScope';
 import {
   bookingsInPeriod, currentPeriod, pastBookings, periodLabel, upcomingBookings,
 } from '../../lib/period';
+import { formatUren, weekAgenda, weekMinuten, weekPeriod } from '../../lib/week';
 import { useT } from '../../lib/i18n';
 
 export default function OverzichtScreen(): React.JSX.Element {
@@ -33,6 +38,13 @@ export default function OverzichtScreen(): React.JSX.Element {
     [scoped, thisMonth, now],
   );
   const upcomingCount = useMemo(() => upcomingBookings(scoped, now).length, [scoped, now]);
+
+  // Dezelfde berekening als het weekscherm zelf, uit dezelfde functie: de tegel mag geen
+  // ander aantal uren beloven dan wat je erachter te zien krijgt.
+  const weekMinutenNu = useMemo(
+    () => weekMinuten(weekAgenda(scoped, weekPeriod(now))),
+    [scoped, now],
+  );
 
 
   return (
@@ -54,6 +66,13 @@ export default function OverzichtScreen(): React.JSX.Element {
           subtitle={upcomingCount === 1 ? t('1 geplande les') : t('{n} geplande lessen', { n: upcomingCount })}
           icon={CalendarClock}
           onPress={() => router.push('/agenda/komend')}
+        />
+        <ActionTile
+          title={t('Weekagenda')}
+          // Uren en niet lessen: dat is wat deze tegel toevoegt aan de twee erboven.
+          subtitle={t('{uren} geboekt deze week', { uren: formatUren(weekMinutenNu) })}
+          icon={CalendarRange}
+          onPress={() => router.push('/agenda/week')}
         />
       </TileGrid>
     </Screen>

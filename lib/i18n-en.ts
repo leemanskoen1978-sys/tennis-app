@@ -68,6 +68,16 @@ export const EN: Record<string, string> = {
   'Overzicht': 'Overview',
   'Historiek': 'History',
   'Nog te komen': 'Upcoming',
+  'Weekagenda': 'Week schedule',
+  'Deze week': 'This week',
+  'Geen lessen.': 'No lessons.',
+  // De eenheid staat los van het getal, zodat de komma van 12,5 uit de taal komt en de
+  // "u" er niet aan vastgeplakt zit — zie formatUren in lib/week.
+  '{uren} u': '{uren} h',
+  '{uren} geboekt': '{uren} booked',
+  '{uren} geboekt deze week': '{uren} booked this week',
+  'Geannuleerde lessen tellen niet mee en staan er niet tussen.':
+    'Cancelled lessons are neither counted nor listed.',
   'Aankomend': 'Upcoming',
   'Geweest': 'Past',
   'Te doen': 'To do',

@@ -60,6 +60,7 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   { name: 'agenda/overzicht', title: t('Overzicht') },
   { name: 'agenda/historiek', title: t('Historiek') },
   { name: 'agenda/komend', title: t('Nog te komen') },
+  { name: 'agenda/week', title: t('Weekagenda') },
   { name: 'players/index', title: t('Spelers') },
   { name: 'players/[id]', title: t('Speler-dossier') },
   // Geen trainer bereikt dit scherm — een voortgangsverslag over een speler vult een
