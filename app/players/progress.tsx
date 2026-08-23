@@ -19,7 +19,7 @@ import { useT } from '../../lib/i18n';
 import type { TrainingType } from '../../lib/types';
 import { isCoach } from '../../lib/rechten';
 import { playersOf } from '../../lib/hub';
-import { useActieveSpeler } from '../../providers/kindkeuze';
+import { useKindkeuze } from '../../providers/kindkeuze';
 import { SpelerKiezer } from '../../components/ui/SpelerKiezer';
 
 const RATINGS: readonly number[] = [1, 2, 3, 4, 5] as const;
@@ -28,7 +28,10 @@ export default function ProgressScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const { currentUser, progress, users, addProgress, error } = useSimpleData();
-  const speler = useActieveSpeler();
+  const { speler, kijktNaarZichzelf } = useKindkeuze();
+  // Kijkt een trainer naar zijn eigen kind, dan leest hij mee als ouder: hij ziet de
+  // beoordelingen van dat kind en niet het invulformulier van een trainer.
+  const alsTrainer = isCoach(currentUser) && kijktNaarZichzelf;
   const { playerId } = useLocalSearchParams<{ playerId?: string }>();
 
   const prefill = users.find((u) => u.id === playerId && u.role !== 'coach')?.id ?? null;
@@ -69,7 +72,7 @@ export default function ProgressScreen(): React.JSX.Element {
   };
 
   // All recent activity, from every coach — with a label saying who wrote it.
-  const recent = isCoach(currentUser) ? [...progress].sort(byDateDesc).slice(0, 5) : [];
+  const recent = alsTrainer ? [...progress].sort(byDateDesc).slice(0, 5) : [];
 
   const reportEntries = (studentId: string) =>
     progress.filter((p) => p.student_id === studentId).sort(byDateDesc);
@@ -84,7 +87,7 @@ export default function ProgressScreen(): React.JSX.Element {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {isCoach(currentUser) && currentUser ? (
+      {alsTrainer && currentUser ? (
         <>
           <Card style={styles.formCard}>
             <Text style={styles.cardTitle}>{t('Nieuwe voortgang')}</Text>

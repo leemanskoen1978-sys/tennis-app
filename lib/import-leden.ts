@@ -27,9 +27,17 @@ const ROLNAMEN = new Map<string, Role>([
   ['leerling', 'player'],
   ['trainer', 'coach'],
   ['coach', 'coach'],
-  ['ouder', 'parent'],
-  ['parent', 'parent'],
+  // "Ouder" is geen rol meer (zie lib/types: Role). Een ledenlijst waarin het woord nog
+  // staat, wordt daarom niet afgekeurd — die persoon komt binnen als speler, en koppelt
+  // zijn kind daarna zelf. Hij krijgt er wel een waarschuwing over, want een rol die
+  // stilletjes iets anders wordt, is precies wat je niet wilt bij een import van honderden
+  // regels.
+  ['ouder', 'player'],
+  ['parent', 'player'],
 ]);
+
+/** De woorden waarmee iemand zich als ouder aandient; ze leveren allemaal een speler op. */
+const OUDERWOORDEN = new Set(['ouder', 'parent']);
 
 /**
  * De rol uit één cel. Leeg is een speler — dat is verreweg het vaakst waar, en een club die
@@ -374,10 +382,17 @@ export function planImport(
     if (role === null) {
       plan.fouten.push({
         regel,
-        reden: 'Onbekende rol "{rol}". Kies speler, trainer of ouder.',
+        reden: 'Onbekende rol "{rol}". Kies speler of trainer.',
         vars: { rol: rolCel },
       });
       continue;
+    }
+    if (OUDERWOORDEN.has(rolCel.trim().toLowerCase())) {
+      plan.waarschuwingen.push({
+        regel,
+        reden: 'Ouder is geen rol meer; ik zet deze persoon als speler. '
+          + 'Zijn kinderen koppelt hij daarna zelf.',
+      });
     }
 
     const tariefCel = cel(kolommen.uurtarief);

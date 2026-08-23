@@ -50,9 +50,9 @@ describe('countPlayers / countCoaches', () => {
     { id: '1', name: 'Koen', email: 'k@x', role: 'coach' },
     { id: '2', name: 'Sanne', email: 's@x', role: 'coach' },
     { id: '3', name: 'Mathis', email: 'm@x', role: 'player' },
-    { id: '4', name: 'Ouder', email: 'o@x', role: 'parent' },
+    { id: '4', name: 'Wim', email: 'o@x', role: 'player' },
   ];
-  it('counts coaches, and treats parents as non-coaches', () => {
+  it('telt de trainers, en iedereen die dat niet is als speler', () => {
     expect(countCoaches(users)).toBe(2);
     expect(countPlayers(users)).toBe(2);
   });

@@ -15,7 +15,7 @@ import { Card } from '../../components/ui/Card';
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { useActieveSpeler, useOpenstaandeBetalingen } from '../../providers/kindkeuze';
+import { useKindkeuze, useOpenstaandeBetalingen } from '../../providers/kindkeuze';
 import { SpelerKiezer } from '../../components/ui/SpelerKiezer';
 import { bookingsOnDay } from '../../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf } from '../../lib/inbox';
@@ -43,9 +43,10 @@ export default function BookingsScreen(): React.JSX.Element {
     useSimpleData();
   const pending = useOpenstaandeBetalingen();
   // Voor een ouder gaat dit scherm over het kind dat hij koos. Zie providers/kindkeuze.
-  const speler = useActieveSpeler();
+  const { speler, kijktNaarZichzelf } = useKindkeuze();
   const router = useRouter();
-  const coach = isCoach(currentUser);
+  // Een trainer die naar zijn kind kijkt, krijgt het beeld van een speler.
+  const coach = isCoach(currentUser) && kijktNaarZichzelf;
 
   // Vandaag in lokale tijd; `bookingsOnDay` bepaalt wat "deze dag" is, dezelfde regel
   // die de teller op het hoofdscherm gebruikt.

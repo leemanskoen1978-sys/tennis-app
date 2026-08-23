@@ -752,7 +752,7 @@ export const EN: Record<string, string> = {
     'Already in the club with a different role; change that in Admin.',
   'Dit adres staat eerder in het bestand, op regel {vorigeRegel}.':
     'This address appears earlier in the file, on row {vorigeRegel}.',
-  'Onbekende rol "{rol}". Kies speler, trainer of ouder.':
+  'Onbekende rol "{rol}". Kies speler of trainer.':
     'Unknown role "{rol}". Choose player, coach or parent.',
   'Het uurtarief "{tarief}" is geen geldig bedrag.':
     'The hourly rate "{tarief}" is not a valid amount.',
@@ -844,8 +844,8 @@ export const EN: Record<string, string> = {
   'Nog geen kind gekoppeld': 'No child linked yet',
   'Vraag je kind aan je profiel toe te voegen. Zodra een trainer het goedkeurt, zie je hier zijn lessen, zijn saldo en zijn voortgang.':
     'Ask for your child to be added to your profile. Once a coach approves it, you will see their lessons, their balance and their progress here.',
-  'Zoek je kind op naam. Een trainer keurt de koppeling goed; daarna zie je zijn lessen, zijn saldo en zijn voortgang.':
-    'Find your child by name. A coach approves the link; after that you will see their lessons, their balance and their progress.',
+  'Zoek je kind op naam. Een trainer keurt de koppeling goed; daarna kun je bovenaan wisselen tussen jezelf en je kind.':
+    'Find your child by name. A coach approves the link; after that you can switch between yourself and your child at the top.',
   'Typ de naam van je kind\u2026': "Type your child's name\u2026",
   'Gekoppeld': 'Linked',
   'Aangevraagd': 'Requested',
@@ -862,8 +862,8 @@ export const EN: Record<string, string> = {
   '{n} wacht op goedkeuring': '{n} awaiting approval',
   '{ouder} vraagt {kind} te mogen volgen.': '{ouder} is asking to follow {kind}.',
   'Gevraagd op {dag}': 'Requested on {dag}',
-  'Na goedkeuring ziet deze ouder de lessen, het saldo en de voortgang van dit kind.':
-    'Once approved, this parent sees this child\u2019s lessons, balance and progress.',
+  'Na goedkeuring ziet deze persoon de lessen, het saldo en de voortgang van dit kind.':
+    'Once approved, this person sees this child\u2019s lessons, balance and progress.',
   'Ouder: {naam}': 'Parent: {naam}',
   'kind': 'child',
   'kinderen': 'children',
@@ -874,4 +874,8 @@ export const EN: Record<string, string> = {
   // De kiezer bovenaan bij een ouder: hijzelf of een van zijn kinderen. 'Voor wie' staat al
   // hierboven, bij het boeken — dezelfde vraag, dus dezelfde vertaling.
   'Ikzelf': 'Myself',
+  // Ouder is geen rol meer; deze twee zinnen gaan over de aanvraag zelf.
+  'Ouder is geen rol meer; ik zet deze persoon als speler. Zijn kinderen koppelt hij daarna zelf.':
+    'Parent is no longer a role; I am adding this person as a player. '
+    + 'They can link their children themselves afterwards.',
 };

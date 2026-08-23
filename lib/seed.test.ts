@@ -6,13 +6,13 @@ import { coachesForPlayer } from './relations';
 import { pendingPaymentsFor, rateForGroup } from './payments';
 
 describe('seed data', () => {
-  it('has two coaches, two players and a parent', () => {
+  it('has two coaches and three players, one of them a father', () => {
     expect(seedUsers.map((u) => [u.name, u.role])).toEqual([
       ['Koen', 'coach'],
       ['Sanne', 'coach'],
       ['Mathis', 'player'],
       ['Test', 'player'],
-      ['Wim', 'parent'],
+      ['Wim', 'player'],
     ]);
   });
 

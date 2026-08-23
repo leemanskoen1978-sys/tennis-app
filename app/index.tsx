@@ -44,11 +44,13 @@ export default function Hub() {
   const t = useT();
   const router = useRouter();
   const { currentUser, users, bookings, courts } = useSimpleData();
-  const coach = isCoach(currentUser);
   const pending = useOpenstaandeBetalingen();
-  // Wiens gegevens dit scherm toont. Voor een ouder is dat zijn gekozen kind: hij heeft zelf
-  // geen lessen, geen saldo en geen voortgang. Zie providers/kindkeuze.
-  const { speler, viaOuder, kinderen } = useKindkeuze();
+  // Wiens gegevens dit scherm toont: jijzelf, of het kind dat je bovenaan koos. Zie
+  // providers/kindkeuze.
+  const { speler, kinderen, kijktNaarZichzelf } = useKindkeuze();
+  // Een trainer die naar zijn kind kijkt, wil het beeld van een speler: de agenda van zijn
+  // kind, niet zijn eigen lesrooster. Zodra hij terugwisselt naar Ikzelf is hij weer trainer.
+  const coach = isCoach(currentUser) && kijktNaarZichzelf;
 
   if (!currentUser) return <Redirect href="/login" />;
 
@@ -116,23 +118,19 @@ export default function Hub() {
     { key: 'prog', title: t('Voortgang'), subtitle: t('Jouw beoordelingen'), icon: TrendingUp, onPress: () => router.push('/players/progress') },
   ];
 
-  // Een ouder krijgt dezelfde vier tegels — ze gaan over het kind dat hij koos — plus de
-  // plek waar hij zijn kinderen beheert. Zonder die tegel is er geen weg naar het scherm
-  // dat de app voor hem laat werken.
-  const ouderTiles: Tile[] = [
-    ...playerTiles,
-    {
-      key: 'kinderen',
-      title: t('Mijn kinderen'),
-      subtitle: kinderen.length === 0
-        ? t('Nog geen kind gekoppeld')
-        : plural(kinderen.length, 'kind', 'kinderen'),
-      icon: Users,
-      onPress: () => router.push('/ouder/kinderen'),
-    },
-  ];
+  // Je kinderen aan de club. Voor iedereen, speler én trainer: ouderschap hangt niet aan een
+  // rol. De tegel staat er ook als je er nog geen hebt — anders is er geen weg naartoe.
+  const kinderenTile: Tile = {
+    key: 'kinderen',
+    title: t('Mijn kinderen'),
+    subtitle: kinderen.length === 0
+      ? t('Nog geen kind gekoppeld')
+      : plural(kinderen.length, 'kind', 'kinderen'),
+    icon: Users,
+    onPress: () => router.push('/kinderen'),
+  };
 
-  const tiles = coach ? coachTiles : viaOuder ? ouderTiles : playerTiles;
+  const tiles = [...(coach ? coachTiles : playerTiles), kinderenTile];
 
   return (
     <Screen>
@@ -143,22 +141,9 @@ export default function Hub() {
         </View>
       </View>
 
-      {/* Voor een ouder: gaat dit scherm over hemzelf of over een van zijn kinderen? Alles
+      {/* Heb je kinderen aan de club: gaat dit scherm over jou of over een van hen? Alles
           eronder volgt die keuze. Zie providers/kindkeuze. */}
       <SpelerKiezer />
-
-      {/* Een ouder die niets ziet, kijkt naar een app die kapot lijkt terwijl er alleen een
-          vraag openstaat. Alleen als er écht niets is: geen kind gekoppeld én zelf geen
-          lessen — want een ouder die voor zichzelf boekt, heeft hier niets aan. */}
-      {viaOuder && kinderen.length === 0 && myBookings.length === 0 ? (
-        <Card onPress={() => router.push('/ouder/kinderen')} accessibilityLabel={t('Kind toevoegen')}>
-          <Text style={styles.leegTitel}>{t('Nog geen kind gekoppeld')}</Text>
-          <Text style={styles.leegTekst}>
-            {t('Vraag je kind aan je profiel toe te voegen. Zodra een trainer het goedkeurt, '
-              + 'zie je hier zijn lessen, zijn saldo en zijn voortgang.')}
-          </Text>
-        </Card>
-      ) : null}
 
       {/* De lesdag hoort bovenaan: wat een trainer om vijf voor vijf wil zien, is de les
           van vijf uur — niet een keuzemenu. De tegels blijven eronder staan. */}
@@ -250,8 +235,6 @@ export default function Hub() {
 }
 
 const styles = StyleSheet.create({
-  leegTitel: { ...typography.h3, color: tennisColors.text },
-  leegTekst: { ...typography.body, fontSize: 14, color: tennisColors.textMuted, marginTop: spacing.xs },
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   headerText: { flex: 1, gap: spacing.xs },
   hi: { ...typography.h1, color: tennisColors.text },

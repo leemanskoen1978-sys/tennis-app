@@ -30,9 +30,8 @@ export function countPlayers(users: User[]): number {
 }
 
 /**
- * Iedereen die geen trainer is — spelers én ouders. Elf schermen schreven deze filter los
- * uit voor hun keuzelijst, en dat is elf plekken waar een nieuwe rol vergeten kan worden.
- * "Niet-trainer" en niet "rol is speler": een ouder hoort in die lijsten thuis.
+ * Iedereen die geen trainer is. Elf schermen schreven deze filter los uit voor hun
+ * keuzelijst, en dat is elf plekken waar een nieuwe rol vergeten kan worden.
  */
 export function playersOf(users: User[]): User[] {
   return users.filter((u) => u.role !== 'coach');

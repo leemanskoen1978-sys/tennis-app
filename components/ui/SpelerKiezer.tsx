@@ -1,11 +1,12 @@
-// De rij namen bovenaan het scherm van een ouder: hijzelf en zijn kinderen. Dezelfde chips
-// als de trainerfilter, want het is dezelfde handeling — aanwijzen waar dit scherm over gaat.
+// De rij namen bovenaan: jijzelf en je kinderen. Dezelfde chips als de trainerfilter, want
+// het is dezelfde handeling — aanwijzen waar dit scherm over gaat.
 //
-// Hijzelf staat erbij en niet alleen zijn kinderen: een ouder die zijn kind brengt en zelf
-// een uur boekt, is geen uitzondering. Zie providers/kindkeuze.
+// Jijzelf staat erbij en niet alleen je kinderen: de mama die haar dochter brengt en daarna
+// zelf een uur speelt, is de normale situatie. Zie providers/kindkeuze.
 //
-// De kiezer tekent zichzelf niet als er niets te kiezen valt — geen ouder, of een ouder
-// zonder kinderen. Eén knop die al ingedrukt staat, vraagt om een beslissing die er niet is.
+// De kiezer tekent zichzelf niet als er niets te kiezen valt — wie geen kinderen aan de club
+// heeft, ziet hem nooit. Eén knop die al ingedrukt staat, vraagt om een beslissing die er
+// niet is.
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -19,10 +20,10 @@ import { spacing, typography } from '../../constants/theme';
 
 export function SpelerKiezer(): React.JSX.Element | null {
   const t = useT();
-  const { keuzes, speler, viaOuder, kies } = useKindkeuze();
+  const { keuzes, speler, kies } = useKindkeuze();
   const { currentUser } = useSimpleData();
 
-  if (!viaOuder || keuzes.length < 2) return null;
+  if (keuzes.length < 2) return null;
 
   return (
     <View style={styles.wrap}>

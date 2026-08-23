@@ -19,20 +19,13 @@ import {
 } from '../lib/wachtwoord';
 
 /**
- * Role badge props: coach = primary, player = subtle, parent = court. De naam zelf komt uit
+ * Role badge props: coach = primary, player = subtle. De naam zelf komt uit
  * lib/rechten — dit scherm noemde een trainer eerder "Coach" terwijl de rest van de app hem
  * "Trainer" noemt, en dit is nu net het eerste scherm dat iemand ziet.
  */
 function roleBadgeProps(role: Role): { label: string; color?: string; subtle?: boolean } {
-  switch (role) {
-    case 'coach':
-      return { label: roleLabel('coach'), color: tennisColors.primaryFill };
-    case 'parent':
-      return { label: roleLabel('parent'), color: tennisColors.courtFill };
-    case 'player':
-    default:
-      return { label: roleLabel('player'), subtle: true };
-  }
+  if (role === 'coach') return { label: roleLabel('coach'), color: tennisColors.primaryFill };
+  return { label: roleLabel('player'), subtle: true };
 }
 
 /**

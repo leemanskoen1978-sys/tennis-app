@@ -17,16 +17,16 @@ import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
 import { spacing, typography } from '../../../constants/theme';
 import { isCoach } from '../../../lib/rechten';
-import { useActieveSpeler } from '../../../providers/kindkeuze';
+import { useKindkeuze } from '../../../providers/kindkeuze';
 
 export default function LessonsScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const { currentUser, lessons, error } = useSimpleData();
   // Een ouder ziet het lesmateriaal van zijn kind; hij heeft er zelf geen.
-  const speler = useActieveSpeler();
+  const { speler, kijktNaarZichzelf } = useKindkeuze();
 
-  if (!isCoach(currentUser)) {
+  if (!isCoach(currentUser) || !kijktNaarZichzelf) {
     return (
       <Screen>
         {error !== undefined && error !== null && error.length > 0 ? (

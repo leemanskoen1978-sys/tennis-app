@@ -20,6 +20,7 @@ import { PeriodPicker } from '../../components/ui/PeriodPicker';
 import { StatCard, StatCardRow } from '../../components/ui/StatCard';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { useAgendaScope } from '../../providers/agendaScope';
+import { useKindkeuze } from '../../providers/kindkeuze';
 import { formatEuro } from '../../lib/money';
 import { isCoach, magClubcijfersZien } from '../../lib/rechten';
 import {
@@ -46,11 +47,14 @@ const CHART_MONTHS = 6;
 export default function ReportsScreen(): React.JSX.Element {
   const t = useT();
   const { currentUser, users, courts } = useSimpleData();
-  const coach = isCoach(currentUser);
+  const { kijktNaarZichzelf } = useKindkeuze();
+  // Kijkt een trainer naar zijn kind, dan is dit het rapport van een speler: lessen en
+  // openstaande bedragen, geen omzet en geen loon.
+  const coach = isCoach(currentUser) && kijktNaarZichzelf;
   // Wie mag de cijfers van de hele club zien? Alleen de beheerder. Een gewone trainer krijgt
   // dit scherm over zijn eigen lessen — dat is wat "hoe draait het" voor hem betekent — en
   // ziet dus niet wat een collega binnenbrengt of verdient.
-  const clubcijfers = magClubcijfersZien(currentUser);
+  const clubcijfers = magClubcijfersZien(currentUser) && kijktNaarZichzelf;
   // Eerst wie wat mag zien, dan de trainerfilter — dezelfde hook als op Historiek en
   // Komend, zodat de regel "een speler ziet alleen zijn eigen lessen" nergens omzeild kan
   // worden. Zonder trainerbalk blijft de filter op zijn beginstand staan: bij een trainer is

@@ -90,12 +90,15 @@ export function geweigerdeAanvragen(
 }
 
 /**
- * Wie een ouder nog kan aanvragen: iedereen die geen trainer is, geen ouder, en waar hij
- * nog geen aanvraag over lopen heeft.
+ * Wie je nog als kind kunt aanvragen: de spelers van de club, zonder jezelf en zonder wie er
+ * al een aanvraag over loopt.
  *
- * Ouders staan er bewust niet bij. Een ouder aan een ouder hangen levert geen dossier op —
- * er zijn geen lessen om te tonen — en het is precies de vergissing die je maakt als je
- * jouw eigen naam in de lijst ziet staan.
+ * Jezelf staat er met opzet niet bij. Je eigen naam in die lijst is precies de vergissing
+ * die je maakt als je snel typt, en "ik ben mijn eigen kind" levert een koppeling op die
+ * nergens iets betekent.
+ *
+ * Trainers ook niet: een kind aan de club is een speler. Wil een trainer zijn eigen kind
+ * volgen, dan staat dat kind in de ledenlijst als speler — dát is degene die je kiest.
  */
 export function kandidaten(
   parentId: string | null | undefined,
@@ -108,7 +111,7 @@ export function kandidaten(
     relaties.filter((r) => r.parent_id === parentId).map((r) => r.child_id),
   );
   return users
-    .filter((u) => u.role === 'player' && !bezet.has(u.id))
+    .filter((u) => u.role === 'player' && u.id !== parentId && !bezet.has(u.id))
     .sort((a, b) => a.name.localeCompare(b.name, taal));
 }
 

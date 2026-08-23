@@ -82,11 +82,13 @@ export function magClubcijfersZien(user: User | null | undefined): boolean {
  * Vier bestanden hielden hier hun eigen tabelletje voor bij, en één daarvan (het
  * aanmeldscherm) noemde een trainer "Coach" terwijl de rest van de app hem "Trainer"
  * noemt. Dat is geen kleinigheid: het aanmeldscherm is het eerste wat iemand ziet.
+ *
+ * "Ouder" stond hier ook. Dat is geen rol meer: wie kinderen volgt, doet dat via
+ * `ouder_kind` en houdt zijn eigen rol. Zie lib/ouderkind.
  */
 export const ROLE_LABELS: Record<Role, string> = {
   player: 'Speler',
   coach: 'Trainer',
-  parent: 'Ouder',
 };
 
 /** Diezelfde naam, vertaald. */

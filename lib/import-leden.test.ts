@@ -9,7 +9,9 @@ describe('leesRol', () => {
   it('vertaalt de Nederlandse rolnamen naar wat de databank kent', () => {
     expect(leesRol('speler')).toBe('player');
     expect(leesRol('trainer')).toBe('coach');
-    expect(leesRol('ouder')).toBe('parent');
+    // "Ouder" is geen rol meer; het woord blijft leesbaar en levert een speler op, zodat
+    // een bestaande ledenlijst niet regel voor regel afgekeurd wordt.
+    expect(leesRol('ouder')).toBe('player');
   });
 
   it('trekt zich niets aan van hoofdletters en spaties', () => {
@@ -251,7 +253,7 @@ describe('planImport', () => {
     expect(plan.fouten).toEqual([
       {
         regel: 2,
-        reden: 'Onbekende rol "{rol}". Kies speler, trainer of ouder.',
+        reden: 'Onbekende rol "{rol}". Kies speler of trainer.',
         vars: { rol: 'hoofdtrainer' },
       },
       {

@@ -4,8 +4,8 @@ import {
 } from './ouderkind';
 import type { OuderKind, User } from './types';
 
-const wim: User = { id: 'wim', email: 'wim@x.be', name: 'Wim', role: 'parent' };
-const els: User = { id: 'els', email: 'els@x.be', name: 'Els', role: 'parent' };
+const wim: User = { id: 'wim', email: 'wim@x.be', name: 'Wim', role: 'player' };
+const els: User = { id: 'els', email: 'els@x.be', name: 'Els', role: 'player' };
 const nova: User = { id: 'nova', email: 'nova@x.be', name: 'Nova', role: 'player' };
 const arne: User = { id: 'arne', email: 'arne@x.be', name: 'Arne', role: 'player' };
 const koen: User = { id: 'koen', email: 'koen@x.be', name: 'Koen', role: 'coach' };
@@ -98,18 +98,18 @@ describe('geweigerdeAanvragen', () => {
 describe('kandidaten', () => {
   it('laat alleen spelers zien waar nog geen vraag over loopt', () => {
     const relaties = [rel({ child_id: 'nova', status: 'pending' })];
-    expect(kandidaten('wim', relaties, users).map((u) => u.name)).toEqual(['Arne']);
+    expect(kandidaten('wim', relaties, users).map((u) => u.name)).toEqual(['Arne', 'Els']);
   });
 
-  it('biedt geen trainers en geen ouders aan', () => {
-    expect(kandidaten('wim', [], users).map((u) => u.name)).toEqual(['Arne', 'Nova']);
+  it('biedt geen trainers aan, en jezelf ook niet', () => {
+    expect(kandidaten('wim', [], users).map((u) => u.name)).toEqual(['Arne', 'Els', 'Nova']);
   });
 
   it('biedt ook een geweigerd kind niet opnieuw aan', () => {
     // De vraag is gesteld en beantwoord. Opnieuw vragen loopt bovendien stuk op de
     // databank, die één rij per paar toestaat.
     const relaties = [rel({ child_id: 'nova', status: 'rejected' })];
-    expect(kandidaten('wim', relaties, users).map((u) => u.name)).toEqual(['Arne']);
+    expect(kandidaten('wim', relaties, users).map((u) => u.name)).toEqual(['Arne', 'Els']);
   });
 });
 

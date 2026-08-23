@@ -1,10 +1,15 @@
 // Wiens gegevens staan er op het scherm?
 //
-// Voor iedereen is dat "van mij". Voor een ouder is het een vraag: hij volgt zijn kinderen,
-// maar hij kan ook zelf op de baan staan — een ouder die zijn kind brengt en zelf een uur
-// boekt, is geen uitzondering. Hij kiest dus bovenaan wie het is: zichzelf of één van zijn
-// kinderen. Daarna gaat de hele app over die persoon: dezelfde agenda, hetzelfde saldo en
-// dezelfde voortgang die diegene van zichzelf ziet.
+// Voor de meeste mensen is dat "van mij". Wie kinderen aan de club heeft, krijgt er een
+// vraag bij: hij volgt zijn kind, maar hij staat vaak ook zelf op de baan — de mama die
+// haar dochter brengt en daarna zelf een uur speelt, is de normale situatie en niet de
+// uitzondering. Hij kiest dus bovenaan wie het is: zichzelf of één van zijn kinderen.
+// Daarna gaat de hele app over die persoon: dezelfde agenda, hetzelfde saldo en dezelfde
+// voortgang die diegene van zichzelf ziet.
+//
+// Dit hangt niet aan een rol. "Ouder" wás een rol, en dat werkte averechts: je moest kiezen
+// tussen je eigen lessen zien óf die van je kind. Ouderschap is een band tussen twee
+// mensen, geen soort account — dus een speler én een trainer kunnen hier kinderen hebben.
 //
 // Waarom één tegelijk en niet alles door elkaar: een agenda waarin de lessen van twee
 // kinderen door elkaar staan, laat je bij elke regel opnieuw uitzoeken over wie hij gaat.
@@ -33,15 +38,20 @@ interface Kindkeuze {
    * van zijn kinderen.
    */
   speler: User | null;
-  /** De goedgekeurde kinderen van deze ouder; leeg voor iedereen anders. */
+  /** De goedgekeurde kinderen van deze gebruiker; leeg als hij er geen heeft. */
   kinderen: User[];
   /**
-   * Waar de kiezer uit kiest: de ouder zelf vooraan, daarna zijn kinderen. Bij minder dan
-   * twee namen valt er niets te kiezen en tekent de kiezer zichzelf niet.
+   * Waar de kiezer uit kiest: hijzelf vooraan, daarna zijn kinderen. Bij minder dan twee
+   * namen valt er niets te kiezen en tekent de kiezer zichzelf niet.
    */
   keuzes: User[];
-  /** Kijkt er een ouder mee, of gaat dit scherm over de gebruiker zelf? */
-  viaOuder: boolean;
+  /**
+   * Gaat dit scherm over de gebruiker zelf, of kijkt hij naar een van zijn kinderen?
+   *
+   * Schermen die zich anders gedragen voor een trainer lezen dit mee: een trainer die naar
+   * zijn kind kijkt, wil het beeld van een speler zien en niet zijn eigen lesrooster.
+   */
+  kijktNaarZichzelf: boolean;
   kies: (spelerId: string) => void;
 }
 
@@ -53,19 +63,31 @@ export function KindkeuzeProvider({ children }: { children: React.ReactNode }) {
   const [gekozen, setGekozen] = useState<string | null>(null);
 
   const value = useMemo<Kindkeuze>(() => {
-    const viaOuder = currentUser?.role === 'parent';
-    if (!viaOuder || !currentUser) {
+    if (!currentUser) {
       return {
-        speler: currentUser, kinderen: [], keuzes: [], viaOuder: false, kies: setGekozen,
+        speler: null, kinderen: [], keuzes: [], kijktNaarZichzelf: true, kies: setGekozen,
       };
     }
 
     const kinderen = kinderenVoor(currentUser.id, relaties, users, taal);
+    if (kinderen.length === 0) {
+      return {
+        speler: currentUser, kinderen: [], keuzes: [], kijktNaarZichzelf: true,
+        kies: setGekozen,
+      };
+    }
+
     // Hijzelf vooraan: dat is de beginstand, en in de kiezer hoort de volgorde dezelfde te
     // zijn als de regel erachter.
     const keuzes = [currentUser, ...kinderen];
     const gekozenSpeler = keuzes.find((k) => k.id === gekozen) ?? currentUser;
-    return { speler: gekozenSpeler, kinderen, keuzes, viaOuder: true, kies: setGekozen };
+    return {
+      speler: gekozenSpeler,
+      kinderen,
+      keuzes,
+      kijktNaarZichzelf: gekozenSpeler.id === currentUser.id,
+      kies: setGekozen,
+    };
   }, [currentUser, relaties, users, taal, gekozen]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -83,7 +105,7 @@ export function useKindkeuze(): Kindkeuze {
  *
  * Gebruik dit overal waar tot nu toe `currentUser` stond en de vraag "van wie zijn deze
  * lessen" was. Gaat het over het account zelf (naam, e-mailadres, wachtwoord), dan blijft
- * `currentUser` de juiste: dat is de ouder, ook als hij naar zijn kind kijkt.
+ * `currentUser` de juiste: dat blijft de ingelogde persoon, ook als hij naar zijn kind kijkt.
  */
 export function useActieveSpeler(): User | null {
   return useKindkeuze().speler;

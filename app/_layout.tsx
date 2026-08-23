@@ -80,7 +80,7 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   { name: 'admin/goals', title: t('Doelen') },
   { name: 'admin/leden-import', title: t('Leden importeren') },
   { name: 'admin/ouders', title: t('Ouders en kinderen') },
-  { name: 'ouder/kinderen', title: t('Mijn kinderen') },
+  { name: 'kinderen', title: t('Mijn kinderen') },
   { name: 'admin/settings', title: t('Instellingen') },
 ];
 

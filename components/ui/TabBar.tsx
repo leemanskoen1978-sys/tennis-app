@@ -6,6 +6,7 @@ import {
   BookOpen, TrendingUp, type LucideIcon,
 } from 'lucide-react-native';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { useKindkeuze } from '../../providers/kindkeuze';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, minTapTarget, webCursor, contentMaxWidth } from '../../constants/theme';
 import { useT, type Translate } from '../../lib/i18n';
@@ -51,10 +52,14 @@ export function TabBar() {
   const segments = useSegments();
   const insets = useSafeAreaInsets();
   const { currentUser } = useSimpleData();
+  // Kijkt een trainer naar zijn eigen kind, dan hoort hij de tabs van een speler te zien:
+  // hij is op dat moment de ouder van iemand, niet de trainer van iedereen. Terugwisselen
+  // doet hij met de kiezer bovenaan het hoofdscherm. Zie providers/kindkeuze.
+  const { kijktNaarZichzelf } = useKindkeuze();
 
   if (!currentUser) return null;
 
-  const tabs = isCoach(currentUser) ? coachTabs(t) : playerTabs(t);
+  const tabs = isCoach(currentUser) && kijktNaarZichzelf ? coachTabs(t) : playerTabs(t);
   const active = segments[0] ?? '';
 
   return (

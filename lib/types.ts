@@ -1,6 +1,12 @@
 // Shared data model (spec §4).
 
-export type Role = 'player' | 'coach' | 'parent';
+/**
+ * Twee rollen, geen drie. "Ouder" was er ooit een, en dat werkte averechts: een ouder die
+ * zelf tennist moest kiezen tussen zijn eigen lessen zien óf die van zijn kind. Ouderschap
+ * is geen rol maar een band tussen twee mensen, en die staat in `OuderKind` hieronder —
+ * los van je rol, dus een speler én een trainer kunnen hun kind volgen.
+ */
+export type Role = 'player' | 'coach';
 export type BookingStatus =
   | 'pending'
   | 'confirmed'
@@ -353,9 +359,9 @@ export interface Beurtenkaart {
 /**
  * Welke ouder bij welk kind hoort.
  *
- * Een ouder vraagt de koppeling aan, een trainer beslist — dezelfde vorm als een
- * lesaanvraag, en om dezelfde reden: zonder die stap kon iedereen die zich als ouder
- * aanmeldt het dossier van elk kind van de club openen door de naam te kiezen.
+ * Wie een kind wil volgen vraagt het aan, een trainer beslist — dezelfde vorm als een
+ * lesaanvraag, en om dezelfde reden: zonder die stap kon iedereen het dossier van elk kind
+ * van de club openen door de naam te kiezen.
  *
  * Een geweigerde aanvraag blijft staan in plaats van te verdwijnen, zodat de ouder te horen
  * krijgt wat er met zijn vraag gebeurd is.

@@ -34,7 +34,6 @@ interface UserManagementProps {
 const ROLE_BADGE_COLORS: Record<Role, string> = {
   player: tennisColors.primaryFill,
   coach: tennisColors.primaryFill,
-  parent: tennisColors.courtFill,
 };
 
 /** Coach uses primary badge, parent uses court, player is subtle. */
@@ -149,7 +148,7 @@ export function UserManagement(props: UserManagementProps): JSX.Element {
       <View style={styles.form}>
         <Text style={styles.label}>{t('Rol')}</Text>
         <View style={styles.roleRow}>
-          {(['player', 'coach', 'parent'] as Role[]).map((r) => (
+          {(['player', 'coach'] as Role[]).map((r) => (
             <Chip
               key={r}
               label={roleLabel(r)}

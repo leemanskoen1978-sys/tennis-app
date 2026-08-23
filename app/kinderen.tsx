@@ -1,28 +1,29 @@
-// De kinderen van een ouder: wie er gekoppeld is, wat er nog op goedkeuring wacht, en waar
-// je er een aanvraagt.
+// Je kinderen aan de club: wie er gekoppeld is, wat er nog op goedkeuring wacht, en waar je
+// er een aanvraagt.
 //
-// Een ouder kan hier niemand aanvinken en klaar zijn. Hij vraagt, en een trainer beslist —
-// anders zou iedereen die zich als ouder aanmeldt het dossier van elk kind van de club
-// kunnen openen door de naam te kiezen. De databank denkt er hetzelfde over: zie
-// `ouder_kind_insert` in supabase-schema.sql.
+// Voor iedereen bereikbaar, speler én trainer. Ouderschap is geen rol maar een band tussen
+// twee mensen — wie zijn kind volgt, houdt gewoon zijn eigen agenda en zijn eigen lessen.
+//
+// Aanvinken en klaar is het niet: je vraagt, en een trainer beslist. Anders kon iedereen het
+// dossier van elk kind van de club openen door de naam te kiezen. De databank denkt er
+// hetzelfde over: zie `ouder_kind_insert` in supabase-schema.sql.
 
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Redirect } from 'expo-router';
 import { UserPlus, X } from 'lucide-react-native';
 
-import { Screen } from '../../components/ui/Screen';
-import { Card } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/Button';
-import { StudentCombobox } from '../../components/ui/StudentCombobox';
-import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { Screen } from '../components/ui/Screen';
+import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/ui/Button';
+import { StudentCombobox } from '../components/ui/StudentCombobox';
+import { useSimpleData } from '../providers/SimpleDataProvider';
 import {
   aanvraagLabel, geweigerdeAanvragen, kandidaten, kinderenVoor, eigenAanvragen,
-} from '../../lib/ouderkind';
-import { useT, useLanguage } from '../../lib/i18n';
-import { tennisColors } from '../../constants/tennis-colors';
-import { spacing, typography } from '../../constants/theme';
+} from '../lib/ouderkind';
+import { useT, useLanguage } from '../lib/i18n';
+import { tennisColors } from '../constants/tennis-colors';
+import { spacing, typography } from '../constants/theme';
 
 export default function KinderenScreen(): React.JSX.Element {
   const t = useT();
@@ -42,10 +43,6 @@ export default function KinderenScreen(): React.JSX.Element {
     [ouderId, relaties, users, lang],
   );
 
-  // Alleen een ouder heeft hier iets te zoeken. Een trainer beslist over deze aanvragen in
-  // Beheer, en een speler heeft geen kinderen aan de club.
-  if (currentUser && currentUser.role !== 'parent') return <Redirect href="/" />;
-
   const naam = (id: string) => users.find((u) => u.id === id)?.name ?? t('Onbekend');
 
   const vraagAan = async (): Promise<void> => {
@@ -59,8 +56,8 @@ export default function KinderenScreen(): React.JSX.Element {
       <Card>
         <Text style={styles.kop}>{t('Kind toevoegen')}</Text>
         <Text style={styles.uitleg}>
-          {t('Zoek je kind op naam. Een trainer keurt de koppeling goed; daarna zie je zijn '
-            + 'lessen, zijn saldo en zijn voortgang.')}
+          {t('Zoek je kind op naam. Een trainer keurt de koppeling goed; daarna kun je '
+            + 'bovenaan wisselen tussen jezelf en je kind.')}
         </Text>
         <StudentCombobox
           students={teKiezen}

@@ -1,9 +1,12 @@
 // Ouders en kinderen: wie er wacht op goedkeuring, en welke koppelingen er staan.
 //
-// Een koppeling geeft een ouder toegang tot het hele dossier van een kind — zijn lessen,
-// zijn saldo, zijn voortgang. Dat is geen formaliteit, en daarom beslist een trainer erover
-// in plaats van de ouder zelf. Kijk bij twijfel wie het is voor je goedkeurt: eenmaal
+// Een koppeling geeft iemand toegang tot het hele dossier van een kind — zijn lessen, zijn
+// saldo, zijn voortgang. Dat is geen formaliteit, en daarom beslist een trainer erover in
+// plaats van de aanvrager zelf. Kijk bij twijfel wie het is voor je goedkeurt: eenmaal
 // gekoppeld ziet hij alles.
+//
+// "Ouder" is geen rol: de aanvrager is een gewone speler of trainer die kinderen aan de
+// club heeft. Zie lib/ouderkind.
 
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -70,8 +73,8 @@ export default function OudersScreen(): React.JSX.Element {
             {/* Wat je goedkeurt, met zoveel woorden. Een knop "Goedkeuren" zonder deze regel
                 laat je denken dat het over één les gaat. */}
             <Text style={styles.meta}>
-              {t('Na goedkeuring ziet deze ouder de lessen, het saldo en de voortgang van '
-                + 'dit kind.')}
+              {t('Na goedkeuring ziet deze persoon de lessen, het saldo en de voortgang '
+                + 'van dit kind.')}
             </Text>
             <View style={styles.knoppen}>
               <Button

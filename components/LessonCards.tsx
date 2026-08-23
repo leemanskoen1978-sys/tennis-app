@@ -20,6 +20,7 @@ import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
 import { isCoach } from '../lib/rechten';
+import { useKindkeuze } from '../providers/kindkeuze';
 
 export function LessonCards({
   bookings,
@@ -31,6 +32,9 @@ export function LessonCards({
 }): React.JSX.Element {
   const t = useT();
   const { currentUser, users, courts, beurtenkaarten, clearError } = useSimpleData();
+  // Een trainer die naar zijn eigen kind kijkt, leest mee als ouder: hij ziet de les, maar
+  // niet de knoppen waarmee een trainer hem verzet of annuleert.
+  const { kijktNaarZichzelf } = useKindkeuze();
   const isWide = useIsWide();
   // Welke les zijn details laat zien; null = blad dicht.
   const [openBooking, setOpenBooking] = useState<Booking | null>(null);
@@ -95,7 +99,7 @@ export function LessonCards({
       <BookingDetailSheet
         booking={openBooking}
         visible={openBooking !== null}
-        canManage={isCoach(currentUser)}
+        canManage={isCoach(currentUser) && kijktNaarZichzelf}
         onClose={() => {
           clearError();
           setOpenBooking(null);

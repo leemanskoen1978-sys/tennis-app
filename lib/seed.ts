@@ -14,13 +14,14 @@ export const seedUsers: User[] = [
   { id: 'u-sanne', name: 'Sanne', email: 'sanne@example.com', role: 'coach', hourly_rate: 26 },
   { id: 'u-mathis', name: 'Mathis', email: 'mathis@example.com', role: 'player' },
   { id: 'u-test', name: 'Test', email: 'test@example.com', role: 'player' },
-  // Een ouder met twee kinderen, want met één kind is de kindkiezer onzichtbaar en is niet
-  // te proberen wat er gebeurt als je wisselt. Zie providers/kindkeuze.
-  { id: 'u-wim', name: 'Wim', email: 'wim@example.com', role: 'parent' },
+  // Een speler met twee kinderen aan de club. Twee en niet één, want met één kind zie je
+  // niet wat er gebeurt als je wisselt — en hij is speler en geen "ouder", want dat is geen
+  // rol meer: hij kan dus zelf boeken én zijn kinderen volgen. Zie providers/kindkeuze.
+  { id: 'u-wim', name: 'Wim', email: 'wim@example.com', role: 'player' },
 ];
 
 /**
- * De koppelingen ouder-kind van de demo: Wim hoort bij Mathis en bij Test.
+ * De koppelingen ouder-kind van de demo: Wim is de vader van Mathis en van Test.
  *
  * Allebei goedgekeurd, zodat de app meteen te proberen is. De aanvraagkant — een ouder die
  * vraagt en een trainer die beslist — zie je door in Beheer → Ouders en kinderen een

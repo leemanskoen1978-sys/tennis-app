@@ -31,7 +31,10 @@ create table if not exists users (
   auth_id uuid unique references auth.users(id) on delete set null,
   email text unique not null,
   name text not null,
-  role text not null check (role in ('player','coach','parent')),
+  -- Twee rollen. "Ouder" was er ooit een derde, en dat werkte averechts: een ouder die zelf
+  -- tennist moest kiezen tussen zijn eigen lessen zien óf die van zijn kind. Ouderschap is
+  -- geen rol maar een band tussen twee mensen, en die staat in `ouder_kind`.
+  role text not null check (role in ('player','coach')),
   phone text,
   bio text,
   preferred_court_id text,
@@ -240,6 +243,21 @@ alter table users add column if not exists is_admin boolean not null default fal
 -- 'cancelled'. Zonder dit onderscheid kan de speler niet te horen krijgen wat er met zijn
 -- vraag gebeurd is.
 alter table bookings add column if not exists rejected_at timestamptz;
+
+-- De rol 'parent' bestaat niet meer: wie kinderen volgt, doet dat via `ouder_kind` en houdt
+-- gewoon zijn eigen rol. Eerst iedereen omzetten, dan pas de regel aanscherpen — andersom
+-- weigert de databank de bestaande rijen.
+do $$
+begin
+  if exists (select 1 from users where role = 'parent') then
+    update users set role = 'player' where role = 'parent';
+  end if;
+end
+$$;
+
+alter table users drop constraint if exists users_role_check;
+alter table users add constraint users_role_check
+  check (role in ('player','coach'));
 
 -- Het uurloon verhuisde van `users` naar `coach_rates` (zie daar waarom). Eerst overzetten,
 -- dan pas weghalen — en allebei alleen als de oude kolom er nog is, zodat dit script ook op
