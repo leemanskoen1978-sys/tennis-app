@@ -1,4 +1,4 @@
-import { resolveSupabaseConfig } from './supabase-config';
+import { resolveSupabaseConfig, sessieSleutel } from './supabase-config';
 
 describe('resolveSupabaseConfig', () => {
   it('gebruikt de sleutels als ze er zijn', () => {
@@ -28,5 +28,20 @@ describe('resolveSupabaseConfig', () => {
     expect(resolveSupabaseConfig('   ', '  ').configured).toBe(false);
     expect(resolveSupabaseConfig('https://abc.supabase.co', '').configured).toBe(false);
     expect(resolveSupabaseConfig('', 'eyJhbGciOi').configured).toBe(false);
+  });
+});
+
+describe('sessieSleutel', () => {
+  it('leidt de sleutel af van de projectnaam in het adres', () => {
+    expect(sessieSleutel('https://abcdef.supabase.co')).toBe('sb-abcdef-auth-token');
+    expect(sessieSleutel('https://abcdef.supabase.co/')).toBe('sb-abcdef-auth-token');
+    expect(sessieSleutel('abcdef.supabase.co')).toBe('sb-abcdef-auth-token');
+  });
+
+  it('geeft niets terug als er geen project is', () => {
+    expect(sessieSleutel('')).toBeNull();
+    expect(sessieSleutel('   ')).toBeNull();
+    // Het plaatshouder-adres uit een app zonder sleutels: daar valt niets te wissen.
+    expect(sessieSleutel('https://placeholder.supabase.co')).toBeNull();
   });
 });

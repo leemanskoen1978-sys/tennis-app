@@ -35,3 +35,33 @@ export function resolveSupabaseConfig(
     configured,
   };
 }
+
+/**
+ * De sleutel waaronder Supabase de sessie van deze gebruiker bewaart.
+ *
+ * Supabase leidt hem af van de project-URL: `https://abcdef.supabase.co` wordt
+ * `sb-abcdef-auth-token`. Daarnaast zet hij er nog een paar naast met hetzelfde begin
+ * (`-code-verifier`, `-user`), dus wie de sessie echt wil wissen, moet op dat begin zoeken
+ * en niet op één sleutel.
+ *
+ * Waarom de app dat zou willen: `signOut()` van supabase-js laat de sessie STAAN als de
+ * oproep naar de server mislukt — geen netwerk, een tunnel, een blokkeerder. Je bent dan
+ * uitgelogd in het scherm maar niet in de opslag, en bij de volgende keer openen ben je
+ * gewoon weer binnen. Zie `wisBewaardeSessie` in providers/supabaseStore.
+ *
+ * Geeft `null` bij een adres waar geen projectnaam uit te halen valt; dan is er ook niets
+ * te wissen.
+ */
+export function sessieSleutel(url: string): string | null {
+  const schoon = (url ?? '').trim();
+  if (schoon.length === 0) return null;
+  // Geen `new URL`: die bestaat op een telefoon pas na de polyfill, en dit moet ook los
+  // van de app te testen zijn.
+  const zonderSchema = schoon.replace(/^https?:\/\//i, '');
+  const host = zonderSchema.split('/')[0] ?? '';
+  const naam = host.split('.')[0] ?? '';
+  if (naam.length === 0 || naam === PLACEHOLDER_URL.replace(/^https?:\/\//i, '').split('.')[0]) {
+    return null;
+  }
+  return `sb-${naam}-auth-token`;
+}

@@ -15,7 +15,9 @@
 // supabase-schema.sql — die regels staan daar en niet alleen in de schermen.
 
 import { Platform } from 'react-native';
-import { supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase, supabaseUrl } from '../lib/supabase';
+import { sessieSleutel } from '../lib/supabase-config';
 import { diffStores, type SyncTable } from '../lib/sync';
 import type { StoreData } from './mockStore';
 import { defaultSettings } from '../lib/seed';
@@ -332,9 +334,49 @@ export async function signUp(email: string, password: string, name: string): Pro
   return aanmeldUitkomst(data.session !== null, data.user?.identities?.length ?? 0);
 }
 
+/**
+ * De sessie uit de opslag van dit toestel halen, met de hand.
+ *
+ * Nodig omdat `signOut()` van supabase-js de sessie LAAT STAAN als de oproep naar de server
+ * mislukt: bij een netwerkfout keert hij terug met een foutmelding vóór hij iets wist. Het
+ * gevolg is de vervelendste stand die er is — uitgelogd in het scherm, nog ingelogd in de
+ * opslag. Bij de volgende keer openen ben je gewoon weer binnen, en het lijkt alsof
+ * uitloggen niet werkte.
+ *
+ * Op zoek naar het begin van de sleutel en niet naar één sleutel: Supabase zet er meerdere
+ * naast elkaar (`-code-verifier`, `-user`), en die horen allemaal weg.
+ *
+ * Wat hier misgaat, mag het uitloggen niet tegenhouden: dit is de opruiming ná een fout.
+ */
+async function wisBewaardeSessie(): Promise<void> {
+  const begin = sessieSleutel(supabaseUrl);
+  if (begin === null) return;
+
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage === 'undefined') return;
+      const weg = Object.keys(localStorage).filter((k) => k.startsWith(begin));
+      for (const k of weg) localStorage.removeItem(k);
+      return;
+    }
+    const alle = await AsyncStorage.getAllKeys();
+    const weg = alle.filter((k) => k.startsWith(begin));
+    if (weg.length > 0) await AsyncStorage.multiRemove(weg);
+  } catch (e: unknown) {
+    console.warn('Sessie niet kunnen wissen:', e);
+  }
+}
+
+/**
+ * Afmelden. Lukt het bij de server niet, dan wordt de sessie hier alsnog van dit toestel
+ * gehaald — anders sta je bij de volgende start weer binnen. De fout gaat wél door naar de
+ * aanroeper, want de sessie is dan nog niet ingetrokken op de server.
+ */
 export async function signOut(): Promise<void> {
   const { error } = await supabase.auth.signOut();
-  if (error) throw new Error(error.message);
+  if (!error) return;
+  await wisBewaardeSessie();
+  throw new Error(error.message);
 }
 
 /**

@@ -19,6 +19,12 @@ const config = resolveSupabaseConfig(
 /** Zijn de sleutels gezet? Zo niet, dan gebruikt de app zijn eigen opslag. */
 export const supabaseConfigured = config.configured;
 
+/**
+ * Het adres van het project. Nodig om te weten onder welke sleutel de sessie in de opslag
+ * staat — zie `wisBewaardeSessie` in providers/supabaseStore.
+ */
+export const supabaseUrl = config.url;
+
 export const supabase = createClient(config.url, config.anonKey, {
   auth: {
     // De sessie hoort de app te overleven: wie de app dichtdoet en morgen weer opent, is nog
