@@ -1,0 +1,3634 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//tennis-app//koen-lessen//NL
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Tennislessen Koen
+X-WR-TIMEZONE:Europe/Brussels
+BEGIN:VTIMEZONE
+TZID:Europe/Brussels
+X-LIC-LOCATION:Europe/Brussels
+BEGIN:DAYLIGHT
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+TZNAME:CEST
+DTSTART:19700329T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+TZNAME:CET
+DTSTART:19701025T030000
+RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:125b0c3dcb7b0180edd37f1ed11039441208e2ae@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260909T140000
+DTEND;TZID=Europe/Brussels:20260909T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:bb3b3f696db2409e07984993cc015654331644eb@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260909T150000
+DTEND;TZID=Europe/Brussels:20260909T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:9b116835b5f86925bd9448923bf5770234831023@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260909T160000
+DTEND;TZID=Europe/Brussels:20260909T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:f24a91209faf287a421069697e9b250388fe849b@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260909T170000
+DTEND;TZID=Europe/Brussels:20260909T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:e9cbe3beb8fb93770640ce65125dbf58302b0df1@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260909T180000
+DTEND;TZID=Europe/Brussels:20260909T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:54464eba97a6a8876cd46aa5baae9374e07e5949@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260911T160000
+DTEND;TZID=Europe/Brussels:20260911T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:1f657ab02b13771045447a4b101f898267e8f103@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260911T170000
+DTEND;TZID=Europe/Brussels:20260911T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:450c2f5034c756e30d02b89b8792eb56ab6a6412@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260911T180000
+DTEND;TZID=Europe/Brussels:20260911T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:4d1c6a3646d3f34a5a3cddcae9d3108983a23ef5@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260911T190000
+DTEND;TZID=Europe/Brussels:20260911T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:8b816778f95240d14b912ad87bb39f833aeca756@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260911T200000
+DTEND;TZID=Europe/Brussels:20260911T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:a29030b3b9c6a246b8066b4c4fdd1e0b8863f7f6@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260916T140000
+DTEND;TZID=Europe/Brussels:20260916T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:434e545cb191e1bc003c7c69d6952eaf7b917801@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260916T150000
+DTEND;TZID=Europe/Brussels:20260916T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:d545f83bfc5d4c135a5d2db67edebb6231839cd9@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260916T160000
+DTEND;TZID=Europe/Brussels:20260916T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:1161f5073aa5e9e4b0040ae69ce5f24a230b5736@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260916T170000
+DTEND;TZID=Europe/Brussels:20260916T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:0db0e0b848574904be8fc9e59e117c62cc228397@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260916T180000
+DTEND;TZID=Europe/Brussels:20260916T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:e8b083c30591bcdb7c18cf76e5ecd8a853dafb24@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260918T160000
+DTEND;TZID=Europe/Brussels:20260918T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:ddb826a6d7164e8dce2b031fd3bc4ee477a65be3@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260918T170000
+DTEND;TZID=Europe/Brussels:20260918T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:0470e66ab723746e262fffc55d3327705041cf6d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260918T180000
+DTEND;TZID=Europe/Brussels:20260918T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:32a5fe20d75094d703cca5c793061f9166da023f@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260918T190000
+DTEND;TZID=Europe/Brussels:20260918T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:02219ac0157aa34ac05e7ab97f00c148e9e5046d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260918T200000
+DTEND;TZID=Europe/Brussels:20260918T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:f846a27009d9019868fd86f15783569d4d6325dd@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260923T140000
+DTEND;TZID=Europe/Brussels:20260923T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:5def0a50c725def8c81c414a21e1295aa080c52b@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260923T150000
+DTEND;TZID=Europe/Brussels:20260923T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:4d0360592d164dd63b17f7213208daaffadf9bc8@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260923T160000
+DTEND;TZID=Europe/Brussels:20260923T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:0b36fec3e11cae0d85e716da81f2200f62d41ea3@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260923T170000
+DTEND;TZID=Europe/Brussels:20260923T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:77c795c757236985e586a5baccc8ffd4ed687b05@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260923T180000
+DTEND;TZID=Europe/Brussels:20260923T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:d938ca942fe78adf86e2ed2e7f573924303bf74c@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260925T160000
+DTEND;TZID=Europe/Brussels:20260925T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:2265b5adf6354cd1876003b5e51179816778062a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260925T170000
+DTEND;TZID=Europe/Brussels:20260925T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:881298b99d08678b8773561c49d26eff5a3de84e@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260925T180000
+DTEND;TZID=Europe/Brussels:20260925T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:ced4b47103570bd0c8117aaf75076a6cfa6414c4@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260925T190000
+DTEND;TZID=Europe/Brussels:20260925T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:16dfb417f64a18b8f13332037b04a8bd05c53fcb@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260925T200000
+DTEND;TZID=Europe/Brussels:20260925T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:852a3f2e273d8d74d189414aa9d2c2b99dbd1a72@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260930T140000
+DTEND;TZID=Europe/Brussels:20260930T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:033a6b8326693b6af5acadecb5349ed879c4a98d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260930T150000
+DTEND;TZID=Europe/Brussels:20260930T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:0a3066fb4cb102f15b5766cd9b434425d7346a6e@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260930T160000
+DTEND;TZID=Europe/Brussels:20260930T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:9b804ed0e55a03b46c760d1050901600ce747106@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260930T170000
+DTEND;TZID=Europe/Brussels:20260930T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:6be67a6ff621549745904267cdf15142a921131d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20260930T180000
+DTEND;TZID=Europe/Brussels:20260930T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:a54fdeb0caf0aaeec47bbc74ea1c7d977b060ef2@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261002T160000
+DTEND;TZID=Europe/Brussels:20261002T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:82c6dfac80e4839d285fff9e0ea84f4fe1675227@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261002T170000
+DTEND;TZID=Europe/Brussels:20261002T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:3d152c806aa418780edb213d698f2d2cde352447@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261002T180000
+DTEND;TZID=Europe/Brussels:20261002T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:a33a1679776f949c46b9ba6eddc1f8ffb6f8e0a5@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261002T190000
+DTEND;TZID=Europe/Brussels:20261002T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:5237ef3234326f177e19d06186d5ab6589433c53@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261002T200000
+DTEND;TZID=Europe/Brussels:20261002T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:1cff12bf7bbd7adb59deb0bfbb691fd5370f4c4e@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261007T140000
+DTEND;TZID=Europe/Brussels:20261007T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:c3c968d00bddf9f8a0398b2b6f5bc1595ec9c850@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261007T150000
+DTEND;TZID=Europe/Brussels:20261007T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:efb2387a05de74ac70afab4df8d59ae25040f76a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261007T160000
+DTEND;TZID=Europe/Brussels:20261007T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:41d140e6fa02715e619d6d418c3cd69979a5f4a1@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261007T170000
+DTEND;TZID=Europe/Brussels:20261007T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:58d943955ee279b04cdc5c7af56ebe9f1d6b394f@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261007T180000
+DTEND;TZID=Europe/Brussels:20261007T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:21257e1dceca99638b1f10c22e1e5e90f1b4c5c6@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261009T160000
+DTEND;TZID=Europe/Brussels:20261009T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:a1fa3e6e9441c1f83c5c470448dc45ae86bbbb71@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261009T170000
+DTEND;TZID=Europe/Brussels:20261009T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:4e06005fb25dab40a0bd2edb37591cbed64731d2@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261009T180000
+DTEND;TZID=Europe/Brussels:20261009T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:a48fa2d1a48aa3b71af9ab63331337c31dbe20ad@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261009T190000
+DTEND;TZID=Europe/Brussels:20261009T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:a7bf1ca23101eed0019c6fd0852b7b634753b676@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261009T200000
+DTEND;TZID=Europe/Brussels:20261009T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:6b36cdc5f7dcf65e2fd6c9dbaf5fec7bf5876691@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261014T140000
+DTEND;TZID=Europe/Brussels:20261014T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:9cbc3fd1cb1510ba823314127448d1a85afccc67@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261014T150000
+DTEND;TZID=Europe/Brussels:20261014T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:db3748378139a78d38dbed9747abc12130a37456@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261014T160000
+DTEND;TZID=Europe/Brussels:20261014T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:a74d833976a36d65c51cac8c971257ae9581fda5@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261014T170000
+DTEND;TZID=Europe/Brussels:20261014T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:8f9cf8cfc62784936407781fd603a25dc6f4e8ab@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261014T180000
+DTEND;TZID=Europe/Brussels:20261014T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:d72d4ed30116c89c9be09759a4d8c579e568e098@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261016T160000
+DTEND;TZID=Europe/Brussels:20261016T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:4e5ca2956948e3e860e7026dafbc8bbf26fd5e48@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261016T170000
+DTEND;TZID=Europe/Brussels:20261016T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:7af5798a186edb79f3917959f429cd0986ca2f87@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261016T180000
+DTEND;TZID=Europe/Brussels:20261016T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:a20be7f2d6729354d9a3587d7a0f6add343f3121@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261016T190000
+DTEND;TZID=Europe/Brussels:20261016T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:dfd70e876850605aa2ca4ad4984e9b5ca4a4946c@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261016T200000
+DTEND;TZID=Europe/Brussels:20261016T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:5526c62c0ecff3cb03f4f443425cd6dbf5e3bf40@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261021T140000
+DTEND;TZID=Europe/Brussels:20261021T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:915750f9c15a6f5608211966b671f4e748f21be4@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261021T150000
+DTEND;TZID=Europe/Brussels:20261021T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:a4373a6e51be8ab5c0d184a3d2df40ae622a6a21@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261021T160000
+DTEND;TZID=Europe/Brussels:20261021T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:7e28190892b517791c989e51cc1643deefdb45b7@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261021T170000
+DTEND;TZID=Europe/Brussels:20261021T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:791707c31f8b6e5c461710e4fb9744cf6efa98ea@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261021T180000
+DTEND;TZID=Europe/Brussels:20261021T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:b63bc14f8165b5f3293a97f8b0d43fe7ba390a56@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261023T160000
+DTEND;TZID=Europe/Brussels:20261023T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:e52a8c05ce540cf304d087244052ea284af5e2eb@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261023T170000
+DTEND;TZID=Europe/Brussels:20261023T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:fbc7657cd244fa54c522e080e88b272e8396a7ab@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261023T180000
+DTEND;TZID=Europe/Brussels:20261023T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:1f4e48bcf68271d4842f7a6563286cfaa0a30a12@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261023T190000
+DTEND;TZID=Europe/Brussels:20261023T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:3a00d705cd3180b2327d4d3099f1e27f825feca9@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261023T200000
+DTEND;TZID=Europe/Brussels:20261023T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:109ba9a0061d1a021a918593611acf7851680f51@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261028T140000
+DTEND;TZID=Europe/Brussels:20261028T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:32f67d3ae8776977b79886fbf13913218d31cd55@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261028T150000
+DTEND;TZID=Europe/Brussels:20261028T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:b23307a7391122396ea1baa08ba1e672eb057dac@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261028T160000
+DTEND;TZID=Europe/Brussels:20261028T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:f4b897c8db42c5547d227aa8d70b41897ba6f69c@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261028T170000
+DTEND;TZID=Europe/Brussels:20261028T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:1d80a1d1676281e84b08165decf02cee63a35fc5@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261028T180000
+DTEND;TZID=Europe/Brussels:20261028T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:b952099121f35968fe393374346b16a59429a9f8@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261030T160000
+DTEND;TZID=Europe/Brussels:20261030T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:b99c2e7ef87dfa4abd0a93a9516c7b7b3ac5dedb@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261030T170000
+DTEND;TZID=Europe/Brussels:20261030T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:84bed86d576b5309f9074a8d19363e25b858e9f5@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261030T180000
+DTEND;TZID=Europe/Brussels:20261030T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:eed1f33fba35a69bb91baf6460c69daa352ab816@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261030T190000
+DTEND;TZID=Europe/Brussels:20261030T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:de3cff2fc2089e77741579403839b10668797b1e@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261030T200000
+DTEND;TZID=Europe/Brussels:20261030T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:d2f45a8bf896d6abfcd95dea0de2fbce8908054c@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261113T160000
+DTEND;TZID=Europe/Brussels:20261113T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:776cefa41d3c95aec6d90beb3c34ae5703e79f80@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261113T170000
+DTEND;TZID=Europe/Brussels:20261113T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:735a49e00a1612abe412eaa40f4ac598e7d47e22@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261113T180000
+DTEND;TZID=Europe/Brussels:20261113T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:bc3dac445861ba54bea4ff833a3b2b44c5f41c6b@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261113T190000
+DTEND;TZID=Europe/Brussels:20261113T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:0327d376b34ce264dfa3cd6c6fd96ff4125bc6b5@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261113T200000
+DTEND;TZID=Europe/Brussels:20261113T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:6bce59a8a67e1a10fe21edabc96d100e2e5328a7@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261118T140000
+DTEND;TZID=Europe/Brussels:20261118T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:16829eff40a2e3292a34c1561f96ee3c4c483a92@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261118T150000
+DTEND;TZID=Europe/Brussels:20261118T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:8e4435c9ee131a8fd03f063dcc84567b1b7172d4@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261118T160000
+DTEND;TZID=Europe/Brussels:20261118T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:72f31fbef66582342f33562bb90a723be41fcf54@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261118T170000
+DTEND;TZID=Europe/Brussels:20261118T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:e3a8ae32aee40b23b5747217b4a3930c12dd0103@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261118T180000
+DTEND;TZID=Europe/Brussels:20261118T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:25861c5624235be1e4adfca62a02cdacece63a60@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261120T160000
+DTEND;TZID=Europe/Brussels:20261120T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:51026e4c45846250235419c20f6439ef44d31335@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261120T170000
+DTEND;TZID=Europe/Brussels:20261120T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:4ac91a5beb37ca8d5d90f72a498c6fb6f4c36662@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261120T180000
+DTEND;TZID=Europe/Brussels:20261120T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:58e441558081d2757690b494d81876499bb630a2@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261120T190000
+DTEND;TZID=Europe/Brussels:20261120T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:2b9a9ec6d3c5f0a36b07a78daf41f71ce35d9a0d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261120T200000
+DTEND;TZID=Europe/Brussels:20261120T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:eacda5fa47d7a227318ed37d68235fb840dfd9e9@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261125T140000
+DTEND;TZID=Europe/Brussels:20261125T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:9a4ce6fee19075ffc27d9ea866b5e4cecb3a591d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261125T150000
+DTEND;TZID=Europe/Brussels:20261125T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:aa161cd2a33bb859db7e26677afc04ede1849d80@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261125T160000
+DTEND;TZID=Europe/Brussels:20261125T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:faf1a4743320eb147827621af73fce5296e1e227@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261125T170000
+DTEND;TZID=Europe/Brussels:20261125T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:19edd2979b262bae14dc86ffde6144650cacc0d1@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261125T180000
+DTEND;TZID=Europe/Brussels:20261125T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:bbfcb88dccddda9571a922d576a62ddbc3d74bf8@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261127T160000
+DTEND;TZID=Europe/Brussels:20261127T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:40a6c00d93a21fb8aefdeaf10a3be28ef77a8199@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261127T170000
+DTEND;TZID=Europe/Brussels:20261127T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:c92a8bf1054b1aaed6906c9a2642c7c38ff3844d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261127T180000
+DTEND;TZID=Europe/Brussels:20261127T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:82136085b03352092a514cd319791386febdb162@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261127T190000
+DTEND;TZID=Europe/Brussels:20261127T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:062c3b689166df3b83c32923ebdd40f83015dd0a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261127T200000
+DTEND;TZID=Europe/Brussels:20261127T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:c09c36e091f346d953d4e93744a03d6aba7ae418@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261202T140000
+DTEND;TZID=Europe/Brussels:20261202T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:31ca1a5a9dbc828094ee21b59f8ee8a85f954063@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261202T150000
+DTEND;TZID=Europe/Brussels:20261202T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:dd66fb3fcc49dc952d2ae7dface59c29c81b3ed2@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261202T160000
+DTEND;TZID=Europe/Brussels:20261202T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:31eb3112c026a41ae2424448062a1edaaaffcaaf@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261202T170000
+DTEND;TZID=Europe/Brussels:20261202T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:db941e042e68b7264dbbf392a0132e94d0fc499f@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261202T180000
+DTEND;TZID=Europe/Brussels:20261202T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:e4d401f20f46b91ea5dcff01bb04dddea747ea5a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261204T160000
+DTEND;TZID=Europe/Brussels:20261204T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:afb4b755fe98719e43b7b8270e912d4b38d0a52a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261204T170000
+DTEND;TZID=Europe/Brussels:20261204T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:96705200f51730a489cc10e71cc632e2d4e0517d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261204T180000
+DTEND;TZID=Europe/Brussels:20261204T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:53e2fb7f6f004d33a48fb58eb16041a968846440@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261204T190000
+DTEND;TZID=Europe/Brussels:20261204T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:fb8b8ed96bf6c4e4319235584f51ac5d424c3fd0@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261204T200000
+DTEND;TZID=Europe/Brussels:20261204T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:638d9d3b1752ab46c8b11d4d1c4e921915a6b335@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261209T140000
+DTEND;TZID=Europe/Brussels:20261209T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:d66cfcbfa30e54130cb1d8a7b07325c82a90ebf0@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261209T150000
+DTEND;TZID=Europe/Brussels:20261209T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:dcdc7eb6039a6ba8abb7c8408d39aaa624ca2c19@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261209T160000
+DTEND;TZID=Europe/Brussels:20261209T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:6e407a047f9b431cb91cb2c6938faf6707e548d8@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261209T170000
+DTEND;TZID=Europe/Brussels:20261209T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:172e146cc2d21b9e2c32cd9a779a9f97d531f71d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261209T180000
+DTEND;TZID=Europe/Brussels:20261209T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:915e07d44fb9b7f089ff111cbbe3a07ea7b0b451@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261211T160000
+DTEND;TZID=Europe/Brussels:20261211T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:29feb5f8e1dcacf386e3dc25ecf1f34163ccacc4@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261211T170000
+DTEND;TZID=Europe/Brussels:20261211T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:4eeacc9f9bef1328226c4e135a18b9c1c2918af0@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261211T180000
+DTEND;TZID=Europe/Brussels:20261211T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:6bf880a8d9410587bbc9c26d8120bfa3e29bd0dc@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261211T190000
+DTEND;TZID=Europe/Brussels:20261211T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:07e820bb58ad48b657c3bcbbcdb1ee1f267517ff@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261211T200000
+DTEND;TZID=Europe/Brussels:20261211T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:5f7354f28be1a256c8971c46717b339a617a4d7e@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261216T140000
+DTEND;TZID=Europe/Brussels:20261216T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:e406b2f227bd7dcf0e88832a379aa8288da0d9f2@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261216T150000
+DTEND;TZID=Europe/Brussels:20261216T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:70849386bac359d68478337909c6b718b890cce0@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261216T160000
+DTEND;TZID=Europe/Brussels:20261216T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:03f93f62627abaed797c24a1b4b9040cfe326af9@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261216T170000
+DTEND;TZID=Europe/Brussels:20261216T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:76d5580bf1c0e18d5a5b053ac383c915838765a2@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261216T180000
+DTEND;TZID=Europe/Brussels:20261216T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:9c9d72e7d64afbe1fadcf8d5e18f1ff17eaee552@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261218T160000
+DTEND;TZID=Europe/Brussels:20261218T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:48ffeec3e7ee01f42c998af88dee22c5988396c8@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261218T170000
+DTEND;TZID=Europe/Brussels:20261218T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:6157e8090c9f0c93dca9a420ea6e6a78da2de200@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261218T180000
+DTEND;TZID=Europe/Brussels:20261218T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:46585d0432aa6f7757d3946729ed60fedccfdde2@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261218T190000
+DTEND;TZID=Europe/Brussels:20261218T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:81b1bced778ef5f380284a3ddc56695fc1931bf5@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20261218T200000
+DTEND;TZID=Europe/Brussels:20261218T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:0fd4ced11c71170fabb65a637082e6d790a75c11@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270106T140000
+DTEND;TZID=Europe/Brussels:20270106T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:b2acbf17dc48da3c02ee1be08ff3fa7b5670dddc@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270106T150000
+DTEND;TZID=Europe/Brussels:20270106T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:7d4073b5fcd0d08299ddf942bf8425839f095595@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270106T160000
+DTEND;TZID=Europe/Brussels:20270106T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:37467a72df667bd0e286845c4c67ed573f331663@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270106T170000
+DTEND;TZID=Europe/Brussels:20270106T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:358b0cd53fd7ebbbe41ea5ba0619a4b72f343ce9@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270106T180000
+DTEND;TZID=Europe/Brussels:20270106T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:c802948dd280bc7564a7d97cc43ca6dea3423634@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270108T160000
+DTEND;TZID=Europe/Brussels:20270108T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:d37006a75951095258e9188bc027f18b7732e927@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270108T170000
+DTEND;TZID=Europe/Brussels:20270108T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:b4fe9e5d0ea48aea3338eb012fefcc791712c1cc@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270108T180000
+DTEND;TZID=Europe/Brussels:20270108T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:14ac7d66a92a6a26c4443a13e145ddb753a5da03@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270108T190000
+DTEND;TZID=Europe/Brussels:20270108T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:62aeacc7410f0ce96b4d3770adaade9ec2ae7820@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270108T200000
+DTEND;TZID=Europe/Brussels:20270108T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:1bccd8f8ac2c6fd4946459419afd55c4994ec99a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270113T140000
+DTEND;TZID=Europe/Brussels:20270113T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:201300b46f5cd4099c128285e5fdf2aae0a45243@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270113T150000
+DTEND;TZID=Europe/Brussels:20270113T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:805a593270e652ac375b48ea41cb6a38820f7ca6@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270113T160000
+DTEND;TZID=Europe/Brussels:20270113T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:b96cf7619b4f38c4ea9ba21db3fdde78d5663376@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270113T170000
+DTEND;TZID=Europe/Brussels:20270113T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:2f46fb5ccbafb57a34d0891f5c749c0a2f73a25a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270113T180000
+DTEND;TZID=Europe/Brussels:20270113T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:45e5d9742a2ffa58991dfc0fbaeee68655304e92@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270127T140000
+DTEND;TZID=Europe/Brussels:20270127T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:c5523b0402e89ffc48f85b1aa40045e1523d1b94@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270127T150000
+DTEND;TZID=Europe/Brussels:20270127T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:44d0e265b23da4373d2aee030f0a186f39104875@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270127T160000
+DTEND;TZID=Europe/Brussels:20270127T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:f416e3662a58df761245214b28d147067bcb28d6@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270127T170000
+DTEND;TZID=Europe/Brussels:20270127T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:5f10545815509e156f2e7f4e1ae19d9f7df3bf2c@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270127T180000
+DTEND;TZID=Europe/Brussels:20270127T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:abf628321f53457965bb24424037776836ad0cf5@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270129T160000
+DTEND;TZID=Europe/Brussels:20270129T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:ed7ef30c02c29774b9a1adf5cb90590800546937@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270129T170000
+DTEND;TZID=Europe/Brussels:20270129T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:0424eece5875a3673fecfc52b8493b081706c2e6@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270129T180000
+DTEND;TZID=Europe/Brussels:20270129T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:81ec058a6a34ccb323acefc1a837cdba8d3b71bf@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270129T190000
+DTEND;TZID=Europe/Brussels:20270129T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:7a65d09424d2b94a49c9ba7ca2c7a4fdfdb0db68@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270129T200000
+DTEND;TZID=Europe/Brussels:20270129T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:8833dcb8c058056ad77d2ad21f60ab1728719afc@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270203T140000
+DTEND;TZID=Europe/Brussels:20270203T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:946c094abaf6321fc88e94d3f9923f8fa84212c4@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270203T150000
+DTEND;TZID=Europe/Brussels:20270203T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:9d444e94cd9eb072269124e0a762896620d87c21@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270203T160000
+DTEND;TZID=Europe/Brussels:20270203T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:aedee58873eaf3c387875a18ab69dceb5668af20@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270203T170000
+DTEND;TZID=Europe/Brussels:20270203T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:36a252b254f6b1f0139ae030a9fd0f38e0911b75@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270203T180000
+DTEND;TZID=Europe/Brussels:20270203T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:912b4ad478efc43821753e5eebf90d18c71df992@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270205T160000
+DTEND;TZID=Europe/Brussels:20270205T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:fe876805c4070b866a1b9813ee1de30b2c5625ba@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270205T170000
+DTEND;TZID=Europe/Brussels:20270205T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:263106b73084f72cb2517b573ee4c217d1e14dd5@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270205T180000
+DTEND;TZID=Europe/Brussels:20270205T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:b9c2a11f5dca0b396107330422975aa6f56c2c30@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270205T190000
+DTEND;TZID=Europe/Brussels:20270205T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:65ddd5bc7203f8522aa13d9f4c4c2516e1bc11a4@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270205T200000
+DTEND;TZID=Europe/Brussels:20270205T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:0236e8d4c31faed99ecb86fd96cab0616e35186c@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270217T140000
+DTEND;TZID=Europe/Brussels:20270217T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:348167cecd238f5b09689be9c964f091eb4ba881@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270217T150000
+DTEND;TZID=Europe/Brussels:20270217T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:de26158a4196f687f2a1622132e1e0b7c35bc365@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270217T160000
+DTEND;TZID=Europe/Brussels:20270217T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:c08cf3cc05243a55436638e92adf95a007ca7439@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270217T170000
+DTEND;TZID=Europe/Brussels:20270217T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:3af1d7d456bed1f89544e0bab49511a4163f80ac@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270217T180000
+DTEND;TZID=Europe/Brussels:20270217T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:a17bf0fba3a25e95d68d7678cf1f5021e68ebe0e@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270219T160000
+DTEND;TZID=Europe/Brussels:20270219T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:306849458343c388de6d57f9c6134ad43d1e9185@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270219T170000
+DTEND;TZID=Europe/Brussels:20270219T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:eacd35ddd9096131c5588bce98e2f653c3c67393@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270219T180000
+DTEND;TZID=Europe/Brussels:20270219T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:aa2f8a7f3ff22ca27c89e0839d076db280d53a2d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270219T190000
+DTEND;TZID=Europe/Brussels:20270219T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:666e0b074ed9dd87ebecbd36dc3c676da2002391@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270219T200000
+DTEND;TZID=Europe/Brussels:20270219T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:0c64f3a44c31b09c33b5e0034888fd210111bcc9@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270224T140000
+DTEND;TZID=Europe/Brussels:20270224T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:0836270712806d40238331e8a04de2c5bf268e75@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270224T150000
+DTEND;TZID=Europe/Brussels:20270224T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:c8610a4733f804e27cb5198c722c58cc6fbb6fdf@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270224T160000
+DTEND;TZID=Europe/Brussels:20270224T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:b6fa08a97af377a6ffbb6c88879cf0a0f2d75614@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270224T170000
+DTEND;TZID=Europe/Brussels:20270224T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:85fe300f4db037ffcb3bfe1de6426f9f680b3606@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270224T180000
+DTEND;TZID=Europe/Brussels:20270224T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:e53d223b029c45a00fc82394455ec6a0e94c8c61@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270226T160000
+DTEND;TZID=Europe/Brussels:20270226T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:c5f55557cad268d0c7eeb4ba6c684f4b74cb0d83@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270226T170000
+DTEND;TZID=Europe/Brussels:20270226T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:01f0e337a8e0435219d32b943b78c0f49cb3d4d1@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270226T180000
+DTEND;TZID=Europe/Brussels:20270226T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:f4573d37fdc3d4207c1455bcec84c2ecab6494e4@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270226T190000
+DTEND;TZID=Europe/Brussels:20270226T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:9f6bc711cea9c76b75a750e39fc95d6ea52b4489@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270226T200000
+DTEND;TZID=Europe/Brussels:20270226T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:f4c3eac80a50d7a54893813c202c9a3a780d4b5e@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270303T140000
+DTEND;TZID=Europe/Brussels:20270303T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:814498629004384e22fd053201faae212879c714@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270303T150000
+DTEND;TZID=Europe/Brussels:20270303T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:b14420f34be81fe1bc04fcc23830264a61d3ac2a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270303T160000
+DTEND;TZID=Europe/Brussels:20270303T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:c0f310c6b3e2918073958b5d7e614bc2e2b874c3@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270303T170000
+DTEND;TZID=Europe/Brussels:20270303T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:81118ec6c1e23f44c7ac172a48a96ca741680dfc@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270303T180000
+DTEND;TZID=Europe/Brussels:20270303T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:53460888f9a3320c52c5692e12ac41c3dc402b3d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270305T160000
+DTEND;TZID=Europe/Brussels:20270305T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:592f9dd506d1433f86a1b9af7aac04f1aad73a14@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270305T170000
+DTEND;TZID=Europe/Brussels:20270305T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:d934a357f0898bfa420b0c0810e2f81425be3fff@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270305T180000
+DTEND;TZID=Europe/Brussels:20270305T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:54afb35825c167426d0036333ddcbeca5e5132ad@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270305T190000
+DTEND;TZID=Europe/Brussels:20270305T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:457b61713896e12ba36d0a2f72c8aed3cd645f53@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270305T200000
+DTEND;TZID=Europe/Brussels:20270305T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:8ceb537f67e8f5cd6d5d9b7b8882c36feae0a38b@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270310T140000
+DTEND;TZID=Europe/Brussels:20270310T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:587770c350f7e67fc618537a099980c0540ec720@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270310T150000
+DTEND;TZID=Europe/Brussels:20270310T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:4e8dc198259d4356c2e6a5340cb40f931d392b9d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270310T160000
+DTEND;TZID=Europe/Brussels:20270310T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:2caaadb0a290ac8387085c0eb002f0928b1ed143@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270310T170000
+DTEND;TZID=Europe/Brussels:20270310T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:2592c69dd0561ce23ece4beea9c93d6521ff06fb@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270310T180000
+DTEND;TZID=Europe/Brussels:20270310T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:e1895897fa339be5b84a8e847870709ace76acc3@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270312T160000
+DTEND;TZID=Europe/Brussels:20270312T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:effaf7c1a1ab10791dabf7f8053d1449448e527f@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270312T170000
+DTEND;TZID=Europe/Brussels:20270312T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:ff188c48262d333287916aedaa4a62ece59cc1cc@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270312T180000
+DTEND;TZID=Europe/Brussels:20270312T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:9d971536ea2e1fcddc208575ee2cf8764608da6b@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270312T190000
+DTEND;TZID=Europe/Brussels:20270312T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:06499da1c73baeaa3f900bcfa432d602cad54f2f@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270312T200000
+DTEND;TZID=Europe/Brussels:20270312T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:1e806bcba3a1c15eca2f9598089098e58f165527@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270317T140000
+DTEND;TZID=Europe/Brussels:20270317T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:92b6d0fe4d99242b96d9dd6cf07f58a6b08cece8@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270317T150000
+DTEND;TZID=Europe/Brussels:20270317T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:903d0faa5708d8f16d52a5955a4687ae86656bf9@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270317T160000
+DTEND;TZID=Europe/Brussels:20270317T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:c4bb255e797c7b61816d214ee3c50b9678797680@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270317T170000
+DTEND;TZID=Europe/Brussels:20270317T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:fb3dafa259ea03749a521401a97be51b3c4648fb@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270317T180000
+DTEND;TZID=Europe/Brussels:20270317T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:7c1e23c0fd9dd29c621f1125d8c828884e666da4@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270319T160000
+DTEND;TZID=Europe/Brussels:20270319T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:57028bd662bd513ead1b3ad74441836e4c1f0fdf@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270319T170000
+DTEND;TZID=Europe/Brussels:20270319T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:186c01c8d895a482adf1574e482eecbf35f8be5a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270319T180000
+DTEND;TZID=Europe/Brussels:20270319T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:8ea5ed878c8d55789ea724a8eb88f0ff0cd48ecf@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270319T190000
+DTEND;TZID=Europe/Brussels:20270319T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:b28081661579c0a728387a404a2e01796e174dec@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270319T200000
+DTEND;TZID=Europe/Brussels:20270319T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:c7e6e67929ca873ae3d6ebcd4f471c9c52844948@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270324T140000
+DTEND;TZID=Europe/Brussels:20270324T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:e22f18e083771a84377b195b38f3cc657476b922@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270324T150000
+DTEND;TZID=Europe/Brussels:20270324T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:37ef7213c3c2192af41fcec22e64dd0ecb93209e@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270324T160000
+DTEND;TZID=Europe/Brussels:20270324T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:603c7c8ddee490151c265a687a0df23c33cd9ab8@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270324T170000
+DTEND;TZID=Europe/Brussels:20270324T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:5d8ae32a628ac8e9d12d8bb4273fb1ca7e7546f7@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270324T180000
+DTEND;TZID=Europe/Brussels:20270324T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:b07db8233c5d64151f47ce85edd105795b00fae7@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270326T160000
+DTEND;TZID=Europe/Brussels:20270326T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:910e01bcfa4f2b8bbe027ffeae27c1eb122532b7@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270326T170000
+DTEND;TZID=Europe/Brussels:20270326T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:3f2a8f5802289929229f1100569a4a3599f40e5c@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270326T180000
+DTEND;TZID=Europe/Brussels:20270326T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:0f434cbd64a6cc372621d41594d807cba8921aae@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270326T190000
+DTEND;TZID=Europe/Brussels:20270326T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:6026787a23e9ac85fce8d52ce3facdac3e447120@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270326T200000
+DTEND;TZID=Europe/Brussels:20270326T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:fac42a610192c80c63905ed8e2093ba6f23ff9c9@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270414T140000
+DTEND;TZID=Europe/Brussels:20270414T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:deeb401c0ed5fd47b2c316e7f5cb25414838539f@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270414T150000
+DTEND;TZID=Europe/Brussels:20270414T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:cf0fcef6ae54c162b28e0dc4be750aed96979308@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270414T160000
+DTEND;TZID=Europe/Brussels:20270414T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:d61bff58504546a11f31fc6e1a55f1268a3c0a1e@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270414T170000
+DTEND;TZID=Europe/Brussels:20270414T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:9332cfe7a123cc4186d8b66edcf972322fe25ae9@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270414T180000
+DTEND;TZID=Europe/Brussels:20270414T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:9538637781a346f7225cefb6d9834f62721bf417@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270416T160000
+DTEND;TZID=Europe/Brussels:20270416T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:ac23248ae4d56cdffeca0098da6feb434247485c@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270416T170000
+DTEND;TZID=Europe/Brussels:20270416T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:60bc4b58f914fa658f36f12a63778dfca1210486@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270416T180000
+DTEND;TZID=Europe/Brussels:20270416T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:dd9b25b8b16abf949f7d485d73debc261649ab47@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270416T190000
+DTEND;TZID=Europe/Brussels:20270416T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:ce192ed2874e3ea19d90170f5f6378f9668ca33c@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270416T200000
+DTEND;TZID=Europe/Brussels:20270416T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:e5605d91105855e843ba2bf26633bbcefcdf9372@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270421T140000
+DTEND;TZID=Europe/Brussels:20270421T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:44a42f629dd3a6cbeeb9412f3fbbe5536d3e34a3@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270421T150000
+DTEND;TZID=Europe/Brussels:20270421T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:b90788de3c5ea4c961ef2fa64397cd9fdc1d8d12@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270421T160000
+DTEND;TZID=Europe/Brussels:20270421T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:73c86fd671a9e9e5dafa454fcc709814852038d9@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270421T170000
+DTEND;TZID=Europe/Brussels:20270421T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:55e84db8fc365cb09d9aef3b7e497ed104670649@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270421T180000
+DTEND;TZID=Europe/Brussels:20270421T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:33611288764a29456518f9bb03feb4ae93d7145e@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270423T160000
+DTEND;TZID=Europe/Brussels:20270423T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:f9cfeae9aa12581a61ada9fd0f0334cfc54d329b@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270423T170000
+DTEND;TZID=Europe/Brussels:20270423T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:a7593d22ca95a0a2f47358d66fffb002a2e6b5b0@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270423T180000
+DTEND;TZID=Europe/Brussels:20270423T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:40dad5f0a7bd0e3786bdbc63a6b43f12d40e9ed2@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270423T190000
+DTEND;TZID=Europe/Brussels:20270423T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:a614b3ae5a494761fc1924769e4a7f48ea60b30f@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270423T200000
+DTEND;TZID=Europe/Brussels:20270423T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:47c7a5a8d3c852177351f0ef840c38e0fe073fd0@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270428T140000
+DTEND;TZID=Europe/Brussels:20270428T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:61332a4aa229b0637c53b34b4877c49536d3e232@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270428T150000
+DTEND;TZID=Europe/Brussels:20270428T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:ba8f025f9578fe3fac8692c5f2088738e014ae74@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270428T160000
+DTEND;TZID=Europe/Brussels:20270428T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:7d9767bb727a24dfc737d2c5f621eb5a3d9dc389@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270428T170000
+DTEND;TZID=Europe/Brussels:20270428T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:7a63aa34f9ae5984a627f5e60c85be5350d49b0b@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270428T180000
+DTEND;TZID=Europe/Brussels:20270428T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:942e5364c8bf15ef3ee1218d63c45c7d2082785e@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270430T160000
+DTEND;TZID=Europe/Brussels:20270430T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:d9448abcb2fb150c42fae6570ca585903f5c297d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270430T170000
+DTEND;TZID=Europe/Brussels:20270430T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:1028dde2951619f85c05c6abf8ef4265bb2f5a10@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270430T180000
+DTEND;TZID=Europe/Brussels:20270430T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:ac1e3552a77e64ff827854da24fbe04105e0372a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270430T190000
+DTEND;TZID=Europe/Brussels:20270430T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:91973a6ce4f13da92244dfe7b036a100f716d85c@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270430T200000
+DTEND;TZID=Europe/Brussels:20270430T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:6a8926b42875f01d5e34cbdc31f30c5d0b6a69e3@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270505T140000
+DTEND;TZID=Europe/Brussels:20270505T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:84cbe2bc5c1817e3d544f080cec7743139de57fc@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270505T150000
+DTEND;TZID=Europe/Brussels:20270505T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:d13a12ada3646f75f95fb1fabff1d7095caec3a0@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270505T160000
+DTEND;TZID=Europe/Brussels:20270505T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:a73f8ad80a00e037093585a06ebc27b56e643a98@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270505T170000
+DTEND;TZID=Europe/Brussels:20270505T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:e25f57533f43618f004b607c47fe402bcd5c8fe4@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270505T180000
+DTEND;TZID=Europe/Brussels:20270505T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:33f3926de61b085b16c2ed813ef8db2ba3aca925@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270512T140000
+DTEND;TZID=Europe/Brussels:20270512T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:c8a38ec1ae1f64bd11fcca99186c8adf3d12efdb@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270512T150000
+DTEND;TZID=Europe/Brussels:20270512T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:a0e3a87e77512b2e621d9666eae42a2d0ecb613a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270512T160000
+DTEND;TZID=Europe/Brussels:20270512T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:00e27861d3c7ab0e7b9907043e943184181cfca7@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270512T170000
+DTEND;TZID=Europe/Brussels:20270512T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:5395f9615485b888699a6f36bd05bf561d82e61a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270512T180000
+DTEND;TZID=Europe/Brussels:20270512T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:03fa11740f8478729b215e8cec61fd31fa395329@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270514T160000
+DTEND;TZID=Europe/Brussels:20270514T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:b8b8902ca3744dbf77849a5ca3f97b23be3f40e5@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270514T170000
+DTEND;TZID=Europe/Brussels:20270514T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:7e1bbd55963edf451945043063a2ca9b7e18f272@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270514T180000
+DTEND;TZID=Europe/Brussels:20270514T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:21ab90b05338708a55c6210bf24d92b29a2bd88a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270514T190000
+DTEND;TZID=Europe/Brussels:20270514T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:ef4331f027e09d7995ab64b58bf9b08006d5afef@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270514T200000
+DTEND;TZID=Europe/Brussels:20270514T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:9327df1144514e4ad02d6ebe341b40cb8a3a7787@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270519T140000
+DTEND;TZID=Europe/Brussels:20270519T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:7fd0ada5f68cd5247c7a356241ed13750f71cdac@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270519T150000
+DTEND;TZID=Europe/Brussels:20270519T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:fd768433db9128ed5fc2d6ef0b9207eb4c01accc@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270519T160000
+DTEND;TZID=Europe/Brussels:20270519T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:6db8c3b890260ce6e29f965ee97a17b47a224792@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270519T170000
+DTEND;TZID=Europe/Brussels:20270519T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:1d2b56119d7bd90e50dce53d92b4bc7254e7ad41@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270519T180000
+DTEND;TZID=Europe/Brussels:20270519T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:6ccc4cb87e9b27decf8f55dc64f4ff7428765913@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270521T160000
+DTEND;TZID=Europe/Brussels:20270521T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:f899742674683ae58d25b9420081b83de5d790a0@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270521T170000
+DTEND;TZID=Europe/Brussels:20270521T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:e14e2ec09417119f347847bc07d003a5990eec0d@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270521T180000
+DTEND;TZID=Europe/Brussels:20270521T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:753ae14f859c27d816ffb54794eadc703ba95699@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270521T190000
+DTEND;TZID=Europe/Brussels:20270521T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:645f9145b29c715e2e718b6725bb0225ff6575ee@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270521T200000
+DTEND;TZID=Europe/Brussels:20270521T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:af986fe621e50885a5733592e3e33170586990b0@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270526T140000
+DTEND;TZID=Europe/Brussels:20270526T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:76f196a686da8b361a258a00a22b5299171ce939@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270526T150000
+DTEND;TZID=Europe/Brussels:20270526T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:e9e857bcf3f048b46c4c17bae6a522ed2707881b@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270526T160000
+DTEND;TZID=Europe/Brussels:20270526T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:b2d33a82601de49a13baccd2e19f989cec7d2828@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270526T170000
+DTEND;TZID=Europe/Brussels:20270526T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:5eec118f66bbab9bee4d562a2ed4fac6f6178860@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270526T180000
+DTEND;TZID=Europe/Brussels:20270526T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:192625fbe0fb1d3ad2b075f09b18cd9d278177a8@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270528T160000
+DTEND;TZID=Europe/Brussels:20270528T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:078e307c9c7acf256be6038366977139cfedc50a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270528T170000
+DTEND;TZID=Europe/Brussels:20270528T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:6b55d77cccc3b28c7c892422a68cec523fb1180a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270528T180000
+DTEND;TZID=Europe/Brussels:20270528T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:99223b582a460ab92d8a72f15407d6eff129e737@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270528T190000
+DTEND;TZID=Europe/Brussels:20270528T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:9741923d9c2efec0b06fd4ec26986a479beb86ed@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270528T200000
+DTEND;TZID=Europe/Brussels:20270528T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:a93541406c72946c656a6dfb2392a6c2000aad82@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270609T140000
+DTEND;TZID=Europe/Brussels:20270609T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:1ce3a32cae948c2ae5aaa0c011ab075f9b42fd96@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270609T150000
+DTEND;TZID=Europe/Brussels:20270609T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:548dfd739f6f9e4cfb6969d23862fa27a6d4baa6@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270609T160000
+DTEND;TZID=Europe/Brussels:20270609T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:569e380096a21161e0869026021439a1fe487d38@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270609T170000
+DTEND;TZID=Europe/Brussels:20270609T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:9b493eb09affd136e26284a28a14078565ae9076@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270609T180000
+DTEND;TZID=Europe/Brussels:20270609T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:f4c069b078582398a69545942b7f707ac09e8dfa@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270611T160000
+DTEND;TZID=Europe/Brussels:20270611T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:dce4933fd47a5fb8e4acb14c3f53b52541ce26b7@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270611T170000
+DTEND;TZID=Europe/Brussels:20270611T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:b42bfe7b4d362192d97ee45718a02c1f12e91a1f@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270611T180000
+DTEND;TZID=Europe/Brussels:20270611T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:f936708339c7829a06558c752286c60ce451b290@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270611T190000
+DTEND;TZID=Europe/Brussels:20270611T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:1ed30a7e3d416bd2e1a0e84621e82573bc1f95ef@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270611T200000
+DTEND;TZID=Europe/Brussels:20270611T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:580554b7abd6149fd72aded226ee82151d96ad01@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270616T140000
+DTEND;TZID=Europe/Brussels:20270616T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:71e307469612c6d554fdd4479193c77b45a509f5@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270616T150000
+DTEND;TZID=Europe/Brussels:20270616T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:ed946075d966771bb85084e34649e6a2eb5312f6@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270616T160000
+DTEND;TZID=Europe/Brussels:20270616T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:130f4e3c6234616d5b28c7f1996ab080902f30eb@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270616T170000
+DTEND;TZID=Europe/Brussels:20270616T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:a2fa6755e47e4b0f9a34da7baf1b5eb650d7cfd9@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270616T180000
+DTEND;TZID=Europe/Brussels:20270616T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:b0451775029545c3b506269b6b2462ebf7d6c75a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270618T160000
+DTEND;TZID=Europe/Brussels:20270618T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:ec9af85c67a87d01a72cce68805f6152795c5718@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270618T170000
+DTEND;TZID=Europe/Brussels:20270618T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:216593e57ced9423504d79015668e16e4a4e98b2@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270618T180000
+DTEND;TZID=Europe/Brussels:20270618T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:bf79cbfa45b18f0d9bf10948c45d2e6cfd503f31@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270618T190000
+DTEND;TZID=Europe/Brussels:20270618T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:c359ce00b8540d818203fd4ff1be201537703419@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270618T200000
+DTEND;TZID=Europe/Brussels:20270618T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+BEGIN:VEVENT
+UID:5c21d0eedb88507cc9590039aef0aeac5d52d6c4@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270623T140000
+DTEND;TZID=Europe/Brussels:20270623T150000
+SUMMARY:Duoles – Groep 4 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 4\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Fasseur Gabriel\n- de Clippele Antoi
+ ne
+END:VEVENT
+BEGIN:VEVENT
+UID:49d41277094d093fce5c2cf5f21b342e7cc111bf@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270623T150000
+DTEND;TZID=Europe/Brussels:20270623T160000
+SUMMARY:Tienertennis geel – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 12\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Demoulin Louis\n- Lardin
+ oit Charline\n- Lardinoit Morgane\n- VanZele Victor
+END:VEVENT
+BEGIN:VEVENT
+UID:348b260cce0b234cfb0925941fbaa340d41a68d1@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270623T160000
+DTEND;TZID=Europe/Brussels:20270623T170000
+SUMMARY:Oranje – Groep 13 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Oranje\nGroep: Groep 13\nCoach: Leemans Koen\nLocat
+ ie: GANTOISE (Indoor)\n\nSpelers:\n- De Pourcq Rose\n- Dekeyzer Boris\n-
+  Mervielde Henri\n- Roland Luca\n- Saverys Joanne\n- Vanthournout Louise
+END:VEVENT
+BEGIN:VEVENT
+UID:bbe87d81be0b2ca866365f8f63a2448a05e027ab@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270623T170000
+DTEND;TZID=Europe/Brussels:20270623T180000
+SUMMARY:Kidstennis oranje – Groep 8 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Kidstennis oranje\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- De Stoop Louise\n- De Vri
+ endt Bonnie\n- Delens Raphaëlle\n- Martens Clara\n- Peferoen Astor\n- T
+ anghe Céline
+END:VEVENT
+BEGIN:VEVENT
+UID:10e827b577b33d19dc4bca4c587e56578737360a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270623T180000
+DTEND;TZID=Europe/Brussels:20270623T190000
+SUMMARY:Tienertennis geel – Groep 26 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 26\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Braeckevelt Ada\n- Duche
+ yne Roos\n- Hut Julia-Rose\n- Tricot Satine
+END:VEVENT
+BEGIN:VEVENT
+UID:31a41e07fc8bf4ccf287018327a15150600add41@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270625T160000
+DTEND;TZID=Europe/Brussels:20270625T170000
+SUMMARY:Tienertennis geel – Groep 31 (5)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 31\nCoach: Leemans 
+ Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Abbeloos Floris\n- Demou
+ lin Justine\n- Deren Arthur\n- Deren Eliott\n- van Lingen Madeleine
+END:VEVENT
+BEGIN:VEVENT
+UID:83d977a51b96460d3307ff71e8696bf0fbd2dd80@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270625T170000
+DTEND;TZID=Europe/Brussels:20270625T180000
+SUMMARY:Tienertennis geel – Groep 8 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Tienertennis geel\nGroep: Groep 8\nCoach: Leemans K
+ oen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bertrem Mila\n- De Quinne
+ mar Claire\n- Ducheyne Roos\n- Vandaele Lili
+END:VEVENT
+BEGIN:VEVENT
+UID:01cb7f671a7401d3157277553f4486e2ca7ab94a@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270625T180000
+DTEND;TZID=Europe/Brussels:20270625T190000
+SUMMARY:Privéles – Groep 12 (4)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Privéles\nGroep: Groep 12\nCoach: Leemans Koen\nLo
+ catie: GANTOISE (Indoor)\n\nSpelers:\n- Asenov Atanas\n- Callens Maxime\
+ n- Deleyn Alexia\n- Deleyn Elena
+END:VEVENT
+BEGIN:VEVENT
+UID:5f9b5adedb7ed3bd53caf37916ffcf84e60245ad@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270625T190000
+DTEND;TZID=Europe/Brussels:20270625T200000
+SUMMARY:Duoles – Groep 8 (2)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Duoles\nGroep: Groep 8\nCoach: Leemans Koen\nLocati
+ e: GANTOISE (Indoor)\n\nSpelers:\n- Malcolm Amandine\n- Malcolm Eric
+END:VEVENT
+BEGIN:VEVENT
+UID:eabafabc29f66cc74d9fc3d5f9caf9a4fcaf9b93@tennis-koen
+DTSTAMP:20260825T000000Z
+DTSTART;TZID=Europe/Brussels:20270625T200000
+DTEND;TZID=Europe/Brussels:20270625T210000
+SUMMARY:Volwassenen - (her)starters – Groep 3 (6)
+LOCATION:GANTOISE – Indoor
+DESCRIPTION:Type les: Volwassenen - (her)starters\nGroep: Groep 3\nCoach:
+  Leemans Koen\nLocatie: GANTOISE (Indoor)\n\nSpelers:\n- Bobelyn Sarah-L
+ isa\n- Coucke Maaike\n- Dinev Diyan\n- Lenssens Bruno\n- Majic Matea\n- 
+ Tichshenko Natalia
+END:VEVENT
+END:VCALENDAR

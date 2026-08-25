@@ -144,11 +144,24 @@ describe('toIcs', () => {
     expect(r).toContain('SUMMARY:Tennisles met Mathis +1');
   });
 
-  it('carries the notes along, escaped', () => {
+  it('holds nothing but the date, the time, the name and the court', () => {
     const r = uitgevouwen(toIcs([les({ notes: 'ballen, netje' })], alsTrainer, NU));
-    const beschrijving = r.find((l) => l.startsWith('DESCRIPTION:')) ?? '';
-    expect(beschrijving).toContain('ballen\\, netje');
-    expect(beschrijving).toContain('Trainer: Koen');
+    const inhoud = r.filter((l) => /^(SUMMARY|LOCATION|DESCRIPTION|DTSTART|DTEND):/.test(l));
+    expect(inhoud).toEqual([
+      'DTSTART:20260826T070000Z',
+      'DTEND:20260826T080000Z',
+      'SUMMARY:Tennisles met Mathis',
+      'LOCATION:Baan 1',
+    ]);
+  });
+
+  it('escapes a comma in a name, so the title cannot cut the field in two', () => {
+    const metKomma: IcsContext = {
+      ...alsTrainer,
+      users: [...users, { id: 'p3', email: 'j@x.be', name: 'Jan, junior', role: 'player' }],
+    };
+    const r = uitgevouwen(toIcs([les({ player_id: 'p3' })], metKomma, NU));
+    expect(r).toContain(String.raw`SUMMARY:Tennisles met Jan\, junior`);
   });
 
   it('leaves out the location when the court is unknown', () => {

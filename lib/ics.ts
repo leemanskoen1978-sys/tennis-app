@@ -14,9 +14,13 @@
 //
 // De vorm volgt RFC 5545: CRLF tussen de regels, regels van hoogstens 75 tekens, en tekst
 // waarin een komma, een puntkomma, een backslash of een regeleinde ontsnapt wordt.
+//
+// In de afspraak staat alleen wat je in je agenda nodig hebt: wanneer, met wie, en waar.
+// De betaalwijze en de notities stonden er eerst bij en zijn er weer uit — dat leest niemand
+// terug in Outlook, het staat in de app zelf, en een omschrijving die niemand leest maakt de
+// afspraak in een weekbeeld alleen maar onleesbaar.
 
 import { groupSize, shortGroupLabel } from './groups';
-import { PAYMENT_LABELS } from './payments';
 import { t } from './i18n';
 import type { Booking, Court, User } from './types';
 
@@ -100,19 +104,6 @@ function titel(b: Booking, ctx: IcsContext): string {
   return t('Tennisles met {ander}', { ander });
 }
 
-/** De omschrijving: wat er verder over de les te zeggen valt, elk op een eigen regel. */
-function omschrijving(b: Booking, ctx: IcsContext): string {
-  const naamVan = (id: string): string =>
-    ctx.users.find((u) => u.id === id)?.name ?? t('Onbekend');
-  const regels = [
-    t('Trainer: {naam}', { naam: naamVan(b.coach_id) }),
-    t('Speler: {naam}', { naam: shortGroupLabel(naamVan(b.player_id), groupSize(b)) }),
-    t('Betaalwijze: {wijze}', { wijze: PAYMENT_LABELS[b.payment_method] }),
-  ];
-  if (b.notes) regels.push(b.notes);
-  return regels.join('\n');
-}
-
 /** Eén les als VEVENT-blok. */
 function event(b: Booking, ctx: IcsContext, now: Date): string[] {
   const terrein = ctx.courts.find((c) => c.id === b.court_id)?.name ?? '';
@@ -126,7 +117,6 @@ function event(b: Booking, ctx: IcsContext, now: Date): string[] {
     `DTEND:${icsMoment(b.end_time)}`,
     `SUMMARY:${icsTekst(titel(b, ctx))}`,
     ...(terrein ? [`LOCATION:${icsTekst(terrein)}`] : []),
-    `DESCRIPTION:${icsTekst(omschrijving(b, ctx))}`,
     'END:VEVENT',
   ];
 }

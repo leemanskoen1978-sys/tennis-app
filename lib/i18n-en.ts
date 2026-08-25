@@ -73,9 +73,6 @@ export const EN: Record<string, string> = {
   // De zinnen die in het agendabestand zelf terechtkomen — zie lib/ics.
   'Tennislessen': 'Tennis lessons',
   'Tennisles met {ander}': 'Tennis lesson with {ander}',
-  'Trainer: {naam}': 'Coach: {naam}',
-  'Speler: {naam}': 'Player: {naam}',
-  'Betaalwijze: {wijze}': 'Payment method: {wijze}',
   'Het bestand bevat precies de lessen die je hier ziet, klaar om in Outlook, Google Agenda of Apple Agenda te openen. Exporteer je later opnieuw, dan werkt je agenda dezelfde afspraken bij in plaats van ze een tweede keer toe te voegen.':
     'The file holds exactly the lessons you see here, ready to open in Outlook, Google '
     + 'Calendar or Apple Calendar. Export again later and your calendar updates the same '
