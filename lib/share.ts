@@ -45,6 +45,23 @@ export async function shareCsv(filename: string, text: string): Promise<void> {
 }
 
 /**
+ * Een agendabestand delen. Zonder BOM, anders dan de CSV: die staat er voor Excel, en een
+ * agendalezer struikelt juist over een onzichtbaar teken vóór BEGIN:VCALENDAR.
+ *
+ * Op een telefoon gaat hij als tekst het deelmenu in. Dat is minder dan een echt bestand —
+ * de agenda-app pikt hem daar niet vanzelf op — maar het is wel de tekst zelf, die je naar
+ * jezelf kunt mailen en op de computer kunt openen. De club werkt op de website; daar is het
+ * een gewone download.
+ */
+export async function shareIcs(filename: string, text: string): Promise<void> {
+  if (kanDownloaden()) {
+    download(filename, new Blob([text], { type: 'text/calendar;charset=utf-8;' }));
+    return;
+  }
+  await Share.share({ message: text, title: filename });
+}
+
+/**
  * Kan dit toestel een Excel-bestand aannemen?
  *
  * Op een telefoon niet, en dat is geen vergetelheid. `Share.share` neemt alleen tekst mee;
