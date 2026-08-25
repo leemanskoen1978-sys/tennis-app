@@ -69,6 +69,57 @@ export const EN: Record<string, string> = {
   'Historiek': 'History',
   'Nog te komen': 'Upcoming',
   'Weekagenda': 'Week schedule',
+  // Beheer → Leden en het bewerkblad erachter (app/admin/leden, components/LidBewerken).
+  'Leden': 'Members',
+  'Gegevens, type account en beheerders': 'Details, account type and administrators',
+  'Dit scherm is voor een beheerder. Vraag er een om je het vinkje te geven.':
+    'This screen is for an administrator. Ask one to give you the flag.',
+  'Zoek op naam of e-mailadres': 'Search by name or email address',
+  '1 lid': '1 member',
+  '{n} leden': '{n} members',
+  'Geen lid gevonden.': 'No member found.',
+  'Beheerder': 'Administrator',
+  'Een naam is verplicht.': 'A name is required.',
+  'Hiermee logt hij in. Verander je het, dan hoort hij het te weten.':
+    'This is how they log in. Change it and they need to know.',
+  'Gsm-nummer': 'Mobile number',
+  'Leeg is geen sponsorcontract. Wat er nog van over is, rekent de app uit de gesponsorde lessen.':
+    'Empty means no sponsorship. What is left of it, the app works out from the sponsored '
+    + 'lessons.',
+  'Hiermee staat een nieuwe les van deze speler alvast klaar; je kunt het per les nog wijzigen.':
+    'A new lesson for this player starts on this; you can still change it per lesson.',
+  'Bewaard': 'Saved',
+  'Type account': 'Account type',
+  'Een trainer heeft een eigen agenda en spelers; een speler niet. Zijn lessen, dossier en betalingen blijven hoe dan ook staan.':
+    'A coach has their own schedule and players; a player does not. Their lessons, file and '
+    + 'payments stay either way.',
+  '{naam} geeft nog {n} lessen. Verzet of schrap die eerst; daarna kan hij speler worden.':
+    '{naam} still teaches {n} lessons. Move or drop those first; after that they can become '
+    + 'a player.',
+  'Is beheerder': 'Is administrator',
+  'Beheerder maken': 'Make administrator',
+  'Dit is de enige beheerder. Maak eerst iemand anders beheerder; anders komt niemand er nog bij.':
+    'This is the only administrator. Make someone else one first, or nobody gets back in.',
+  'Een beheerder mag in elke agenda werken, ziet de cijfers van de club en kan hier andere beheerders aanwijzen.':
+    'An administrator works in every schedule, sees the club figures and can appoint other '
+    + 'administrators here.',
+  'Dit ben jij: neem je het weg, dan verlies je zelf dit scherm.':
+    'This is you: take it away and you lose this screen yourself.',
+  'Lid verwijderen': 'Delete member',
+  'Je eigen account verwijder je hier niet.': 'You do not delete your own account here.',
+  '{naam} verwijderen. Weg is weg.': 'Delete {naam}. Gone is gone.',
+  'Dit gaat mee: {dingen}.': 'This goes with them: {dingen}.',
+  'Er hangt verder niets aan hem.': 'Nothing else is attached to them.',
+  '1 verslag': '1 report',
+  '{n} verslagen': '{n} reports',
+  '1 beurtenkaart': '1 punch card',
+  '{n} beurtenkaarten': '{n} punch cards',
+  '1 memo': '1 memo',
+  '{n} memo’s': '{n} memos',
+  '1 stuk lesmateriaal': '1 piece of lesson material',
+  '{n} stukken lesmateriaal': '{n} pieces of lesson material',
+  '1 koppeling met een ouder of kind': '1 link with a parent or child',
+  '{n} koppelingen met ouders of kinderen': '{n} links with parents or children',
   'Agenda-bestand (.ics)': 'Calendar file (.ics)',
   // De zinnen die in het agendabestand zelf terechtkomen — zie lib/ics.
   'Tennislessen': 'Tennis lessons',

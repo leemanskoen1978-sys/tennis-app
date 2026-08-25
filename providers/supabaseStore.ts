@@ -185,10 +185,32 @@ export async function loadFromSupabase(): Promise<StoreData> {
  * mis, dan meldt de app de fout en klopt het scherm nog met wat de databank heeft, want de
  * volgende keer opslaan vertrekt van dezelfde vergelijking.
  */
-/** Dezelfde rij zonder het uurloon: dat gaat naar `coach_rates`. */
+/**
+ * Velden van een gebruiker die leeg mogen zijn, en die je dus ook weer leeg moet kunnen
+ * máken.
+ *
+ * Dat laatste gaat niet vanzelf. De app laat een leeg veld weg uit de rij, en een upsert
+ * werkt alleen de kolommen bij die in de rij staan — een weggelaten gsm-nummer betekent
+ * voor de databank dus "laat staan wat er stond", niet "maak leeg". Het nummer kwam bij de
+ * volgende lading gewoon terug, en niemand die zag waarom. Vandaar dat ze hier met zoveel
+ * woorden op `null` gaan.
+ *
+ * Alleen de velden die een mens leeg kán maken staan erin. `name` en `email` niet: die zijn
+ * verplicht, en een lege waarde is daar een fout en geen keuze.
+ */
+const LEEGMAAKBAAR = [
+  'phone', 'bio', 'preferred_court_id', 'sponsor_budget', 'default_payment_method',
+  'working_hours', 'working_days', 'notification_settings',
+] as const;
+
+/** Dezelfde rij zonder het uurloon (dat gaat naar `coach_rates`), met lege velden als null. */
 function zonderTarief(row: Row): Row {
   const { hourly_rate: _weg, ...rest } = row;
-  return rest;
+  const leeg: Row = {};
+  for (const veld of LEEGMAAKBAAR) {
+    if (rest[veld] === undefined) leeg[veld] = null;
+  }
+  return { ...rest, ...leeg };
 }
 
 /**

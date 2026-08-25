@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
-  Upload, Users, BookOpen, type LucideIcon,
+  Upload, Users, UserCog, BookOpen, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
@@ -12,7 +12,7 @@ import { useSimpleData, usePendingPaymentBookings } from '../../providers/Simple
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
-import { isCoach } from '../../lib/rechten';
+import { isAdmin, isCoach } from '../../lib/rechten';
 import { openAanvragen } from '../../lib/ouderkind';
 
 interface Tile {
@@ -60,6 +60,12 @@ export default function Admin() {
         { key: 'goals', title: t('Doelen'), subtitle: t('Woordenlijst voor spelersdoelen'), icon: Target, onPress: () => router.push('/admin/goals') },
         { key: 'add', title: t('Speler toevoegen'), subtitle: t('Nieuw lid aanmaken'), icon: UserPlus, onPress: () => setAddOpen(true) },
         { key: 'import', title: t('Leden importeren'), subtitle: t('Uit een Excel-lijst'), icon: Upload, onPress: () => router.push('/admin/leden-import') },
+        // Alleen voor een beheerder: hier zit het beheerdersvinkje, en hier verdwijnt een lid
+        // met zijn hele geschiedenis. Een gewone trainer maakt spelers aan en houdt het
+        // daarbij.
+        ...(isAdmin(currentUser)
+          ? [{ key: 'leden', title: t('Leden'), subtitle: t('Gegevens, type account en beheerders'), icon: UserCog, onPress: () => router.push('/admin/leden') } as Tile]
+          : []),
         // Het aantal op de tegel is het aantal beslissingen dat op iemand ligt te wachten:
         // zolang er niets gebeurt, ziet een ouder een lege app.
         { key: 'ouders', title: t('Ouders en kinderen'), subtitle: openAanvragen(relaties).length > 0 ? t('{n} wacht op goedkeuring', { n: openAanvragen(relaties).length }) : t('Koppelingen nakijken'), icon: Users, onPress: () => router.push('/admin/ouders'), badge: openAanvragen(relaties).length },

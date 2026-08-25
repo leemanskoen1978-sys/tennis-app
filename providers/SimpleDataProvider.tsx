@@ -14,6 +14,7 @@ import { installCatalogue } from '../lib/catalogue';
 import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { upsertGoal, removeGoal } from '../lib/goals';
 import { aanvraagVoor } from '../lib/ouderkind';
+import { zonderLid } from '../lib/leden';
 import {
   SESSIONS_PER_CARD, useSession, releaseSession, removeManualSession,
   planMethodChange, planCancel, planCardDeletion, planParticipantsChange, planSplitChange,
@@ -24,7 +25,7 @@ import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
 import { planSeries, type RecurrenceRule, type SeriesSlot } from '../lib/recurrence';
 import type {
-  User, Court, Booking, Lesson, Memo, StudentProgress, PlayerGoal, Settings,
+  User, Court, Booking, Lesson, Memo, StudentProgress, PlayerGoal, Role, Settings,
   Beurtenkaart, BookingStatus, OuderKind, PaymentMethod, PaymentSplit,
 } from '../lib/types';
 
@@ -121,6 +122,24 @@ interface DataShape {
    * `is_admin` die niet van een beheerder komt.
    */
   updateUser: (id: string, patch: Partial<Omit<User, 'id' | 'role' | 'is_admin'>>) => Promise<void>;
+  /**
+   * De rol van een lid omzetten. Apart van `updateUser` omdat het geen formulierdetail is:
+   * zie `rolWisselBezwaar` in lib/leden voor wanneer het beter niet kan.
+   */
+  setUserRole: (id: string, role: Role) => Promise<void>;
+  /**
+   * Het beheerdersvinkje zetten of afnemen. Ook apart, en om dezelfde reden als hierboven:
+   * dit geeft iemand de sleutel van de club. De databank bewaakt hem mee — alleen een
+   * beheerder komt langs `bewaak_is_admin`.
+   */
+  setBeheerder: (id: string, aan: boolean) => Promise<void>;
+  /**
+   * Een lid verwijderen, met alles wat aan hem hing: zijn lessen, zijn dossier, zijn
+   * kaarten. Zie `zonderLid` in lib/leden — dat is dezelfde opruiming die de databank met
+   * `on delete cascade` doet, hier nagespeeld zodat het scherm niet naar rijen blijft
+   * kijken die niet meer bestaan.
+   */
+  deleteUser: (id: string) => Promise<void>;
   /**
    * Een ouder vraagt een kind aan zijn profiel te koppelen. De aanvraag begint op 'pending';
    * een trainer beslist. Vraagt hij het over een kind waar al een aanvraag over loopt, dan
@@ -855,6 +874,33 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     [commit],
   );
 
+  const setUserRole = useCallback(async (id: string, role: Role) => {
+    const store = storeRef.current;
+    if (!store) return;
+    await commit({
+      ...store,
+      users: store.users.map((u) => (u.id === id ? { ...u, role } : u)),
+    });
+  }, [commit]);
+
+  const setBeheerder = useCallback(async (id: string, aan: boolean) => {
+    const store = storeRef.current;
+    if (!store) return;
+    await commit({
+      ...store,
+      users: store.users.map((u) => (u.id === id ? { ...u, is_admin: aan } : u)),
+    });
+  }, [commit]);
+
+  const deleteUser = useCallback(async (id: string) => {
+    const store = storeRef.current;
+    if (!store) return;
+    // De databank ruimt zijn lessen en zijn dossier zelf op (`on delete cascade`); dit is
+    // dezelfde opruiming aan deze kant, zodat het scherm niet blijft staan met lessen van
+    // iemand die er niet meer is.
+    await commit(zonderLid(store, id));
+  }, [commit]);
+
   // ---------------------------------------------------------------------------
   // Ouder en kind
   //
@@ -1057,6 +1103,9 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     deleteBeurtenkaart,
     addUser,
     updateUser,
+    setUserRole,
+    setBeheerder,
+    deleteUser,
     vraagKindAan,
     beslisOverKind,
     wisRelatie,
@@ -1081,7 +1130,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setParticipants, setPaymentSplit,
     setPaymentMethod, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
-    addUser, updateUser, vraagKindAan, beslisOverKind, wisRelatie, addLesson,
+    addUser, updateUser, setUserRole, setBeheerder, deleteUser,
+    vraagKindAan, beslisOverKind, wisRelatie, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
     addMemo, deleteMemo, werkMemoUit,
     saveGoal, deleteGoal, saveSettings, emergencyCleanup,
