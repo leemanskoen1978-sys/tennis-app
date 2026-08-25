@@ -5,6 +5,11 @@
 // Wél een export, en precies één soort: een agendabestand. Een afrekening hoort op
 // Historiek — daar staan de bedragen — maar je lessen in je eigen agenda zetten gaat over
 // wat er nog komt, en dat is dit scherm. Het bestand is dubbelvrij: zie lib/ics.
+//
+// De knop staat bóven de lijst. Met een seizoen aan lessen erin scrol je anders langs
+// tientallen kaarten voor je hem ziet, en dan lijkt de export er niet te zijn. De twee
+// zinnen uitleg blijven wel onderaan: die lees je één keer, en bovenaan zouden ze de
+// lessen zelf uit beeld duwen.
 
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -70,18 +75,19 @@ export default function KomendScreen(): React.JSX.Element {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <LessonCards bookings={shown} empty={t('Er staan geen lessen meer gepland.')} />
+      <Button
+        label={t('Agenda-bestand (.ics)')}
+        variant="secondary"
+        disabled={shown.length === 0}
+        icon={<CalendarPlus size={16} color={tennisColors.text} />}
+        onPress={() => { void exporteerAgenda(); }}
+      />
 
       {exportError ? <Text style={styles.error}>{exportError}</Text> : null}
 
+      <LessonCards bookings={shown} empty={t('Er staan geen lessen meer gepland.')} />
+
       <View style={styles.exportBlock}>
-        <Button
-          label={t('Agenda-bestand (.ics)')}
-          variant="secondary"
-          disabled={shown.length === 0}
-          icon={<CalendarPlus size={16} color={tennisColors.text} />}
-          onPress={() => { void exporteerAgenda(); }}
-        />
         <Text style={styles.exportNote}>
           {t('Het bestand bevat precies de lessen die je hier ziet, klaar om in Outlook, '
             + 'Google Agenda of Apple Agenda te openen. Exporteer je later opnieuw, dan '

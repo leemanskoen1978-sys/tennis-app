@@ -131,17 +131,21 @@ describe('toIcs', () => {
     expect(r).toContain('LOCATION:Baan 1');
   });
 
-  it('names the other person in the title: a coach sees the player', () => {
-    expect(regels(toIcs([les()], alsTrainer, NU))).toContain('SUMMARY:Tennisles met Mathis');
+  it('names the court in the title, not the person', () => {
+    expect(regels(toIcs([les()], alsTrainer, NU))).toContain('SUMMARY:Tennis Baan 1');
+  });
+
+  it('names the other person in the description: a coach sees the player', () => {
+    expect(regels(toIcs([les()], alsTrainer, NU))).toContain('DESCRIPTION:Mathis');
   });
 
   it('and a player sees the coach', () => {
-    expect(regels(toIcs([les()], alsSpeler, NU))).toContain('SUMMARY:Tennisles met Koen');
+    expect(regels(toIcs([les()], alsSpeler, NU))).toContain('DESCRIPTION:Koen');
   });
 
-  it('counts a group lesson in the title', () => {
+  it('counts a group lesson in the description', () => {
     const r = regels(toIcs([les({ participant_ids: ['p2'] })], alsTrainer, NU));
-    expect(r).toContain('SUMMARY:Tennisles met Mathis +1');
+    expect(r).toContain('DESCRIPTION:Mathis +1');
   });
 
   it('holds nothing but the date, the time, the name and the court', () => {
@@ -150,23 +154,25 @@ describe('toIcs', () => {
     expect(inhoud).toEqual([
       'DTSTART:20260826T070000Z',
       'DTEND:20260826T080000Z',
-      'SUMMARY:Tennisles met Mathis',
+      'SUMMARY:Tennis Baan 1',
       'LOCATION:Baan 1',
+      'DESCRIPTION:Mathis',
     ]);
   });
 
-  it('escapes a comma in a name, so the title cannot cut the field in two', () => {
+  it('escapes a comma in a name, so the description cannot cut the field in two', () => {
     const metKomma: IcsContext = {
       ...alsTrainer,
       users: [...users, { id: 'p3', email: 'j@x.be', name: 'Jan, junior', role: 'player' }],
     };
     const r = uitgevouwen(toIcs([les({ player_id: 'p3' })], metKomma, NU));
-    expect(r).toContain(String.raw`SUMMARY:Tennisles met Jan\, junior`);
+    expect(r).toContain(String.raw`DESCRIPTION:Jan\, junior`);
   });
 
-  it('leaves out the location when the court is unknown', () => {
+  it('leaves out the location when the court is unknown, and keeps a title that reads', () => {
     const r = regels(toIcs([les({ court_id: 'weg' })], alsTrainer, NU));
     expect(r.some((l) => l.startsWith('LOCATION:'))).toBe(false);
+    expect(r).toContain('SUMMARY:Tennis');
   });
 
   it('leaves a cancelled lesson out: it is not happening', () => {

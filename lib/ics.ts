@@ -19,6 +19,11 @@
 // De betaalwijze en de notities stonden er eerst bij en zijn er weer uit — dat leest niemand
 // terug in Outlook, het staat in de app zelf, en een omschrijving die niemand leest maakt de
 // afspraak in een weekbeeld alleen maar onleesbaar.
+//
+// De titel zegt wat het is en waar: "Tennis Baan 1". De naam staat eronder, in de
+// omschrijving. In een weekbeeld staan de afspraken naast elkaar en houdt een titel maar een
+// paar tekens over; dan helpt de baan je verder dan de eerste letters van een naam. Wie de
+// naam wil, klikt de afspraak open.
 
 import { groupSize, shortGroupLabel } from './groups';
 import { t } from './i18n';
@@ -92,16 +97,23 @@ export function icsSequence(now: Date): number {
 }
 
 /**
- * De titel van de afspraak. Je eigen naam hoef je niet te lezen: een trainer ziet de speler,
- * een speler de trainer — dezelfde regel als op de leskaarten en in het weekraster.
+ * Met wie je op de baan staat. Je eigen naam hoef je niet te lezen: een trainer ziet de
+ * speler, een speler de trainer — dezelfde regel als op de leskaarten en in het weekraster.
  */
-function titel(b: Booking, ctx: IcsContext): string {
+function deelnemer(b: Booking, ctx: IcsContext): string {
   const naamVan = (id: string): string =>
     ctx.users.find((u) => u.id === id)?.name ?? t('Onbekend');
-  const ander = ctx.viewerIsCoach
+  return ctx.viewerIsCoach
     ? shortGroupLabel(naamVan(b.player_id), groupSize(b))
     : naamVan(b.coach_id);
-  return t('Tennisles met {ander}', { ander });
+}
+
+/**
+ * De titel: wat het is en waar. Is het terrein onbekend, dan blijft alleen het woord over —
+ * beter dan een titel die op een losse spatie eindigt.
+ */
+function titel(terrein: string): string {
+  return terrein ? t('Tennis {locatie}', { locatie: terrein }) : t('Tennis');
 }
 
 /** Eén les als VEVENT-blok. */
@@ -115,8 +127,9 @@ function event(b: Booking, ctx: IcsContext, now: Date): string[] {
     `DTSTAMP:${icsMoment(now)}`,
     `DTSTART:${icsMoment(b.start_time)}`,
     `DTEND:${icsMoment(b.end_time)}`,
-    `SUMMARY:${icsTekst(titel(b, ctx))}`,
+    `SUMMARY:${icsTekst(titel(terrein))}`,
     ...(terrein ? [`LOCATION:${icsTekst(terrein)}`] : []),
+    `DESCRIPTION:${icsTekst(deelnemer(b, ctx))}`,
     'END:VEVENT',
   ];
 }
