@@ -601,6 +601,8 @@ export const EN: Record<string, string> = {
   'alleen deze les, of deze en alle volgende ({lessen})?':
     'only this lesson, or this one and all later ones ({lessen})?',
   'dit is de laatste les van de reeks.': 'this is the last lesson of the series.',
+  'Verwijderen: deze les gaat uit de agenda. Weg is weg.':
+    'Delete: this lesson leaves the schedule. Gone is gone.',
   'Weg is weg.': 'Gone is gone.',
   'Ja, deze les': 'Yes, this lesson',
   'Alleen deze les': 'Only this lesson',

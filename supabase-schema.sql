@@ -414,6 +414,48 @@ create trigger bookings_betaalvelden_bewaakt
   for each row execute function bewaak_betaalvelden();
 
 -- ---------------------------------------------------------------------------
+-- De beurt van een verwijderde les komt terug
+-- ---------------------------------------------------------------------------
+
+-- Stond een les op een beurtenkaart en wordt ze verwijderd, dan hoort die beurt terug te
+-- komen. De app doet dat zelf zodra ze het mag — maar een speler en een ouder mogen een
+-- kaart niet bewerken (`kaarten_write` hieronder), en dat is met opzet: wie zijn eigen
+-- beurten kan terugzetten, geeft zichzelf gratis lessen.
+--
+-- Vandaar deze trigger. Hij hangt aan de verwijdering zelf, dus hij geldt voor iedereen die
+-- een les weghaalt, langs welke weg dan ook. `security definer` omdat het anders diezelfde
+-- grens is die hem tegenhoudt.
+--
+-- Heeft de app de beurt al teruggegeven (de trainer), dan haalt dit niets meer weg en
+-- verandert er niets: de les stond er dan al niet meer in.
+create or replace function geef_beurt_terug()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if old.beurtenkaart_id is null then return old; end if;
+
+  update beurtenkaarten
+     set uses = coalesce(
+       (select jsonb_agg(beurt)
+          from jsonb_array_elements(coalesce(uses, '[]'::jsonb)) as e(beurt)
+         where beurt->>'booking_id' is distinct from old.id),
+       '[]'::jsonb
+     )
+   where id = old.beurtenkaart_id;
+
+  return old;
+end;
+$$;
+
+drop trigger if exists bookings_beurt_terug on bookings;
+create trigger bookings_beurt_terug
+  after delete on bookings
+  for each row execute function geef_beurt_terug();
+
+-- ---------------------------------------------------------------------------
 -- Nieuwe login aan een bestaande gebruiker koppelen
 -- ---------------------------------------------------------------------------
 
@@ -642,8 +684,22 @@ create policy bookings_update on bookings for update
   );
 
 drop policy if exists bookings_delete on bookings;
+-- De speler zelf en de ouder van een goedgekeurd kind mogen een les schrappen zolang ze nog
+-- moet beginnen: wie de rekening krijgt, mag ook zeggen dat het niet doorgaat.
+--
+-- Wat geweest is, blijft van de trainer. Een gegeven les is een regel in de historiek en in
+-- de omzet, en die laat je niet weghalen door de andere kant van de rekening; daar gaat de
+-- trainer over. Dezelfde grens staat in `magLesVerwijderen` (lib/rechten) — daar zodat het
+-- scherm geen knop aanbiedt die hier geweigerd wordt, hier omdat dit de bewaking is.
+--
+-- Alleen de betaler, niet wie meespeelt: in een groepsles zou het schrappen van de boeking
+-- ook de les van de anderen wegvegen.
 create policy bookings_delete on bookings for delete
-  to authenticated using (coach_id = app_user_id() or is_admin());
+  to authenticated using (
+    coach_id = app_user_id()
+    or is_admin()
+    or ((player_id = app_user_id() or is_mijn_kind(player_id)) and start_time > now())
+  );
 
 -- lesmateriaal: de trainer beheert alles, de speler ziet wat aan hém is toegewezen. Dezelfde
 -- grens als `visibleLessonsFor` in lib/lessons: het clubmateriaal zonder speler is

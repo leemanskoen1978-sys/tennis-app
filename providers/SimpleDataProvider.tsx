@@ -5,7 +5,7 @@ import { AppState, Platform } from 'react-native';
 import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
 import { newId, type StoreData } from './mockStore';
-import { isCoach, magInElkeAgenda } from '../lib/rechten';
+import { isCoach, magInElkeAgenda, magKaartenSchrijven } from '../lib/rechten';
 import { backend, type AuthMode } from './backend';
 import { isHerstelHash, type AanmeldUitkomst } from '../lib/wachtwoord';
 import { magStilVerversen } from '../lib/verversen';
@@ -186,6 +186,20 @@ function releaseCardFor(data: StoreData, booking: Booking | undefined): Beurtenk
   return data.beurtenkaarten.map((c) =>
     c.id === booking.beurtenkaart_id ? releaseSession(c, booking.id) : c,
   );
+}
+
+/**
+ * Geeft deze gebruiker de beurt van een verwijderde les zélf terug, of doet de databank dat?
+ *
+ * Een speler en een ouder mogen een beurtenkaart niet bewerken — wie zijn eigen beurten kan
+ * terugzetten, geeft zichzelf gratis lessen. Bij hen doet de databank het, in een trigger die
+ * aan de verwijdering vastzit (`geef_beurt_terug` in supabase-schema.sql). Zou de app het
+ * hier tóch proberen, dan weigert RLS die ene schrijfactie en valt de hele verwijdering om.
+ *
+ * Zonder databank is er geen trigger en is de app zelf de waarheid; daar doet ze het altijd.
+ */
+function geeftZelfDeBeurtTerug(user: User | null | undefined): boolean {
+  return backend.kind === 'lokaal' || magKaartenSchrijven(user);
 }
 
 /**
@@ -636,8 +650,10 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     if (!store) return;
     const doomed = seriesFrom(store.bookings, bookingId);
     let cards = store.beurtenkaarten;
-    for (const booking of doomed) {
-      cards = releaseCardFor({ ...store, beurtenkaarten: cards }, booking);
+    if (geeftZelfDeBeurtTerug(store.users.find((u) => u.id === currentUserId))) {
+      for (const booking of doomed) {
+        cards = releaseCardFor({ ...store, beurtenkaarten: cards }, booking);
+      }
     }
     const gone = new Set(doomed.map((b) => b.id));
     await commit({
@@ -645,7 +661,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       beurtenkaarten: cards,
       bookings: store.bookings.filter((b) => !gone.has(b.id)),
     });
-  }, [commit]);
+  }, [commit, currentUserId]);
 
   const updateBooking = useCallback(async (
     id: string,
@@ -671,12 +687,13 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     const store = storeRef.current;
     if (!store) return;
     const booking = store.bookings.find((b) => b.id === id);
+    const zelf = geeftZelfDeBeurtTerug(store.users.find((u) => u.id === currentUserId));
     await commit({
       ...store,
-      beurtenkaarten: releaseCardFor(store, booking),
+      beurtenkaarten: zelf ? releaseCardFor(store, booking) : store.beurtenkaarten,
       bookings: store.bookings.filter((b) => b.id !== id),
     });
-  }, [commit]);
+  }, [commit, currentUserId]);
 
   /**
    * Goedkeuren of weigeren. Beide lopen via `updateBooking`, zodat een geweigerde les langs

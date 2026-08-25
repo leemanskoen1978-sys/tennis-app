@@ -11,7 +11,7 @@
 // iets aanbiedt wat de databank daarna weigert.
 
 import { t } from './i18n';
-import type { Role, User } from './types';
+import type { Booking, Role, User } from './types';
 
 /** Beheert deze gebruiker de club? */
 export function isAdmin(user: User | null | undefined): boolean {
@@ -42,6 +42,53 @@ export function isCoach(user: User | null | undefined): user is User & { role: '
  */
 export function magInElkeAgenda(user: User | null | undefined): boolean {
   return isAdmin(user);
+}
+
+/**
+ * Mag deze kijker deze les uit de agenda halen — echt weg, niet afgezegd?
+ *
+ * Twee soorten mensen, elk om hun eigen reden:
+ *  - de trainer van de les en de beheerder: het is hun agenda, en dat geldt ook voor lessen
+ *    die al geweest zijn;
+ *  - de speler over wie het scherm gaat, zolang de les nog moet beginnen. Voor een ouder is
+ *    dat zijn kind (zie providers/kindkeuze), en dat is precies waarom dit `speler` heet en
+ *    niet `kijker`: de ouder betaalt de les van Mathis, dus hij hoort hem ook te kunnen
+ *    schrappen zolang er nog niets gebeurd is.
+ *
+ * Wat geweest is, blijft van de trainer. Een gegeven les is een regel in de historiek en in
+ * de omzet; die laat je niet door de andere kant van de rekening weghalen. Wil een speler
+ * daar toch iets af, dan gaat dat buiten de app om, langs de trainer.
+ *
+ * Alleen de betaler, niet wie meespeelt: in een groepsles zou het schrappen van de boeking
+ * ook de les van de anderen wegvegen. Zie `lessonPlayerIds` in lib/groups voor het verschil.
+ *
+ * De databank bewaakt dezelfde grens (`bookings_delete` in supabase-schema.sql); dit zorgt
+ * alleen dat het scherm geen knop aanbiedt die daarna geweigerd wordt.
+ */
+export function magLesVerwijderen(
+  kijker: User | null | undefined,
+  speler: User | null | undefined,
+  booking: Pick<Booking, 'coach_id' | 'player_id' | 'start_time'>,
+  now: Date,
+): boolean {
+  if (!kijker) return false;
+  if (isAdmin(kijker) || booking.coach_id === kijker.id) return true;
+  if (speler?.id !== booking.player_id) return false;
+  const start = new Date(booking.start_time).getTime();
+  // Een onleesbare begintijd telt als "niet in de toekomst": bij twijfel blijft de les staan.
+  return Number.isFinite(start) && start > now.getTime();
+}
+
+/**
+ * Mag deze gebruiker beurtenkaarten bijwerken?
+ *
+ * Alleen de trainer en de beheerder — een speler die zijn eigen beurten kon terugzetten,
+ * gaf zichzelf gratis lessen. De databank zegt hetzelfde (`kaarten_write`). De app leest dit
+ * bij het verwijderen van een les: hoort daar een beurt bij, dan geeft de trainer hem hier
+ * terug en doet de databank het voor de speler (trigger `geef_beurt_terug`).
+ */
+export function magKaartenSchrijven(user: User | null | undefined): boolean {
+  return isCoach(user) || isAdmin(user);
 }
 
 /**

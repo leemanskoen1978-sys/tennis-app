@@ -36,6 +36,7 @@ import { useT, t as tr } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, minTapTarget, webCursor } from '../constants/theme';
 import { playersOf } from '../lib/hub';
+import { magLesVerwijderen } from '../lib/rechten';
 
 /** De kleur bij een status; dezelfde die het maandoverzicht ooit op de kaart zette. */
 const STATUS_COLORS: Record<BookingStatus, string> = {
@@ -102,7 +103,7 @@ export function BookingDetailSheet({
   const router = useRouter();
   const speler = useActieveSpeler();
   const {
-    bookings, users, courts, beurtenkaarten,
+    currentUser, bookings, users, courts, beurtenkaarten,
     updateBooking, deleteBooking, cancelSeriesFrom, deleteSeriesFrom,
     approveBooking, rejectBooking,
     setPaymentMethod, setParticipants, setPaymentSplit, error, clearError,
@@ -143,6 +144,12 @@ export function BookingDetailSheet({
   // aan `canManage` hieronder, en de databank bewaakt datzelfde verschil met de trigger
   // `bewaak_betaalvelden`.
   const betaler = speler?.id === booking.player_id;
+  // Weghalen is een eigen recht en geen onderdeel van `canManage`: een ouder mag de les van
+  // zijn kind schrappen zolang die nog moet beginnen, terwijl hij hem niet mag verzetten of
+  // goedkeuren. De regel staat in lib/rechten, met dezelfde grens in de databank; hier staat
+  // hij niet als prop maar wordt hij uitgerekend, zodat een scherm dat het blad opent hem
+  // niet stilzwijgend kan vergeten.
+  const magWeg = magLesVerwijderen(currentUser, speler, booking, new Date());
   // Alleen bij een lopende les: op een geannuleerde les valt niets meer te betalen.
   const canPay = (canManage || betaler) && !isCancelled;
   const isGroup = isGroupLesson(booking);
@@ -191,6 +198,20 @@ export function BookingDetailSheet({
     setEditingPlayers(false);
     setConfirming(null);
     onClose();
+  };
+
+  /**
+   * Een les weghalen, en het blad pas dichtdoen als dat gelukt is.
+   *
+   * Meteen sluiten leek logisch — de les bestaat straks niet meer — maar dan is er geen
+   * plek meer waar een weigering van de databank te lezen valt, en gedraagt een mislukte
+   * poging zich als een knop die niets doet. Precies dat.
+   */
+  const weghalen = (doen: () => Promise<void>): void => {
+    clearError();
+    setConfirming(null);
+    // Bij een fout blijft het blad staan: de melding erin komt uit `error` hierboven.
+    void doen().then(close, () => {});
   };
 
   const goTo = (path: string): void => {
@@ -396,23 +417,59 @@ export function BookingDetailSheet({
           </View>
         ) : null}
 
-        {/* Een losse les gaat rechtstreeks: één les annuleren is geen vraag waard, en
-            verwijderen bestond hier niet. Bij een reeks wél, want daar kan één druk
-            een half seizoen meenemen — dus eerst vragen wat je bedoelt. */}
-        {canManage && canCancel && !inSeries ? (
-          <View style={styles.actions}>
-            <Button
-              label={t('Annuleren')}
-              variant="danger"
-              fullWidth={false}
-              onPress={() => {
-                void updateBooking(booking.id, { status: 'cancelled' });
-              }}
-            />
-          </View>
+        {/* Annuleren van één losse les gaat rechtstreeks: dat is geen vraag waard, en de les
+            blijft staan met "geannuleerd" erop. Verwijderen vraagt wél na, ook bij een losse
+            les: daarna is er geen spoor meer van, ook niet in je historiek. Bij een reeks
+            komt er nog een vraag bij, want daar kan één druk een half seizoen meenemen. */}
+        {!inSeries && (canManage || magWeg) ? (
+          confirming === 'delete' ? (
+            <View style={styles.confirmBox}>
+              <Text style={styles.confirmText}>
+                {t('Verwijderen: deze les gaat uit de agenda. Weg is weg.')}
+              </Text>
+              <View style={styles.confirmRow}>
+                <Button
+                  label={t('Ja, verwijderen')}
+                  variant="danger"
+                  fullWidth={false}
+                  onPress={() => weghalen(() => deleteBooking(booking.id))}
+                />
+                <Button
+                  label={t('Nee')}
+                  variant="secondary"
+                  fullWidth={false}
+                  onPress={() => setConfirming(null)}
+                />
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.actions, styles.confirmRow]}>
+              {canManage && canCancel ? (
+                <Button
+                  label={t('Annuleren')}
+                  variant="danger"
+                  fullWidth={false}
+                  onPress={() => {
+                    void updateBooking(booking.id, { status: 'cancelled' });
+                  }}
+                />
+              ) : null}
+              {magWeg ? (
+                <Button
+                  label={t('Verwijderen')}
+                  variant="danger"
+                  fullWidth={false}
+                  onPress={() => {
+                    clearError();
+                    setConfirming('delete');
+                  }}
+                />
+              ) : null}
+            </View>
+          )
         ) : null}
 
-        {canManage && inSeries ? (
+        {inSeries && (canManage || magWeg) ? (
           confirming ? (
             <View style={styles.confirmBox}>
               <Text style={styles.confirmText}>
@@ -430,15 +487,12 @@ export function BookingDetailSheet({
                   variant="danger"
                   fullWidth={false}
                   onPress={() => {
-                    setConfirming(null);
                     if (confirming === 'cancel') {
+                      setConfirming(null);
                       void updateBooking(booking.id, { status: 'cancelled' });
                       return;
                     }
-                    // De les bestaat straks niet meer; het blad zou naar een lege
-                    // boeking staan te kijken, dus het gaat mee dicht.
-                    void deleteBooking(booking.id);
-                    close();
+                    weghalen(() => deleteBooking(booking.id));
                   }}
                 />
                 {tailOnlyThis ? null : (
@@ -447,13 +501,12 @@ export function BookingDetailSheet({
                     variant="danger"
                     fullWidth={false}
                     onPress={() => {
-                      setConfirming(null);
                       if (confirming === 'cancel') {
+                        setConfirming(null);
                         void cancelSeriesFrom(booking.id);
                         return;
                       }
-                      void deleteSeriesFrom(booking.id);
-                      close();
+                      weghalen(() => deleteSeriesFrom(booking.id));
                     }}
                   />
                 )}
@@ -467,7 +520,7 @@ export function BookingDetailSheet({
             </View>
           ) : (
             <View style={[styles.actions, styles.confirmRow]}>
-              {canCancel ? (
+              {canManage && canCancel ? (
                 <Button
                   label={t('Annuleren')}
                   variant="danger"
@@ -478,15 +531,17 @@ export function BookingDetailSheet({
                   }}
                 />
               ) : null}
-              <Button
-                label={t('Verwijderen')}
-                variant="danger"
-                fullWidth={false}
-                onPress={() => {
-                  clearError();
-                  setConfirming('delete');
-                }}
-              />
+              {magWeg ? (
+                <Button
+                  label={t('Verwijderen')}
+                  variant="danger"
+                  fullWidth={false}
+                  onPress={() => {
+                    clearError();
+                    setConfirming('delete');
+                  }}
+                />
+              ) : null}
             </View>
           )
         ) : null}
