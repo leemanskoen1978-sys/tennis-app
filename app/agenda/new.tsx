@@ -22,6 +22,7 @@ import { StudentCombobox } from '../../components/ui/StudentCombobox';
 import { UserManagement } from '../../components/UserManagement';
 import { useT } from '../../lib/i18n';
 import { shortMonthName } from '../../lib/period';
+import { vakantieOp } from '../../lib/vakanties';
 import type { User } from '../../lib/types';
 import { isCoach } from '../../lib/rechten';
 import { coachesOf, playersOf } from '../../lib/hub';
@@ -118,6 +119,11 @@ export default function HomeScreen(): JSX.Element {
   const dayIsWorked: boolean =
     selectedDate === null || bookingCoach === null || worksOnDay(bookingCoach, selectedDate);
 
+  // De clubkalender: in een vakantie geeft niemand les, ook een trainer die op die weekdag
+  // normaal wél werkt. Dat staat los van zijn werkdagen en gaat er dus overheen.
+  const vakanties = settings.vakanties ?? [];
+  const vakantieVandaag = selectedDate ? vakantieOp(vakanties, selectedDate) : null;
+
   // Taken slots are computed for the coach being booked (selectedCoachId).
   // No coaches[0] fallback: without a specific coach nothing is bookable anyway.
   const takenSlots: Set<string> = useMemo(() => {
@@ -208,7 +214,8 @@ export default function HomeScreen(): JSX.Element {
       >
         {days.map((day) => {
           const worked = bookingCoach === null || worksOnDay(bookingCoach, day);
-          const bookable = isDateBookable(day, new Date(), magVandaag) && worked;
+          const vakantie = vakantieOp(vakanties, day);
+          const bookable = isDateBookable(day, new Date(), magVandaag) && worked && !vakantie;
           const active =
             selectedDate !== null &&
             selectedDate.getFullYear() === day.getFullYear() &&
@@ -227,12 +234,14 @@ export default function HomeScreen(): JSX.Element {
               onPress={() => setSelectedDate(day)}
               accessibilityRole="button"
               accessibilityLabel={
-                worked
-                  ? dayLabel
-                  : t('{dag}, {trainer} geeft dan geen les', {
-                    dag: dayLabel,
-                    trainer: bookingCoach?.name ?? '',
-                  })
+                vakantie
+                  ? t('{dag}, {vakantie} — geen les', { dag: dayLabel, vakantie: vakantie.naam })
+                  : worked
+                    ? dayLabel
+                    : t('{dag}, {trainer} geeft dan geen les', {
+                      dag: dayLabel,
+                      trainer: bookingCoach?.name ?? '',
+                    })
               }
               accessibilityState={{ selected: active, disabled: !bookable }}
             >
@@ -290,16 +299,22 @@ export default function HomeScreen(): JSX.Element {
           {coach ? t('Kies eerst een speler om te boeken.') : t('Kies eerst een coach om te boeken.')}
         </Text>
       )}
-      {!dayIsWorked && (
+      {/* De vakantie eerst: is de club dicht, dan doet het er niet toe wiens werkdag het is. */}
+      {vakantieVandaag ? (
+        <Text style={styles.hint}>
+          {t('{vakantie}: de club geeft deze dag geen les.', { vakantie: vakantieVandaag.naam })}
+        </Text>
+      ) : !dayIsWorked ? (
         <Text style={styles.hint}>
           {t('{trainer} geeft geen les op deze dag.', { trainer: bookingCoach?.name ?? '' })}
         </Text>
-      )}
+      ) : null}
       <View style={styles.slotGrid}>
         {slots.map((slot) => {
           const isTaken = takenSlots.has(slot);
           // Bookable only with a date AND a specific coach, and not already taken.
-          const disabled = selectedDate === null || !canBook || isTaken || !dayIsWorked;
+          const disabled = selectedDate === null || !canBook || isTaken || !dayIsWorked
+            || vakantieVandaag !== null;
           const stateLabel = isTaken
             ? t('bezet')
             : disabled

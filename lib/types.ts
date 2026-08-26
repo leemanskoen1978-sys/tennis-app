@@ -327,8 +327,32 @@ export interface PlayerGoal {
   notes?: string;       // Opmerkingen
 }
 
+/**
+ * Een periode waarin de club geen les geeft: een schoolvakantie, een feestdag, een week
+ * waarin de banen op zijn.
+ *
+ * De dagen staan als `jjjj-mm-dd` en niet als tijdstip. Een vakantie is een dag op de
+ * kalender en geen moment op de klok — met een ISO-tijdstip zou "2 november" afhankelijk
+ * van de tijdzone op 1 november kunnen beginnen, en dan valt de maandagles er net buiten.
+ * Zo blijft het ook vergelijkbaar met een simpele tekstvergelijking.
+ */
+export interface Vakantie {
+  id: string;
+  /** Hoe hij heet op het scherm: "Herfstvakantie", "Wapenstilstand". */
+  naam: string;
+  /** De eerste dag zonder les, als jjjj-mm-dd. */
+  van: string;
+  /** De laatste dag zonder les, meegerekend. Eén dag: gelijk aan `van`. */
+  tot: string;
+}
+
 export interface Settings {
   booking_end_time: string;
+  /**
+   * De dagen waarop de club geen les geeft. Leeg of afwezig betekent: het hele jaar door
+   * les — precies zoals de app zich gedroeg voordat dit bestond.
+   */
+  vakanties?: Vakantie[];
   shot_types?: string[];   // choices for a goal's Type slag
   change_types?: string[]; // choices for a goal's Type wijziging
   theme?: 'light' | 'dark';

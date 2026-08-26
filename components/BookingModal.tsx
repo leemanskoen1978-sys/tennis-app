@@ -24,6 +24,7 @@ import { formatDay } from '../lib/datetime';
 import { playersOf } from '../lib/hub';
 import {
   MAX_LESSONS, laatsteDagVan, planSeries, seriesSummary,
+  type OvergeslagenReden, type OvergeslagenSlot,
   type RecurrenceFrequency, type RecurrenceRule,
 } from '../lib/recurrence';
 
@@ -60,6 +61,26 @@ function lessons(n: number): string {
   return n === 1 ? tr('1 les') : tr('{n} lessen', { n });
 }
 
+/**
+ * De staart van de melding na het aanmaken: wat er is overgeslagen en waarom. De twee
+ * redenen staan apart, want ze vragen een verschillend antwoord — een bezette dag verzet je,
+ * een vakantiedag hoort gewoon over te slaan.
+ */
+function overgeslagenZin(skipped: OvergeslagenSlot[]): string {
+  const bezet = skipped.filter((s) => s.reden === 'bezet').length;
+  const vakantie = skipped.filter((s) => s.reden === 'vakantie').length;
+  const delen: string[] = [];
+  if (bezet > 0) {
+    delen.push(tr('{lessen} overgeslagen, de trainer was dan al bezet.', {
+      lessen: lessons(bezet),
+    }));
+  }
+  if (vakantie > 0) {
+    delen.push(tr('{lessen} vielen in een vakantie.', { lessen: lessons(vakantie) }));
+  }
+  return delen.length > 0 ? ` ${delen.join(' ')}` : '';
+}
+
 /** Hoeveel dagen er tussen twee lessen van een reeks zitten. */
 export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const t = useT();
@@ -68,9 +89,11 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   // `courts` is een prop (de terreinen waaruit je hier kiest); voor de prijs van een les
   // is de hele lijst nodig, dus die komt uit de opslag onder een eigen naam.
   const {
-    currentUser, users, bookings, courts: allCourts, beurtenkaarten,
+    currentUser, users, bookings, courts: allCourts, beurtenkaarten, settings,
     addBooking, addBookingSeries, setPaymentMethod, error,
   } = useSimpleData();
+  // De clubkalender: in een vakantie geeft niemand les, dus die dagen vallen uit de reeks.
+  const vakanties = settings.vakanties ?? [];
 
   const [selectedCourtId, setSelectedCourtId] = useState<string>(
     courts[0]?.id ?? '',
@@ -170,9 +193,14 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const rule: RecurrenceRule | null = repeat && untilDate
     ? { frequency: repeat, until: dayKey(untilDate) }
     : null;
-  const plan = rule ? planSeries(start_time, end_time, rule, coachId, bookings) : null;
+  const plan = rule
+    ? planSeries(start_time, end_time, rule, coachId, bookings, vakanties)
+    : null;
   // Een reeks zonder één bruikbare les is geen boeking; de knop hoort dan niet te werken.
   const blockedSeries = repeat !== null && (plan === null || plan.usable.length === 0);
+  /** De overgeslagen lessen met één bepaalde reden. */
+  const overgeslagen = (reden: OvergeslagenReden): OvergeslagenSlot[] =>
+    plan?.skipped.filter((s) => s.reden === reden) ?? [];
 
   /** Zelfde formulering als het exportscherm: hoeveel beurten heeft deze speler nog. */
   const beurtenHint = (): string => {
@@ -268,9 +296,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
           setSeriesNotice(
             `${lessons(created.length)} aangemaakt: ${gelukt} op ${PAYMENT_LABELS[method]}, `
             + `${open} op ${PAYMENT_LABELS.open} — die vind je in Beheer → Betalingen.`
-            + (skipped.length > 0
-              ? ` ${lessons(skipped.length)} overgeslagen, de trainer was dan al bezet.`
-              : ''),
+            + overgeslagenZin(skipped),
           );
           return;
         }
@@ -542,11 +568,25 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                   {plan && rule ? (
                     <>
                       <Text style={styles.price}>{seriesSummary(plan, rule)}</Text>
-                      {plan.skipped.length > 0 ? (
+                      {/* Twee redenen, twee regels: bij "bezet" verzet je die ene les, bij
+                          een vakantie is er niets aan de hand en stapt de reeks er gewoon
+                          overheen. Op één hoop gegooid zou de trainer gaan zoeken naar een
+                          botsing die er niet is. */}
+                      {overgeslagen('bezet').length > 0 ? (
                         <Text style={styles.hint}>
                           {t('{lessen} overgeslagen omdat de trainer dan al bezet is: {dagen}.', {
-                            lessen: lessons(plan.skipped.length),
-                            dagen: plan.skipped.map((s) => formatDay(s.start_time)).join(', '),
+                            lessen: lessons(overgeslagen('bezet').length),
+                            dagen: overgeslagen('bezet').map((s) => formatDay(s.start_time)).join(', '),
+                          })}
+                        </Text>
+                      ) : null}
+                      {overgeslagen('vakantie').length > 0 ? (
+                        <Text style={styles.hint}>
+                          {t('{lessen} vallen in een vakantie en gaan niet door: {dagen}.', {
+                            lessen: lessons(overgeslagen('vakantie').length),
+                            dagen: overgeslagen('vakantie')
+                              .map((s) => `${formatDay(s.start_time)} (${s.vakantie ?? ''})`)
+                              .join(', '),
                           })}
                         </Text>
                       ) : null}

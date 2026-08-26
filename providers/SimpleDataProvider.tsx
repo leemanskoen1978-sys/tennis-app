@@ -23,7 +23,7 @@ import {
 import { isGroupLesson } from '../lib/groups';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
-import { planSeries, type RecurrenceRule, type SeriesSlot } from '../lib/recurrence';
+import { planSeries, type OvergeslagenSlot, type RecurrenceRule } from '../lib/recurrence';
 import type {
   User, Court, Booking, Lesson, Memo, StudentProgress, PlayerGoal, Role, Settings,
   Beurtenkaart, BookingStatus, OuderKind, PaymentMethod, PaymentSplit,
@@ -72,7 +72,7 @@ interface DataShape {
   updateCourt: (id: string, patch: Partial<Omit<Court, 'id'>>) => Promise<void>;
   addBooking: (b: Omit<Booking, 'id'>) => Promise<Booking | null>;
   /** Maakt de hele reeks aan. Geeft terug wat er gemaakt is en wat er is overgeslagen wegens een botsing. */
-  addBookingSeries: (base: Omit<Booking, 'id'>, rule: RecurrenceRule) => Promise<{ created: Booking[]; skipped: SeriesSlot[] }>;
+  addBookingSeries: (base: Omit<Booking, 'id'>, rule: RecurrenceRule) => Promise<{ created: Booking[]; skipped: OvergeslagenSlot[] }>;
   /** Annuleert deze les en alle latere uit dezelfde reeks. */
   cancelSeriesFrom: (bookingId: string) => Promise<void>;
   /** Verwijdert deze les en alle latere uit dezelfde reeks. */
@@ -579,11 +579,14 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const addBookingSeries = useCallback(async (
     base: Omit<Booking, 'id'>,
     rule: RecurrenceRule,
-  ): Promise<{ created: Booking[]; skipped: SeriesSlot[] }> => {
+  ): Promise<{ created: Booking[]; skipped: OvergeslagenSlot[] }> => {
     const store = storeRef.current;
     if (!store) return { created: [], skipped: [] };
 
-    const plan = planSeries(base.start_time, base.end_time, rule, base.coach_id, store.bookings);
+    const plan = planSeries(
+      base.start_time, base.end_time, rule, base.coach_id, store.bookings,
+      store.settings.vakanties ?? [],
+    );
     if (plan.usable.length === 0) {
       setError('Elk moment van deze reeks is al geboekt bij deze coach.');
       return { created: [], skipped: plan.skipped };

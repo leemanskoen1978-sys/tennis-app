@@ -17,6 +17,7 @@ import { groupSize, shortGroupLabel } from '../lib/groups';
 import { isCoach } from '../lib/rechten';
 import { isAwaitingApproval } from '../lib/inbox';
 import { formatUren, type Blok, type Rooster } from '../lib/week';
+import { vakantieOp } from '../lib/vakanties';
 import type { Booking } from '../lib/types';
 import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
@@ -46,7 +47,9 @@ export function WeekRaster({
   now: Date;
 }): React.JSX.Element {
   const t = useT();
-  const { currentUser, users, courts, clearError } = useSimpleData();
+  const { currentUser, users, courts, settings, clearError } = useSimpleData();
+  // De clubkalender: op een gesloten dag hoort het raster niet te doen alsof er uren vrij zijn.
+  const vakanties = settings.vakanties ?? [];
   const { kijktNaarZichzelf } = useKindkeuze();
   const { width } = useWindowDimensions();
   const [openBooking, setOpenBooking] = useState<Booking | null>(null);
@@ -96,21 +99,31 @@ export function WeekRaster({
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View>
             <View style={styles.kopRij}>
-              {rooster.dagen.map((d) => (
-                <View
-                  key={d.dag.toISOString()}
-                  style={[
-                    styles.kop,
-                    { width: kolomBreedte },
-                    isVandaag(d.dag, now) && styles.vandaag,
-                  ]}
-                >
-                  <Text style={styles.kopDag} numberOfLines={1}>{formatDay(d.dag)}</Text>
-                  <Text style={d.minuten === 0 ? styles.kopUrenLeeg : styles.kopUren}>
-                    {formatUren(d.minuten)}
-                  </Text>
-                </View>
-              ))}
+              {rooster.dagen.map((d) => {
+                const vakantie = vakantieOp(vakanties, d.dag);
+                return (
+                  <View
+                    key={d.dag.toISOString()}
+                    style={[
+                      styles.kop,
+                      { width: kolomBreedte },
+                      isVandaag(d.dag, now) && styles.vandaag,
+                      vakantie !== null && styles.gesloten,
+                    ]}
+                  >
+                    <Text style={styles.kopDag} numberOfLines={1}>{formatDay(d.dag)}</Text>
+                    {/* Op een gesloten dag zegt de naam van de vakantie meer dan "0 u": dat
+                        laatste leest als een lege agenda, en dit als een reden. */}
+                    {vakantie ? (
+                      <Text style={styles.kopVakantie} numberOfLines={1}>{vakantie.naam}</Text>
+                    ) : (
+                      <Text style={d.minuten === 0 ? styles.kopUrenLeeg : styles.kopUren}>
+                        {formatUren(d.minuten)}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
             </View>
 
             <View style={styles.kolomRij}>
@@ -121,6 +134,7 @@ export function WeekRaster({
                     styles.kolom,
                     { width: kolomBreedte, height: hoogte },
                     isVandaag(d.dag, now) && styles.vandaag,
+                    vakantieOp(vakanties, d.dag) !== null && styles.gesloten,
                   ]}
                 >
                   {/* De uurlijnen. Zonder die strepen zweeft een blok en lees je zijn hoogte
@@ -213,6 +227,9 @@ const styles = StyleSheet.create({
     borderTopColor: tennisColors.border,
   },
   vandaag: { backgroundColor: tennisColors.primaryTint },
+  // Gesloten wint van vandaag: valt vandaag in een vakantie, dan is dát wat je moet zien.
+  gesloten: { backgroundColor: tennisColors.surfaceAlt },
+  kopVakantie: { ...typography.label, color: tennisColors.textMuted },
   uurLijn: {
     position: 'absolute',
     left: 0,

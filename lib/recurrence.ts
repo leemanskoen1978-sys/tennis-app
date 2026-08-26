@@ -11,9 +11,10 @@
 // en niet met "168 uur erbij".
 
 import { t } from './i18n';
-import type { Booking } from './types';
+import type { Booking, Vakantie } from './types';
 import { endOfDay } from './period';
 import { formatDay } from './datetime';
+import { vakantieOpMoment } from './vakanties';
 
 export type RecurrenceFrequency = 'weekly' | 'biweekly';
 
@@ -28,11 +29,24 @@ export interface SeriesSlot {
   end_time: string;   // ISO
 }
 
+/**
+ * Waarom een les van de reeks afvalt. De twee redenen staan uit elkaar omdat ze een
+ * verschillend antwoord vragen: bij "bezet" verzet je die ene les, bij "vakantie" is er
+ * niets aan de hand en hoort de reeks er gewoon overheen te stappen.
+ */
+export type OvergeslagenReden = 'bezet' | 'vakantie';
+
+export interface OvergeslagenSlot extends SeriesSlot {
+  reden: OvergeslagenReden;
+  /** De naam van de vakantie, als dat de reden was. */
+  vakantie?: string;
+}
+
 export interface SeriesPlan {
   /** De lessen die aangemaakt kunnen worden, op tijd oplopend, inclusief de eerste. */
   usable: SeriesSlot[];
-  /** De lessen die botsen met een bestaande boeking van dezelfde trainer. */
-  skipped: SeriesSlot[];
+  /** De lessen die niet doorgaan, met de reden erbij. */
+  skipped: OvergeslagenSlot[];
 }
 
 /** Hoeveel dagen er tussen twee lessen zitten. */
@@ -120,6 +134,13 @@ export function planSeries(
   rule: RecurrenceRule,
   coachId: string,
   existing: Booking[],
+  /**
+   * De clubkalender. Valt een les in een vakantie, dan gaat hij niet door — geen enkele
+   * trainer geeft les in een week dat de club dicht is, en die lessen achteraf één voor
+   * één terugvinden en schrappen is precies het werk dat een reeks moest besparen.
+   * Leeg betekent "het hele jaar door les", zoals het was voordat de kalender bestond.
+   */
+  vakanties: Vakantie[] = [],
 ): SeriesPlan {
   const empty: SeriesPlan = { usable: [], skipped: [] };
 
@@ -138,7 +159,7 @@ export function planSeries(
   const limit = endOfDay(until).getTime();
 
   const usable: SeriesSlot[] = [];
-  const skipped: SeriesSlot[] = [];
+  const skipped: OvergeslagenSlot[] = [];
   for (let i = 0; i < MAX_LESSONS; i++) {
     const days = i * step;
     const slotStart = shiftDays(start, days);
@@ -147,7 +168,16 @@ export function planSeries(
       start_time: slotStart.toISOString(),
       end_time: shiftDays(end, days).toISOString(),
     };
-    (collides(slot, coachId, existing) ? skipped : usable).push(slot);
+    // De vakantie eerst: is de club dicht, dan doet het er niet meer toe of de trainer op
+    // dat uur ook nog een andere les had staan.
+    const vakantie = vakantieOpMoment(vakanties, slot.start_time);
+    if (vakantie) {
+      skipped.push({ ...slot, reden: 'vakantie', vakantie: vakantie.naam });
+    } else if (collides(slot, coachId, existing)) {
+      skipped.push({ ...slot, reden: 'bezet' });
+    } else {
+      usable.push(slot);
+    }
   }
 
   return { usable, skipped };

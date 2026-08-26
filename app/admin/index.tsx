@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
-  Upload, Users, UserCog, BookOpen, type LucideIcon,
+  Upload, Users, UserCog, BookOpen, CalendarOff, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
@@ -28,7 +28,7 @@ interface Tile {
 export default function Admin() {
   const t = useT();
   const router = useRouter();
-  const { currentUser, relaties } = useSimpleData();
+  const { currentUser, relaties, settings } = useSimpleData();
   const pending = usePendingPaymentBookings();
   const [addOpen, setAddOpen] = useState(false);
 
@@ -39,6 +39,16 @@ export default function Admin() {
       </Screen>
     );
   }
+
+  // Het aantal op de tegel is er om het lege geval op te merken: zolang de clubkalender
+  // leeg is, rekent de app met les het hele jaar door — en dat merk je pas als er lessen in
+  // de kerstvakantie blijken te staan.
+  const vakanties = settings.vakanties ?? [];
+  const vakantieSubtitel = vakanties.length === 0
+    ? t('Nog geen vakanties ingevuld')
+    : vakanties.length === 1
+      ? t('1 periode zonder les')
+      : t('{n} periodes zonder les', { n: vakanties.length });
 
   // Zes gelijkwaardige tegels op een rij zeggen niets. Gegroepeerd zie je in één oogopslag
   // waar je moet zijn: gaat het over geld, over de club zelf, of over de app.
@@ -58,6 +68,9 @@ export default function Admin() {
       tiles: [
         { key: 'courts', title: t('Banen'), subtitle: t('Namen en uurtarieven'), icon: LayoutGrid, onPress: () => router.push('/admin/courts') },
         { key: 'goals', title: t('Doelen'), subtitle: t('Woordenlijst voor spelersdoelen'), icon: Target, onPress: () => router.push('/admin/goals') },
+        // De clubkalender hoort bij de club en niet bij het systeem: het is hetzelfde
+        // papier dat anders aan de muur van de kantine hangt.
+        { key: 'vak', title: t('Clubkalender'), subtitle: vakantieSubtitel, icon: CalendarOff, onPress: () => router.push('/admin/vakanties') },
         { key: 'add', title: t('Speler toevoegen'), subtitle: t('Nieuw lid aanmaken'), icon: UserPlus, onPress: () => setAddOpen(true) },
         { key: 'import', title: t('Leden importeren'), subtitle: t('Uit een Excel-lijst'), icon: Upload, onPress: () => router.push('/admin/leden-import') },
         // Alleen voor een beheerder: hier zit het beheerdersvinkje, en hier verdwijnt een lid

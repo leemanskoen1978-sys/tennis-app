@@ -2,7 +2,7 @@
 // UTC zou hij groen worden zonder iets te bewijzen. Dit is de zone waarin de club staat.
 process.env.TZ = 'Europe/Brussels';
 
-import type { Booking } from './types';
+import type { Booking, Vakantie } from './types';
 import { MAX_LESSONS, laatsteDagVan, planSeries, seriesSummary, type RecurrenceRule } from './recurrence';
 
 /** Een les op een lokale dag en uur; ISO eruit, precies zoals de app zelf boekt. */
@@ -134,6 +134,58 @@ describe('botsingen met een bestaande boeking', () => {
     const plan = planSeries(iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen', [geannuleerd]);
     expect(plan.skipped).toEqual([]);
     expect(days(plan.usable)).toEqual(['20/8', '27/8', '3/9', '10/9', '17/9']);
+  });
+});
+
+describe('de clubkalender', () => {
+  const herfst: Vakantie = {
+    id: 'v1', naam: 'Herfstvakantie', van: '2026-08-27', tot: '2026-09-03',
+  };
+
+  it('slaat de lessen over die in een vakantie vallen, met de naam erbij', () => {
+    const plan = planSeries(
+      iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen', [], [herfst],
+    );
+    expect(days(plan.usable)).toEqual(['20/8', '10/9', '17/9']);
+    expect(days(plan.skipped)).toEqual(['27/8', '3/9']);
+    expect(plan.skipped.every((s) => s.reden === 'vakantie')).toBe(true);
+    expect(plan.skipped[0].vakantie).toBe('Herfstvakantie');
+  });
+
+  it('houdt vakantie en bezet uit elkaar', () => {
+    const plan = planSeries(
+      iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen',
+      [busy('bezet', 2026, 8, 10)], [herfst],
+    );
+    expect(plan.skipped.filter((s) => s.reden === 'vakantie').map((s) => s.vakantie))
+      .toEqual(['Herfstvakantie', 'Herfstvakantie']);
+    expect(days(plan.skipped.filter((s) => s.reden === 'bezet'))).toEqual(['10/9']);
+    expect(days(plan.usable)).toEqual(['20/8', '17/9']);
+  });
+
+  it('noemt een vakantiedag geen botsing, ook als er die dag al een les stond', () => {
+    // Is de club dicht, dan doet het er niet meer toe of de trainer dat uur al bezet was.
+    const plan = planSeries(
+      iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen',
+      [busy('bezet', 2026, 7, 27)], [herfst],
+    );
+    expect(plan.skipped.find((s) => days([s])[0] === '27/8')?.reden).toBe('vakantie');
+  });
+
+  it('doet zonder kalender precies wat het altijd deed', () => {
+    const zonder = planSeries(iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen', []);
+    const leeg = planSeries(iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen', [], []);
+    expect(zonder.usable).toHaveLength(5);
+    expect(leeg.usable).toHaveLength(5);
+  });
+
+  it('kan een hele reeks in de vakantie laten vallen', () => {
+    const heelLang: Vakantie = { id: 'v2', naam: 'Zomer', van: '2026-08-01', tot: '2026-10-01' };
+    const plan = planSeries(
+      iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen', [], [heelLang],
+    );
+    expect(plan.usable).toEqual([]);
+    expect(plan.skipped).toHaveLength(5);
   });
 });
 

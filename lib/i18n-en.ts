@@ -69,6 +69,33 @@ export const EN: Record<string, string> = {
   'Historiek': 'History',
   'Nog te komen': 'Upcoming',
   'Weekagenda': 'Week schedule',
+  // Beheer → Clubkalender: de dagen waarop de club geen les geeft (app/admin/vakanties).
+  'Clubkalender': 'Club calendar',
+  'Nog geen vakanties ingevuld': 'No holidays entered yet',
+  '1 periode zonder les': '1 period without lessons',
+  '{n} periodes zonder les': '{n} periods without lessons',
+  'Op deze dagen geeft de club geen les. Een herhalende reeks stapt eroverheen, Reserveren biedt er geen uren aan en de weekagenda toont ze als gesloten. Lessen die er al staan blijven staan.':
+    'On these days the club gives no lessons. A repeating series steps over them, Book '
+    + 'offers no hours on them and the week schedule shows them as closed. Lessons already '
+    + 'there stay.',
+  'bv. Herfstvakantie': 'e.g. Autumn break',
+  'leeg = dezelfde dag': 'empty = the same day',
+  'Nog geen vakanties. Zolang deze lijst leeg is, rekent de app met les het hele jaar door.':
+    'No holidays yet. While this list is empty, the app assumes lessons all year round.',
+  'Geef de vakantie een naam.': 'Give the holiday a name.',
+  'Vul beide dagen in als dd/mm/jjjj.': 'Fill in both days as dd/mm/yyyy.',
+  '1 dag': '1 day',
+  '{n} dagen': '{n} days',
+  'Weg': 'Remove',
+  'Voorbeeld: {voorbeeld}': 'Example: {voorbeeld}',
+  '{dag}, {vakantie} — geen les': '{dag}, {vakantie} — no lessons',
+  '{vakantie}: de club geeft deze dag geen les.':
+    '{vakantie}: the club gives no lessons on this day.',
+  '{lessen} vallen in een vakantie en gaan niet door: {dagen}.':
+    '{lessen} fall in a holiday and will not happen: {dagen}.',
+  '{lessen} overgeslagen, de trainer was dan al bezet.':
+    '{lessen} skipped, the coach was already busy then.',
+  '{lessen} vielen in een vakantie.': '{lessen} fell in a holiday.',
   // Beheer → Leden en het bewerkblad erachter (app/admin/leden, components/LidBewerken).
   'Leden': 'Members',
   'Gegevens, type account en beheerders': 'Details, account type and administrators',
@@ -922,7 +949,7 @@ export const EN: Record<string, string> = {
   'Geweigerde aanvragen wissen': 'Clear declined requests',
   // De lengte van een reeks: een aantal in plaats van een einddatum.
   'Hoeveel lessen?': 'How many lessons?',
-  '{n}\u00d7': '{n}\u00d7',
+  '{n}×': '{n}×',
   'aantal': 'number',
   'Aantal lessen in de reeks': 'Number of lessons in the series',
   'Vul een aantal in van 2 tot {max}.': 'Enter a number from 2 to {max}.',
