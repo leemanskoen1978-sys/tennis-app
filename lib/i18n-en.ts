@@ -709,7 +709,7 @@ export const EN: Record<string, string> = {
   'Tik op je naam: één keer voor aanwezig, nog eens voor afwezig, nog eens om hem leeg te maken.':
     'Tap your name: once for present, again for absent, again to clear it.',
   'Klaar, houd twee tellen vast': 'Done, hold for two seconds',
-  'Houd Klaar twee tellen vast om terug te gaan.': 'Hold Done for two seconds to go back.',
+  'Blijf vasthouden…': 'Keep holding…',
   'Twee tellen vasthouden.': 'Hold for two seconds.',
 
   // --- dossiers -----------------------------------------------------------

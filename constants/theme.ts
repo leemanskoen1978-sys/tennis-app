@@ -45,6 +45,17 @@ export function shadow(level: 'sm' | 'md' | 'lg' = 'md') {
 export const webCursor =
   Platform.OS === 'web' ? ({ cursor: 'pointer' } as const) : ({} as const);
 
+// Geen tekstselectie op web (op native een lege stijl, want daar bestaat het probleem niet).
+//
+// Nodig op alles waar je lang op moet drukken. Een browser op een telefoon leest een lange
+// druk als "selecteer deze tekst": je krijgt een blauw vlak en een vergrootglas te zien, en
+// de lange druk van de app zelf gaat niet door. Dat is precies wat de knop Klaar op het
+// afvinkscherm nodig heeft — daar ís de lange druk de handeling.
+export const noSelect =
+  Platform.OS === 'web'
+    ? ({ userSelect: 'none', WebkitTouchCallout: 'none' } as unknown as { userSelect: 'none' })
+    : ({} as const);
+
 export const typography = {
   h1: { fontSize: 28, fontWeight: '800' as const },
   h2: { fontSize: 20, fontWeight: '700' as const },

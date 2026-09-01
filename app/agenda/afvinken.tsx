@@ -25,7 +25,7 @@ import { lessonPlayerIds } from '../../lib/groups';
 import { formatTimeRange } from '../../lib/datetime';
 import { isCoach } from '../../lib/rechten';
 import { tennisColors } from '../../constants/tennis-colors';
-import { radius, spacing, typography, webCursor } from '../../constants/theme';
+import { radius, spacing, typography, webCursor, noSelect } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
 
 /** Hoe lang je Klaar moet vasthouden. Lang genoeg dat een kind er niet per ongeluk uit valt. */
@@ -46,8 +46,9 @@ export default function AfvinkenScreen(): React.JSX.Element {
 
   // Welke les de trainer koos toen er meer dan één tegelijk liep. Leeg = de eerste.
   const [gekozen, setGekozen] = useState<string | null>(null);
-  // Een korte tik op Klaar doet niets; zonder deze regel lijkt dat een kapotte knop.
-  const [klaarHint, setKlaarHint] = useState(false);
+  // Of de vinger nú op Klaar staat. Een lange druk geeft uit zichzelf geen enkel teken dat
+  // hij bezig is, en dan laat je na een halve tel weer los omdat de knop stuk lijkt.
+  const [vasthouden, setVasthouden] = useState(false);
 
   const coach = isCoach(currentUser);
   const lessen = useMemo(
@@ -124,14 +125,18 @@ export default function AfvinkenScreen(): React.JSX.Element {
                   styles.naamRij,
                   standStijl(stand),
                   webCursor,
+                  noSelect,
                   pressed && styles.gedrukt,
                 ]}
               >
                 <View style={styles.naamIcoon}>{standIcoon(stand)}</View>
-                <Text style={[styles.naam, stand ? styles.naamOpVulling : null]} numberOfLines={1}>
+                <Text
+                  style={[styles.naam, noSelect, stand ? styles.naamOpVulling : null]}
+                  numberOfLines={1}
+                >
                   {naam}
                 </Text>
-                <Text style={[styles.stand, stand ? styles.naamOpVulling : null]}>
+                <Text style={[styles.stand, noSelect, stand ? styles.naamOpVulling : null]}>
                   {standLabel(stand, t)}
                 </Text>
               </Pressable>
@@ -159,19 +164,18 @@ export default function AfvinkenScreen(): React.JSX.Element {
           van hand tot hand gaat. */}
       <View style={styles.klaarRij}>
         <Pressable
-          onPress={() => setKlaarHint(true)}
+          onPressIn={() => setVasthouden(true)}
+          onPressOut={() => setVasthouden(false)}
           onLongPress={sluiten}
           delayLongPress={KLAAR_MS}
           accessibilityRole="button"
           accessibilityLabel={t('Klaar, houd twee tellen vast')}
-          style={({ pressed }) => [styles.klaar, webCursor, pressed && styles.gedrukt]}
+          style={({ pressed }) => [styles.klaar, webCursor, noSelect, pressed && styles.gedrukt]}
         >
-          <Text style={styles.klaarTekst}>{t('Klaar')}</Text>
+          <Text style={[styles.klaarTekst, noSelect]}>{t('Klaar')}</Text>
         </Pressable>
         <Text style={styles.uitleg}>
-          {klaarHint
-            ? t('Houd Klaar twee tellen vast om terug te gaan.')
-            : t('Twee tellen vasthouden.')}
+          {vasthouden ? t('Blijf vasthouden…') : t('Twee tellen vasthouden.')}
         </Text>
       </View>
     </Screen>
