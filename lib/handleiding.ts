@@ -147,10 +147,9 @@ const TRAINER: Gidsstuk[] = [
           + 'les die nu bezig is en zet de namen groot onder elkaar. Elk kind tikt op zijn '
           + 'eigen naam — één keer voor aanwezig, nog eens voor afwezig, nog eens om hem weer '
           + 'leeg te maken.',
-          'Zolang dat scherm openstaat is er geen enkele weg naar de rest van de app; een gsm '
-          + 'die rondgaat in een groep komt anders overal terecht. Terug ga je met een lange '
-          + 'druk op Klaar. Wie er stond kun je ook later nog bijstellen: open de les en zet '
-          + 'het onder Aanwezigheid.',
+          'Op dat scherm staan alleen de namen en een terugknop bovenaan links: een gsm die '
+          + 'rondgaat in een groep komt anders overal terecht. Wie er stond kun je ook later '
+          + 'nog bijstellen: open de les en zet het onder Aanwezigheid.',
         ],
       },
       {

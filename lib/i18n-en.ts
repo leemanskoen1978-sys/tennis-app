@@ -708,9 +708,7 @@ export const EN: Record<string, string> = {
     + 'pass your phone around.',
   'Tik op je naam: één keer voor aanwezig, nog eens voor afwezig, nog eens om hem leeg te maken.':
     'Tap your name: once for present, again for absent, again to clear it.',
-  'Klaar, houd twee tellen vast': 'Done, hold for two seconds',
-  'Blijf vasthouden…': 'Keep holding…',
-  'Twee tellen vasthouden.': 'Hold for two seconds.',
+  'Terug naar de agenda': 'Back to the schedule',
 
   // --- dossiers -----------------------------------------------------------
   'Open dossier van {naam}': 'Open the file of {naam}',

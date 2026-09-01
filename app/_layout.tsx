@@ -154,7 +154,8 @@ function Root() {
   //
   // En behalve het afvinkscherm, om de omgekeerde reden: dáár gaat de gsm van de trainer
   // rond in de groep, en één tik op de tabbalk zou een kind in de ledenlijst of bij de
-  // betalingen zetten. Terug gaat daar met een lange druk op Klaar.
+  // betalingen zetten. Terug gaat daar met de knop bovenaan links, die het scherm zelf
+  // tekent.
   const route = segments.join('/');
   const showMenu = segments[0] !== 'login' && segments[0] !== 'nieuw-wachtwoord'
     && route !== 'agenda/afvinken';
