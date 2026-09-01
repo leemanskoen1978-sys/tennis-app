@@ -21,6 +21,7 @@ import {
   GROEPSLES_METHOD,
 } from '../lib/beurtenkaart';
 import { isGroupLesson } from '../lib/groups';
+import { zetAanwezigheid, type Aanwezigheid } from '../lib/aanwezigheid';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
 import { planSeries, type OvergeslagenSlot, type RecurrenceRule } from '../lib/recurrence';
@@ -77,12 +78,13 @@ interface DataShape {
   cancelSeriesFrom: (bookingId: string) => Promise<void>;
   /** Verwijdert deze les en alle latere uit dezelfde reeks. */
   deleteSeriesFrom: (bookingId: string) => Promise<void>;
-  /** `payment_method`, `beurtenkaart_id`, `participant_ids` en `payment_split` blijven
-   *  erbuiten: die lopen uitsluitend via `setPaymentMethod`, `setParticipants` en
-   *  `setPaymentSplit` — de plekken die de beurtenkaart en de factuurregel in de pas houden. */
+  /** `payment_method`, `beurtenkaart_id`, `participant_ids`, `payment_split` en
+   *  `attendance` blijven erbuiten: die lopen uitsluitend via `setPaymentMethod`,
+   *  `setParticipants`, `setPaymentSplit` en `setAanwezigheid` — de plekken die de
+   *  beurtenkaart, de factuurregel en de afvinklijst in de pas houden. */
   updateBooking: (
     id: string,
-    patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id' | 'participant_ids' | 'payment_split'>>,
+    patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id' | 'participant_ids' | 'payment_split' | 'attendance'>>,
   ) => Promise<void>;
   /**
    * De deelnemers van een les zetten. Geeft de melding terug als het geld erdoor veranderde
@@ -92,6 +94,18 @@ interface DataShape {
   setParticipants: (bookingId: string, participantIds: string[]) => Promise<string | null>;
   /** Bij een groepsles: één factuur voor de betaler of ieder zijn deel. */
   setPaymentSplit: (bookingId: string, split: PaymentSplit) => Promise<void>;
+  /**
+   * Eén speler aanwezig of afwezig vinken; `null` (of opnieuw dezelfde knop) wist de
+   * aantekening — zie `zetAanwezigheid` in lib/aanwezigheid.
+   *
+   * Alleen de trainer van de les en de beheerder mogen dit; de bewaking staat hier en
+   * niet alleen in het scherm, met dezelfde grens in de databank (`bewaak_betaalvelden`).
+   */
+  setAanwezigheid: (
+    bookingId: string,
+    playerId: string,
+    waarde: Aanwezigheid | null,
+  ) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   /**
    * De trainer keurt een aangevraagde les goed; pas daarna gaat hij door. Alleen de trainer
@@ -777,6 +791,25 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [commit]);
 
+  const setAanwezigheid = useCallback(async (
+    bookingId: string,
+    playerId: string,
+    waarde: Aanwezigheid | null,
+  ) => {
+    const store = storeRef.current;
+    if (!store || !currentUserId) return;
+    const booking = store.bookings.find((b) => b.id === bookingId);
+    if (!booking) return;
+    // Wie er stond, weet de trainer die er zelf bij was. Een beheerder mag in elke agenda.
+    const magAlles = magInElkeAgenda(store.users.find((u) => u.id === currentUserId));
+    if (!magAlles && booking.coach_id !== currentUserId) return;
+    const patch = zetAanwezigheid(booking, playerId, waarde);
+    await commit({
+      ...store,
+      bookings: store.bookings.map((b) => (b.id === bookingId ? { ...b, ...patch } : b)),
+    });
+  }, [commit, currentUserId]);
+
   const setPaymentMethod = useCallback(async (bookingId: string, method: PaymentMethod): Promise<boolean> => {
     const store = storeRef.current;
     if (!store) return false;
@@ -1098,6 +1131,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     rejectBooking,
     setParticipants,
     setPaymentSplit,
+    setAanwezigheid,
     setPaymentMethod,
     addBeurtenkaart,
     updateBeurtenkaart,
@@ -1130,7 +1164,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     herstelBezig, stuurHerstelmail, zetNieuwWachtwoord, logout, refresh,
     updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
     updateBooking, deleteBooking, approveBooking, rejectBooking,
-    setParticipants, setPaymentSplit,
+    setParticipants, setPaymentSplit, setAanwezigheid,
     setPaymentMethod, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,

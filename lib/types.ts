@@ -1,5 +1,7 @@
 // Shared data model (spec §4).
 
+import type { Aanwezigheden } from './aanwezigheid';
+
 /**
  * Twee rollen, geen drie. "Ouder" was er ooit een, en dat werkte averechts: een ouder die
  * zelf tennist moest kiezen tussen zijn eigen lessen zien óf die van zijn kind. Ouderschap
@@ -177,6 +179,12 @@ export interface Booking {
    * gebeurd. De datum doet ook het tweede werk: na een week is het geen nieuws meer.
    */
   rejected_at?: string;
+  /**
+   * Wie er die dag effectief stond: speler-id → 'aanwezig' of 'afwezig'. Een speler die er
+   * niet in staat, is niet afgevinkt — en dat is iets anders dan afwezig. Zie
+   * lib/aanwezigheid, de enige plek waar dit veld gelezen en geschreven wordt.
+   */
+  attendance?: Aanwezigheden;
   actual_start_time?: string;
   actual_end_time?: string;
 }

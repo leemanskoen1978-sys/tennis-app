@@ -45,6 +45,9 @@ const headerBase = {
 // blijft op deze twee staan, voor beide rollen.
 const HEADLESS = new Set([
   'agenda/index',
+  // Het afvinkscherm draagt zijn eigen kop (het uur van de les) en verder niets: zolang de
+  // gsm rondgaat in de groep hoort er geen enkele weg naar een ander scherm op te staan.
+  'agenda/afvinken',
   'players/index',
   'players/progress',
   'coaches/index',
@@ -57,6 +60,7 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   { name: 'nieuw-wachtwoord', title: t('Nieuw wachtwoord') },
   { name: 'agenda/index', title: t('Agenda') },
   { name: 'agenda/new', title: t('Nieuwe afspraak') },
+  { name: 'agenda/afvinken', title: t('Afvinken') },
   { name: 'agenda/overzicht', title: t('Overzicht') },
   { name: 'agenda/historiek', title: t('Historiek') },
   { name: 'agenda/komend', title: t('Nog te komen') },
@@ -147,7 +151,13 @@ function Root() {
 
   // Every screen carries the bars except login en nieuw-wachtwoord: die hebben nog niets om
   // naartoe te navigeren, of navigeren zou juist het wachtwoord instellen omzeilen.
-  const showMenu = segments[0] !== 'login' && segments[0] !== 'nieuw-wachtwoord';
+  //
+  // En behalve het afvinkscherm, om de omgekeerde reden: dáár gaat de gsm van de trainer
+  // rond in de groep, en één tik op de tabbalk zou een kind in de ledenlijst of bij de
+  // betalingen zetten. Terug gaat daar met een lange druk op Klaar.
+  const route = segments.join('/');
+  const showMenu = segments[0] !== 'login' && segments[0] !== 'nieuw-wachtwoord'
+    && route !== 'agenda/afvinken';
 
   return (
     <View style={{ flex: 1, backgroundColor: tennisColors.background }}>

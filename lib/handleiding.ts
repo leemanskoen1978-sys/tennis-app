@@ -140,6 +140,20 @@ const TRAINER: Gidsstuk[] = [
         ],
       },
       {
+        waar: 'Agenda → Afvinken',
+        kop: 'Wie is er vandaag?',
+        tekst: [
+          'Open dit bij het begin van de les en geef je gsm door: het scherm zoekt zelf de '
+          + 'les die nu bezig is en zet de namen groot onder elkaar. Elk kind tikt op zijn '
+          + 'eigen naam — één keer voor aanwezig, nog eens voor afwezig, nog eens om hem weer '
+          + 'leeg te maken.',
+          'Zolang dat scherm openstaat is er geen enkele weg naar de rest van de app; een gsm '
+          + 'die rondgaat in een groep komt anders overal terecht. Terug ga je met een lange '
+          + 'druk op Klaar. Wie er stond kun je ook later nog bijstellen: open de les en zet '
+          + 'het onder Aanwezigheid.',
+        ],
+      },
+      {
         waar: 'Overzicht',
         kop: 'Geweest en nog te komen',
         tekst: [
@@ -498,6 +512,14 @@ const SPELER: Gidsstuk[] = [
         tekst: [
           'Sta je met meer spelers op de baan, dan is factuur de enige mogelijkheid. Een beurt '
           + 'op je kaart staat voor één privéles, en je sponsorbudget net zo.',
+        ],
+      },
+      {
+        waar: 'Je les',
+        kop: 'Aanwezigheid',
+        tekst: [
+          'Bij de les staat wie er die dag was. Dat noteert je trainer — meestal op de baan, '
+          + 'waar de kinderen zelf op hun naam tikken. Je kunt het zien, niet wijzigen.',
         ],
       },
       {

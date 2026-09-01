@@ -243,6 +243,12 @@ alter table users add column if not exists is_admin boolean not null default fal
 -- 'cancelled'. Zonder dit onderscheid kan de speler niet te horen krijgen wat er met zijn
 -- vraag gebeurd is.
 alter table bookings add column if not exists rejected_at timestamptz;
+-- Wie er die dag effectief stond: {"speler-id": "aanwezig"|"afwezig"}. Een speler die er
+-- niet in staat is niet afgevinkt, en dat is iets anders dan afwezig — vandaar een lijstje
+-- en geen kolom per speler. Wijzigen mag alleen de trainer van de les of de beheerder; dat
+-- bewaakt `bewaak_betaalvelden` hieronder al, want alles buiten de twee betaalvelden valt
+-- daar vanzelf onder "mag niet".
+alter table bookings add column if not exists attendance jsonb;
 
 -- De rol 'parent' bestaat niet meer: wie kinderen volgt, doet dat via `ouder_kind` en houdt
 -- gewoon zijn eigen rol. Eerst iedereen omzetten, dan pas de regel aanscherpen — andersom

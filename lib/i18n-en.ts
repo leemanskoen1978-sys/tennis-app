@@ -687,6 +687,31 @@ export const EN: Record<string, string> = {
   'Deze en alle volgende ({n})': 'This one and all later ones ({n})',
   'Betaalwijze wijzigen, nu {wijze}': 'Change payment method, currently {wijze}',
 
+  // --- aanwezigheid --------------------------------------------------------
+  'Aanwezigheid': 'Attendance',
+  'Aanwezig': 'Present',
+  'Afwezig': 'Absent',
+  'Nog niets afgevinkt.': 'Nothing ticked off yet.',
+  '{n} van {totaal} aanwezig': '{n} of {totaal} present',
+  '1 nog niet afgevinkt': '1 not ticked off yet',
+  '{n} nog niet afgevinkt': '{n} not ticked off yet',
+  'Nog eens op dezelfde knop tikken maakt de aantekening weer leeg.':
+    'Tapping the same button again clears the note.',
+  'Nog niet afgevinkt': 'Not ticked off yet',
+  'Afvinken': 'Roll call',
+  'Wie is er? Bij het begin van de les': 'Who is here? At the start of the lesson',
+  'Nu: {tijd} · geef je gsm door': 'Now: {tijd} · pass your phone around',
+  'Afvinken doet de trainer van de les.': 'The coach of the lesson does the roll call.',
+  'Geen les op dit moment': 'No lesson right now',
+  'Dit scherm toont de les die nu bezig is. Open het bij het begin van de les en geef je gsm door.':
+    'This screen shows the lesson that is running now. Open it at the start of the lesson and '
+    + 'pass your phone around.',
+  'Tik op je naam: één keer voor aanwezig, nog eens voor afwezig, nog eens om hem leeg te maken.':
+    'Tap your name: once for present, again for absent, again to clear it.',
+  'Klaar, houd twee tellen vast': 'Done, hold for two seconds',
+  'Houd Klaar twee tellen vast om terug te gaan.': 'Hold Done for two seconds to go back.',
+  'Twee tellen vasthouden.': 'Hold for two seconds.',
+
   // --- dossiers -----------------------------------------------------------
   'Open dossier van {naam}': 'Open the file of {naam}',
   'Open dossier van trainer {naam}': 'Open the file of coach {naam}',

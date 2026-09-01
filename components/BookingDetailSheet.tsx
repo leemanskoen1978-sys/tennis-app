@@ -22,7 +22,8 @@ import { useSimpleData } from '../providers/SimpleDataProvider';
 import { useActieveSpeler } from '../providers/kindkeuze';
 import { cardsFor, remaining, GROEPSLES_ALLEEN_FACTUUR } from '../lib/beurtenkaart';
 import { formatDayTimeRange } from '../lib/datetime';
-import { isGroupLesson, participantIdsOf } from '../lib/groups';
+import { isGroupLesson, lessonPlayerIds, participantIdsOf } from '../lib/groups';
+import { aanwezigheidRegel, aanwezigheidVan } from '../lib/aanwezigheid';
 import {
   bookingPaymentMeta, lessonPriceLine, lessonShares, splitOf, type PaymentMeta,
 } from '../lib/payments';
@@ -106,7 +107,7 @@ export function BookingDetailSheet({
     currentUser, bookings, users, courts, beurtenkaarten,
     updateBooking, deleteBooking, cancelSeriesFrom, deleteSeriesFrom,
     approveBooking, rejectBooking,
-    setPaymentMethod, setParticipants, setPaymentSplit, error, clearError,
+    setPaymentMethod, setParticipants, setPaymentSplit, setAanwezigheid, error, clearError,
   } = useSimpleData();
   // Twee bladen over elkaar heen wordt op web en telefoon rommelig: de tweede backdrop
   // verduistert de eerste en op Android sluit één druk op terug ze allebei. Daarom is dit
@@ -382,6 +383,62 @@ export function BookingDetailSheet({
           )
         ) : null}
 
+        {/* Wie er stond. Alleen de trainer van de les vinkt af — hij was erbij — en dat mag
+            ook vooraf: weet hij nu al dat er iemand wegblijft, dan hoeft hij dat niet tot na
+            de les te onthouden. Bij een geannuleerde les staat de lijst er niet: die les is
+            niet doorgegaan, dus er valt niemand aan- of afwezig te noemen. */}
+        {!isCancelled ? (
+          <>
+            <Text style={styles.label}>{t('Aanwezigheid')}</Text>
+            {canManage ? (
+              <>
+                <Text style={styles.hint}>{aanwezigheidRegel(booking)}</Text>
+                {lessonPlayerIds(booking).map((id) => (
+                  <View key={id} style={styles.attendanceRow}>
+                    <Text style={styles.attendanceName} numberOfLines={1}>{nameOf(id)}</Text>
+                    <View style={styles.chipRow}>
+                      <Chip
+                        label={t('Aanwezig')}
+                        selected={aanwezigheidVan(booking, id) === 'aanwezig'}
+                        onPress={() => {
+                          void setAanwezigheid(booking.id, id, 'aanwezig');
+                        }}
+                      />
+                      <Chip
+                        label={t('Afwezig')}
+                        selected={aanwezigheidVan(booking, id) === 'afwezig'}
+                        onPress={() => {
+                          void setAanwezigheid(booking.id, id, 'afwezig');
+                        }}
+                      />
+                    </View>
+                  </View>
+                ))}
+                {/* Zonder dit leest een tweede tik op dezelfde knop als een knop die niets
+                    doet, terwijl het de enige weg terug is naar "nog niet afgevinkt". */}
+                <Text style={styles.hint}>
+                  {t('Nog eens op dezelfde knop tikken maakt de aantekening weer leeg.')}
+                </Text>
+              </>
+            ) : (
+              /* Een speler of ouder kijkt mee maar vinkt niet af: wat er die dag gebeurde
+                 noteert de trainer. Wie nog niet afgevinkt is, staat er zonder badge — dat
+                 is iets anders dan afwezig. */
+              lessonPlayerIds(booking).map((id) => (
+                <View key={id} style={styles.attendanceRow}>
+                  <Text style={styles.attendanceName} numberOfLines={1}>{nameOf(id)}</Text>
+                  {aanwezigheidVan(booking, id) === 'aanwezig' ? (
+                    <Badge label={t('Aanwezig')} color={tennisColors.courtFill} />
+                  ) : null}
+                  {aanwezigheidVan(booking, id) === 'afwezig' ? (
+                    <Badge label={t('Afwezig')} color={tennisColors.warningFill} />
+                  ) : null}
+                </View>
+              ))
+            )}
+          </>
+        ) : null}
+
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
         {booking.notes ? (
@@ -576,6 +633,14 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted, marginTop: spacing.sm },
   price: { ...typography.body, fontWeight: '600', color: tennisColors.text, marginTop: spacing.sm },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  // Naam links, de twee knoppen rechts. `wrap` omdat een lange naam naast twee knoppen op
+  // een smalle telefoon niet past; dan schuiven de knoppen onder de naam in plaats van de
+  // naam af te knijpen tot één letter.
+  attendanceRow: {
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center',
+    justifyContent: 'space-between', gap: spacing.sm, marginTop: spacing.sm,
+  },
+  attendanceName: { ...typography.body, color: tennisColors.text, flexShrink: 1 },
   notice: { fontSize: 13, color: tennisColors.text, fontStyle: 'italic', marginTop: spacing.sm },
   hint: { fontSize: 13, color: tennisColors.textMuted, fontStyle: 'italic', marginTop: spacing.xs },
   notes: { ...typography.body, color: tennisColors.text },

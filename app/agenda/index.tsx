@@ -6,7 +6,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-  CalendarPlus, CreditCard, CalendarDays, BellRing, type LucideIcon,
+  CalendarPlus, CreditCard, CalendarDays, BellRing, UserCheck, type LucideIcon,
 } from 'lucide-react-native';
 
 import { Badge } from '../../components/ui/Badge';
@@ -18,6 +18,7 @@ import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { useKindkeuze, useOpenstaandeBetalingen } from '../../providers/kindkeuze';
 import { SpelerKiezer } from '../../components/ui/SpelerKiezer';
 import { bookingsOnDay } from '../../lib/hub';
+import { lessenNu } from '../../lib/afvinken';
 import { awaitingApprovalFor, awaitingApprovalOf } from '../../lib/inbox';
 import { isCoach, magInElkeAgenda } from '../../lib/rechten';
 import { formatDayTime } from '../../lib/datetime';
@@ -72,9 +73,28 @@ export default function BookingsScreen(): React.JSX.Element {
   const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
   const courtName = (id: string): string => courts.find((c) => c.id === id)?.name ?? t('Onbekende baan');
 
+  // Loopt er nu een les, dan zegt de tegel Afvinken meteen welke — anders moet de trainer
+  // hem openen om te zien of hij op het juiste moment kijkt.
+  const nu = useMemo(
+    () => (coach && currentUser ? lessenNu(bookings, currentUser.id, new Date()) : []),
+    [coach, currentUser, bookings],
+  );
+
   const tiles: Tile[] = [];
   if (coach) {
     tiles.push(
+      // Bovenaan, want dit is de tegel die je aantikt terwijl de kinderen voor je staan.
+      {
+        key: 'afvinken',
+        title: t('Afvinken'),
+        subtitle: nu.length > 0
+          ? t('Nu: {tijd} · geef je gsm door', {
+            tijd: formatTimeRange(nu[0].start_time, nu[0].end_time),
+          })
+          : t('Wie is er? Bij het begin van de les'),
+        icon: UserCheck,
+        onPress: () => router.push('/agenda/afvinken'),
+      },
       { key: 'new', title: t('Nieuwe afspraak'), subtitle: t('Les inplannen voor een speler'), icon: CalendarPlus, onPress: () => router.push('/agenda/new') },
       { key: 'pay', title: t('Betalingen'), subtitle: t('Openstaande lessen afhandelen'), icon: CreditCard, onPress: () => router.push('/admin/payments'), badge: pending.length },
     );
