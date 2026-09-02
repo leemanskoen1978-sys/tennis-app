@@ -47,7 +47,20 @@ export interface User {
   phone?: string;
   bio?: string;
   preferred_court_id?: string;
+  /**
+   * De boekingstijd van deze trainer: tussen welke uren er bij hem geboekt kan worden.
+   * Leeg betekent "de tijd van de club" — zie `booking_end_time` in `Settings`.
+   *
+   * Dit is de standaard. Wijkt een periode daarvan af (een zomerrooster, een maand waarin
+   * hij later begint), dan staat dat in `booking_periods` hieronder.
+   */
   working_hours?: { start: string; end: string };
+  /**
+   * Periodes waarin voor deze trainer iets anders geldt dan zijn standaard. Leeg of afwezig
+   * is het gewone geval: het hele jaar dezelfde uren. Zie lib/boekingstijd — de enige plek
+   * die uitrekent welke uren op een bepaalde dag gelden.
+   */
+  booking_periods?: Boekingsperiode[];
   working_days?: number[];
   notification_settings?: Record<string, boolean>;
   /**
@@ -352,6 +365,31 @@ export interface Vakantie {
   van: string;
   /** De laatste dag zonder les, meegerekend. Eén dag: gelijk aan `van`. */
   tot: string;
+}
+
+/**
+ * Een periode waarin voor één trainer andere boekingstijden gelden — of helemaal geen.
+ *
+ * De dagen staan als `jjjj-mm-dd`, om dezelfde reden als bij `Vakantie`: dit is een stuk
+ * kalender en geen moment op de klok, en zo blijft het tijdzoneloos te vergelijken.
+ *
+ * Het verschil met een vakantie: een vakantie sluit de hele club, dit geldt voor één
+ * trainer. Vandaar dat het bij hem staat en niet bij de clubinstellingen.
+ */
+export interface Boekingsperiode {
+  id: string;
+  /** Waarvoor deze periode er is: "Zomerrooster", "Cursus". Mag leeg blijven. */
+  naam?: string;
+  /** De eerste dag, als jjjj-mm-dd. */
+  van: string;
+  /** De laatste dag, meegerekend. Eén dag: gelijk aan `van`. */
+  tot: string;
+  /**
+   * De uren die in deze periode gelden. Leeg betekent iets anders dan "de standaard": het
+   * betekent dat deze trainer die dagen géén les geeft. Een periode zonder uren én zonder
+   * die betekenis zou nergens voor dienen — dan laat je hem gewoon weg.
+   */
+  uren?: { start: string; end: string };
 }
 
 export interface Settings {

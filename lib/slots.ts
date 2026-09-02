@@ -94,20 +94,11 @@ export function worksOnDay(coach: Pick<User, 'working_days'>, date: Date): boole
   return days.includes(date.getDay());
 }
 
-/**
- * The slots this coach actually teaches: the club window narrowed by their own hours.
- * The club window is the outer bound — a coach cannot extend past it, only sit inside it.
- * Times are zero-padded 'HH:MM', so plain string comparison is chronological.
- */
-export function slotsForCoach(
-  coach: Pick<User, 'working_hours'>,
-  clubEndTime: string,
-): string[] {
-  const club = generateSlots(clubEndTime);
-  const hours = coach.working_hours;
-  if (hours === undefined) return club;
-  return club.filter((slot) => slot >= hours.start && slot < hours.end);
-}
+// De uren van één trainer stonden hier ooit ook (`slotsForCoach`): de clubtijd, versmald
+// door zijn eigen uren. Die zijn verhuisd naar lib/boekingstijd, en de grens is daarbij
+// omgedraaid — een trainer mag nu buiten de clubtijd vallen, want anders kan wie tot tien
+// uur 's avonds lesgeeft dat nergens kwijt. De clubtijd is sindsdien wat je krijgt als je
+// zelf niets invult.
 
 /** "Ma · Wo · Vr" for the profile card, or "Elke dag" when nothing is set. */
 export function formatWorkingDays(coach: Pick<User, 'working_days'>): string {

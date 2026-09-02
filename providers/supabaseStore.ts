@@ -200,7 +200,7 @@ export async function loadFromSupabase(): Promise<StoreData> {
  */
 const LEEGMAAKBAAR = [
   'phone', 'bio', 'preferred_court_id', 'sponsor_budget', 'default_payment_method',
-  'working_hours', 'working_days', 'notification_settings',
+  'working_hours', 'working_days', 'booking_periods', 'notification_settings',
 ] as const;
 
 /** Dezelfde rij zonder het uurloon (dat gaat naar `coach_rates`), met lege velden als null. */

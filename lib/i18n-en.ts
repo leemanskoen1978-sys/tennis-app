@@ -710,6 +710,44 @@ export const EN: Record<string, string> = {
     'Tap your name: once for present, again for absent, again to clear it.',
   'Terug naar de agenda': 'Back to the schedule',
 
+  // --- boekingstijden per trainer -----------------------------------------
+  'Boekingstijden': 'Booking hours',
+  'Per trainer, met afwijkende periodes': 'Per coach, with exception periods',
+  'Jouw uren, en afwijkende periodes': 'Your hours, and exception periods',
+  'Boekingstijden zijn er voor trainers.': 'Booking hours are for coaches.',
+  'Hier staat tussen welke uren er bij een trainer geboekt kan worden. Vult hij niets in, dan geldt de tijd van de club. Een periode gaat vóór de standaard.':
+    'This is between which hours people can book with a coach. Set nothing and the club hours '
+    + 'apply. A period overrides the standard.',
+  'Elke dag waarop {naam} lesgeeft, tenzij een periode hieronder iets anders zegt.':
+    'Every day {naam} teaches, unless a period below says otherwise.',
+  'Nu geldt de tijd van de club: {van} – {tot}. Kies hieronder eigen uren.':
+    'The club hours apply for now: {van} – {tot}. Pick your own hours below.',
+  'Terug naar de tijd van de club': 'Back to the club hours',
+  'Afwijkende periode': 'Exception period',
+  'Van datum tot datum andere uren — of helemaal geen les, bijvoorbeeld een week waarin deze trainer er niet is.':
+    'Other hours from date to date — or no lessons at all, for instance a week this coach is away.',
+  'bv. Zomerrooster': 'e.g. Summer hours',
+  'In die periode': 'During that period',
+  'Andere uren': 'Other hours',
+  'Geen les': 'No lessons',
+  'Periode toevoegen': 'Add period',
+  'Nog geen afwijkende periodes.': 'No exception periods yet.',
+  'Kies een van-uur en een tot-uur, met het van-uur eerst.':
+    'Pick a from-hour and a to-hour, the from-hour first.',
+  'De tijd van de club': 'The club hours',
+  '1 afwijkende periode': '1 exception period',
+  '{n} afwijkende periodes': '{n} exception periods',
+  'Tussen welke uren er bij jou geboekt kan worden — en de periodes waarin dat anders is — staat op een eigen scherm.':
+    'Between which hours people can book with you — and the periods where that differs — lives '
+    + 'on its own screen.',
+  'Naar boekingstijden': 'To booking hours',
+  'Jouw uurtarief · tik om te wijzigen': 'Your hourly rate · tap to change',
+  'Jouw uurtarief · je beheerder stelt dit in': 'Your hourly rate · your admin sets this',
+  'Wat de club jou per uur uitbetaalt. Alleen ter informatie — de omzet loopt op het tarief van de baan. Leeg laten mag: dan staat er "nog niet ingesteld".':
+    'What the club pays you per hour. For information only — revenue runs on the court rate. '
+    + 'Leaving it blank is fine: it then reads "not set yet".',
+  'bv. 35': 'e.g. 35',
+
   // --- dossiers -----------------------------------------------------------
   'Open dossier van {naam}': 'Open the file of {naam}',
   'Open dossier van trainer {naam}': 'Open the file of coach {naam}',

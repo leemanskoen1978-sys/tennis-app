@@ -5,13 +5,13 @@
 // bij ons een eigenschap van de gebruiker, geen knop — je wisselt van rol door als iemand
 // anders in te loggen. Een schakelaar zou iets beloven wat de app niet doet.
 
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   LogOut, Mail, Phone, Euro, CalendarDays, CreditCard, ChevronRight,
-  Settings as SettingsIcon, BarChart3, SlidersHorizontal, Wallet, type LucideIcon,
+  Settings as SettingsIcon, BarChart3, SlidersHorizontal, Wallet, Clock, type LucideIcon,
 } from 'lucide-react-native';
 
 import { Screen, useIsWide } from '../components/ui/Screen';
@@ -28,7 +28,8 @@ import { bookingsFor, openBalanceFor } from '../lib/payments';
 import { coachPayoutThisMonth } from '../lib/reports';
 import { formatEuro } from '../lib/money';
 import { useT } from '../lib/i18n';
-import { isCoach, roleLabel } from '../lib/rechten';
+import { isAdmin, isCoach, roleLabel } from '../lib/rechten';
+import { DetailSheet } from '../components/ui/DetailSheet';
 
 interface Row {
   key: string;
@@ -94,7 +95,11 @@ function InfoRow({ row, first }: { row: Row; first: boolean }) {
 export default function ProfileScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
-  const { currentUser, logout, bookings, courts } = useSimpleData();
+  const { currentUser, logout, bookings, courts, updateUser, error } = useSimpleData();
+  // Het uurloon bijstellen, voor wie het mag. Een eigen blaadje en geen scherm: het is één
+  // getal, en ervoor naar Beheer → Leden moeten is precies waarom niemand het terugvond.
+  const [tariefOpen, setTariefOpen] = useState(false);
+  const [tarief, setTarief] = useState('');
   const coach = isCoach(currentUser);
   const pending = useOpenstaandeBetalingen();
   // Het profiel gaat over het account — naam, adres, rol — maar de twee getallen eronder
@@ -129,6 +134,7 @@ export default function ProfileScreen(): React.JSX.Element {
   const balance = openBalanceFor(speler, bookings, courts);
 
   const rateMissing = currentUser.hourly_rate === undefined;
+  const magTarief = isAdmin(currentUser);
   const earnedThisMonth = coachPayoutThisMonth(currentUser, bookings);
 
   const contactRows: Row[] = [
@@ -142,12 +148,18 @@ export default function ProfileScreen(): React.JSX.Element {
   ];
   // De rij staat er bij een trainer altijd, ook zonder tarief: zolang hij leeg is, is zijn
   // loon nul, en dat hoort te zien te zijn in plaats van weg te vallen met de rij.
+  //
+  // Een beheerder wijzigt hem hier ook. Dat het uurloon alleen in Beheer te zetten was,
+  // klopte wel met de regel — een trainer hoort zijn eigen loon niet te kunnen verhogen —
+  // maar niet met wat je hier ziet staan: het bedrag stond op je eigen profiel zonder één
+  // aanwijzing waar je het dan wél verandert. Wie het niet mag, leest dat nu in de rij.
   if (coach) {
     contactRows.push({
       key: 'rate',
       icon: Euro,
       title: rateMissing ? t('Nog niet ingesteld') : `€ ${currentUser.hourly_rate}`,
-      subtitle: t('Jouw uurtarief'),
+      subtitle: magTarief ? t('Jouw uurtarief · tik om te wijzigen') : t('Jouw uurtarief · je beheerder stelt dit in'),
+      ...(magTarief ? { onPress: () => { setTarief(rateMissing ? '' : String(currentUser.hourly_rate)); setTariefOpen(true); } } : {}),
     });
   }
 
@@ -161,6 +173,13 @@ export default function ProfileScreen(): React.JSX.Element {
           title: t('Instellingen'),
           subtitle: t('Boekingstijden, thema en taal'),
           onPress: () => router.push('/admin/settings'),
+        },
+        {
+          key: 'tijden',
+          icon: Clock,
+          title: t('Boekingstijden'),
+          subtitle: t('Jouw uren, en afwijkende periodes'),
+          onPress: () => router.push('/admin/boekingstijden'),
         },
         {
           key: 'rep',
@@ -255,6 +274,39 @@ export default function ProfileScreen(): React.JSX.Element {
           }}
         />
       </View>
+
+      <DetailSheet
+        title={t('Jouw uurtarief')}
+        visible={tariefOpen}
+        onClose={() => setTariefOpen(false)}
+      >
+        <Text style={styles.tariefHelp}>
+          {t('Wat de club jou per uur uitbetaalt. Alleen ter informatie — de omzet loopt op '
+            + 'het tarief van de baan. Leeg laten mag: dan staat er "nog niet ingesteld".')}
+        </Text>
+        <TextInput
+          style={styles.tariefInput}
+          value={tarief}
+          onChangeText={setTarief}
+          keyboardType="numeric"
+          placeholder={t('bv. 35')}
+          placeholderTextColor={tennisColors.textMuted}
+        />
+        {error ? <Text style={styles.tariefFout}>{error}</Text> : null}
+        <Button
+          label={t('Bewaren')}
+          variant="primary"
+          onPress={() => {
+            const bedrag = Number(tarief.replace(',', '.'));
+            const leeg = tarief.trim() === '';
+            // Een onleesbaar bedrag laat het blad open staan: zo blijft zichtbaar wat er
+            // getypt is, in plaats van het stilzwijgend weg te gooien.
+            if (!leeg && !Number.isFinite(bedrag)) return;
+            void updateUser(currentUser.id, { hourly_rate: leeg ? undefined : bedrag })
+              .then(() => setTariefOpen(false), () => {});
+          }}
+        />
+      </DetailSheet>
     </Screen>
   );
 }
@@ -262,6 +314,13 @@ export default function ProfileScreen(): React.JSX.Element {
 const OVERLAP = 44;
 
 const styles = StyleSheet.create({
+  tariefHelp: { fontSize: 13, color: tennisColors.textMuted },
+  tariefInput: {
+    borderWidth: 1, borderColor: tennisColors.border, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+    color: tennisColors.text, backgroundColor: tennisColors.surface, marginTop: spacing.sm,
+  },
+  tariefFout: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.sm },
   // De band loopt tot aan de rand van de kolom, dus Screen mag hier zelf niet padden;
   // de secties eronder nemen die marge weer op zich.
   screenContent: { padding: 0, gap: 0 },

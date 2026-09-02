@@ -2,7 +2,6 @@ import {
   generateSlots,
   isDateBookable,
   worksOnDay,
-  slotsForCoach,
   slotsStillToCome,
   bookingDays,
   formatWorkingDays,
@@ -60,32 +59,6 @@ describe('worksOnDay', () => {
     const zondag = new Date('2026-08-23T10:00:00');
     expect(worksOnDay({ working_days: [0] }, zondag)).toBe(true);
     expect(worksOnDay({ working_days: [0] }, maandag)).toBe(false);
-  });
-});
-
-describe('slotsForCoach', () => {
-  it('gives the full club window to a coach without working_hours', () => {
-    expect(slotsForCoach({}, '12:00')).toEqual(['09:00', '10:00', '11:00']);
-  });
-
-  it('drops slots before the start hour', () => {
-    expect(slotsForCoach({ working_hours: { start: '11:00', end: '21:00' } }, '13:00'))
-      .toEqual(['11:00', '12:00']);
-  });
-
-  it('drops slots from the end hour onwards', () => {
-    expect(slotsForCoach({ working_hours: { start: '09:00', end: '11:00' } }, '13:00'))
-      .toEqual(['09:00', '10:00']);
-  });
-
-  it('never gives more than the club allows', () => {
-    expect(slotsForCoach({ working_hours: { start: '07:00', end: '23:00' } }, '12:00'))
-      .toEqual(['09:00', '10:00', '11:00']);
-  });
-
-  it('gives nothing when start equals end', () => {
-    expect(slotsForCoach({ working_hours: { start: '09:00', end: '09:00' } }, '21:00'))
-      .toEqual([]);
   });
 });
 

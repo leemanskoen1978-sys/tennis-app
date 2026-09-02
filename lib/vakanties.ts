@@ -93,20 +93,30 @@ function korteDag(dag: string): string {
   return `${d.getDate()} ${shortMonthName(d.getMonth())} ${d.getFullYear()}`;
 }
 
-/** Het tijdvak zoals het op het scherm staat: "2 – 8 nov 2026", of één dag: "11 nov 2026". */
-export function vakantiePeriode(v: Vakantie): string {
-  const van = parseDag(v.van);
-  const tot = parseDag(v.tot);
-  if (!van || !tot) return `${v.van} – ${v.tot}`;
-  if (v.van === v.tot) return korteDag(v.van);
+/**
+ * Het tijdvak zoals het op het scherm staat: "2 – 8 nov 2026", of één dag: "11 nov 2026".
+ *
+ * Los van `Vakantie`, want een trainer heeft dezelfde soort tijdvakken voor zijn afwijkende
+ * boekingstijden (zie lib/boekingstijd) en die horen er niet anders uit te zien.
+ */
+export function periodeTekst(vanDag: string, totDag: string): string {
+  const van = parseDag(vanDag);
+  const tot = parseDag(totDag);
+  if (!van || !tot) return `${vanDag} – ${totDag}`;
+  if (vanDag === totDag) return korteDag(vanDag);
   // Binnen dezelfde maand hoeft de maand er maar één keer te staan: "2 – 8 nov 2026".
   const zelfdeMaand = van.getFullYear() === tot.getFullYear() && van.getMonth() === tot.getMonth();
-  if (zelfdeMaand) return `${van.getDate()} – ${korteDag(v.tot)}`;
+  if (zelfdeMaand) return `${van.getDate()} – ${korteDag(totDag)}`;
   const zelfdeJaar = van.getFullYear() === tot.getFullYear();
   const linker = zelfdeJaar
     ? `${van.getDate()} ${shortMonthName(van.getMonth())}`
-    : korteDag(v.van);
-  return `${linker} – ${korteDag(v.tot)}`;
+    : korteDag(vanDag);
+  return `${linker} – ${korteDag(totDag)}`;
+}
+
+/** Idem, voor een vakantie. */
+export function vakantiePeriode(v: Vakantie): string {
+  return periodeTekst(v.van, v.tot);
 }
 
 /** Hoeveel dagen deze vakantie beslaat, beide grenzen meegerekend. */

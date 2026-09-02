@@ -249,6 +249,11 @@ alter table bookings add column if not exists rejected_at timestamptz;
 -- bewaakt `bewaak_betaalvelden` hieronder al, want alles buiten de twee betaalvelden valt
 -- daar vanzelf onder "mag niet".
 alter table bookings add column if not exists attendance jsonb;
+-- De afwijkende boekingstijden van één trainer: [{id,naam,van,tot,uren:{start,end}}].
+-- Zonder `uren` betekent een periode dat hij die dagen geen les geeft. Bij de trainer en
+-- niet bij de clubinstellingen, want dit geldt voor hem alleen — een vakantie sluit de hele
+-- club en staat daarom wél in `club_settings`.
+alter table users add column if not exists booking_periods jsonb;
 
 -- De rol 'parent' bestaat niet meer: wie kinderen volgt, doet dat via `ouder_kind` en houdt
 -- gewoon zijn eigen rol. Eerst iedereen omzetten, dan pas de regel aanscherpen — andersom

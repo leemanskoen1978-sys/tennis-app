@@ -11,7 +11,7 @@ import {
 } from '../../constants/theme';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import {
-  generateSlots, isDateBookable, slotsForCoach, slotsStillToCome, worksOnDay,
+  generateSlots, isDateBookable, slotsStillToCome, worksOnDay,
   formatWorkingDays, bookingDays, DAGEN_TERUG, DAGEN_VOORUIT, DAY_LABELS,
 } from '../../lib/slots';
 import { Screen } from '../../components/ui/Screen';
@@ -23,6 +23,7 @@ import { UserManagement } from '../../components/UserManagement';
 import { useT } from '../../lib/i18n';
 import { shortMonthName } from '../../lib/period';
 import { vakantieOp } from '../../lib/vakanties';
+import { slotsOp, urenOp, boekbaarOp } from '../../lib/boekingstijd';
 import type { User } from '../../lib/types';
 import { isCoach } from '../../lib/rechten';
 import { coachesOf, playersOf } from '../../lib/hub';
@@ -107,9 +108,11 @@ export default function HomeScreen(): JSX.Element {
   // speler begint bij morgen.
   const magVandaag = coach;
 
+  // De uren hangen aan de dag en niet alleen aan de trainer: hij kan voor een periode
+  // andere uren hebben gezet (een zomerrooster), en dan gelden die. Zie lib/boekingstijd.
   const slots: string[] = useMemo(() => {
-    const alle = bookingCoach
-      ? slotsForCoach(bookingCoach, settings.booking_end_time)
+    const alle = bookingCoach && selectedDate
+      ? slotsOp(bookingCoach, selectedDate, settings.booking_end_time)
       : generateSlots(settings.booking_end_time);
     // Vandaag vallen de uren weg die al begonnen zijn: een les inzetten die voorbij is
     // voordat hij bestaat, heeft geen betekenis.
@@ -117,7 +120,14 @@ export default function HomeScreen(): JSX.Element {
   }, [bookingCoach, settings.booking_end_time, selectedDate]);
 
   const dayIsWorked: boolean =
-    selectedDate === null || bookingCoach === null || worksOnDay(bookingCoach, selectedDate);
+    selectedDate === null || bookingCoach === null
+    || (worksOnDay(bookingCoach, selectedDate)
+      && boekbaarOp(bookingCoach, selectedDate, settings.booking_end_time));
+
+  // Wat er die dag bij deze trainer geldt, voor de regel onder de datumstrook.
+  const dagUren = bookingCoach
+    ? urenOp(bookingCoach, selectedDate ?? new Date(), settings.booking_end_time)
+    : null;
 
   // De clubkalender: in een vakantie geeft niemand les, ook een trainer die op die weekdag
   // normaal wél werkt. Dat staat los van zijn werkdagen en gaat er dus overheen.
@@ -213,7 +223,9 @@ export default function HomeScreen(): JSX.Element {
         contentContainerStyle={styles.dateStrip}
       >
         {days.map((day) => {
-          const worked = bookingCoach === null || worksOnDay(bookingCoach, day);
+          const worked = bookingCoach === null
+            || (worksOnDay(bookingCoach, day)
+              && boekbaarOp(bookingCoach, day, settings.booking_end_time));
           const vakantie = vakantieOp(vakanties, day);
           const bookable = isDateBookable(day, new Date(), magVandaag) && worked && !vakantie;
           const active =
@@ -282,9 +294,9 @@ export default function HomeScreen(): JSX.Element {
           {t('{trainer} geeft les op {dagen}{uren}.', {
             trainer: bookingCoach.name,
             dagen: formatWorkingDays(bookingCoach),
-            uren: bookingCoach.working_hours
-              ? `, ${bookingCoach.working_hours.start}–${bookingCoach.working_hours.end}`
-              : '',
+            // De uren van de gekozen dag, want een periode kan ze verschoven hebben. Zonder
+            // gekozen dag zijn het zijn gewone uren.
+            uren: dagUren ? `, ${dagUren.start}–${dagUren.end}` : '',
           })}
         </Text>
       ) : null}

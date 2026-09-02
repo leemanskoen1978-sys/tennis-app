@@ -153,6 +153,18 @@ const TRAINER: Gidsstuk[] = [
         ],
       },
       {
+        waar: 'Beheer → Boekingstijden',
+        kop: 'Tussen welke uren er bij jou geboekt kan worden',
+        tekst: [
+          'Elke trainer zet hier zijn eigen uren; een beheerder die van iedereen. Vul je '
+          + 'niets in, dan geldt de tijd van de club (Beheer → Instellingen) — en anders '
+          + 'gelden de jouwe, ook als je later doorgaat dan de club.',
+          'Wijkt een stuk van het jaar af, zet er dan een periode bij: van datum tot datum '
+          + 'andere uren, of helemaal geen les — bijvoorbeeld de week dat je er niet bent. '
+          + 'Een periode gaat vóór je standaard, en Reserveren rekent er meteen mee.',
+        ],
+      },
+      {
         waar: 'Overzicht',
         kop: 'Geweest en nog te komen',
         tekst: [

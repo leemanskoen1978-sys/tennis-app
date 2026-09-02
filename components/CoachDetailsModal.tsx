@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Save } from 'lucide-react-native';
 import { Chip } from './ui/Chip';
 import { Button } from './ui/Button';
@@ -9,7 +10,7 @@ import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, radius } from '../constants/theme';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { isAdmin } from '../lib/rechten';
-import { generateSlots, DAY_LABELS } from '../lib/slots';
+import { DAY_LABELS } from '../lib/slots';
 import type { User } from '../lib/types';
 
 /** Reading order for the day toggles: Monday first, Sunday last. Values stay getDay(). */
@@ -27,13 +28,12 @@ export function CoachDetailsModal({
   onClose: () => void;
 }) {
   const t = useT();
-  const { currentUser, updateUser, settings } = useSimpleData();
+  const router = useRouter();
+  const { currentUser, updateUser } = useSimpleData();
 
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [days, setDays] = useState<number[]>([]);
-  const [start, setStart] = useState<string | null>(null);
-  const [end, setEnd] = useState<string | null>(null);
   const [rate, setRate] = useState('');
 
   // Refill from the stored coach every time the sheet opens, so a cancelled edit
@@ -43,33 +43,16 @@ export function CoachDetailsModal({
     setEmail(coach.email);
     setPhone(coach.phone ?? '');
     setDays(coach.working_days ?? []);
-    setStart(coach.working_hours?.start ?? null);
-    setEnd(coach.working_hours?.end ?? null);
     setRate(coach.hourly_rate !== undefined ? String(coach.hourly_rate) : '');
   }, [visible, coach]);
-
-  // The club window bounds the choices, so an hour outside it cannot even be picked.
-  const startOptions = useMemo(
-    () => generateSlots(settings.booking_end_time),
-    [settings.booking_end_time],
-  );
-  const endOptions = useMemo(
-    () => [...startOptions.slice(1), settings.booking_end_time],
-    [startOptions, settings.booking_end_time],
-  );
 
   const toggleDay = (d: number) => {
     setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
   };
 
-  const clearHours = () => { setStart(null); setEnd(null); };
-
   const parsedRate = Number(rate.replace(',', '.'));
   const rateOk = rate.trim() === '' || (Number.isFinite(parsedRate) && parsedRate >= 0);
-  // Half-filled hours are not a saveable state: you pick both, or neither.
-  const hoursOk =
-    (start === null && end === null) || (start !== null && end !== null && start < end);
-  const canSave = email.trim().length > 0 && rateOk && hoursOk;
+  const canSave = email.trim().length > 0 && rateOk;
 
   // Zijn eigen tarief zetten mag een trainer niet: het is wat de club hem uitbetaalt, en
   // wie het zelf kan zetten kan zijn eigen loon verhogen. Beheer → gebruikers doet dit. De
@@ -83,7 +66,6 @@ export function CoachDetailsModal({
       email: email.trim(),
       phone: phone.trim() || undefined,
       working_days: days.length > 0 ? [...days].sort((a, b) => a - b) : undefined,
-      working_hours: start !== null && end !== null ? { start, end } : undefined,
       // Alleen meesturen als het veld er stond; anders zou een trainer die zijn nummer
       // bijwerkt zijn eigen tarief "opnieuw zetten" en daarop stuklopen.
       ...(magTarief ? { hourly_rate: rate.trim() === '' ? undefined : parsedRate } : {}),
@@ -129,31 +111,24 @@ export function CoachDetailsModal({
         Niets aangevinkt betekent: elke dag beschikbaar.
       </Text>
 
-      <Text style={styles.label}>{t('Lesuren')}</Text>
-      <View style={styles.chipRow}>
-        <Chip label={t('Hele dag')} selected={start === null} onPress={clearHours} />
-      </View>
-      <Text style={styles.subLabel}>{t('Van')}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.chipRow}>
-          {startOptions.map((h) => (
-            <Chip key={h} label={h} selected={start === h} onPress={() => setStart(h)} />
-          ))}
-        </View>
-      </ScrollView>
-      <Text style={styles.subLabel}>{t('Tot')}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.chipRow}>
-          {endOptions.map((h) => (
-            <Chip key={h} label={h} selected={end === h} onPress={() => setEnd(h)} />
-          ))}
-        </View>
-      </ScrollView>
-      {!hoursOk ? (
-        <Text style={styles.error}>
-          Kies een van-uur en een tot-uur, met het van-uur eerst.
-        </Text>
-      ) : null}
+      {/* De lesuren stonden hier ooit ook, maar dan begrensd door de tijd van de club: wie
+          tot tien uur 's avonds lesgaf, kon dat niet invullen. Ze wonen nu op een eigen
+          scherm, samen met de periodes waarin ze afwijken. Twee plekken die hetzelfde veld
+          zetten met verschillende regels is erger dan één klik extra. */}
+      <Text style={styles.label}>{t('Boekingstijden')}</Text>
+      <Text style={styles.helper}>
+        {t('Tussen welke uren er bij jou geboekt kan worden — en de periodes waarin dat '
+          + 'anders is — staat op een eigen scherm.')}
+      </Text>
+      <Button
+        label={t('Naar boekingstijden')}
+        variant="secondary"
+        fullWidth={false}
+        onPress={() => {
+          onClose();
+          router.push('/admin/boekingstijden');
+        }}
+      />
 
       {magTarief ? (
         <>
@@ -188,10 +163,6 @@ const styles = StyleSheet.create({
   label: {
     ...typography.label, color: tennisColors.textMuted,
     marginTop: spacing.lg, marginBottom: spacing.sm,
-  },
-  subLabel: {
-    fontSize: 12, fontWeight: '700', color: tennisColors.textMuted,
-    marginTop: spacing.sm, marginBottom: spacing.xs,
   },
   input: {
     backgroundColor: tennisColors.surface,

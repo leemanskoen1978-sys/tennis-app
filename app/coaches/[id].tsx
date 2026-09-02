@@ -9,10 +9,12 @@ import { Button } from '../../components/ui/Button';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { DetailSheet } from '../../components/ui/DetailSheet';
 import { CoachDetailsModal } from '../../components/CoachDetailsModal';
+
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { groupSize, shortGroupLabel } from '../../lib/groups';
 import { playersForCoach } from '../../lib/relations';
 import { formatWorkingDays } from '../../lib/slots';
+import { sorteerPeriodes } from '../../lib/boekingstijd';
 import { useT, useLanguage } from '../../lib/i18n';
 import { magLoonZien, rolLabel } from '../../lib/rechten';
 import { tennisColors } from '../../constants/tennis-colors';
@@ -72,6 +74,7 @@ export default function CoachDossier() {
   // `coach_rates` in supabase-schema.sql), dus wat hier stond zou toch leeg blijven.
   const loonZichtbaar = magLoonZien(currentUser, coach);
   const rateMissing = coach.hourly_rate === undefined;
+  const periodes = sorteerPeriodes(coach.booking_periods ?? []);
   const earnedThisMonth = coachPayoutThisMonth(coach, bookings);
 
   // Derived from bookings/lessons/progress — see lib/relations.ts. No assignment screen.
@@ -112,8 +115,17 @@ export default function CoachDossier() {
         <Text style={styles.fieldValue}>
           {coach.working_hours
             ? `${coach.working_hours.start} – ${coach.working_hours.end}`
-            : t('De hele dag')}
+            : t('De tijd van de club')}
         </Text>
+        {/* Staat er een afwijkende periode, dan zegt de regel hierboven niet het hele
+            verhaal. Hoeveel het er zijn is genoeg om te weten dat je moet gaan kijken. */}
+        {periodes.length > 0 ? (
+          <Text style={styles.fieldValue}>
+            {periodes.length === 1
+              ? t('1 afwijkende periode')
+              : t('{n} afwijkende periodes', { n: periodes.length })}
+          </Text>
+        ) : null}
 
         {/* Het uurtarief van de trainer is wat híj krijgt; wat de speler betaalt loopt op het
             uurtarief van de baan. Twee verschillende bedragen — zie lib/payments. */}
