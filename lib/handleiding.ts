@@ -65,11 +65,15 @@ const TRAINER: Gidsstuk[] = [
         ],
       },
       {
-        waar: 'Trainers → jouw naam',
-        kop: 'Zet je lesdagen',
+        waar: 'Profiel → Mijn gegevens',
+        kop: 'Je gegevens en je lesdagen',
         tekst: [
-          'Klik op Bewerken en geef op welke dagen en tussen welke uren je lesgeeft. De app '
-          + 'gebruikt dat bij het inplannen, dus het scheelt je later werk.',
+          'Eén formulier voor wie je bent: naam, e-mailadres, gsm-nummer en — als trainer — '
+          + 'je lesdagen. Hetzelfde blad opent op je eigen dossier bij Trainers en, voor een '
+          + 'beheerder, achter elke naam in Beheer → Leden. Wat je mag wijzigen hangt aan wie '
+          + 'je bent, niet aan waar je het opende.',
+          'Tussen welke uren er bij jou geboekt kan worden, staat er niet in maar één knop '
+          + 'verder, bij Boekingstijden: dat is een rooster met periodes en geen veld.',
         ],
       },
     ],

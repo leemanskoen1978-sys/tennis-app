@@ -8,7 +8,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { DetailSheet } from '../../components/ui/DetailSheet';
-import { CoachDetailsModal } from '../../components/CoachDetailsModal';
+import { LidBewerken } from '../../components/LidBewerken';
 
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { groupSize, shortGroupLabel } from '../../lib/groups';
@@ -16,7 +16,7 @@ import { playersForCoach } from '../../lib/relations';
 import { formatWorkingDays } from '../../lib/slots';
 import { sorteerPeriodes } from '../../lib/boekingstijd';
 import { useT, useLanguage } from '../../lib/i18n';
-import { magLoonZien, rolLabel } from '../../lib/rechten';
+import { isAdmin, magLoonZien, rolLabel } from '../../lib/rechten';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
@@ -75,6 +75,8 @@ export default function CoachDossier() {
   const loonZichtbaar = magLoonZien(currentUser, coach);
   const rateMissing = coach.hourly_rate === undefined;
   const periodes = sorteerPeriodes(coach.booking_periods ?? []);
+  // Hetzelfde blad als in Beheer → Leden en op je profiel: één formulier voor wie iemand is.
+  const magBewerken = currentUser?.id === coach.id || isAdmin(currentUser);
   const earnedThisMonth = coachPayoutThisMonth(coach, bookings);
 
   // Derived from bookings/lessons/progress — see lib/relations.ts. No assignment screen.
@@ -149,9 +151,10 @@ export default function CoachDossier() {
           </>
         ) : null}
 
-        {/* Only your own details. A colleague's card has no button at all — a control
-            you may never use should not be sitting there greyed out. */}
-        {currentUser?.id === coach.id ? (
+        {/* Je eigen gegevens, en voor de beheerder ook die van een collega. Een trainer die
+            bij een collega kijkt, krijgt geen knop: een knop die je toch niet mag gebruiken
+            hoort er niet grijs bij te staan. */}
+        {magBewerken ? (
           <Button
             label={t('Bewerken')}
             variant="secondary"
@@ -162,12 +165,8 @@ export default function CoachDossier() {
         ) : null}
       </Card>
 
-      {currentUser?.id === coach.id ? (
-        <CoachDetailsModal
-          coach={coach}
-          visible={editOpen}
-          onClose={() => setEditOpen(false)}
-        />
+      {magBewerken ? (
+        <LidBewerken lid={coach} visible={editOpen} onClose={() => setEditOpen(false)} />
       ) : null}
 
       <TileGrid>

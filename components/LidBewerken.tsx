@@ -1,8 +1,14 @@
-// Eén lid bewerken: het blad achter een naam in Beheer → Leden.
+// Eén lid bewerken — en dan ook echt maar één plek.
 //
-// Dit is het enige scherm waar de gegevens van iemand anders veranderd kunnen worden. Tot nu
-// toe kon dat alleen bij het aanmaken: een verkeerd getypt e-mailadres was daarna niet meer
-// recht te zetten zonder een SQL-query, en het beheerdersvinkje was helemaal onbereikbaar.
+// Dit blad hing eerst alleen achter een naam in Beheer → Leden, en daarnaast bestond er een
+// tweede formulier ("Mijn gegevens") waar een trainer zijn eigen e-mailadres en lesdagen
+// zette, met net andere velden en net andere regels. Wie zijn gsm-nummer wilde wijzigen,
+// moest weten welke van de twee het kon. Nu is dit de enige: Beheer → Leden opent hem voor
+// een lid, je profiel en je eigen dossier openen hem voor jezelf, en wat je mag hangt aan
+// wie je bent — niet aan waar je vandaan kwam.
+//
+// Wat er níét in staat: de boekingstijden. Dat zijn geen persoonsgegevens maar een rooster
+// met periodes erin, en dat past niet in een blad. Er staat een knop naar dat scherm.
 //
 // Drie dingen op dit blad zijn geen gewoon veld en gedragen zich ook niet zo:
 //  - de rol, want een trainer met lessen op zijn naam kan niet zomaar speler worden;
@@ -13,7 +19,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { Save, Trash2 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Clock, Save, Trash2 } from 'lucide-react-native';
 
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
@@ -23,12 +30,16 @@ import { isValidEmail, normalizePhone } from '../lib/contact';
 import {
   gevolgenVanVerwijderen, heeftGevolgen, magVinkjeWeg, rolWisselBezwaar, type Gevolgen,
 } from '../lib/leden';
-import { isAdmin, roleLabel } from '../lib/rechten';
+import { isAdmin, isCoach, roleLabel } from '../lib/rechten';
+import { DAY_LABELS } from '../lib/slots';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../lib/payments';
 import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography } from '../constants/theme';
 import type { PaymentMethod, Role, User } from '../lib/types';
+
+/** Lesdagen op leesvolgorde: maandag eerst, zondag laatst. De waarden blijven getDay(). */
+const DAG_VOLGORDE = [1, 2, 3, 4, 5, 6, 0] as const;
 
 /** De opsomming onder de verwijderknop: wat er meegaat, in gewone woorden. */
 function gevolgenTekst(g: Gevolgen, t: (nl: string, vars?: Record<string, string | number>) => string): string {
@@ -65,6 +76,7 @@ export function LidBewerken({
   onClose: () => void;
 }): React.JSX.Element {
   const t = useT();
+  const router = useRouter();
   const {
     currentUser, users, bookings, progress, beurtenkaarten, goals, lessons, relaties, memos,
     updateUser, setUserRole, setBeheerder, deleteUser, error, clearError,
@@ -75,6 +87,7 @@ export function LidBewerken({
   const [phone, setPhone] = useState('');
   const [rate, setRate] = useState('');
   const [budget, setBudget] = useState('');
+  const [days, setDays] = useState<number[]>([]);
   const [bevestigen, setBevestigen] = useState(false);
   const [bewaard, setBewaard] = useState(false);
 
@@ -87,6 +100,7 @@ export function LidBewerken({
     setPhone(lid.phone ?? '');
     setRate(lid.hourly_rate !== undefined ? String(lid.hourly_rate) : '');
     setBudget(lid.sponsor_budget !== undefined ? String(lid.sponsor_budget) : '');
+    setDays(lid.working_days ?? []);
     setBevestigen(false);
     setBewaard(false);
     clearError();
@@ -104,6 +118,17 @@ export function LidBewerken({
     lid.id,
   );
   const zelf = currentUser?.id === lid.id;
+  // Wie wat mag, op één plek uitgerekend — het blad wordt vanaf drie schermen geopend en
+  // mag niet van de aanroeper afhangen wat er te zien is.
+  //
+  //  - je eigen gegevens: iedereen;
+  //  - die van een speler: elke trainer, want hij maakt die accounts ook aan;
+  //  - die van een collega: alleen de beheerder.
+  const beheerder = isAdmin(currentUser);
+  const magBewerken = beheerder || zelf || (isCoach(currentUser) && lid.role === 'player');
+  // Het uurloon is wat de club uitbetaalt; wie het zelf kan zetten, verhoogt zijn eigen
+  // loon. De databank denkt er hetzelfde over (`rates_write`).
+  const magTarief = beheerder;
 
   const bewaar = (): void => {
     if (!naamOk || !emailOk) return;
@@ -117,7 +142,12 @@ export function LidBewerken({
       // van de app leest `undefined` als "er staat niets".
       phone: nummer ? nummer : undefined,
       ...(lid.role === 'coach'
-        ? { hourly_rate: rate.trim() && Number.isFinite(tarief) ? tarief : undefined }
+        ? {
+          // Alleen meesturen als je het mag: anders zou een trainer die zijn nummer
+          // bijwerkt zijn eigen tarief "opnieuw zetten" en daarop stuklopen.
+          ...(magTarief ? { hourly_rate: rate.trim() && Number.isFinite(tarief) ? tarief : undefined } : {}),
+          working_days: days.length > 0 ? [...days].sort((a, b) => a - b) : undefined,
+        }
         : {
           sponsor_budget: budget.trim() && Number.isFinite(sponsor) ? sponsor : undefined,
         }),
@@ -125,7 +155,20 @@ export function LidBewerken({
   };
 
   return (
-    <DetailSheet title={lid.name} subtitle={lid.email} visible={visible} onClose={onClose}>
+    <DetailSheet
+      title={zelf ? t('Mijn gegevens') : lid.name}
+      subtitle={lid.email}
+      visible={visible}
+      onClose={onClose}
+    >
+      {/* Wie hier alleen mag kijken, krijgt dat te horen in plaats van velden die weigeren.
+          Gebeurt in de praktijk zelden — de knop staat er dan niet — maar een blad dat via
+          een link opengaat hoort het ook te weten. */}
+      {!magBewerken ? (
+        <Text style={styles.helper}>
+          {t('Deze gegevens beheert de beheerder van de club.')}
+        </Text>
+      ) : null}
       <Text style={styles.label}>{t('Naam')}</Text>
       <TextInput style={styles.input} value={name} onChangeText={setName} />
       {!naamOk ? <Text style={styles.error}>{t('Een naam is verplicht.')}</Text> : null}
@@ -149,11 +192,64 @@ export function LidBewerken({
 
       {lid.role === 'coach' ? (
         <>
-          <Text style={styles.label}>{t('Uurtarief')}</Text>
-          <TextInput style={styles.input} value={rate} onChangeText={setRate} keyboardType="numeric" />
+          {/* De lesdagen stonden in het tweede formulier dat hiermee verdwijnt. Ze horen
+              bij wie iemand is en niet bij het rooster: welke uren hij geeft, staat op
+              Boekingstijden. */}
+          <Text style={styles.label}>{t('Lesdagen')}</Text>
+          <View style={styles.chipRow}>
+            {DAG_VOLGORDE.map((d) => (
+              <Chip
+                key={d}
+                label={t(DAY_LABELS[d])}
+                selected={days.includes(d)}
+                onPress={() => setDays((vorige) => (
+                  vorige.includes(d) ? vorige.filter((x) => x !== d) : [...vorige, d]
+                ))}
+              />
+            ))}
+          </View>
           <Text style={styles.helper}>
-            {t('Alleen ter informatie — de omzet loopt op het baantarief.')}
+            {t('Niets aangevinkt betekent: elke dag beschikbaar.')}
           </Text>
+
+          <View style={styles.actions}>
+            <Button
+              label={t('Boekingstijden')}
+              variant="secondary"
+              fullWidth={false}
+              icon={<Clock size={16} color={tennisColors.text} />}
+              onPress={() => {
+                onClose();
+                router.push('/admin/boekingstijden');
+              }}
+            />
+          </View>
+          <Text style={styles.helper}>
+            {t('Tussen welke uren er geboekt kan worden, en de periodes waarin dat anders '
+              + 'is.')}
+          </Text>
+
+          {magTarief ? (
+            <>
+              <Text style={styles.label}>{t('Uurtarief')}</Text>
+              <TextInput style={styles.input} value={rate} onChangeText={setRate} keyboardType="numeric" />
+              <Text style={styles.helper}>
+                {t('Alleen ter informatie — de omzet loopt op het baantarief.')}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.label}>{t('Uurtarief')}</Text>
+              <Text style={styles.waarde}>
+                {lid.hourly_rate === undefined
+                  ? t('Nog niet ingesteld')
+                  : t('€{bedrag} per uur', { bedrag: lid.hourly_rate })}
+              </Text>
+              <Text style={styles.helper}>
+                {t('Dit stelt de beheerder in: het is wat de club uitbetaalt.')}
+              </Text>
+            </>
+          )}
         </>
       ) : (
         <>
@@ -186,16 +282,23 @@ export function LidBewerken({
         </>
       )}
 
-      <View style={styles.actions}>
-        <Button
-          label={bewaard ? t('Bewaard') : t('Bewaren')}
-          onPress={bewaar}
-          disabled={!naamOk || !emailOk}
-          fullWidth={false}
-          icon={<Save size={16} color={tennisColors.onFill} />}
-        />
-      </View>
+      {magBewerken ? (
+        <View style={styles.actions}>
+          <Button
+            label={bewaard ? t('Bewaard') : t('Bewaren')}
+            onPress={bewaar}
+            disabled={!naamOk || !emailOk}
+            fullWidth={false}
+            icon={<Save size={16} color={tennisColors.onFill} />}
+          />
+        </View>
+      ) : null}
 
+      {/* Het type account, het beheerdersvinkje en het verwijderen zijn er alleen voor de
+          beheerder. Een trainer die zijn eigen nummer bijwerkt, hoort geen knop te zien
+          waarmee hij zichzelf tot speler maakt of zijn account opblaast. */}
+      {beheerder ? (
+      <>
       <View style={styles.divider} />
 
       {/* De rol schrijft meteen weg, net als het vinkje: het is één keuze en geen formulier,
@@ -247,8 +350,6 @@ export function LidBewerken({
         </Text>
       ) : null}
 
-      <View style={styles.divider} />
-
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {bevestigen ? (
@@ -297,6 +398,8 @@ export function LidBewerken({
       {zelf ? (
         <Text style={styles.helper}>{t('Je eigen account verwijder je hier niet.')}</Text>
       ) : null}
+      </>
+      ) : null}
     </DetailSheet>
   );
 }
@@ -314,6 +417,7 @@ const styles = StyleSheet.create({
     color: tennisColors.text,
   },
   helper: { ...typography.caption, color: tennisColors.textMuted },
+  waarde: { ...typography.body, color: tennisColors.text },
   error: { color: tennisColors.danger, fontSize: 13 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },

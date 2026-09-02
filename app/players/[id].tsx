@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Plus, CheckCircle2, Circle, BookOpen, CalendarPlus, CalendarDays, Target,
-  SlidersHorizontal, type LucideIcon,
+  SlidersHorizontal, Pencil, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
@@ -14,6 +14,7 @@ import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { DetailSheet } from '../../components/ui/DetailSheet';
 import { LessonDetailModal } from '../../components/LessonDetailModal';
 import { AssignLessonModal } from '../../components/AssignLessonModal';
+import { LidBewerken } from '../../components/LidBewerken';
 import { GoalHorizonRows, PlayerGoalSheet } from '../../components/PlayerGoals';
 import { ProgressForm } from '../../components/progress/ProgressForm';
 import { ProgressEntryCard } from '../../components/progress/ProgressViews';
@@ -77,6 +78,7 @@ export default function PlayerDossier() {
   // Wat er in het budgetveld staat terwijl de trainer typt; null = nog niets aangeraakt,
   // dan komt de waarde uit de speler zelf.
   const [budgetTyped, setBudgetTyped] = useState<string | null>(null);
+  const [gegevensOpen, setGegevensOpen] = useState(false);
 
   if (!player) {
     return (
@@ -133,6 +135,9 @@ export default function PlayerDossier() {
   const goalCount = filledGoalCount(goals.filter((g) => g.student_id === player.id));
   const doelenSummary = goalCount === 0 ? t('nog geen doel') : goalCountLabel(goalCount);
   const betaalwijze = t(PAYMENT_LABELS[player.default_payment_method ?? 'open']);
+  // Een trainer beheert de spelers waar hij mee werkt — hij maakt ze ook aan. Een speler die
+  // zijn eigen dossier opent, bewerkt zichzelf; wat hij dan mag, beslist het blad.
+  const magBewerken = !!coach || currentUser?.id === player.id;
 
   // Het sponsorbudget: wat er in het contract staat en wat er nog van over is. De rest
   // rekent lib/sponsor uit de gesponsorde lessen — er is geen tweede saldo dat kan gaan
@@ -231,7 +236,29 @@ export default function PlayerDossier() {
             ))}
           </View>
         ) : null}
+
+        {/* Hetzelfde blad als op je eigen profiel en in Beheer → Leden: één formulier voor
+            naam, e-mailadres en gsm-nummer, waar je het ook opent. Zonder deze knop kwam een
+            trainer die geen beheerder is er niet aan — Beheer → Leden is niet van hem. */}
+        {magBewerken ? (
+          <Button
+            label={t('Gegevens bewerken')}
+            variant="secondary"
+            fullWidth={false}
+            icon={<Pencil size={16} color={tennisColors.text} />}
+            onPress={() => setGegevensOpen(true)}
+            style={styles.editButton}
+          />
+        ) : null}
       </Card>
+
+      {magBewerken ? (
+        <LidBewerken
+          lid={player}
+          visible={gegevensOpen}
+          onClose={() => setGegevensOpen(false)}
+        />
+      ) : null}
 
       <TileGrid>
         {tiles.map((tile) => (
@@ -455,6 +482,7 @@ function PlanRow({ lesson, onOpen, onToggle, canEdit, given, ownerName, divided 
 
 const styles = StyleSheet.create({
   name: { ...typography.h1, color: tennisColors.text },
+  editButton: { marginTop: spacing.md },
   contact: { fontSize: 14, color: tennisColors.textMuted, marginTop: 2 },
   coachRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: spacing.sm },
   coachRowItem: { flexDirection: 'row', alignItems: 'center' },

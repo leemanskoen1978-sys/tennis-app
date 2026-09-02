@@ -6,7 +6,7 @@
 // anders in te loggen. Een schakelaar zou iets beloven wat de app niet doet.
 
 import React, { useState } from 'react';
-import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -29,7 +29,7 @@ import { coachPayoutThisMonth } from '../lib/reports';
 import { formatEuro } from '../lib/money';
 import { useT } from '../lib/i18n';
 import { isAdmin, isCoach, roleLabel } from '../lib/rechten';
-import { DetailSheet } from '../components/ui/DetailSheet';
+import { LidBewerken } from '../components/LidBewerken';
 
 interface Row {
   key: string;
@@ -95,11 +95,11 @@ function InfoRow({ row, first }: { row: Row; first: boolean }) {
 export default function ProfileScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
-  const { currentUser, logout, bookings, courts, updateUser, error } = useSimpleData();
-  // Het uurloon bijstellen, voor wie het mag. Een eigen blaadje en geen scherm: het is één
-  // getal, en ervoor naar Beheer → Leden moeten is precies waarom niemand het terugvond.
-  const [tariefOpen, setTariefOpen] = useState(false);
-  const [tarief, setTarief] = useState('');
+  const { currentUser, logout, bookings, courts } = useSimpleData();
+  // Je eigen gegevens bijstellen. Hetzelfde blad als in Beheer → Leden, met opzet: één
+  // formulier voor wie iemand is, waar je het ook opent. Wat je mag, rekent dat blad zelf
+  // uit — hier hangt niets aan.
+  const [gegevensOpen, setGegevensOpen] = useState(false);
   const coach = isCoach(currentUser);
   const pending = useOpenstaandeBetalingen();
   // Het profiel gaat over het account — naam, adres, rol — maar de twee getallen eronder
@@ -138,6 +138,16 @@ export default function ProfileScreen(): React.JSX.Element {
   const earnedThisMonth = coachPayoutThisMonth(currentUser, bookings);
 
   const contactRows: Row[] = [
+    // Eén rij die het hele formulier opent, en daaronder wat erin staat. Zonder deze rij
+    // stond je naam, je adres en je nummer hier wel te lezen maar nergens te wijzigen —
+    // dat kon alleen wie de weg naar Beheer → Leden kende.
+    {
+      key: 'edit',
+      icon: SlidersHorizontal,
+      title: t('Mijn gegevens'),
+      subtitle: t('Naam, e-mailadres en gsm-nummer'),
+      onPress: () => setGegevensOpen(true),
+    },
     { key: 'mail', icon: Mail, title: currentUser.email, subtitle: t('E-mailadres') },
     {
       key: 'phone',
@@ -158,8 +168,10 @@ export default function ProfileScreen(): React.JSX.Element {
       key: 'rate',
       icon: Euro,
       title: rateMissing ? t('Nog niet ingesteld') : `€ ${currentUser.hourly_rate}`,
-      subtitle: magTarief ? t('Jouw uurtarief · tik om te wijzigen') : t('Jouw uurtarief · je beheerder stelt dit in'),
-      ...(magTarief ? { onPress: () => { setTarief(rateMissing ? '' : String(currentUser.hourly_rate)); setTariefOpen(true); } } : {}),
+      subtitle: magTarief
+        ? t('Jouw uurtarief · tik om te wijzigen')
+        : t('Jouw uurtarief · je beheerder stelt dit in'),
+      ...(magTarief ? { onPress: () => setGegevensOpen(true) } : {}),
     });
   }
 
@@ -275,38 +287,11 @@ export default function ProfileScreen(): React.JSX.Element {
         />
       </View>
 
-      <DetailSheet
-        title={t('Jouw uurtarief')}
-        visible={tariefOpen}
-        onClose={() => setTariefOpen(false)}
-      >
-        <Text style={styles.tariefHelp}>
-          {t('Wat de club jou per uur uitbetaalt. Alleen ter informatie — de omzet loopt op '
-            + 'het tarief van de baan. Leeg laten mag: dan staat er "nog niet ingesteld".')}
-        </Text>
-        <TextInput
-          style={styles.tariefInput}
-          value={tarief}
-          onChangeText={setTarief}
-          keyboardType="numeric"
-          placeholder={t('bv. 35')}
-          placeholderTextColor={tennisColors.textMuted}
-        />
-        {error ? <Text style={styles.tariefFout}>{error}</Text> : null}
-        <Button
-          label={t('Bewaren')}
-          variant="primary"
-          onPress={() => {
-            const bedrag = Number(tarief.replace(',', '.'));
-            const leeg = tarief.trim() === '';
-            // Een onleesbaar bedrag laat het blad open staan: zo blijft zichtbaar wat er
-            // getypt is, in plaats van het stilzwijgend weg te gooien.
-            if (!leeg && !Number.isFinite(bedrag)) return;
-            void updateUser(currentUser.id, { hourly_rate: leeg ? undefined : bedrag })
-              .then(() => setTariefOpen(false), () => {});
-          }}
-        />
-      </DetailSheet>
+      <LidBewerken
+        lid={currentUser}
+        visible={gegevensOpen}
+        onClose={() => setGegevensOpen(false)}
+      />
     </Screen>
   );
 }
@@ -314,13 +299,6 @@ export default function ProfileScreen(): React.JSX.Element {
 const OVERLAP = 44;
 
 const styles = StyleSheet.create({
-  tariefHelp: { fontSize: 13, color: tennisColors.textMuted },
-  tariefInput: {
-    borderWidth: 1, borderColor: tennisColors.border, borderRadius: radius.md,
-    paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    color: tennisColors.text, backgroundColor: tennisColors.surface, marginTop: spacing.sm,
-  },
-  tariefFout: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.sm },
   // De band loopt tot aan de rand van de kolom, dus Screen mag hier zelf niet padden;
   // de secties eronder nemen die marge weer op zich.
   screenContent: { padding: 0, gap: 0 },

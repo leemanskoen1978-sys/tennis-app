@@ -747,6 +747,14 @@ export const EN: Record<string, string> = {
     'What the club pays you per hour. For information only — revenue runs on the court rate. '
     + 'Leaving it blank is fine: it then reads "not set yet".',
   'bv. 35': 'e.g. 35',
+  'Naam, e-mailadres en gsm-nummer': 'Name, email address and mobile number',
+  'Gegevens bewerken': 'Edit details',
+  'Deze gegevens beheert de beheerder van de club.': 'The club admin manages these details.',
+  'Niets aangevinkt betekent: elke dag beschikbaar.': 'Nothing ticked means: available every day.',
+  'Tussen welke uren er geboekt kan worden, en de periodes waarin dat anders is.':
+    'Between which hours people can book, and the periods where that differs.',
+  'Dit stelt de beheerder in: het is wat de club uitbetaalt.':
+    'Your admin sets this: it is what the club pays out.',
 
   // --- dossiers -----------------------------------------------------------
   'Open dossier van {naam}': 'Open the file of {naam}',
