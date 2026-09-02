@@ -543,8 +543,24 @@ const SPELER: Gidsstuk[] = [
         waar: 'Je les',
         kop: 'Aanwezigheid',
         tekst: [
-          'Bij de les staat wie er die dag was. Dat noteert je trainer — meestal op de baan, '
-          + 'waar de kinderen zelf op hun naam tikken. Je kunt het zien, niet wijzigen.',
+          'Bij de les staat wie er die dag was. Op de baan vinkt de trainer af — of tikken de '
+          + 'kinderen zelf op hun naam — maar je kunt je ook vooraf afmelden: bij je eigen '
+          + 'naam (een ouder bij die van zijn kind) staan dezelfde twee knoppen.',
+          'Alleen voor een les van vandaag of later. Wie er vorige week stond, is wat de '
+          + 'trainer zag, en dat blijft van hem.',
+        ],
+      },
+      {
+        waar: 'Je dossier',
+        kop: 'Een opmerking voor je trainer',
+        tekst: [
+          'Op je dossier staat een veld waarin je kwijt kunt wat je trainer moet weten: een '
+          + 'blessure, een week waarin je er niet bent. Hij ziet het bovenaan staan zolang '
+          + 'het er staat. Een ouder schrijft het voor zijn kind — dat is meteen het enige '
+          + 'dat hij op het account van zijn kind kan wijzigen.',
+          'De rest van je gegevens — je naam, je e-mailadres, je gsm-nummer — wijzig je op '
+          + 'je eigen profiel, bij Mijn gegevens. Wat over de club gaat (lessen, tarieven, '
+          + 'wie er bij wie hoort) kun je lezen maar niet aanpassen.',
         ],
       },
       {

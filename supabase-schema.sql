@@ -245,15 +245,18 @@ alter table users add column if not exists is_admin boolean not null default fal
 alter table bookings add column if not exists rejected_at timestamptz;
 -- Wie er die dag effectief stond: {"speler-id": "aanwezig"|"afwezig"}. Een speler die er
 -- niet in staat is niet afgevinkt, en dat is iets anders dan afwezig — vandaar een lijstje
--- en geen kolom per speler. Wijzigen mag alleen de trainer van de les of de beheerder; dat
--- bewaakt `bewaak_betaalvelden` hieronder al, want alles buiten de twee betaalvelden valt
--- daar vanzelf onder "mag niet".
+-- en geen kolom per speler. De trainer van de les en de beheerder schrijven erin wat ze
+-- willen; een speler alleen zijn eigen naam (een ouder die van zijn kind) en alleen voor een
+-- les die vandaag of later begint. Zie `bewaak_betaalvelden` hieronder.
 alter table bookings add column if not exists attendance jsonb;
 -- De afwijkende boekingstijden van één trainer: [{id,naam,van,tot,uren:{start,end}}].
 -- Zonder `uren` betekent een periode dat hij die dagen geen les geeft. Bij de trainer en
 -- niet bij de clubinstellingen, want dit geldt voor hem alleen — een vakantie sluit de hele
 -- club en staat daarom wél in `club_settings`.
 alter table users add column if not exists booking_periods jsonb;
+-- Wat een speler of zijn ouder aan de trainer kwijt wil. Zie `User.note_for_coach` in
+-- lib/types voor waarom dit bij de speler staat en niet bij een les.
+alter table users add column if not exists note_for_coach text;
 
 -- De rol 'parent' bestaat niet meer: wie kinderen volgt, doet dat via `ouder_kind` en houdt
 -- gewoon zijn eigen rol. Eerst iedereen omzetten, dan pas de regel aanscherpen — andersom
@@ -391,28 +394,68 @@ create trigger users_is_admin_bewaakt
 
 -- `bookings_update` laat hieronder ook de betaler toe (en de ouder van een minderjarige
 -- betaler), want wie de rekening krijgt hoort te kiezen of hij cash betaalt of op factuur.
+-- Sinds de aanwezigheid staat ook wie meespeelt in die policy: een speler vinkt zichzelf af.
 -- Maar RLS kent alleen hele rijen: wie een rij mag wijzigen, mag élke kolom wijzigen. Zonder
 -- deze trigger kon een speler met dezelfde toestemming zijn les een uur verzetten, aan een
 -- andere trainer hangen of zichzelf goedkeuren.
 --
--- Vandaar de vergelijking op de hele rij: alles behalve de twee betaalvelden moet gelijk
+-- Vandaar de vergelijking op de hele rij: alles behalve de drie velden hieronder moet gelijk
 -- blijven. Zo hoeft deze functie niet te weten welke kolommen er in de toekomst bij komen —
 -- een nieuwe kolom valt vanzelf onder "mag niet".
+--
+-- En daarna per veld wie het mag: de betaalwijze is van de betaler, de aanwezigheid van wie
+-- er zelf staat (of van zijn ouder) en alleen voor een les die nog moet komen. Dezelfde twee
+-- regels staan in de app — `magAanwezigheidZetten` in lib/aanwezigheid en de betaalregel in
+-- het detailblad — daar zodat het scherm geen knop toont die hier geweigerd wordt, hier
+-- omdat dit de bewaking is.
 create or replace function bewaak_betaalvelden()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  mijn text[];
+  vandaag timestamptz;
 begin
   -- Buiten een sessie om (een script, de SQL-editor) geldt deze grens niet.
   if auth.uid() is null then return new; end if;
   -- De trainer van deze les en de beheerder mogen alles; voor hen is er niets te bewaken.
   if is_admin() or old.coach_id = app_user_id() then return new; end if;
 
-  if (to_jsonb(new) - 'payment_method' - 'beurtenkaart_id')
-     is distinct from (to_jsonb(old) - 'payment_method' - 'beurtenkaart_id') then
-    raise exception 'Alleen de betaalwijze van je eigen les mag je zelf wijzigen.';
+  if (to_jsonb(new) - 'payment_method' - 'beurtenkaart_id' - 'attendance')
+     is distinct from (to_jsonb(old) - 'payment_method' - 'beurtenkaart_id' - 'attendance') then
+    raise exception 'Alleen de betaalwijze en je eigen aanwezigheid mag je zelf wijzigen.';
+  end if;
+
+  -- De betaalvelden zijn van wie de rekening krijgt. Wie meespeelt maar niet betaalt, komt
+  -- sinds de aanwezigheid ook langs `bookings_update`, en die mag hier niet ineens de
+  -- betaalwijze van een ander zetten.
+  if (new.payment_method is distinct from old.payment_method
+      or new.beurtenkaart_id is distinct from old.beurtenkaart_id)
+     and not (old.player_id = app_user_id() or is_mijn_kind(old.player_id)) then
+    raise exception 'De betaalwijze zet de speler die de rekening krijgt.';
+  end if;
+
+  if new.attendance is distinct from old.attendance then
+    -- "Vandaag" is een dag op de kalender hier, niet in UTC: een les van vanochtend om negen
+    -- uur hoort tot vanavond van de speler te blijven, en met de UTC-dag zou dat verschuiven.
+    vandaag := date_trunc('day', now() at time zone 'Europe/Brussels') at time zone 'Europe/Brussels';
+    if old.start_time < vandaag then
+      raise exception 'Wie er bij een les uit het verleden stond, noteert de trainer.';
+    end if;
+    -- Voor wie je spreekt: jezelf en je goedgekeurde kinderen. Al de rest van de lijst moet
+    -- na de wijziging nog letterlijk hetzelfde zijn.
+    mijn := array(
+      select coalesce(app_user_id(), '')
+      union
+      select child_id from ouder_kind
+        where parent_id = app_user_id() and status = 'approved'
+    );
+    if (coalesce(new.attendance, '{}'::jsonb) - mijn)
+       is distinct from (coalesce(old.attendance, '{}'::jsonb) - mijn) then
+      raise exception 'Je past alleen je eigen aanwezigheid aan.';
+    end if;
   end if;
 
   return new;
@@ -549,10 +592,42 @@ drop policy if exists users_insert on users;
 create policy users_insert on users for insert
   to authenticated with check (is_coach() or is_admin() or auth_id = auth.uid());
 
+--
+-- De ouder van een goedgekeurd kind staat er ook bij, voor één veld: de opmerking voor de
+-- trainer. Hij regelt de club niet mee, maar hij is wel degene die weet dat zijn zoon een
+-- week weg is. Dat het bij dat ene veld blijft, bewaakt `bewaak_gebruikersvelden` hieronder
+-- — een policy kent alleen hele rijen en geen kolommen.
 drop policy if exists users_update on users;
 create policy users_update on users for update
-  to authenticated using (is_coach() or is_admin() or auth_id = auth.uid())
-  with check (is_coach() or is_admin() or auth_id = auth.uid());
+  to authenticated using (is_coach() or is_admin() or auth_id = auth.uid() or is_mijn_kind(id))
+  with check (is_coach() or is_admin() or auth_id = auth.uid() or is_mijn_kind(id));
+
+-- Wat een ouder op het account van zijn kind mag: de opmerking voor de trainer, en verder
+-- niets. Zonder deze trigger kon hij met dezelfde toestemming de naam, het e-mailadres (en
+-- dus de login) of het sponsorbudget van zijn kind wijzigen.
+create or replace function bewaak_gebruikersvelden()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then return new; end if;
+  -- De trainer, de beheerder en de persoon zelf hebben hier niets te bewaken; wat daarna
+  -- overblijft, is de ouder — verder laat `users_update` niemand door.
+  if is_coach() or is_admin() or old.auth_id = auth.uid() then return new; end if;
+
+  if (to_jsonb(new) - 'note_for_coach') is distinct from (to_jsonb(old) - 'note_for_coach') then
+    raise exception 'Op het account van je kind wijzig je alleen de opmerking voor de trainer.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists users_velden_bewaakt on users;
+create trigger users_velden_bewaakt
+  before update on users
+  for each row execute function bewaak_gebruikersvelden();
 
 drop policy if exists users_delete on users;
 create policy users_delete on users for delete
@@ -680,18 +755,30 @@ drop policy if exists bookings_update on bookings;
 -- krijgt, kiest of hij cash betaalt of op factuur. Wat hij verder níét mag — het uur
 -- verzetten, van trainer wisselen, zichzelf goedkeuren — houdt de trigger
 -- `bewaak_betaalvelden` tegen, want een policy kent alleen hele rijen en geen kolommen.
+--
+-- Wie meespeelt zonder te betalen staat er sinds de aanwezigheid ook bij: in een groepsles
+-- vinkt elke speler zichzelf af, en niet alleen degene op wiens naam de les staat. Wat hij
+-- verder niet mag — ook niet de betaalwijze — houdt de trigger tegen.
 create policy bookings_update on bookings for update
   to authenticated using (
     coach_id = app_user_id()
     or is_admin()
     or player_id = app_user_id()
     or is_mijn_kind(player_id)
+    or exists (
+      select 1 from jsonb_array_elements_text(coalesce(participant_ids, '[]'::jsonb)) as p(id)
+      where p.id = app_user_id() or is_mijn_kind(p.id)
+    )
   )
   with check (
     coach_id = app_user_id()
     or is_admin()
     or player_id = app_user_id()
     or is_mijn_kind(player_id)
+    or exists (
+      select 1 from jsonb_array_elements_text(coalesce(participant_ids, '[]'::jsonb)) as p(id)
+      where p.id = app_user_id() or is_mijn_kind(p.id)
+    )
   );
 
 drop policy if exists bookings_delete on bookings;

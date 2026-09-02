@@ -757,6 +757,14 @@ export const EN: Record<string, string> = {
     'Your admin sets this: it is what the club pays out.',
   'Mail naar {adres}': 'Email {adres}',
   'WhatsApp naar {nummer}': 'WhatsApp {nummer}',
+  'Opmerking voor de trainer': 'Note for the coach',
+  'bv. speelt met een gekneusde pols, of: weg in de paasvakantie':
+    'e.g. playing with a bruised wrist, or: away over the Easter holidays',
+  'De trainer leest dit op het dossier. Leeg maken mag: dan staat er niets.':
+    'The coach reads this on the file. Clearing it is fine: then nothing is shown.',
+  'Niets ingevuld': 'Nothing filled in',
+  'De gegevens hieronder beheert de club. Je opmerking voor de trainer schrijf je zelf.':
+    'The club manages the details below. The note for the coach is yours to write.',
 
   // --- dossiers -----------------------------------------------------------
   'Open dossier van {naam}': 'Open the file of {naam}',

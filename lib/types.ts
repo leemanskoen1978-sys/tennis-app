@@ -46,6 +46,18 @@ export interface User {
   role: Role;
   phone?: string;
   bio?: string;
+  /**
+   * Wat de speler of zijn ouder aan de trainer kwijt wil: een blessure, een periode waarin
+   * hij er niet is, iets waar de trainer rekening mee houdt.
+   *
+   * Bij de speler en niet bij een les, want het gaat zelden over één uur — en een trainer
+   * die elke les moet openen om te zien of er iets in staat, leest het niet. Het staat op
+   * zijn dossier, zolang het er staat.
+   *
+   * Dit is het enige veld dat een ouder op het account van zijn kind mag schrijven; de
+   * databank bewaakt dat mee (`bewaak_gebruikersvelden` in supabase-schema.sql).
+   */
+  note_for_coach?: string;
   preferred_court_id?: string;
   /**
    * De boekingstijd van deze trainer: tussen welke uren er bij hem geboekt kan worden.

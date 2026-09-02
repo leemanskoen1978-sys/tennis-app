@@ -31,6 +31,7 @@ import {
   gevolgenVanVerwijderen, heeftGevolgen, magVinkjeWeg, rolWisselBezwaar, type Gevolgen,
 } from '../lib/leden';
 import { isAdmin, isCoach, roleLabel } from '../lib/rechten';
+import { isMijnKind } from '../lib/ouderkind';
 import { DAY_LABELS } from '../lib/slots';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../lib/payments';
 import { useT } from '../lib/i18n';
@@ -88,6 +89,7 @@ export function LidBewerken({
   const [rate, setRate] = useState('');
   const [budget, setBudget] = useState('');
   const [days, setDays] = useState<number[]>([]);
+  const [opmerking, setOpmerking] = useState('');
   const [bevestigen, setBevestigen] = useState(false);
   const [bewaard, setBewaard] = useState(false);
 
@@ -101,6 +103,7 @@ export function LidBewerken({
     setRate(lid.hourly_rate !== undefined ? String(lid.hourly_rate) : '');
     setBudget(lid.sponsor_budget !== undefined ? String(lid.sponsor_budget) : '');
     setDays(lid.working_days ?? []);
+    setOpmerking(lid.note_for_coach ?? '');
     setBevestigen(false);
     setBewaard(false);
     clearError();
@@ -126,16 +129,26 @@ export function LidBewerken({
   //  - die van een collega: alleen de beheerder.
   const beheerder = isAdmin(currentUser);
   const magBewerken = beheerder || zelf || (isCoach(currentUser) && lid.role === 'player');
+  // De opmerking voor de trainer is het enige dat een ouder op het account van zijn kind
+  // mag schrijven. Hij regelt de club niet mee, maar hij is wel degene die weet dat zijn
+  // zoon een week weg is of met een gekneusde pols speelt.
+  const ouderVan = isMijnKind(currentUser?.id, lid.id, relaties);
+  const magOpmerking = magBewerken || ouderVan;
   // Het uurloon is wat de club uitbetaalt; wie het zelf kan zetten, verhoogt zijn eigen
   // loon. De databank denkt er hetzelfde over (`rates_write`).
   const magTarief = beheerder;
 
   const bewaar = (): void => {
-    if (!naamOk || !emailOk) return;
+    if (magBewerken && (!naamOk || !emailOk)) return;
     const nummer = normalizePhone(phone);
     const tarief = Number(rate.replace(',', '.'));
     const sponsor = Number(budget.replace(',', '.'));
     void updateUser(lid.id, {
+      // De opmerking staat los van de rest: een ouder mag alleen díé schrijven, en dan mag
+      // er ook niets anders meegaan — anders zet hij ongemerkt de naam terug zoals het veld
+      // toevallig stond.
+      ...(magOpmerking ? { note_for_coach: opmerking.trim() || undefined } : {}),
+      ...(!magBewerken ? {} : {
       name: name.trim(),
       email: email.trim(),
       // Leeg betekent "niet ingevuld", en dat is iets anders dan een lege tekst: de rest
@@ -151,6 +164,7 @@ export function LidBewerken({
         : {
           sponsor_budget: budget.trim() && Number.isFinite(sponsor) ? sponsor : undefined,
         }),
+      }),
     }).then(() => setBewaard(true), () => {});
   };
 
@@ -166,31 +180,71 @@ export function LidBewerken({
           een link opengaat hoort het ook te weten. */}
       {!magBewerken ? (
         <Text style={styles.helper}>
-          {t('Deze gegevens beheert de beheerder van de club.')}
+          {magOpmerking
+            ? t('De gegevens hieronder beheert de club. Je opmerking voor de trainer schrijf '
+              + 'je zelf.')
+            : t('Deze gegevens beheert de beheerder van de club.')}
         </Text>
       ) : null}
-      <Text style={styles.label}>{t('Naam')}</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} />
-      {!naamOk ? <Text style={styles.error}>{t('Een naam is verplicht.')}</Text> : null}
+      {/* Zonder recht om te wijzigen staat hier tekst en geen invulveld. Een veld dat er
+          uitziet als een veld maar niets bewaart, is erger dan geen veld. */}
+      {magBewerken ? (
+        <>
+          <Text style={styles.label}>{t('Naam')}</Text>
+          <TextInput style={styles.input} value={name} onChangeText={setName} />
+          {!naamOk ? <Text style={styles.error}>{t('Een naam is verplicht.')}</Text> : null}
 
-      <Text style={styles.label}>{t('E-mailadres')}</Text>
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-      <Text style={styles.helper}>
-        {t('Hiermee logt hij in. Verander je het, dan hoort hij het te weten.')}
-      </Text>
-      {!emailOk ? <Text style={styles.error}>{t('Dit lijkt geen geldig e-mailadres.')}</Text> : null}
+          <Text style={styles.label}>{t('E-mailadres')}</Text>
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Text style={styles.helper}>
+            {t('Hiermee logt hij in. Verander je het, dan hoort hij het te weten.')}
+          </Text>
+          {!emailOk ? <Text style={styles.error}>{t('Dit lijkt geen geldig e-mailadres.')}</Text> : null}
 
-      <Text style={styles.label}>{t('Gsm-nummer')}</Text>
-      <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          <Text style={styles.label}>{t('Gsm-nummer')}</Text>
+          <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        </>
+      ) : (
+        <>
+          <Text style={styles.label}>{t('Naam')}</Text>
+          <Text style={styles.waarde}>{lid.name}</Text>
+          <Text style={styles.label}>{t('E-mailadres')}</Text>
+          <Text style={styles.waarde}>{lid.email}</Text>
+          <Text style={styles.label}>{t('Gsm-nummer')}</Text>
+          <Text style={styles.waarde}>{lid.phone ?? t('Niet ingevuld')}</Text>
+        </>
+      )}
 
-      {lid.role === 'coach' ? (
+      {/* Voor de trainer, van de speler of zijn ouder. Bij de speler en niet bij een les:
+          het gaat zelden over één uur, en een trainer die elke les moet openen om te zien
+          of er iets in staat, leest het niet. */}
+      <Text style={styles.label}>{t('Opmerking voor de trainer')}</Text>
+      {magOpmerking ? (
+        <>
+          <TextInput
+            style={[styles.input, styles.opmerking]}
+            value={opmerking}
+            onChangeText={setOpmerking}
+            multiline
+            placeholder={t('bv. speelt met een gekneusde pols, of: weg in de paasvakantie')}
+            placeholderTextColor={tennisColors.textMuted}
+          />
+          <Text style={styles.helper}>
+            {t('De trainer leest dit op het dossier. Leeg maken mag: dan staat er niets.')}
+          </Text>
+        </>
+      ) : (
+        <Text style={styles.waarde}>{lid.note_for_coach ?? t('Niets ingevuld')}</Text>
+      )}
+
+      {lid.role === 'coach' && magBewerken ? (
         <>
           {/* De lesdagen stonden in het tweede formulier dat hiermee verdwijnt. Ze horen
               bij wie iemand is en niet bij het rooster: welke uren hij geeft, staat op
@@ -251,6 +305,11 @@ export function LidBewerken({
             </>
           )}
         </>
+      ) : !magBewerken ? (
+        /* Een ouder kijkt hier alleen mee: het sponsorbudget is een afspraak met de club en
+           de standaard betaalwijze hangt aan de rekening. Beide schreef de app meteen weg,
+           dus ze mogen hier niet als knop staan. */
+        null
       ) : (
         <>
           <Text style={styles.label}>{t('Sponsorbudget')}</Text>
@@ -282,12 +341,12 @@ export function LidBewerken({
         </>
       )}
 
-      {magBewerken ? (
+      {magOpmerking ? (
         <View style={styles.actions}>
           <Button
             label={bewaard ? t('Bewaard') : t('Bewaren')}
             onPress={bewaar}
-            disabled={!naamOk || !emailOk}
+            disabled={magBewerken && (!naamOk || !emailOk)}
             fullWidth={false}
             icon={<Save size={16} color={tennisColors.onFill} />}
           />
@@ -418,6 +477,7 @@ const styles = StyleSheet.create({
   },
   helper: { ...typography.caption, color: tennisColors.textMuted },
   waarde: { ...typography.body, color: tennisColors.text },
+  opmerking: { minHeight: 88, textAlignVertical: 'top' },
   error: { color: tennisColors.danger, fontSize: 13 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },

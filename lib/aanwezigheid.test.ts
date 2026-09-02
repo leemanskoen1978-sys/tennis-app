@@ -1,5 +1,5 @@
 import {
-  aanwezigheidVan, zetAanwezigheid, aanwezigheidTelling, aanwezigheidRegel, volgendeStand,
+  aanwezigheidVan, zetAanwezigheid, aanwezigheidTelling, aanwezigheidRegel, volgendeStand, magAanwezigheidZetten,
 } from './aanwezigheid';
 import type { Booking } from './types';
 
@@ -99,5 +99,54 @@ describe('volgendeStand', () => {
   it('clears the note when the screen passes null', () => {
     const b = { ...base, attendance: { p1: 'aanwezig' as const } };
     expect(zetAanwezigheid(b, 'p1', null).attendance).toEqual({});
+  });
+});
+
+describe('magAanwezigheidZetten', () => {
+  const nu = new Date('2026-09-02T15:00:00');
+  const les = (startISO: string, patch: Partial<Booking> = {}): Booking => ({
+    ...groep, start_time: startISO, end_time: startISO, ...patch,
+  });
+  const trainer = { id: 'koen' };
+  const speler = { id: 'p1' };
+  const ouder = { id: 'ouder' };
+
+  it('lets the coach of the lesson set anyone, whenever', () => {
+    expect(magAanwezigheidZetten(trainer, les('2026-08-01T10:00:00'), 'p2', [], nu)).toBe(true);
+  });
+
+  it('lets an admin set anyone', () => {
+    expect(magAanwezigheidZetten({ id: 'x', is_admin: true }, les('2026-08-01T10:00:00'), 'p2', [], nu))
+      .toBe(true);
+  });
+
+  it('lets a player set himself for a lesson later today', () => {
+    expect(magAanwezigheidZetten(speler, les('2026-09-02T18:00:00'), 'p1', ['p1'], nu)).toBe(true);
+  });
+
+  it('also lets him for a lesson earlier today: the day itself counts', () => {
+    expect(magAanwezigheidZetten(speler, les('2026-09-02T09:00:00'), 'p1', ['p1'], nu)).toBe(true);
+  });
+
+  it('stops him for a lesson that was yesterday', () => {
+    expect(magAanwezigheidZetten(speler, les('2026-09-01T18:00:00'), 'p1', ['p1'], nu)).toBe(false);
+  });
+
+  it('stops him at somebody else in the same lesson', () => {
+    expect(magAanwezigheidZetten(speler, les('2026-09-03T18:00:00'), 'p2', ['p1'], nu)).toBe(false);
+  });
+
+  it('lets a parent set his own child', () => {
+    expect(magAanwezigheidZetten(ouder, les('2026-09-03T18:00:00'), 'p2', ['p2'], nu)).toBe(true);
+    expect(magAanwezigheidZetten(ouder, les('2026-09-03T18:00:00'), 'p3', ['p2'], nu)).toBe(false);
+  });
+
+  it('stops someone who does not play in the lesson at all', () => {
+    expect(magAanwezigheidZetten({ id: 'p9' }, les('2026-09-03T18:00:00'), 'p9', ['p9'], nu))
+      .toBe(false);
+  });
+
+  it('says no when the start time is unreadable', () => {
+    expect(magAanwezigheidZetten(speler, les('ooit'), 'p1', ['p1'], nu)).toBe(false);
   });
 });

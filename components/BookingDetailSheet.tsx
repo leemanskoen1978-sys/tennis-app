@@ -23,7 +23,9 @@ import { useActieveSpeler } from '../providers/kindkeuze';
 import { cardsFor, remaining, GROEPSLES_ALLEEN_FACTUUR } from '../lib/beurtenkaart';
 import { formatDayTimeRange } from '../lib/datetime';
 import { isGroupLesson, lessonPlayerIds, participantIdsOf } from '../lib/groups';
-import { aanwezigheidRegel, aanwezigheidVan } from '../lib/aanwezigheid';
+import {
+  aanwezigheidRegel, aanwezigheidVan, magAanwezigheidZetten,
+} from '../lib/aanwezigheid';
 import {
   bookingPaymentMeta, lessonPriceLine, lessonShares, splitOf, type PaymentMeta,
 } from '../lib/payments';
@@ -37,6 +39,7 @@ import { useT, t as tr } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, minTapTarget, webCursor } from '../constants/theme';
 import { playersOf } from '../lib/hub';
+import { kinderenVan } from '../lib/ouderkind';
 import { magLesVerwijderen } from '../lib/rechten';
 
 /** De kleur bij een status; dezelfde die het maandoverzicht ooit op de kaart zette. */
@@ -104,7 +107,7 @@ export function BookingDetailSheet({
   const router = useRouter();
   const speler = useActieveSpeler();
   const {
-    currentUser, bookings, users, courts, beurtenkaarten,
+    currentUser, bookings, users, courts, beurtenkaarten, relaties,
     updateBooking, deleteBooking, cancelSeriesFrom, deleteSeriesFrom,
     approveBooking, rejectBooking,
     setPaymentMethod, setParticipants, setPaymentSplit, setAanwezigheid, error, clearError,
@@ -154,6 +157,14 @@ export function BookingDetailSheet({
   // Alleen bij een lopende les: op een geannuleerde les valt niets meer te betalen.
   const canPay = (canManage || betaler) && !isCancelled;
   const isGroup = isGroupLesson(booking);
+  // Voor wie spreek je: jezelf, plus je goedgekeurde kinderen. Eén lijst, want de vraag "mag
+  // ik dit zetten" is voor elke naam in de les dezelfde.
+  const eigenSpelers = currentUser
+    ? [currentUser.id, ...kinderenVan(currentUser.id, relaties)]
+    : [];
+  const magIetsZetten = lessonPlayerIds(booking).some((id) => magAanwezigheidZetten(
+    currentUser, booking, id, eigenSpelers, new Date(),
+  ));
   const court = courts.find((c) => c.id === booking.court_id);
   const players = playersOf(users);
   // Wie er meedoet en wie wat betaalt: één lijst, met de betaler vooraan. Bij samen
@@ -383,59 +394,69 @@ export function BookingDetailSheet({
           )
         ) : null}
 
-        {/* Wie er stond. Alleen de trainer van de les vinkt af — hij was erbij — en dat mag
-            ook vooraf: weet hij nu al dat er iemand wegblijft, dan hoeft hij dat niet tot na
-            de les te onthouden. Bij een geannuleerde les staat de lijst er niet: die les is
-            niet doorgegaan, dus er valt niemand aan- of afwezig te noemen. */}
+        {/* Wie er stond. De trainer van de les vinkt af — hij was erbij — en dat mag ook
+            vooraf: weet hij nu al dat er iemand wegblijft, dan hoeft hij dat niet tot na de
+            les te onthouden.
+            
+            Een speler zet zichzelf, een ouder zijn kind, en alleen voor een les die vandaag
+            of later begint: je afmelden is iets anders dan de geschiedenis herschrijven.
+            Per regel wordt dat opnieuw gevraagd, want in een groepsles gaat het over acht
+            namen waarvan er één van jou is. Zie `magAanwezigheidZetten` in lib/aanwezigheid;
+            de databank bewaakt dezelfde grens.
+
+            Bij een geannuleerde les staat de lijst er niet: die les is niet doorgegaan, dus
+            er valt niemand aan- of afwezig te noemen. */}
         {!isCancelled ? (
           <>
             <Text style={styles.label}>{t('Aanwezigheid')}</Text>
-            {canManage ? (
-              <>
-                <Text style={styles.hint}>{aanwezigheidRegel(booking)}</Text>
-                {lessonPlayerIds(booking).map((id) => (
-                  <View key={id} style={styles.attendanceRow}>
-                    <Text style={styles.attendanceName} numberOfLines={1}>{nameOf(id)}</Text>
+            <Text style={styles.hint}>{aanwezigheidRegel(booking)}</Text>
+            {lessonPlayerIds(booking).map((id) => {
+              const stand = aanwezigheidVan(booking, id);
+              const magZetten = magAanwezigheidZetten(
+                currentUser, booking, id, eigenSpelers, new Date(),
+              );
+              return (
+                <View key={id} style={styles.attendanceRow}>
+                  <Text style={styles.attendanceName} numberOfLines={1}>{nameOf(id)}</Text>
+                  {magZetten ? (
                     <View style={styles.chipRow}>
                       <Chip
                         label={t('Aanwezig')}
-                        selected={aanwezigheidVan(booking, id) === 'aanwezig'}
+                        selected={stand === 'aanwezig'}
                         onPress={() => {
                           void setAanwezigheid(booking.id, id, 'aanwezig');
                         }}
                       />
                       <Chip
                         label={t('Afwezig')}
-                        selected={aanwezigheidVan(booking, id) === 'afwezig'}
+                        selected={stand === 'afwezig'}
                         onPress={() => {
                           void setAanwezigheid(booking.id, id, 'afwezig');
                         }}
                       />
                     </View>
-                  </View>
-                ))}
-                {/* Zonder dit leest een tweede tik op dezelfde knop als een knop die niets
-                    doet, terwijl het de enige weg terug is naar "nog niet afgevinkt". */}
-                <Text style={styles.hint}>
-                  {t('Nog eens op dezelfde knop tikken maakt de aantekening weer leeg.')}
-                </Text>
-              </>
-            ) : (
-              /* Een speler of ouder kijkt mee maar vinkt niet af: wat er die dag gebeurde
-                 noteert de trainer. Wie nog niet afgevinkt is, staat er zonder badge — dat
-                 is iets anders dan afwezig. */
-              lessonPlayerIds(booking).map((id) => (
-                <View key={id} style={styles.attendanceRow}>
-                  <Text style={styles.attendanceName} numberOfLines={1}>{nameOf(id)}</Text>
-                  {aanwezigheidVan(booking, id) === 'aanwezig' ? (
-                    <Badge label={t('Aanwezig')} color={tennisColors.courtFill} />
-                  ) : null}
-                  {aanwezigheidVan(booking, id) === 'afwezig' ? (
-                    <Badge label={t('Afwezig')} color={tennisColors.warningFill} />
-                  ) : null}
+                  ) : (
+                    <>
+                      {/* Wie nog niet afgevinkt is, staat er zonder badge — dat is iets
+                          anders dan afwezig. */}
+                      {stand === 'aanwezig' ? (
+                        <Badge label={t('Aanwezig')} color={tennisColors.courtFill} />
+                      ) : null}
+                      {stand === 'afwezig' ? (
+                        <Badge label={t('Afwezig')} color={tennisColors.warningFill} />
+                      ) : null}
+                    </>
+                  )}
                 </View>
-              ))
-            )}
+              );
+            })}
+            {/* Zonder dit leest een tweede tik op dezelfde knop als een knop die niets doet,
+                terwijl het de enige weg terug is naar "nog niet afgevinkt". */}
+            {magIetsZetten ? (
+              <Text style={styles.hint}>
+                {t('Nog eens op dezelfde knop tikken maakt de aantekening weer leeg.')}
+              </Text>
+            ) : null}
           </>
         ) : null}
 

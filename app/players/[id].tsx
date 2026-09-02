@@ -24,6 +24,7 @@ import {
   buildLesplan, coachesForPlayer, lesplanSummary, type LessonWithProgress,
 } from '../../lib/relations';
 import { filledGoalCount, goalCountLabel } from '../../lib/goals';
+import { isMijnKind } from '../../lib/ouderkind';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
 import { groupSize, groupSizeLabel, isGroupLesson, playsIn } from '../../lib/groups';
 import { parseSponsorBudget, sponsorHint, sponsorState } from '../../lib/sponsor';
@@ -59,7 +60,8 @@ export default function PlayerDossier() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const {
-    currentUser, users, bookings, courts, lessons, progress, goals, updateLesson, updateUser,
+    currentUser, users, bookings, courts, lessons, progress, goals, relaties,
+    updateLesson, updateUser,
   } = useSimpleData();
   const coach = isCoach(currentUser);
 
@@ -138,7 +140,10 @@ export default function PlayerDossier() {
   const betaalwijze = t(PAYMENT_LABELS[player.default_payment_method ?? 'open']);
   // Een trainer beheert de spelers waar hij mee werkt — hij maakt ze ook aan. Een speler die
   // zijn eigen dossier opent, bewerkt zichzelf; wat hij dan mag, beslist het blad.
-  const magBewerken = !!coach || currentUser?.id === player.id;
+  const magBewerken = !!coach || currentUser?.id === player.id
+    // Een ouder komt hier voor het blad met de opmerking: dat is het enige dat hij op het
+    // account van zijn kind mag schrijven, en zonder knop komt hij er niet aan.
+    || isMijnKind(currentUser?.id, player.id, relaties);
 
   // Het sponsorbudget: wat er in het contract staat en wat er nog van over is. De rest
   // rekent lib/sponsor uit de gesponsorde lessen — er is geen tweede saldo dat kan gaan
@@ -219,6 +224,15 @@ export default function PlayerDossier() {
         <Badge label={rolLabel(player)} color={tennisColors.primaryFill} />
         {/* Eén tik opent de mail of een WhatsApp-gesprek; zie components/ui/ContactRegels. */}
         <ContactRegels email={player.email} phone={player.phone} />
+
+        {/* Wat de speler of zijn ouder kwijt wil. Staat hier, boven de tegels: een blessure
+            of een week afwezigheid moet je zien zonder ergens op te klikken. */}
+        {player.note_for_coach ? (
+          <View style={styles.opmerking}>
+            <Text style={styles.opmerkingLabel}>{t('Opmerking voor de trainer')}</Text>
+            <Text style={styles.opmerkingTekst}>{player.note_for_coach}</Text>
+          </View>
+        ) : null}
         {playerCoaches.length > 0 ? (
           <View style={styles.coachRow}>
             <Text style={styles.coachRowLabel}>{t('Trainers')}: </Text>
@@ -483,6 +497,12 @@ function PlanRow({ lesson, onOpen, onToggle, canEdit, given, ownerName, divided 
 
 const styles = StyleSheet.create({
   name: { ...typography.h1, color: tennisColors.text },
+  opmerking: {
+    marginTop: spacing.md, padding: spacing.md, borderRadius: radius.md,
+    backgroundColor: tennisColors.warningTint,
+  },
+  opmerkingLabel: { ...typography.label, color: tennisColors.textMuted },
+  opmerkingTekst: { ...typography.body, color: tennisColors.text },
   editButton: { marginTop: spacing.md },
   coachRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: spacing.sm },
   coachRowItem: { flexDirection: 'row', alignItems: 'center' },

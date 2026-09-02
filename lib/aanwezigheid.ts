@@ -113,3 +113,35 @@ export function volgendeStand(huidig: Aanwezigheid | null): Aanwezigheid | null 
   if (huidig === 'aanwezig') return 'afwezig';
   return null;
 }
+
+/**
+ * Mag deze gebruiker de aanwezigheid van deze speler in deze les zetten?
+ *
+ * De trainer van de les en de beheerder mogen alles: zij vinken af wat er gebeurd is.
+ *
+ * Daarnaast mag je jezelf zetten — en een ouder zijn kind — maar alleen voor een les die
+ * vandaag of later begint. Dat is het verschil tussen je afmelden en de geschiedenis
+ * herschrijven: wie er vorige week stond, is wat de trainer zag, en dat hoort niet meer
+ * bij te stellen door de andere kant van de rekening. Dezelfde grens staat in de databank
+ * (`bewaak_betaalvelden` in supabase-schema.sql) — hier zodat het scherm geen knop
+ * aanbiedt die daar geweigerd wordt.
+ *
+ * `eigenIds` zijn de spelers voor wie je spreekt: jijzelf, plus je goedgekeurde kinderen.
+ */
+export function magAanwezigheidZetten(
+  kijker: { id: string; is_admin?: boolean } | null | undefined,
+  booking: AanwezigheidBooking & { coach_id: string; start_time: string },
+  playerId: string,
+  eigenIds: readonly string[],
+  now: Date,
+): boolean {
+  if (!kijker) return false;
+  if (kijker.is_admin === true || booking.coach_id === kijker.id) return true;
+  if (!eigenIds.includes(playerId)) return false;
+  if (!lessonPlayerIds(booking).includes(playerId)) return false;
+  const start = new Date(booking.start_time);
+  // Een onleesbare begintijd telt als "niet meer van jou": bij twijfel beslist de trainer.
+  if (Number.isNaN(start.getTime())) return false;
+  const vandaag = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return start.getTime() >= vandaag.getTime();
+}

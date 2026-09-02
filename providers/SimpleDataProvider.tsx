@@ -13,7 +13,7 @@ import type { AuthGebeurtenis } from './supabaseStore';
 import { installCatalogue } from '../lib/catalogue';
 import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { upsertGoal, removeGoal } from '../lib/goals';
-import { aanvraagVoor } from '../lib/ouderkind';
+import { aanvraagVoor, kinderenVan } from '../lib/ouderkind';
 import { zonderLid } from '../lib/leden';
 import {
   SESSIONS_PER_CARD, useSession, releaseSession, removeManualSession,
@@ -21,7 +21,7 @@ import {
   GROEPSLES_METHOD,
 } from '../lib/beurtenkaart';
 import { isGroupLesson } from '../lib/groups';
-import { zetAanwezigheid, type Aanwezigheid } from '../lib/aanwezigheid';
+import { zetAanwezigheid, magAanwezigheidZetten, type Aanwezigheid } from '../lib/aanwezigheid';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
 import { planSeries, type OvergeslagenSlot, type RecurrenceRule } from '../lib/recurrence';
@@ -800,9 +800,13 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     if (!store || !currentUserId) return;
     const booking = store.bookings.find((b) => b.id === bookingId);
     if (!booking) return;
-    // Wie er stond, weet de trainer die er zelf bij was. Een beheerder mag in elke agenda.
-    const magAlles = magInElkeAgenda(store.users.find((u) => u.id === currentUserId));
-    if (!magAlles && booking.coach_id !== currentUserId) return;
+    // Wie er stond, weet de trainer die er zelf bij was — hij mag alles, en de beheerder
+    // ook. Een speler zet zichzelf, een ouder zijn kind, en dan alleen voor een les die nog
+    // moet komen; de regel staat in `magAanwezigheidZetten` en dezelfde grens bewaakt de
+    // databank. Hier omdat een geweigerde schrijfactie anders pas bij het opslaan opvalt.
+    const kijker = store.users.find((u) => u.id === currentUserId);
+    const eigen = [currentUserId, ...kinderenVan(currentUserId, store.relaties)];
+    if (!magAanwezigheidZetten(kijker, booking, playerId, eigen, new Date())) return;
     const patch = zetAanwezigheid(booking, playerId, waarde);
     await commit({
       ...store,
