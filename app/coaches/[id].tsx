@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CalendarDays, ChevronRight, Pencil, Users, type LucideIcon } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
+import { ContactRegels } from '../../components/ui/ContactRegels';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
@@ -109,8 +110,8 @@ export default function CoachDossier() {
       <Card>
         <Text style={styles.name}>{coach.name}</Text>
         <Badge label={rolLabel(coach)} color={tennisColors.primaryFill} />
-        {coach.email ? <Text style={styles.contact}>{coach.email}</Text> : null}
-        {coach.phone ? <Text style={styles.contact}>{coach.phone}</Text> : null}
+        {/* Eén tik opent de mail of een WhatsApp-gesprek; zie components/ui/ContactRegels. */}
+        <ContactRegels email={coach.email} phone={coach.phone} />
 
         <Text style={styles.fieldLabel}>{t('Geeft les')}</Text>
         <Text style={styles.fieldValue}>{formatWorkingDays(coach)}</Text>
@@ -235,7 +236,6 @@ export default function CoachDossier() {
 
 const styles = StyleSheet.create({
   name: { ...typography.h1, color: tennisColors.text },
-  contact: { fontSize: 14, color: tennisColors.textMuted, marginTop: 2 },
   warnValue: { fontSize: 14, color: tennisColors.warning, marginTop: 2 },
   fieldLabel: {
     fontSize: 12, fontWeight: '700', color: tennisColors.textMuted,

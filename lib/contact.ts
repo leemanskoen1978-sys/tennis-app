@@ -44,3 +44,52 @@ export function normalizeEmail(email: string): string {
 export function normalizePhoneDigits(phone: string): string {
   return phone.replace(/\D/g, '');
 }
+
+/**
+ * Het landnummer waarmee een nummer zonder eigen landcode wordt aangevuld: België.
+ *
+ * WhatsApp kent geen "binnenland" — een nummer moet er internationaal in, anders opent het
+ * gesprek gewoon niet. En in een clubadministratie staat een nummer nu eenmaal als
+ * "0470 12 34 56" en niet als "+32 470 ...". Speelt de club ooit over de grens, dan is dit
+ * de ene regel die dan mee moet.
+ */
+export const LANDNUMMER = '32';
+
+/**
+ * Een e-mailadres als `mailto:`-link, of `null` als het er geen is.
+ *
+ * Meer dan het adres zetten we er niet in: geen onderwerp, geen tekst. Wat de trainer wil
+ * schrijven, weet hij zelf, en een half ingevulde mail is lastiger weg te krijgen dan een
+ * lege.
+ */
+export function mailtoLink(email: string | undefined): string | null {
+  if (!email || !isValidEmail(email)) return null;
+  return `mailto:${encodeURIComponent(normalizeEmail(email))}`;
+}
+
+/**
+ * Een telefoonnummer als WhatsApp-link, of `null` als er geen bruikbaar nummer in staat.
+ *
+ * `wa.me` en niet `whatsapp://`: die eerste doet het op een telefoon (hij opent de app) én
+ * op een computer (hij opent WhatsApp Web of stuurt je naar de installatie). Met het
+ * app-adres krijgt wie op zijn laptop werkt een foutmelding van de browser.
+ *
+ * Het nummer gaat er internationaal in, zonder plus en zonder spaties:
+ *  - "+32 470 12 34 56" en "0032470123456" dragen hun landcode al;
+ *  - "0470 12 34 56" is een binnenlands nummer: de nul eraf, het landnummer ervoor;
+ *  - "470123456" heeft geen van beide en krijgt het landnummer erbij.
+ *
+ * Te kort is geen nummer maar een tikfout, en daar hoort geen knop bij.
+ */
+export function whatsappLink(phone: string | undefined): string | null {
+  if (!phone) return null;
+  const cijfers = normalizePhoneDigits(phone);
+  if (cijfers.length < 6) return null;
+  let internationaal: string;
+  if (cijfers.startsWith('00')) internationaal = cijfers.slice(2);
+  else if (cijfers.startsWith('0')) internationaal = LANDNUMMER + cijfers.slice(1);
+  else if (cijfers.startsWith(LANDNUMMER)) internationaal = cijfers;
+  else internationaal = LANDNUMMER + cijfers;
+  if (internationaal.length < 8) return null;
+  return `https://wa.me/${internationaal}`;
+}

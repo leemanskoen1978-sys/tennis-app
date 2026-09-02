@@ -157,6 +157,16 @@ const TRAINER: Gidsstuk[] = [
         ],
       },
       {
+        waar: 'Spelers → een naam',
+        kop: 'Mailen of een WhatsApp sturen',
+        tekst: [
+          'Het e-mailadres en het gsm-nummer op een dossier zijn knoppen. Tik op het adres '
+          + 'en je mailprogramma opent met de geadresseerde al ingevuld; tik op het nummer '
+          + 'en je zit in een WhatsApp-gesprek. Wil je bellen, houd het nummer dan ingedrukt '
+          + 'en kopieer het.',
+        ],
+      },
+      {
         waar: 'Beheer → Boekingstijden',
         kop: 'Tussen welke uren er bij jou geboekt kan worden',
         tekst: [

@@ -1,4 +1,6 @@
-import { isValidEmail, normalizePhone, normalizeEmail, normalizePhoneDigits } from './contact';
+import {
+  isValidEmail, normalizePhone, normalizeEmail, normalizePhoneDigits, mailtoLink, whatsappLink,
+} from './contact';
 
 describe('isValidEmail', () => {
   it('keurt een gewoon adres goed', () => {
@@ -53,5 +55,43 @@ describe('normalizePhoneDigits', () => {
 
   it('houdt alleen de cijfers over', () => {
     expect(normalizePhoneDigits('+32 470 12 34 56')).toBe('32470123456');
+  });
+});
+
+describe('mailtoLink', () => {
+  it('makes a mailto link from an address', () => {
+    expect(mailtoLink('jonas@club.be')).toBe('mailto:jonas%40club.be');
+  });
+
+  it('lowercases and trims, like everywhere else', () => {
+    expect(mailtoLink('  Jonas@Club.BE ')).toBe('mailto:jonas%40club.be');
+  });
+
+  it('gives nothing for a missing or broken address', () => {
+    expect(mailtoLink(undefined)).toBeNull();
+    expect(mailtoLink('')).toBeNull();
+    expect(mailtoLink('geen adres')).toBeNull();
+  });
+});
+
+describe('whatsappLink', () => {
+  it('turns a Belgian mobile number into an international one', () => {
+    expect(whatsappLink('0470 12 34 56')).toBe('https://wa.me/32470123456');
+    expect(whatsappLink('0470123456')).toBe('https://wa.me/32470123456');
+  });
+
+  it('keeps a number that already carries its country code', () => {
+    expect(whatsappLink('+32 470 12 34 56')).toBe('https://wa.me/32470123456');
+    expect(whatsappLink('0032470123456')).toBe('https://wa.me/32470123456');
+  });
+
+  it('adds the country code to a number without a leading zero', () => {
+    expect(whatsappLink('470123456')).toBe('https://wa.me/32470123456');
+  });
+
+  it('gives nothing for what is not a number', () => {
+    expect(whatsappLink(undefined)).toBeNull();
+    expect(whatsappLink('')).toBeNull();
+    expect(whatsappLink('12345')).toBeNull();
   });
 });

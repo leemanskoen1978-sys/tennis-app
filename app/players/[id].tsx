@@ -7,6 +7,7 @@ import {
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
+import { ContactRegels } from '../../components/ui/ContactRegels';
 import { Button } from '../../components/ui/Button';
 import { Chip } from '../../components/ui/Chip';
 import { Badge } from '../../components/ui/Badge';
@@ -216,8 +217,8 @@ export default function PlayerDossier() {
         {/* Dezelfde regel als op het trainersdossier: de rol, met het beheerdersvinkje
             erachter als hij dat heeft. */}
         <Badge label={rolLabel(player)} color={tennisColors.primaryFill} />
-        {player.email ? <Text style={styles.contact}>{player.email}</Text> : null}
-        {player.phone ? <Text style={styles.contact}>{player.phone}</Text> : null}
+        {/* Eén tik opent de mail of een WhatsApp-gesprek; zie components/ui/ContactRegels. */}
+        <ContactRegels email={player.email} phone={player.phone} />
         {playerCoaches.length > 0 ? (
           <View style={styles.coachRow}>
             <Text style={styles.coachRowLabel}>{t('Trainers')}: </Text>
@@ -483,7 +484,6 @@ function PlanRow({ lesson, onOpen, onToggle, canEdit, given, ownerName, divided 
 const styles = StyleSheet.create({
   name: { ...typography.h1, color: tennisColors.text },
   editButton: { marginTop: spacing.md },
-  contact: { fontSize: 14, color: tennisColors.textMuted, marginTop: 2 },
   coachRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: spacing.sm },
   coachRowItem: { flexDirection: 'row', alignItems: 'center' },
   coachRowLabel: { fontSize: 14, fontWeight: '600', color: tennisColors.text },

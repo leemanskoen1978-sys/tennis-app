@@ -6,7 +6,7 @@
 // anders in te loggen. Een schakelaar zou iets beloven wat de app niet doet.
 
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Linking, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -27,6 +27,7 @@ import { bookingsToday } from '../lib/hub';
 import { bookingsFor, openBalanceFor } from '../lib/payments';
 import { coachPayoutThisMonth } from '../lib/reports';
 import { formatEuro } from '../lib/money';
+import { mailtoLink, whatsappLink } from '../lib/contact';
 import { useT } from '../lib/i18n';
 import { isAdmin, isCoach, roleLabel } from '../lib/rechten';
 import { LidBewerken } from '../components/LidBewerken';
@@ -148,12 +149,25 @@ export default function ProfileScreen(): React.JSX.Element {
       subtitle: t('Naam, e-mailadres en gsm-nummer'),
       onPress: () => setGegevensOpen(true),
     },
-    { key: 'mail', icon: Mail, title: currentUser.email, subtitle: t('E-mailadres') },
+    // Ook hier tikbaar, met dezelfde twee links als op een dossier: dit is je eigen adres,
+    // maar "stuur dit even door" is precies waarvoor je het hier opzoekt.
+    {
+      key: 'mail',
+      icon: Mail,
+      title: currentUser.email,
+      subtitle: t('E-mailadres'),
+      ...(mailtoLink(currentUser.email)
+        ? { onPress: () => { void Linking.openURL(mailtoLink(currentUser.email) as string); } }
+        : {}),
+    },
     {
       key: 'phone',
       icon: Phone,
       title: currentUser.phone ?? t('Niet ingevuld'),
       subtitle: t('Telefoonnummer'),
+      ...(whatsappLink(currentUser.phone)
+        ? { onPress: () => { void Linking.openURL(whatsappLink(currentUser.phone) as string); } }
+        : {}),
     },
   ];
   // De rij staat er bij een trainer altijd, ook zonder tarief: zolang hij leeg is, is zijn

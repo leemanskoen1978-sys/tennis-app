@@ -755,6 +755,8 @@ export const EN: Record<string, string> = {
     'Between which hours people can book, and the periods where that differs.',
   'Dit stelt de beheerder in: het is wat de club uitbetaalt.':
     'Your admin sets this: it is what the club pays out.',
+  'Mail naar {adres}': 'Email {adres}',
+  'WhatsApp naar {nummer}': 'WhatsApp {nummer}',
 
   // --- dossiers -----------------------------------------------------------
   'Open dossier van {naam}': 'Open the file of {naam}',
