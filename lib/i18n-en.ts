@@ -89,6 +89,7 @@ export const EN: Record<string, string> = {
     'No holidays yet. While this list is empty, the app assumes lessons all year round.',
   'Geef de vakantie een naam.': 'Give the holiday a name.',
   'Vul beide dagen in als dd/mm/jjjj.': 'Fill in both days as dd/mm/yyyy.',
+  'Kies wie er ziek is.': 'Choose who is ill.',
   '1 dag': '1 day',
   '{n} dagen': '{n} days',
   'Weg': 'Remove',

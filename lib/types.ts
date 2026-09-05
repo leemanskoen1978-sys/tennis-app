@@ -426,6 +426,41 @@ export interface Boekingsperiode {
   uren?: { start: string; end: string };
 }
 
+/**
+ * Een ziekmelding: de periode waarin een trainer geen les kon geven.
+ *
+ * Staat met opzet vlak naast `Boekingsperiode`, want de twee zijn makkelijk te verwarren en
+ * dit is de enige plek waar ze naast elkaar te lezen zijn. Een `Boekingsperiode` is vooruit
+ * gepland — "hij geeft die weken geen les" — en er staat nog niets in de agenda dat er last
+ * van heeft. Een ziekmelding is een gebeurtenis: de lessen stonden er al, ze staan er nog,
+ * en iemand moet ze vandaag oplossen. Schuif de twee niet in elkaar; het vervangersvoorstel
+ * moet ze allebei apart kennen.
+ *
+ * `retracted_at` in plaats van de rij weg te gooien: intrekken is iets dat gebeurd is en dat
+ * zichtbaar hoort te blijven — de beheerder wil later kunnen zien dat die week wél gewoon
+ * gegeven is. Een rij met `retracted_at` gezet telt nergens meer mee als "open": zie
+ * `openZiekmeldingen` in lib/ziekmelding, de enige plek die die vraag beantwoordt. Precies
+ * daarom hoeft intrekken geen enkele boeking aan te raken.
+ *
+ * `van` en `tot` staan als `jjjj-mm-dd`, om dezelfde reden als bij `Vakantie` en
+ * `Boekingsperiode`: dit is een stuk kalender en geen moment op de klok, en zo blijft het
+ * tijdzoneloos te vergelijken.
+ */
+export interface SickLeave {
+  id: string;
+  /** De trainer die ziek is. Altijd zijn `coach_id`, nooit een vervanger. */
+  coach_id: string;
+  /** De eerste ziektedag, als jjjj-mm-dd. */
+  van: string;
+  /** De laatste ziektedag, meegerekend. Eén dag ziek: gelijk aan `van`. */
+  tot: string;
+  /** Waarom hij niet kon: "griep", "rugblessure". Mag leeg blijven. */
+  reden?: string;
+  created_at?: string;
+  /** Wanneer de melding is ingetrokken. Leeg betekent: hij telt nog mee. */
+  retracted_at?: string;
+}
+
 export interface Settings {
   booking_end_time: string;
   /**
