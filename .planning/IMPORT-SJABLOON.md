@@ -74,6 +74,15 @@ van stilzwijgend fout.
 | `Baan` | Naam of nummer van een bestaande baan. Ontbreekt hij, dan krijgt de les geen baan. |
 | `Weekdag`, `Weeknr`, `Locatie`, `Indoor/Outdoor` | Genegeerd bij het inlezen; wél geschreven bij de export omdat ze het bestand leesbaar maken. Ze staan hier zodat `koen.xlsx` ongewijzigd ingelezen kan worden. |
 
+**Een les zonder groep.** Staat `Groep` leeg, dan is het een gewone privéles: er wordt geen
+lesgroep van gemaakt en er wordt er ook geen aan gekoppeld. De export schrijft zo'n les weg met
+een lege `Groep` en `Type les` = "Privéles". Zo blijft de round-trip kloppen voor lessen die
+nooit bij een groep hoorden.
+
+`Locatie` wordt door de export niet geschreven — de app kent geen locatiebegrip en er is geen
+bron voor. De kolom blijft wel leesbaar, zodat `koen.xlsx` ongewijzigd binnenkomt.
+`Indoor/Outdoor` wordt wél geschreven, afgeleid uit de baan.
+
 Onbekende kolommen worden genegeerd, niet afgekeurd. Kolomvolgorde doet er niet toe; de
 koprij bepaalt wat waar staat — dezelfde aanpak als `lib/import-leden.ts`.
 

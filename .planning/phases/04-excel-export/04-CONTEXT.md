@@ -51,6 +51,28 @@ bewijs in `.planning/IMPORT-SJABLOON.md`.
 - **D-06:** Alleen de beheerder. Deze fase voegt geen tabel toe en dus ook geen RLS-policy;
   wél moet het scherm zelf achter `isAdmin` staan, niet alleen de tegel.
 
+### Beantwoord na het onderzoek van fase 4
+
+- **D-07:** Meerdere bladen komen als een **nieuwe** functie `buildWorkbook` naast het bestaande
+  `buildXlsx`, niet als een gewijzigde signatuur. `lib/csv.ts` en Historiek roepen `buildXlsx`
+  vandaag aan met hun eigen tests eromheen; die mogen hier niet voor omvallen.
+- **D-08:** Een les zonder lesgroep (een gewone privéles) krijgt in blad "Lessen" een lege
+  `Groep` en `Type les` = "Privéles". Bij herimport betekent een lege `Groep` dus: dit is geen
+  groepsles, maak er geen groep van. Dat is ook wat er in fase 5 moet gebeuren.
+- **D-09:** `Locatie` wordt door de export **niet** geschreven. De app kent geen locatiebegrip
+  en er is geen bron voor; een kolom vullen met verzonnen inhoud is erger dan hem weglaten. Hij
+  blijft wel een genegeerde kolom bij het inlezen, zodat `koen.xlsx` ongewijzigd binnenkomt.
+- **D-10:** `Indoor/Outdoor` wordt wél geschreven, afgeleid uit `courts.indoor` van de baan van
+  de les. Zonder baan blijft de cel leeg.
+- **D-11:** `Weeknr` is het ISO-weeknummer, uitgerekend door een kleine helper in
+  `lib/datetime.ts` met een test ernaast — inclusief de jaarwissel, want daar gaat een
+  zelfgeschreven weeknummer altijd mis.
+- **D-12:** "Leeg afdrukbaar" (EXP-04) is een keuze op het exportscherm, niet een tweede blad:
+  dezelfde aanwezigheidstabel, met de cellen leeg. Eén codepad, twee uitkomsten.
+- **D-13:** Het bestand komt bij de gebruiker via `lib/share.ts` (`shareXlsx`,
+  `xlsxWordtOndersteund`) — niet via `lib/bestand.ts`, dat alleen leest. De vermelding van
+  `lib/bestand.ts` bij "Reusable Assets" hieronder was fout; dit is de correctie.
+
 ### Claude's Discretion
 
 - Hoe de periode gekozen wordt en waar het exportscherm komt te staan.
