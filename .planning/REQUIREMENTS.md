@@ -59,22 +59,28 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
       kolommen, gevuld uit de bestaande aanwezigheidsgegevens en leeg afdrukbaar voor een
       vervanger die geen app heeft.
 - [ ] **EXP-05**: Blad "Groepen": één rij per lesgroep met naam, niveau, dag en uur, trainer,
-      de spelers erin en het aantal ingeplande lessen — in hetzelfde kolomformaat dat de
-      import leest, met een groepskenmerk erin zodat een herimport dezelfde groep terugvindt.
+      het aantal spelers en het aantal ingeplande lessen, plus het groepskenmerk (`Groep-ID`).
+- [ ] **EXP-07**: Blad "Lessen" staat in exact het kolomformaat dat de import leest, met het
+      `Groep-ID` erin, zodat een export ongewijzigd weer ingelezen kan worden en dezelfde
+      groepen en lessen terugvindt in plaats van ze te verdubbelen.
 - [ ] **EXP-06**: Bedragen zijn getallen en datums zijn datums in het bestand, zodat de
       beheerder kan sorteren en optellen zonder het eerst uit te leggen aan Excel.
 
 ### Excel-import van trainingen
 
 - [ ] **IMP-01**: De beheerder kan een leeg sjabloonbestand downloaden dat toont welke kolommen
-      de import verwacht.
+      de import verwacht, volgens het formaat in `.planning/IMPORT-SJABLOON.md`: één regel per
+      les × leerling, met Datum, Uur, Groep, Coach en Leerling verplicht.
 - [ ] **IMP-02**: De beheerder kiest een bestand en ziet vóór er iets wegschrijft een volledige
       droogloop: welke groepen erbij komen, welke worden bijgewerkt, welke spelers nieuw zijn,
       hoeveel lessen er ingepland worden, en wat er niet gelezen kon worden.
-- [ ] **IMP-03**: De import maakt lesgroepen aan uit het bestand, met trainer, dag, uur, baan
-      en de spelers erin.
+- [ ] **IMP-03**: De import leidt lesgroepen af uit het bestand op sleutel `Groep` + weekdag +
+      beginuur, met trainer, baan, niveau en de spelers erin — één groepsnaam op twee
+      momenten levert twee lesgroepen op, elk met hun eigen roster.
 - [ ] **IMP-04**: Een speler die nog niet in de ledenlijst staat, wordt tijdens de import
-      aangemaakt — met dezelfde regels als de bestaande ledenimport.
+      aangemaakt — met dezelfde regels als de bestaande ledenimport. Een trainer of baan die
+      niet bestaat wordt nooit aangemaakt; de droogloop meldt het en die groep gaat niet door.
+      Namen worden gematcht ook als de achternaam vooraan staat ("Leemans Koen").
 - [ ] **IMP-05**: De import plant de lessen van elke groep in over de opgegeven periode, met de
       clubvakanties eruit gefilterd, en meldt welke lessen niet konden omdat de trainer of de
       baan al bezet was.
@@ -85,6 +91,10 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 - [ ] **IMP-08**: Een les die met de hand is verzet of afgezegd, wordt door een herimport niet
       stilzwijgend teruggezet; de droogloop meldt zulke botsingen apart.
 - [ ] **IMP-09**: Een import die halverwege mislukt, laat geen halve groep of halve reeks achter.
+- [ ] **IMP-10**: `koen.xlsx` — de bestaande seizoensplanning van de club — leest ongewijzigd in,
+      met alleen de melding dat trainer en banen nog gekoppeld moeten worden.
+- [ ] **IMP-11**: De lesduur is een clubinstelling met 60 minuten als beginwaarde; een wijziging
+      geldt voor nieuw ingeplande lessen en nooit met terugwerkende kracht.
 
 ### Toegang en databank
 
@@ -146,6 +156,7 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | EXP-04 | Phase 4 | Pending |
 | EXP-05 | Phase 4 | Pending |
 | EXP-06 | Phase 4 | Pending |
+| EXP-07 | Phase 4 | Pending |
 | IMP-01 | Phase 5 | Pending |
 | IMP-02 | Phase 5 | Pending |
 | IMP-03 | Phase 5 | Pending |
@@ -155,14 +166,17 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | IMP-07 | Phase 5 | Pending |
 | IMP-08 | Phase 5 | Pending |
 | IMP-09 | Phase 5 | Pending |
+| IMP-10 | Phase 5 | Pending |
+| IMP-11 | Phase 5 | Pending |
 | TOEG-01 | Phase 1 | Pending |
 | TOEG-02 | Phase 1 | Pending |
 | TOEG-03 | Phase 1 | Pending |
 
 **Coverage:**
-- v1 requirements: 35 total
-- Mapped to phases: 35
+- v1 requirements: 38 total
+- Mapped to phases: 38
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-05*
+*Last updated: 2026-09-05 after pinning the import template to koen.xlsx*

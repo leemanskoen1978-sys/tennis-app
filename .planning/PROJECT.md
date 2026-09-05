@@ -76,9 +76,11 @@ er een vervanger aan hangen die dat uur écht kan — zonder in vijf agenda's te
 - Commentaar en identifiers zijn Nederlands, en het commentaar legt uit *waarom* iets zo is —
   vaak met de fout erbij die het voorkomt. Nieuwe code hoort daarbij te passen.
 
-**Wat er al aan bestanden ligt.** `koen.xlsx` en `KDT tennisplanning U9 eindversie.pdf` in de
-projectmap zijn echte planningen van de club; bruikbaar als ijkpunt bij het ontwerpen van
-het importsjabloon, ook al bepaalt de app het formaat.
+**Wat er al aan bestanden ligt.** `koen.xlsx` in de projectmap is een echte seizoensplanning:
+1398 regels, 9 september 2026 tot 25 juni 2027, 325 lessen van één trainer, één regel per
+les × leerling. Het importsjabloon is dáárop gebaseerd — zie `.planning/IMPORT-SJABLOON.md`
+voor de volledige kolomdefinitie en de redenering. `KDT tennisplanning U9 eindversie.pdf` is
+een tweede planning van de club.
 
 **Bekende valkuilen.** De dev-server praat met de échte productiedatabank van de club: testen
 op localhost wijzigt live gegevens. Er is geen testdekking op de schermlaag en geen op de
@@ -110,6 +112,10 @@ RLS-laag. De upsert-versus-insert-policy-val heeft al twee keer toegeslagen.
 | Vervanger krijgt zijn eigen uurtarief | Het loon hoort bij wie het werk deed. `coach_rates` staat al per persoon; er is geen tweede tariefbegrip nodig. | — Pending |
 | Vervanging als apart veld, niet door `coach_id` te overschrijven | Overschrijven verliest wie er oorspronkelijk stond, en dan klopt noch het rooster noch de loonstaat. | — Pending |
 | Import bepaalt zelf het sjabloon en toont een droogloop | Precies het patroon van `lib/import-leden.ts`, dat zich bewezen heeft: eerst het plan tonen, dan pas wegschrijven. | — Pending |
+| Het sjabloon is een uitgeklapte lessenlijst: één regel per les × leerling | Het is hoe de club vandaag al plant (`koen.xlsx`), het is precies wat de export oplevert zodat een export er ongewijzigd weer in kan, en uitzonderingen spreken voor zich in plaats van in herhaalregels uitgedrukt te moeten worden. | — Pending |
+| Een lesgroep wordt afgeleid uit `Groep` + weekdag + beginuur, niet uit de naam alleen | In `koen.xlsx` staat "Groep 8" op drie momenten met drie volledig verschillende rosters en nul overlap — het nummer is een hergebruikt label, geen groep mensen. Matchen op naam alleen zou die drie tot één groep van twaalf samensmelten. | — Pending |
+| Lesduur is 60 minuten als clubinstelling, niet als kolom | `koen.xlsx` heeft geen einduur en de club werkt met lessen van een uur. Een kolom die altijd hetzelfde is, is een kolom die verkeerd ingevuld kan worden; een instelling is later te wijzigen zonder elk bestand aan te passen. | — Pending |
+| De import maakt spelers aan maar nooit trainers of banen | Een trainer aanmaken betekent een uurtarief en toegang tot de club; dat is geen bijproduct van een import. Ontbreekt de trainer, dan meldt de droogloop het en gaat die groep niet door. | — Pending |
 | De module is voor de beheerder alleen | `magInElkeAgenda` regelt dit al en het houdt de RLS-vragen klein. Een trainer die zich wil ziekmelden kan dat later krijgen. | — Pending |
 
 ## Evolution
@@ -130,4 +136,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-05 after initialization*
+*Last updated: 2026-09-05 after pinning the import template to koen.xlsx*

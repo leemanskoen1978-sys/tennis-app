@@ -71,21 +71,21 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Mode:** mvp
 **Goal**: De beheerder trekt op elk moment een kloppende Excel-export over een periode, met een groepskenmerk dat een latere herimport laat herkennen.
 **Depends on**: Phase 3
-**Requirements**: EXP-01, EXP-02, EXP-03, EXP-04, EXP-05, EXP-06
+**Requirements**: EXP-01, EXP-02, EXP-03, EXP-04, EXP-05, EXP-06, EXP-07
 **Success Criteria** (what must be TRUE):
   1. De beheerder kiest een periode (van–tot) en krijgt daar één Excel-bestand van met vier bladen (EXP-01).
   2. Blad "Lessen" toont één rij per les met datum, begin-/einduur, baan, toegewezen trainer, wie hem werkelijk gaf, groep of speler, aantal spelers en status (EXP-02).
   3. Blad "Uren per trainer" rekent uren en loon per trainer over de periode op basis van wie de les werkelijk gaf — dezelfde waarheid als het bestaande loonrapport (EXP-03).
   4. Blad "Aanwezigheid" toont per lesgroep de spelers in de rijen en de lesdata in de kolommen, gevuld uit de bestaande aanwezigheidsgegevens en leeg afdrukbaar voor een vervanger zonder app (EXP-04).
-  5. Blad "Groepen" toont één rij per lesgroep (naam, niveau, dag/uur, trainer, spelers, aantal ingeplande lessen) in het kolomformaat dat de import straks leest, met een groepskenmerk dat een herimport dezelfde groep laat terugvinden (EXP-05).
+  5. Blad "Groepen" toont één rij per lesgroep (naam, niveau, dag/uur, trainer, aantal spelers, aantal ingeplande lessen) met het groepskenmerk `Groep-ID` (EXP-05); blad "Lessen" staat in exact het kolomformaat dat de import leest, inclusief `Groep-ID`, zodat een export ongewijzigd weer ingelezen kan worden zonder te verdubbelen (EXP-07). Zie `.planning/IMPORT-SJABLOON.md`.
   6. Bedragen zijn getallen en datums zijn datums in het bestand, sorteerbaar en optelbaar zonder Excel iets uit te leggen (EXP-06).
 **Plans**: TBD
 
 ### Phase 5: Excel-import van trainingen
 **Mode:** mvp
-**Goal**: De beheerder laadt een seizoen aan trainingen in één keer in via een sjabloon, met een droogloop vooraf en zonder ooit te verdubbelen bij herimport.
+**Goal**: De beheerder laadt een seizoen aan trainingen in één keer in via een sjabloon, met een droogloop vooraf en zonder ooit te verdubbelen bij herimport. Het kolomformaat, de groepssleutel en de lesduur liggen vast in `.planning/IMPORT-SJABLOON.md` — niet opnieuw ontwerpen.
 **Depends on**: Phase 4
-**Requirements**: IMP-01, IMP-02, IMP-03, IMP-04, IMP-05, IMP-06, IMP-07, IMP-08, IMP-09
+**Requirements**: IMP-01, IMP-02, IMP-03, IMP-04, IMP-05, IMP-06, IMP-07, IMP-08, IMP-09, IMP-10, IMP-11
 **Success Criteria** (what must be TRUE):
   1. De beheerder downloadt een leeg sjabloonbestand dat de verwachte kolommen toont (IMP-01).
   2. Vóór er iets wegschrijft toont een droogloop welke groepen erbij komen of bijgewerkt worden, welke spelers nieuw zijn, hoeveel lessen ingepland worden en wat niet gelezen kon worden (IMP-02).
@@ -94,6 +94,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Een import die halverwege mislukt laat geen halve groep of halve reeks achter (IMP-09).
   6. Een fixture-test met een reeks die de lente- of herfst-tijdswissel overspant toont voor elke lesdatum hetzelfde lokale uur (geen uur verschoven door DST).
   7. Elke nieuwe of gewijzigde tabel in dit importpad is met de hand geverifieerd op de upsert-val tegen een echte Supabase-omgeving.
+  8. `koen.xlsx` — de echte seizoensplanning van de club, 1398 regels — leest ongewijzigd in en levert zeven lesgroepen op met hun eigen roster; de enige melding is dat trainer en banen gekoppeld moeten worden (IMP-10).
+  9. De lesduur is een clubinstelling met 60 minuten als beginwaarde; een wijziging raakt geen les die al ingepland of gegeven is (IMP-11).
 **Plans**: TBD
 
 ## Progress
