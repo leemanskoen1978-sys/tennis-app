@@ -1,8 +1,12 @@
+// De uurwisseltest heeft een tijdzone nodig die de klok écht verzet; op een machine in
+// UTC zou hij groen worden zonder iets te bewijzen. Dit is de zone waarin de club staat.
+process.env.TZ = 'Europe/Brussels';
+
 import {
   lesGroepFout, lessenVanGroep, groupBookingsFrom, komendeLessen, planRosterChange,
-  groepSleutel, actieveGroepen, gearchiveerdeGroepen,
+  planGroepWijziging, groepSleutel, actieveGroepen, gearchiveerdeGroepen,
 } from './lesgroepen';
-import type { Booking, LesGroep } from './types';
+import type { Booking, LesGroep, Vakantie } from './types';
 
 const base: Booking = {
   id: 'b1', player_id: 'p1', coach_id: 'koen', court_id: 'court-1',
@@ -214,5 +218,158 @@ describe('actieveGroepen en gearchiveerdeGroepen', () => {
   it('is samen de hele lijst — een groep valt nooit tussen wal en schip', () => {
     const alles = [lopend, weg, groep({ id: 'g-3' })];
     expect(actieveGroepen(alles).length + gearchiveerdeGroepen(alles).length).toBe(alles.length);
+  });
+});
+
+/** Een moment op een lokale dag en uur; ISO eruit, precies zoals de app zelf boekt. */
+function iso(y: number, m: number, d: number, hour: number, minute = 0): string {
+  return new Date(y, m, d, hour, minute, 0, 0).toISOString();
+}
+
+/** Eén les van de groep op een lokale dag, standaard van 18:00 tot 19:00. */
+function lokaleLes(id: string, y: number, m: number, d: number, extra: Partial<Booking> = {}): Booking {
+  return {
+    ...base, id, group_id: 'g-1', participant_ids: ['oud'],
+    start_time: iso(y, m, d, 18), end_time: iso(y, m, d, 19), ...extra,
+  };
+}
+
+describe('planGroepWijziging', () => {
+  // De groep staat op dinsdag 18:00; 1 september 2026 is een dinsdag, "nu" is zaterdag 5.
+  const naarWoensdagOm19 = { weekday: 3, start_hour: 19, start_minute: 0 };
+
+  it('raakt een les die al geweest is niet aan', () => {
+    const gisteren = lokaleLes('oud', 2026, 8, 1);
+    const voor = JSON.stringify(gisteren);
+    const plan = planGroepWijziging(groep(), naarWoensdagOm19, [gisteren, lokaleLes('b-1', 2026, 8, 8)], nu);
+    expect(plan.bookingPatches.map((p) => p.id)).toEqual(['b-1']);
+    expect(JSON.stringify(gisteren)).toBe(voor);
+  });
+
+  it('zet een komende les op de nieuwe dag en het nieuwe uur, met dezelfde lesduur', () => {
+    const les90 = lokaleLes('b-1', 2026, 8, 8, { end_time: iso(2026, 8, 8, 19, 30) });
+    const plan = planGroepWijziging(groep(), naarWoensdagOm19, [les90], nu);
+    const s = new Date(plan.bookingPatches[0].start_time);
+    const e = new Date(plan.bookingPatches[0].end_time);
+    expect([s.getDate(), s.getMonth() + 1, s.getHours(), s.getMinutes()]).toEqual([9, 9, 19, 0]);
+    expect([e.getDate(), e.getHours(), e.getMinutes()]).toEqual([9, 20, 30]);
+  });
+
+  it('geeft elke komende les de nieuwe trainer', () => {
+    const lijst = [lokaleLes('b-1', 2026, 8, 8), lokaleLes('b-2', 2026, 8, 15)];
+    const plan = planGroepWijziging(groep(), { coach_id: 'sofie' }, lijst, nu);
+    expect(plan.bookingPatches.map((p) => p.coach_id)).toEqual(['sofie', 'sofie']);
+  });
+
+  it('verzet de toegewezen trainer en laat de vervanger staan', () => {
+    const met = lokaleLes('b-1', 2026, 8, 8, { taught_by_id: 'jan' });
+    const plan = planGroepWijziging(groep(), { coach_id: 'sofie' }, [met], nu);
+    expect(plan.bookingPatches[0].coach_id).toBe('sofie');
+    expect('taught_by_id' in plan.bookingPatches[0]).toBe(false);
+    expect(met.taught_by_id).toBe('jan');
+  });
+
+  it('meldt een les die op een bezette trainer zou uitkomen, en geeft haar geen patch', () => {
+    const bezet: Booking = {
+      ...base, id: 'bezet', coach_id: 'koen', court_id: 'court-9',
+      start_time: iso(2026, 8, 9, 19), end_time: iso(2026, 8, 9, 20),
+    };
+    const plan = planGroepWijziging(groep(), naarWoensdagOm19, [lokaleLes('b-1', 2026, 8, 8), bezet], nu);
+    expect(plan.bookingPatches).toEqual([]);
+    expect(plan.geblokkeerd).toEqual([
+      { id: 'b-1', start_time: iso(2026, 8, 9, 19), reden: 'bezet', conflict: 'bezet' },
+    ]);
+  });
+
+  it('meldt ook een bezette baan, ook al is de trainer vrij', () => {
+    const anderesTrainer: Booking = {
+      ...base, id: 'baan', coach_id: 'sofie', court_id: 'court-1',
+      start_time: iso(2026, 8, 9, 19), end_time: iso(2026, 8, 9, 20),
+    };
+    const plan = planGroepWijziging(groep(), naarWoensdagOm19, [lokaleLes('b-1', 2026, 8, 8), anderesTrainer], nu);
+    expect(plan.bookingPatches).toEqual([]);
+    expect(plan.geblokkeerd.map((g) => [g.reden, g.conflict])).toEqual([['bezet', 'baan']]);
+  });
+
+  it('laat een groep niet met haar eigen lessen botsen', () => {
+    // Een half uur opschuiven zet elke les bovenop haar eigen oude uur; dat is geen botsing.
+    const lijst = [lokaleLes('b-1', 2026, 8, 8), lokaleLes('b-2', 2026, 8, 15)];
+    const plan = planGroepWijziging(groep(), { start_minute: 30 }, lijst, nu);
+    expect(plan.geblokkeerd).toEqual([]);
+    expect(plan.bookingPatches.map((p) => p.id)).toEqual(['b-1', 'b-2']);
+  });
+
+  it('meldt een les die in een clubvakantie zou vallen, met de naam erbij', () => {
+    const herfst: Vakantie = { id: 'v1', naam: 'Herfstvakantie', van: '2026-09-07', tot: '2026-09-13' };
+    const plan = planGroepWijziging(groep(), naarWoensdagOm19, [lokaleLes('b-1', 2026, 8, 8)], nu, [herfst]);
+    expect(plan.bookingPatches).toEqual([]);
+    expect(plan.geblokkeerd.map((g) => [g.reden, g.vakantie])).toEqual([['vakantie', 'Herfstvakantie']]);
+  });
+
+  it('noemt een vakantiedag geen botsing, ook als de trainer dan al bezet was', () => {
+    const herfst: Vakantie = { id: 'v1', naam: 'Herfstvakantie', van: '2026-09-07', tot: '2026-09-13' };
+    const bezet: Booking = {
+      ...base, id: 'bezet', coach_id: 'koen', court_id: 'court-1',
+      start_time: iso(2026, 8, 9, 19), end_time: iso(2026, 8, 9, 20),
+    };
+    const plan = planGroepWijziging(groep(), naarWoensdagOm19, [lokaleLes('b-1', 2026, 8, 8), bezet], nu, [herfst]);
+    expect(plan.geblokkeerd.map((g) => g.reden)).toEqual(['vakantie']);
+  });
+
+  it('verhuist nooit een les het verleden in', () => {
+    const zaterdag = groep({ weekday: 6 });
+    const plan = planGroepWijziging(zaterdag, { weekday: 5 }, [lokaleLes('b-1', 2026, 8, 5)], nu);
+    expect(plan.bookingPatches).toEqual([]);
+    expect(plan.geblokkeerd.map((g) => g.reden)).toEqual(['verleden']);
+  });
+
+  it('laat een afgezegde komende les met rust', () => {
+    const af = lokaleLes('af', 2026, 8, 8, { status: 'cancelled' });
+    const plan = planGroepWijziging(groep(), naarWoensdagOm19, [af, lokaleLes('b-1', 2026, 8, 15)], nu);
+    expect(plan.bookingPatches.map((p) => p.id)).toEqual(['b-1']);
+    expect(plan.geblokkeerd).toEqual([]);
+  });
+
+  it('houdt over de uurwissel heen op elke lesdatum hetzelfde lokale uur', () => {
+    // Eind oktober gaat de klok een uur terug; met "168 uur erbij" stond november om 20:15.
+    const lijst = [lokaleLes('okt', 2026, 9, 20), lokaleLes('nov', 2026, 10, 10)];
+    const plan = planGroepWijziging(groep(), { weekday: 3, start_hour: 19, start_minute: 15 }, lijst, nu);
+    expect(plan.bookingPatches.map((p) => new Date(p.start_time).getDate())).toEqual([21, 11]);
+    for (const p of plan.bookingPatches) {
+      const s = new Date(p.start_time);
+      const e = new Date(p.end_time);
+      expect([s.getHours(), s.getMinutes()]).toEqual([19, 15]);
+      expect([e.getHours(), e.getMinutes()]).toEqual([20, 15]);
+    }
+  });
+
+  it('laat elke les met rust bij een wijziging van enkel naam, niveau of seizoen', () => {
+    const plan = planGroepWijziging(
+      groep(), { name: 'Groep 9', level: 'Kidstennis groen', season_end: '2027-05-01' },
+      [lokaleLes('b-1', 2026, 8, 8)], nu,
+    );
+    expect(plan.bookingPatches).toEqual([]);
+    expect(plan.geblokkeerd).toEqual([]);
+    expect([plan.group.name, plan.group.season_end]).toEqual(['Groep 9', '2027-05-01']);
+  });
+
+  it('levert een nieuwe groep op en laat de meegegeven groep ongemoeid', () => {
+    const g = groep();
+    const plan = planGroepWijziging(g, { weekday: 3 }, [], nu);
+    expect(plan.group).not.toBe(g);
+    expect(plan.group.weekday).toBe(3);
+    expect(g.weekday).toBe(2);
+  });
+
+  it('haalt de baan van een les niet weg als de groep er zelf geen heeft', () => {
+    const zonderBaan = groep({ court_id: undefined });
+    const les = lokaleLes('b-1', 2026, 8, 8, { court_id: 'court-3' });
+    const plan = planGroepWijziging(zonderBaan, { start_hour: 19 }, [les], nu);
+    expect(plan.bookingPatches[0].court_id).toBe('court-3');
+  });
+
+  it('zet elke komende les op de nieuwe baan van de groep', () => {
+    const plan = planGroepWijziging(groep(), { court_id: 'court-2' }, [lokaleLes('b-1', 2026, 8, 8)], nu);
+    expect(plan.bookingPatches[0].court_id).toBe('court-2');
   });
 });
