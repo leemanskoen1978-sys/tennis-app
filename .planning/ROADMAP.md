@@ -145,7 +145,7 @@ Plans:
   5. Een import die halverwege mislukt laat geen halve groep of halve reeks achter (IMP-09).
   6. Een fixture-test met een reeks die de lente- of herfst-tijdswissel overspant toont voor elke lesdatum hetzelfde lokale uur (geen uur verschoven door DST).
   7. Elke nieuwe of gewijzigde tabel in dit importpad is met de hand geverifieerd op de upsert-val tegen een echte Supabase-omgeving.
-  8. `koen.xlsx` — de echte seizoensplanning van de club, 1398 regels — leest ongewijzigd in en levert zeven lesgroepen op met hun eigen roster; de enige melding is dat trainer en banen gekoppeld moeten worden (IMP-10).
+  8. `koen.xlsx` — de echte seizoensplanning van de club, 1398 regels — leest ongewijzigd in en levert tien lesgroepen met hun eigen roster en 42 spelers op (zeven groepsnamen, maar "Groep 8" staat op drie momenten en "Groep 12" op twee, elk met andere spelers). Er worden nog geen lessen ingepland omdat het bestand geen baan kent en zijn trainer nog niet in de app bestaat; de droogloop meldt precies die twee dingen (IMP-10).
   9. De lesduur is een clubinstelling met 60 minuten als beginwaarde; een wijziging raakt geen les die al ingepland of gegeven is (IMP-11).
 **Plans**: 10 plans in 9 waves
 

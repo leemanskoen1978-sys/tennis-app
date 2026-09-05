@@ -91,8 +91,12 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 - [ ] **IMP-08**: Een les die met de hand is verzet of afgezegd, wordt door een herimport niet
       stilzwijgend teruggezet; de droogloop meldt zulke botsingen apart.
 - [ ] **IMP-09**: Een import die halverwege mislukt, laat geen halve groep of halve reeks achter.
-- [ ] **IMP-10**: `koen.xlsx` — de bestaande seizoensplanning van de club — leest ongewijzigd in,
-      met alleen de melding dat trainer en banen nog gekoppeld moeten worden.
+- [ ] **IMP-10**: `koen.xlsx` — de bestaande seizoensplanning van de club, 1398 regels — leest
+      ongewijzigd in en levert **tien** lesgroepen met hun eigen roster en 42 spelers op. Tien en
+      niet zeven: er staan zeven verschillende groepsnamen in, maar "Groep 8" komt op drie
+      momenten voor en "Groep 12" op twee, elk met andere spelers, en de sleutel is naam + dag +
+      uur. Er worden nog géén lessen ingepland: het bestand kent geen baan en zijn trainer
+      bestaat nog niet in de app. De droogloop meldt precies die twee dingen en niets anders.
 - [ ] **IMP-11**: De lesduur is een clubinstelling met 60 minuten als beginwaarde; een wijziging
       geldt voor nieuw ingeplande lessen en nooit met terugwerkende kracht.
 
