@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-04-PLAN.md (blad "Aanwezigheid" en exportWerkmap)
+stopped_at: Completed 04-05-PLAN.md (het exportscherm en de tegel); taak 3 is een handmatige controle in Excel
 last_updated: "2026-09-06T00:00:00.000Z"
 last_activity: 2026-09-05
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 34
-  completed_plans: 15
-  percent: 17
+  completed_plans: 16
+  percent: 47
 ---
 
 # Project State
@@ -22,18 +22,20 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core value:** Als een trainer ziek is, ziet de beheerder binnen een minuut welke lessen dat
 raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf agenda's te zoeken.
-**Current focus:** Phase 4 — Excel-export (plan 04 af: de vier bladen staan in één bestand)
+**Current focus:** Phase 4 — Excel-export (code af: de beheerder downloadt het bestand vanaf Beheer → Club)
 
 ## Current Position
 
 Phase: 4 of 6 (Excel-export)
-Plan: 4 of 5 af (04-04-PLAN.md — blad "Aanwezigheid" en exportWerkmap); volgende: 04-05-PLAN.md
-Status: Ready to execute
+Plan: 5 of 5 af (04-05-PLAN.md — het exportscherm, de beheerdersgrens en de tegel in Beheer)
+Status: Awaiting verification
 Last activity: 2026-09-06
 
 Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draaiende app.
+Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
+de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
 
-Progress: [████░░░░░░] 44%
+Progress: [█████░░░░░] 47%
 
 ## Performance Metrics
 
@@ -68,6 +70,7 @@ Progress: [████░░░░░░] 44%
 | Phase 04 P02 | ~25min | 2 tasks | 2 files |
 | Phase 04 P03 | ~20min | 2 tasks | 2 files |
 | Phase 04 P04 | ~25min | 2 tasks | 2 files |
+| Phase 04 P05 | ~20min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -118,6 +121,8 @@ confirmed as phases ship).
 - [Phase 04-excel-export]: de tabnamen worden binnen de werkmap uniek gemaakt door een niet-geëxporteerde helper; bladnaam() blijft één naam schoonmaken zonder van zijn buren te weten
 - [Phase 04-excel-export]: het ISO-weeknummer staat in lib/datetime.ts met de jaarwissel als eigen test — 1 januari 2027 is week 53 van 2026 en 31 december 2025 is week 1 van 2026 (D-11)
 - [Phase 04-excel-export]: de koprij en de tabnaam van blad "Lessen" zijn vaste Nederlandse literals en gaan niet door t() — de import van fase 5 leest die koprij, dus een Engelse kop maakt een export onleesbaar voor de app die hem schreef
+- [Phase 04-excel-export]: de beheerdersgrens van het exportscherm staat in een buitenste component vóór elke hook, met de schermlogica in een tweede component erachter — deze fase voegt geen tabel toe, dus er is geen policy die de fout alsnog opvangt (D-06)
+- [Phase 04-excel-export]: het exportscherm gebruikt useSimpleData rechtstreeks en geen useAgendaScope/CoachFilter — de export is club-breed, want de import van fase 5 leest een heel seizoen terug (D-01)
 - [Phase 04-excel-export]: de Nederlandse weekdagnamen komen uit een vaste tabel in lib/export-trainingen.ts en niet uit toLocaleDateString, zodat hetzelfde seizoen op twee toestellen twee gelijke bestanden oplevert
 - [Phase 04-excel-export]: Blad Uren per trainer rekent geen bedrag zelf uit: trainer, lessen en loon komen regel voor regel uit payoutsByCoach
 - [Phase 04-excel-export]: Blad Groepen draagt het Groep-ID, zodat een herimport de bestaande groep herkent in plaats van een tweede aan te maken
