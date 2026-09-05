@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
+status: verifying
 stopped_at: Completed 01-lesgroepen-06-PLAN.md
-last_updated: "2026-09-06T01:20:00.000Z"
-last_activity: 2026-09-06 — Plan 01-06 uitgevoerd (een les aan een groep hangen, lesduur als clubinstelling)
+last_updated: "2026-09-05T22:20:27.314Z"
+last_activity: 2026-09-05
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 0
   total_plans: 11
-  completed_plans: 6
-  percent: 55
+  completed_plans: 7
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +28,10 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 
 Phase: 1 of 5 (Lesgroepen)
 Plan: 7 of 7 (01-07-PLAN.md — de migratie draaien en de upsert-val nalopen)
-Status: In progress — golf 5 klaar: een les hangt aan een groep, de lesduur staat in Beheer
-Last activity: 2026-09-06 — Plan 01-05 uitgevoerd (groepsdetail: rooster, lessen, archiveren)
+Status: Phase complete — ready for verification
+Last activity: 2026-09-05
 
-Progress: [██████░░░░] 55%
+Progress: [██████░░░░] 64%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [██████░░░░] 55%
 | Phase 01-lesgroepen P04 | 16min | 2 tasks | 4 files |
 | Phase 01-lesgroepen P05 | 22min | 2 tasks | 2 files |
 | Phase 01-lesgroepen P06 | 18min | 2 tasks | 3 files |
+| Phase 02-wie-gaf-de-les-echt P02 | 12min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,8 @@ confirmed as phases ship).
 - [Phase 01-lesgroepen]: het groepsblok op het lesdetailblad staat achter isAdmin(currentUser) en niet achter canManage — canManage laat ook de trainer van de les toe, en die beheert zijn eigen lessen maar niet de indeling van de club (D-09)
 - [Phase 01-lesgroepen]: koppelen zet uitsluitend group_id en nooit series_id — een reeks is een aanmaakbatch, een groep een blijvende identiteit; ze staan naast elkaar (D-12)
 - [Phase 01-lesgroepen]: de lesduur is een clubinstelling met 45/60/75/90 als keuze en 60 als terugval; een wijziging telt vanaf de volgende ingeplande les en nooit met terugwerkende kracht (D-05)
+- [Phase 02-wie-gaf-de-les-echt]: de taught_by_id-controle in bewaak_betaalvelden staat vóór de coach-bypass, niet in de to_jsonb-uitsluitingslijst — anders kan de trainer van de les zijn eigen loon zetten
+- [Phase 02-wie-gaf-de-les-echt]: taught_by_id gebruikt on delete set null, niet cascade — een verwijderde invaltrainer laat de les bestaan en valt terug op coach_id
 
 ### Pending Todos
 
@@ -128,6 +131,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T01:20:00.000Z
+Last session: 2026-09-05T22:20:16.519Z
 Stopped at: Completed 01-lesgroepen-06-PLAN.md
-Resume file: .planning/phases/01-lesgroepen/01-07-PLAN.md
+Resume file: None
