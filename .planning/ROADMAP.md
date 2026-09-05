@@ -59,7 +59,13 @@ Plans:
   2. Loon, urenoverzicht en rapport rekenen overal via één plek in de code met wie de les werkelijk gaf, tegen diens eigen uurtarief — een test bevestigt dat de vaste trainer niet uitbetaald wordt voor een vervangen les en de vervanger wel (VERV-02).
   3. Overal waar een les getoond wordt, is zichtbaar dat er een vervanger stond en wie de vaste trainer was (VERV-03).
   4. De nieuwe kolom (bv. `taught_by_id`) is enkel schrijfbaar voor de beheerder; `bewaak_betaalvelden` en de RLS-policy zijn bijgewerkt en met de hand geverifieerd via de upsert-weg (insert als gebruiker A, update als gebruiker B) tegen een echte Supabase-omgeving.
-**Plans**: TBD
+**Plans**: 4 plans in 3 waves
+
+Plans:
+- [ ] 02-01-PLAN.md — De ene waarheid: Booking.taught_by_id, lib/lesgever.ts met zijn test, en de vier loonplekken die ermee rekenen (wave 1)
+- [ ] 02-02-PLAN.md — Het schema als tekst: de kolom, de index, en bewaak_betaalvelden met de beheerdersgrens vóór de trainersuitzondering (wave 1)
+- [ ] 02-03-PLAN.md — De schrijfweg en de zichtbaarheid: setTaughtBy, de Omit-uitsluiting, beide namen op het detailblad en de markering op de kaart (wave 2)
+- [ ] 02-04-PLAN.md — Met de hand nalopen: de migratie draaien, de trigger en de upsert-val, en wat het scherm toont (wave 3, checkpoints)
 
 ### Phase 3: Ziekmelding en vervangerswerklijst
 **Mode:** mvp
@@ -115,7 +121,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Lesgroepen | 3/7 | In Progress|  |
-| 2. Wie gaf de les écht | 0/? | Not started | - |
+| 2. Wie gaf de les écht | 0/4 | Planned | - |
 | 3. Ziekmelding en vervangerswerklijst | 0/? | Not started | - |
 | 4. Excel-export | 0/? | Not started | - |
 | 5. Excel-import van trainingen | 0/? | Not started | - |
