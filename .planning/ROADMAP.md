@@ -63,7 +63,7 @@ Plans:
 **Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 02-01-PLAN.md — De ene waarheid: Booking.taught_by_id, lib/lesgever.ts met zijn test, en de vier loonplekken die ermee rekenen (wave 1)
+- [x] 02-01-PLAN.md — De ene waarheid: Booking.taught_by_id, lib/lesgever.ts met zijn test, en de vier loonplekken die ermee rekenen (wave 1)
 - [x] 02-02-PLAN.md — Het schema als tekst: de kolom, de index, en bewaak_betaalvelden met de beheerdersgrens vóór de trainersuitzondering (wave 1)
 - [ ] 02-03-PLAN.md — De schrijfweg en de zichtbaarheid: setTaughtBy, de Omit-uitsluiting, beide namen op het detailblad en de markering op de kaart (wave 2)
 - [ ] 02-04-PLAN.md — Met de hand nalopen: de migratie draaien, de trigger en de upsert-val, en wat het scherm toont (wave 3, checkpoints)
@@ -136,7 +136,7 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Lesgroepen | 6/7 | In Progress|  |
-| 2. Wie gaf de les écht | 1/4 | In Progress|  |
+| 2. Wie gaf de les écht | 2/4 | In Progress|  |
 | 2.1 De groep verzetten werkt door | 0/? | Not started | - |
 | 3. Ziekmelding en vervangerswerklijst | 0/? | Not started | - |
 | 4. Excel-export | 0/? | Not started | - |
