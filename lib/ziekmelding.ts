@@ -71,6 +71,23 @@ function dektDag(periode: Pick<SickLeave, 'van' | 'tot'>, dag: string): boolean 
 }
 
 /**
+ * Was deze trainer op deze dag ziek gemeld? De dag als `jjjj-mm-dd`, zoals `dagSleutel` hem
+ * geeft.
+ *
+ * Staat hier apart omdat er twee vragen zijn die hetzelfde antwoord nodig hebben en die
+ * elkaar niet mogen tegenspreken: "zoekt deze les nog een vervanger" hieronder, en "kan deze
+ * collega invallen" in lib/vervanger. Zou de tweede zijn eigen periodevergelijking schrijven,
+ * dan is er een vierde kopie van `van <= dag <= tot` in de codebase — en een kopie die ooit
+ * uiteenloopt, stelt een zieke trainer voor als vervanger van een andere zieke trainer.
+ *
+ * Een ingetrokken melding telt niet mee; dat blijft één en dezelfde regel als
+ * `openZiekmeldingen`.
+ */
+export function ziekOp(coachId: string, dag: string, open: OpenZiekmelding[]): boolean {
+  return open.some((z) => !z.retracted_at && z.coach_id === coachId && dektDag(z, dag));
+}
+
+/**
  * Zoekt deze les nog een vervanger? Er is een openstaande ziekmelding die hem dekt, er staat
  * nog geen lesgever, en de les is niet afgezegd.
  *
@@ -91,7 +108,7 @@ export function zoektVervanger(booking: ZiekmeldingBoeking, open: OpenZiekmeldin
   // gerenderd, dus een les van 23:00 op de laatste ziektedag zou naar de volgende UTC-dag
   // schuiven en stil buiten de werklijst vallen.
   const dag = dagSleutel(new Date(booking.start_time));
-  return open.some((z) => !z.retracted_at && z.coach_id === booking.coach_id && dektDag(z, dag));
+  return ziekOp(booking.coach_id, dag, open);
 }
 
 /**

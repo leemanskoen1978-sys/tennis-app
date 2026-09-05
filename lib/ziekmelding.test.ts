@@ -1,4 +1,4 @@
-import { lessenVoorZiekmelding, openZiekmeldingen, ziekmeldingFout, zoektVervanger } from './ziekmelding';
+import { lessenVoorZiekmelding, openZiekmeldingen, ziekOp, ziekmeldingFout, zoektVervanger } from './ziekmelding';
 import type { Booking, SickLeave, Vakantie } from './types';
 
 const basis: SickLeave = {
@@ -250,5 +250,26 @@ describe('zomertijd', () => {
     const uitkomst = lessenVoorZiekmelding([ervoor, erna], ziekte, geenVakanties);
     expect(uitkomst.map((b) => b.id)).toEqual(['b-na']);
     expect(new Date(uitkomst[0].start_time).getHours()).toBe(20);
+  });
+});
+
+describe('ziekOp', () => {
+  it('zegt ja op elke dag van de periode, de grenzen meegerekend', () => {
+    expect(ziekOp('c-1', '2027-03-01', [basis])).toBe(true);
+    expect(ziekOp('c-1', '2027-03-03', [basis])).toBe(true);
+    expect(ziekOp('c-1', '2027-03-05', [basis])).toBe(true);
+  });
+
+  it('zegt nee buiten de periode, voor een andere trainer, en na het intrekken', () => {
+    expect(ziekOp('c-1', '2027-02-28', [basis])).toBe(false);
+    expect(ziekOp('c-1', '2027-03-06', [basis])).toBe(false);
+    expect(ziekOp('c-2', '2027-03-03', [basis])).toBe(false);
+    expect(ziekOp('c-1', '2027-03-03', [ziek({ retracted_at: '2027-03-02T08:00:00.000Z' })]))
+      .toBe(false);
+  });
+
+  it('leest een omgekeerd ingevulde periode als de dagen ertussen', () => {
+    expect(ziekOp('c-1', '2027-03-03', [ziek({ van: '2027-03-05', tot: '2027-03-01' })]))
+      .toBe(true);
   });
 });
