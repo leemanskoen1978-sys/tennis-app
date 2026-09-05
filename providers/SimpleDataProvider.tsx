@@ -15,7 +15,8 @@ import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { upsertGoal, removeGoal } from '../lib/goals';
 import { aanvraagVoor, kinderenVan } from '../lib/ouderkind';
 import { zonderLid } from '../lib/leden';
-import { lesGroepFout, planRosterChange } from '../lib/lesgroepen';
+import { lesGroepFout, planGroepWijziging, planRosterChange } from '../lib/lesgroepen';
+import type { GroepWijzigingPlan } from '../lib/lesgroepen';
 import {
   SESSIONS_PER_CARD, useSession, releaseSession, removeManualSession,
   planMethodChange, planCancel, planCardDeletion, planParticipantsChange, planSplitChange,
@@ -191,11 +192,24 @@ interface DataShape {
   /**
    * De gegevens van een groep bijstellen: naam, niveau, moment, trainer, baan, seizoen.
    *
+   * Dit is niet langer één rij: een ander uur, een andere dag, een andere trainer of een
+   * andere baan werkt door in de lessen van vandaag en later. Wat geweest is blijft staan
+   * waar het stond, met zijn eigen uur en zijn eigen deelnemers — de geschiedenis van de club
+   * schuift niet mee met een wijziging van vandaag. `taught_by_id` gaat nooit mee: wie er die
+   * dag echt op de baan stond is een andere vraag dan wie de les toegewezen krijgt.
+   *
+   * Een komende les die niet mee kan — al bezet, in een vakantie, of in het verleden beland —
+   * wordt niet overschreven en niet stil overgeslagen, maar komt in `geblokkeerd` van het
+   * teruggegeven plan terug, zodat het scherm het kan melden (D-06).
+   *
    * `roster` blijft er met opzet buiten, om dezelfde reden waarom `payment_method` buiten
    * `updateBooking` blijft: aan het rooster hangt meer dan de rij zelf — de komende lessen
    * krijgen er hun deelnemers uit. Dat loopt uitsluitend via `updateLesGroepRoster`.
    */
-  updateLesGroep: (id: string, patch: Partial<Omit<LesGroep, 'id' | 'roster'>>) => Promise<void>;
+  updateLesGroep: (
+    id: string,
+    patch: Partial<Omit<LesGroep, 'id' | 'roster'>>,
+  ) => Promise<GroepWijzigingPlan | null>;
   /**
    * Wie er in de groep zit opnieuw zetten. De komende lessen van de groep krijgen meteen de
    * nieuwe deelnemerslijst; de lessen die al geweest zijn blijven staan zoals ze waren.
@@ -1079,13 +1093,35 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const updateLesGroep = useCallback(async (
     id: string,
     patch: Partial<Omit<LesGroep, 'id' | 'roster'>>,
-  ) => {
+  ): Promise<GroepWijzigingPlan | null> => {
     const store = storeRef.current;
-    if (!store) return;
+    if (!store) return null;
+    const groep = store.lesGroepen.find((g) => g.id === id);
+    if (!groep) return null;
+
+    // Wélke lessen dit raakt en waarheen ze gaan wordt hier niet bedacht: dat is de regel uit
+    // lib/lesgroepen, met de clubkalender erbij zoals bij een reeks. Hier wordt ze alleen
+    // weggeschreven.
+    const plan = planGroepWijziging(
+      groep, patch, store.bookings, new Date(), store.settings.vakanties ?? [],
+    );
+    const gepatcht = new Map(plan.bookingPatches.map((p) => [p.id, p]));
+
+    // De groep en haar lessen gaan samen in één opslag. Half doorgevoerd zou een groep
+    // opleveren die niet klopt met haar eigen lessen: het scherm zegt dan 18u terwijl de
+    // lessen nog op 17u staan.
     await commit({
       ...store,
-      lesGroepen: store.lesGroepen.map((g) => (g.id === id ? { ...g, ...patch } : g)),
+      lesGroepen: store.lesGroepen.map((g) => (g.id === id ? plan.group : g)),
+      bookings: store.bookings.map((b) => {
+        const p = gepatcht.get(b.id);
+        // De hele patch in één keer erover, niet veld voor veld: zo kan er nooit een veld
+        // half meegaan. Juist daarom draagt VerzetPatch geen veld voor wie de les echt gaf:
+        // wat er niet in staat, kan er ook niet per ongeluk in belanden.
+        return p === undefined ? b : { ...b, ...p };
+      }),
     });
+    return plan;
   }, [commit]);
 
   const updateLesGroepRoster = useCallback(async (id: string, nieuwRooster: string[]) => {
