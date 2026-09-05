@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
-  Upload, Users, UserCog, BookOpen, CalendarOff, Clock, type LucideIcon,
+  Upload, Users, UserCog, BookOpen, CalendarOff, Clock, GraduationCap, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
@@ -80,6 +80,12 @@ export default function Admin() {
         // Alleen voor een beheerder: hier zit het beheerdersvinkje, en hier verdwijnt een lid
         // met zijn hele geschiedenis. Een gewone trainer maakt spelers aan en houdt het
         // daarbij.
+        // Ook alleen voor een beheerder: de tennisschool is van de club, en een gewone trainer
+        // houdt zijn eigen agenda (D-09). Dat de tegel hier wegblijft is wellevendheid en geen
+        // bewaking — het scherm zelf en de policies op lesson_groups doen dat werk.
+        ...(isAdmin(currentUser)
+          ? [{ key: 'lesgroepen', title: t('Lesgroepen'), subtitle: t('Naam, niveau, rooster en spelers'), icon: GraduationCap, onPress: () => router.push('/admin/lesgroepen') } as Tile]
+          : []),
         ...(isAdmin(currentUser)
           ? [{ key: 'leden', title: t('Leden'), subtitle: t('Gegevens, type account en beheerders'), icon: UserCog, onPress: () => router.push('/admin/leden') } as Tile]
           : []),

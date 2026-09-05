@@ -1091,4 +1091,40 @@ export const EN: Record<string, string> = {
   'De gids is klaargezet om te delen.': 'The guide is ready to share.',
   'Kopiëren lukte niet. Selecteer de tekst hieronder en kopieer hem zelf.':
     'Copying failed. Select the text below and copy it yourself.',
+
+  // --- Beheer → Lesgroepen: de vaste groepen van de tennisschool (app/admin/lesgroepen) ---
+  'Lesgroepen': 'Lesson groups',
+  'Lesgroep': 'Lesson group',
+  'Naam, niveau, rooster en spelers': 'Name, level, schedule and players',
+  'Lesgroepen zijn alleen voor de beheerder.': 'Lesson groups are for the administrator only.',
+  'Een lesgroep is het blijvende gegeven onder de lessen: dezelfde spelers, dezelfde dag, hetzelfde uur, het hele seizoen. Wijzig je hem later, dan gaan de lessen van vandaag en later mee; wat al gegeven is blijft staan zoals het was.':
+    'A lesson group is the lasting thing underneath the lessons: the same players, the same day, '
+    + 'the same hour, all season. Change it later and the lessons from today onwards follow; '
+    + 'what has already been taught stays as it was.',
+  'bv. Woensdag 16u groep 3': 'e.g. Wednesday 4pm group 3',
+  'Niveau': 'Level',
+  'bv. Kidstennis oranje': 'e.g. Kids tennis orange',
+  'Lesdag': 'Lesson day',
+  'Beginuur': 'Start time',
+  'Baan (mag leeg)': 'Court (may be empty)',
+  'Geen baan': 'No court',
+  'Geen trainer': 'No coach',
+  'Seizoen van': 'Season from',
+  'Lesgroep aanmaken': 'Create lesson group',
+  '1 lesgroep': '1 lesson group',
+  '{n} lesgroepen': '{n} lesson groups',
+  'Gearchiveerd': 'Archived',
+  'Nog geen lesgroepen. Een groep die je hier aanmaakt zet nog geen lessen in de agenda: het inplannen van een heel seizoen komt met de import van de planning. Tot dan hang je een les zelf aan een groep.':
+    'No lesson groups yet. A group you create here does not put any lessons in the schedule: '
+    + 'planning a whole season comes with the import of the planning. Until then you attach a '
+    + 'lesson to a group yourself.',
+  // De meldingen van `lesGroepFout` in lib/lesgroepen; ze komen op dit scherm in de foutregel
+  // te staan, dus zonder deze regels bleven ze in het Nederlands hangen.
+  'Geef de lesgroep een naam.': 'Give the lesson group a name.',
+  'Geef de lesgroep een niveau.': 'Give the lesson group a level.',
+  'Kies een lesdag van de week.': 'Pick a day of the week.',
+  'Kies een beginuur tussen 0 en 23.': 'Pick a start hour between 0 and 23.',
+  'Kies een beginminuut tussen 0 en 59.': 'Pick a start minute between 0 and 59.',
+  'Kies een trainer voor de lesgroep.': 'Pick a coach for the lesson group.',
+  'Het seizoen eindigt voor het begint.': 'The season ends before it starts.',
 };

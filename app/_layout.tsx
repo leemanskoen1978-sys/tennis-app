@@ -87,6 +87,10 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   { name: 'admin/goals', title: t('Doelen') },
   { name: 'admin/vakanties', title: t('Clubkalender') },
   { name: 'admin/boekingstijden', title: t('Boekingstijden') },
+  { name: 'admin/lesgroepen/index', title: t('Lesgroepen') },
+  // Vooruit geregistreerd: het groepsscherm zelf komt later, en zonder deze regel krijgt het
+  // straks geen kop.
+  { name: 'admin/lesgroepen/[id]', title: t('Lesgroep') },
   { name: 'admin/leden', title: t('Leden') },
   { name: 'admin/leden-import', title: t('Leden importeren') },
   { name: 'admin/ouders', title: t('Ouders en kinderen') },
