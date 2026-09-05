@@ -14,7 +14,9 @@
 // twee antwoorden op dezelfde vraag is precies wat deze verwijzing moet voorkomen.
 
 import { t } from './i18n';
-import type { Booking, LesGroep } from './types';
+import { botstMet } from './recurrence';
+import { vakantieOpMoment } from './vakanties';
+import type { Booking, LesGroep, Vakantie } from './types';
 
 /** De velden die een vraag over de groep nodig heeft; meer weet dit bestand niet van een les. */
 export type GroepBoeking = Pick<Booking, 'id' | 'group_id' | 'start_time' | 'status' | 'participant_ids'>;
@@ -127,6 +129,145 @@ export function planRosterChange(
     group: { ...group, roster: [...newRoster] },
     bookingPatches: raken.map((b) => ({ id: b.id, participant_ids: [...newRoster] })),
   };
+}
+
+/** De velden die het verzetten nodig heeft; meer weet deze vraag niet van een les. */
+export type VerzetBoeking = Pick<
+  Booking,
+  'id' | 'group_id' | 'coach_id' | 'taught_by_id' | 'court_id' | 'start_time' | 'end_time' | 'status'
+>;
+
+/**
+ * Wat er aan één les verandert als de groep verzet wordt.
+ *
+ * `taught_by_id` staat hier met opzet NIET in. Een les die iemand anders al gaf, blijft van
+ * hem, en zijn loon ook: de groep aan een andere trainer geven verschuift wie de les
+ * toegewezen krijgt (`coach_id`), niet wie er die dag op de baan stond. Zie `lesgeverId` in
+ * lib/lesgever, de enige plek die die tweede vraag beantwoordt.
+ */
+export interface VerzetPatch {
+  id: string;
+  start_time: string; // ISO
+  end_time: string;   // ISO
+  coach_id: string;
+  court_id: string;
+}
+
+/** Een komende les die het verzetten niet kan volgen, met de reden waarom. */
+export interface GeblokkeerdeLes {
+  id: string;
+  /** Het nieuwe moment dat voorgesteld werd — niet waar de les nu staat. */
+  start_time: string;
+  reden: 'bezet' | 'vakantie' | 'verleden';
+  /** De naam van de vakantie, als dat de reden was. */
+  vakantie?: string;
+  /** De boeking waarmee het botst, als dat de reden was. */
+  conflict?: string;
+}
+
+/** Het plan voor een verzetting: wat er zou veranderen, en wat er niet kan. */
+export interface GroepWijzigingPlan {
+  /** De groep zoals hij na de wijziging zou zijn. */
+  group: LesGroep;
+  /** Per komende les die mee verhuist: het nieuwe uur, de trainer en de baan. */
+  bookingPatches: VerzetPatch[];
+  /** De komende lessen die niet mee kunnen, met de reden erbij. */
+  geblokkeerd: GeblokkeerdeLes[];
+}
+
+/** De velden waarvan een wijziging een al ingeplande les raakt. */
+const VERZETVELDEN = ['weekday', 'start_hour', 'start_minute', 'coach_id', 'court_id'] as const;
+
+/** De weekdag in maandag-eerste telling, dezelfde leesvolgorde als het scherm. */
+const maandagEerst = (weekday: number): number => (weekday + 6) % 7;
+
+/**
+ * Wat er zou veranderen als de groep naar een andere dag, een ander uur, een andere trainer
+ * of een andere baan ging: per komende les een nieuw moment, of een melding waarom het niet
+ * kan. Er wordt hier niets weggeschreven en niets gemuteerd — de provider zet het plan in één
+ * keer weg, net als bij `planRosterChange`.
+ *
+ * Waarom ze bestaat: fase 1 verzette alleen de groepsrij zelf en geen enkele al ingeplande
+ * les. De beheerder verplaatste zijn groep naar donderdag en zag zijn lessen op dinsdag staan.
+ *
+ * De grens die ze bewaakt: alleen vooruit, en nooit `taught_by_id`. Een les die al gegeven is
+ * hoort bij de geschiedenis van de club, en wie er echt lesgaf staat los van wie de les
+ * toegewezen krijgt.
+ */
+export function planGroepWijziging(
+  group: LesGroep,
+  patch: Partial<Omit<LesGroep, 'id' | 'roster'>>,
+  bookings: VerzetBoeking[],
+  now: Date,
+  /** De clubkalender; leeg betekent "het hele jaar door les", zoals in `planSeries`. */
+  vakanties: Vakantie[] = [],
+): GroepWijzigingPlan {
+  const nieuw: LesGroep = { ...group, ...patch };
+  const leeg: GroepWijzigingPlan = { group: nieuw, bookingPatches: [], geblokkeerd: [] };
+
+  // Naam, niveau en seizoen raken geen enkele les: alleen deze vijf velden bepalen waar en
+  // bij wie een les staat.
+  if (VERZETVELDEN.every((veld) => nieuw[veld] === group[veld])) return leeg;
+
+  const raken = komendeLessen(bookings, group.id, now);
+  // Een groep botst niet met zichzelf: haar eigen komende lessen staan op hun oude uur nog in
+  // de lijst, en zonder deze uitzondering zou elke verschuiving van zichzelf zeggen dat ze
+  // niet kan.
+  const negeer = new Set(raken.map((b) => b.id));
+  const verschil = maandagEerst(nieuw.weekday) - maandagEerst(group.weekday);
+  const vanaf = now.getTime();
+
+  const bookingPatches: VerzetPatch[] = [];
+  const geblokkeerd: GeblokkeerdeLes[] = [];
+
+  for (const les of raken) {
+    const oud = new Date(les.start_time);
+    // Uitsluitend met dag-, uur- en minuutvelden rekenen. Bij "168 uur erbij" staat de les van
+    // ná de uurwissel ineens om 09:00 of 11:00 — zie de kop van lib/recurrence.
+    const beginDatum = new Date(
+      oud.getFullYear(), oud.getMonth(), oud.getDate() + verschil,
+      nieuw.start_hour, nieuw.start_minute, 0, 0,
+    );
+    // De duur van déze les, niet de clubinstelling: `lesson_duration_minutes` telt
+    // uitdrukkelijk niet met terugwerkende kracht (zie het commentaar bij dat veld).
+    const duurMinuten = (new Date(les.end_time).getTime() - oud.getTime()) / 60000;
+    const eindDatum = new Date(
+      oud.getFullYear(), oud.getMonth(), oud.getDate() + verschil,
+      nieuw.start_hour, nieuw.start_minute + duurMinuten, 0, 0,
+    );
+    const start_time = beginDatum.toISOString();
+
+    if (beginDatum.getTime() < vanaf) {
+      geblokkeerd.push({ id: les.id, start_time, reden: 'verleden' });
+      continue;
+    }
+    // De vakantie eerst: is de club dicht, dan doet het er niet meer toe of de trainer dan ook
+    // nog bezet was — exact de volgorde van `planSeries`.
+    const vakantie = vakantieOpMoment(vakanties, start_time);
+    if (vakantie) {
+      geblokkeerd.push({ id: les.id, start_time, reden: 'vakantie', vakantie: vakantie.naam });
+      continue;
+    }
+    const conflict = botstMet(
+      { start_time, end_time: eindDatum.toISOString() },
+      bookings,
+      { coachId: nieuw.coach_id ?? les.coach_id, courtId: nieuw.court_id, negeer },
+    );
+    if (conflict) {
+      geblokkeerd.push({ id: les.id, start_time, reden: 'bezet', conflict: conflict.id });
+      continue;
+    }
+    bookingPatches.push({
+      id: les.id,
+      start_time,
+      end_time: eindDatum.toISOString(),
+      coach_id: nieuw.coach_id ?? les.coach_id,
+      // Een groep zonder baan haalt de baan van een les niet weg: een boeking heeft er een nodig.
+      court_id: nieuw.court_id ?? les.court_id,
+    });
+  }
+
+  return { group: nieuw, bookingPatches, geblokkeerd };
 }
 
 /**
