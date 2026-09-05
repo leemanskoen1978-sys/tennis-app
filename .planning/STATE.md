@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Completed 01-lesgroepen-02-PLAN.md
-last_updated: "2026-09-05T21:38:59.665Z"
-last_activity: 2026-09-05 — Roadmap created, 35/35 v1 requirements mapped
+status: executing
+stopped_at: Completed 01-lesgroepen-03-PLAN.md
+last_updated: "2026-09-05T22:20:00.000Z"
+last_activity: 2026-09-05 — Plannen 01-01, 01-02 en 01-03 uitgevoerd (model, schema, opslag)
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 7
-  completed_plans: 1
-  percent: 0
+  completed_plans: 3
+  percent: 9
 ---
 
 # Project State
@@ -27,19 +27,19 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 ## Current Position
 
 Phase: 1 of 5 (Lesgroepen)
-Plan: TBD (not yet planned)
-Status: Ready to plan
-Last activity: 2026-09-05 — Roadmap created, 35/35 v1 requirements mapped
+Plan: 4 of 7 (01-04-PLAN.md — het lesgroepenscherm)
+Status: In progress — golf 1 en 2 klaar (model, schema, opslag), schermen volgen
+Last activity: 2026-09-05 — Plannen 01-01, 01-02 en 01-03 uitgevoerd (model, schema, opslag)
 
-Progress: [█░░░░░░░░░] 14%
+Progress: [█░░░░░░░░░] 9%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0 hours
+- Total plans completed: 3
+- Average duration: ~13 min
+- Total execution time: ~0,7 uur
 
 **By Phase:**
 
@@ -66,6 +66,16 @@ confirmed as phases ship).
   (must precede substitution UI), sick-leave/substitute worklist third (Core Value), export
   fourth (decided before import, carries the round-trippable group identifier), import last.
 
+- [Phase 01-lesgroepen]: `lesson_groups` wordt geladen met `selectAllOptioneel`, niet met
+  `selectAll` — de migratie uit plan 02 is nog niet gedraaid, en een club zonder die tabel
+  hoort gewoon te laden met nul groepen in plaats van niet op te starten (D-11)
+
+- [Phase 01-lesgroepen]: `updateLesGroepRoster` schrijft de groep en de geraakte komende lessen
+  in één `commit()`; het rekenwerk blijft in lib/lesgroepen
+
+- [Phase 01-lesgroepen]: het smalle boekingstype in lib/lesgroepen heet `GroepBoeking` en niet
+  `GroupBooking` — die naam was al bezet in lib/groups
+
 - [Phase 01-lesgroepen]: lesson_groups RLS kopieert rates_write (geen ownership-check op beide policies) — de tabel is volledig admin-only, geen 'dit is van mij'-tak zoals coach_rates
 
 ### Pending Todos
@@ -73,6 +83,10 @@ confirmed as phases ship).
 None yet.
 
 ### Blockers/Concerns
+
+- De migratie voor `lesson_groups` is geschreven maar nog niet gedraaid (plan 01-07). Tot dan
+  bestaat de tabel niet in productie; de app laadt door dankzij `selectAllOptioneel`, maar een
+  aangemaakte groep kan nog nergens heen in Supabase-modus.
 
 - Every phase adding a table/column must carry a manual RLS upsert-verification step
   (insert as user A, update as user B) — `tsc`/Jest cannot catch this; this bug class has hit
@@ -102,6 +116,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T21:38:45.234Z
-Stopped at: Completed 01-lesgroepen-02-PLAN.md
-Resume file: 
+Last session: 2026-09-05T22:20:00.000Z
+Stopped at: Completed 01-lesgroepen-03-PLAN.md
+Resume file: .planning/phases/01-lesgroepen/01-04-PLAN.md 

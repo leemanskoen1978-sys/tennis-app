@@ -41,9 +41,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 7 plans in 6 waves
 
 Plans:
-- [ ] 01-01-PLAN.md — Het groepsmodel als pure regel: LesGroep in lib/types, lib/lesgroepen.ts met zijn test, en regressiedekking dat group_id niets breekt (wave 1)
+- [x] 01-01-PLAN.md — Het groepsmodel als pure regel: LesGroep in lib/types, lib/lesgroepen.ts met zijn test, en regressiedekking dat group_id niets breekt (wave 1)
 - [x] 01-02-PLAN.md — Het schema als tekst: lesson_groups, bookings.group_id, index en twee admin-only RLS-policies onderaan supabase-schema.sql (wave 1)
-- [ ] 01-03-PLAN.md — Beide opslagwegen: lib/sync.ts, mockStore, supabaseStore met selectAllOptioneel, en de vier provideracties (wave 2)
+- [x] 01-03-PLAN.md — Beide opslagwegen: lib/sync.ts, mockStore, supabaseStore met selectAllOptioneel, en de vier provideracties (wave 2)
 - [ ] 01-04-PLAN.md — Het lesgroepenscherm: lijst, aanmaakformulier, de tegel in Beheer en de beheerdersgrens op het scherm zelf (wave 3)
 - [ ] 01-05-PLAN.md — Groepsdetail: rooster via ParticipantPicker, de lessen van de groep, archiveren (wave 4)
 - [ ] 01-06-PLAN.md — Een losse les aan een groep hangen op het lesdetailblad, plus de lesduur als clubinstelling (wave 5)
@@ -114,7 +114,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Lesgroepen | 1/7 | In Progress|  |
+| 1. Lesgroepen | 3/7 | In Progress|  |
 | 2. Wie gaf de les écht | 0/? | Not started | - |
 | 3. Ziekmelding en vervangerswerklijst | 0/? | Not started | - |
 | 4. Excel-export | 0/? | Not started | - |

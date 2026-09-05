@@ -133,13 +133,13 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GROEP-01 | Phase 1 | Pending |
-| GROEP-02 | Phase 1 | Pending |
-| GROEP-03 | Phase 1 | Pending |
-| GROEP-04 | Phase 1 | Pending |
-| GROEP-05 | Phase 1 | Pending |
-| GROEP-06 | Phase 1 | Pending |
-| GROEP-07 | Phase 1 | Pending |
+| GROEP-01 | Phase 1 | In Progress |
+| GROEP-02 | Phase 1 | In Progress |
+| GROEP-03 | Phase 1 | In Progress |
+| GROEP-04 | Phase 1 | In Progress |
+| GROEP-05 | Phase 1 | In Progress |
+| GROEP-06 | Phase 1 | In Progress |
+| GROEP-07 | Phase 1 | In Progress |
 | VERV-01 | Phase 2 | Pending |
 | VERV-02 | Phase 2 | Pending |
 | VERV-03 | Phase 2 | Pending |
@@ -171,6 +171,10 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | TOEG-01 | Phase 1 | Pending |
 | TOEG-02 | Phase 1 | Pending |
 | TOEG-03 | Phase 1 | Complete |
+
+**In Progress** betekent: de regels (plan 01), het schema (plan 02) en de opslag (plan 03)
+staan er, maar de beheerder kan er nog niets mee — de schermen komen in plan 04. Pas dan gaat
+GROEP-01 t/m GROEP-07 op Complete en gaan de vinkjes hierboven aan.
 
 **Coverage:**
 - v1 requirements: 38 total
