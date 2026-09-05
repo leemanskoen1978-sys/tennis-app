@@ -938,3 +938,17 @@ create policy lesson_groups_select on lesson_groups for select
 drop policy if exists lesson_groups_write on lesson_groups;
 create policy lesson_groups_write on lesson_groups for all
   to authenticated using (is_admin()) with check (is_admin());
+
+-- ---------------------------------------------------------------------------
+-- Wie gaf de les écht
+-- ---------------------------------------------------------------------------
+
+-- Leeg betekent "de vaste trainer (coach_id) gaf de les zelf" (D-02). coach_id verandert
+-- hierdoor NOOIT: dat blijft van wie de les is — zijn agenda, zijn rooster, zijn dubbele-
+-- boekingscontrole. taught_by_id is alleen het antwoord op "wie stond er echt op de baan",
+-- en dat antwoord is de enige plek waar loon, uren en het trainersrapport naar kijken (zie
+-- lib/lesgever.ts). `on delete set null`, niet `cascade`: verwijdert de club een trainer die
+-- ooit inviel, dan verdwijnt de les niet — hij valt terug op "de vaste trainer gaf hem zelf",
+-- precies zoals een lege waarde altijd al betekende.
+alter table bookings add column if not exists taught_by_id text references users(id) on delete set null;
+create index if not exists bookings_taught_by_idx on bookings (taught_by_id);
