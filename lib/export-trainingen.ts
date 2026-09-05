@@ -11,6 +11,7 @@ import { isoWeeknummer } from './datetime';
 import { groupSize, lessonPlayerIds } from './groups';
 import { t } from './i18n';
 import { lesgeverId } from './lesgever';
+import { actieveGroepen } from './lesgroepen';
 import { bookingMinutes } from './payments';
 import { countedBookings, payoutsByCoach } from './reports';
 import { bookingStatusLabel } from './status';
@@ -371,5 +372,124 @@ export function bladUrenPerTrainer(bookings: Booking[], users: User[]): XlsxBlad
     koppen: koppenVan(UREN_KOLOMMEN),
     breedtes: UREN_KOLOMMEN.map((c) => c.breedte),
     rijen: naarRijen(UREN_KOLOMMEN, urenRijen(bookings, users)),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Blad "Groepen" — één rij per lesgroep, met het kenmerk erbij
+//
+// Dit blad bestaat om twee redenen. De eerste is leesbaarheid: wie het bestand opent ziet in
+// één oogopslag welke groepen er in de periode liepen, op welke dag en met hoeveel spelers.
+// De tweede is de herimport: `Groep-ID` is het interne kenmerk waaraan fase 5 een bestaande
+// groep terugvindt, ook als haar naam of haar uur intussen veranderd is
+// (`.planning/IMPORT-SJABLOON.md`). Zonder dat kenmerk maakt een herimport een tweede groep
+// naast de eerste aan, en staat de halve club er dubbel in.
+// ---------------------------------------------------------------------------
+
+/** Eén regel van het groepsoverzicht: alles al opgezocht en al geteld. */
+interface GroepRij {
+  /** `LesGroep.id` — het kenmerk waaraan een herimport deze groep terugvindt. */
+  id: string;
+  naam: string;
+  niveau: string;
+  dag: string;
+  uur: string;
+  /** Leeg als de groep nog geen trainer heeft; dat is een aanvaarde toestand. */
+  trainer: string;
+  spelers: number;
+  lessen: number;
+}
+
+/**
+ * De groepen van dit bestand, op naam gesorteerd.
+ *
+ * Welke groepen erop horen: de actieve groepen, plus elke gearchiveerde groep die in de
+ * meegegeven boekingen nog een les heeft. Een export van vorig seizoen zou anders precies de
+ * groepen missen waar hij over gaat — archiveren betekent "we plannen deze niet meer in", niet
+ * "deze heeft nooit bestaan". Een actieve groep zonder lessen blijft er wél op staan, met 0:
+ * aan het begin van een seizoen is dat de gewone toestand.
+ *
+ * De lessen worden geteld in één gang over de boekingen, via een Map `group_id → aantal`, en
+ * niet met `lessenVanGroep(bookings, g.id)` per groep in een lus. Dat laatste leest de hele
+ * boekingenlijst opnieuw voor elke groep; bij tientallen groepen en een seizoen van duizenden
+ * lessen is dat een herscan per groep. `lessenVanGroep` blijft de juiste functie waar de
+ * lessen zelf nodig zijn — hier is alleen het aantal nodig.
+ *
+ * `roster` mag hier wél gelezen worden, anders dan bij een les: "Spelers" gaat over de groep
+ * zoals hij nu is, en niet over wie er die dag bij een bepaalde les stond.
+ */
+function groepRijen(
+  groepen: readonly LesGroep[],
+  bookings: readonly Booking[],
+  tabellen: Opzoektabellen,
+): GroepRij[] {
+  const lessenPerGroep = new Map<string, number>();
+  for (const b of bookings) {
+    if (b.group_id) lessenPerGroep.set(b.group_id, (lessenPerGroep.get(b.group_id) ?? 0) + 1);
+  }
+
+  const opHetBlad = new Set(actieveGroepen([...groepen]).map((g) => g.id));
+  for (const id of lessenPerGroep.keys()) opHetBlad.add(id);
+
+  return groepen
+    .filter((g) => opHetBlad.has(g.id))
+    .map((g): GroepRij => ({
+      id: g.id,
+      naam: g.name,
+      niveau: g.level,
+      // Dezelfde vaste tabel als blad "Lessen", met zondag = 0 — zie `WEEKDAGEN`. Een
+      // onmogelijke weekdag laat de cel leeg in plaats van "undefined" in het bestand te zetten.
+      dag: WEEKDAGEN[g.weekday] ?? '',
+      uur: `${twee(g.start_hour)}:${twee(g.start_minute)}`,
+      // Een groep zonder trainer is een aanvaarde toestand (zie `LesGroep.coach_id`) en krijgt
+      // dus een lege cel; een trainer die uit de ledenlijst verdwenen is heet "Onbekend",
+      // want er stond wel degelijk iemand voor de groep.
+      trainer: g.coach_id ? tabellen.gebruikerById.get(g.coach_id)?.name ?? t('Onbekend') : '',
+      spelers: g.roster.length,
+      lessen: lessenPerGroep.get(g.id) ?? 0,
+    }))
+    .sort((a, b) => a.naam.localeCompare(b.naam, 'nl'));
+}
+
+/**
+ * De acht kolommen van blad "Groepen".
+ *
+ * `Type les` heet hier hetzelfde als op blad "Lessen" en niet "Niveau": het is hetzelfde
+ * begrip — `LesGroep.level` — en twee namen voor één ding maakt van een bestand een raadsel.
+ *
+ * `Groep-ID` blijft een tekstcel en wordt nooit een getal: een kenmerk is geen hoeveelheid,
+ * en een lang cijferig id zou als getal in wetenschappelijke notatie het bestand uit gaan en
+ * bij de herimport nergens meer op passen.
+ */
+const GROEPEN_KOLOMMEN: readonly ExportKolom<GroepRij>[] = [
+  { label: 'Groep-ID', value: (r) => r.id, breedte: 38 },
+  { label: 'Groep', value: (r) => r.naam, breedte: 22 },
+  { label: 'Type les', value: (r) => r.niveau, breedte: 16 },
+  { label: 'Dag', value: (r) => r.dag, breedte: 11 },
+  { label: 'Uur', value: (r) => r.uur, breedte: 8 },
+  { label: 'Trainer', value: (r) => r.trainer, breedte: 18 },
+  { label: 'Spelers', value: (r) => String(r.spelers), getal: (r) => r.spelers, breedte: 9 },
+  {
+    label: 'Lessen in periode', value: (r) => String(r.lessen),
+    getal: (r) => r.lessen, breedte: 17,
+  },
+];
+
+/**
+ * Blad "Groepen": één rij per lesgroep, met haar kenmerk, haar uur en haar aantallen.
+ *
+ * De tabnaam is net als bij de andere bladen een vaste Nederlandse waarde en gaat niet door
+ * `t()` — de import zoekt dit blad terug op zijn naam.
+ */
+export function bladGroepen(
+  groepen: readonly LesGroep[],
+  bookings: readonly Booking[],
+  tabellen: Opzoektabellen,
+): XlsxBlad {
+  return {
+    naam: 'Groepen',
+    koppen: koppenVan(GROEPEN_KOLOMMEN),
+    breedtes: GROEPEN_KOLOMMEN.map((c) => c.breedte),
+    rijen: naarRijen(GROEPEN_KOLOMMEN, groepRijen(groepen, bookings, tabellen)),
   };
 }
