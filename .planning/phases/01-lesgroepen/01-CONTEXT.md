@@ -65,6 +65,17 @@ groepsmodel — dat komt hier vandaan.
   SQL-editor. Geen enkele taak mag aannemen dat de migratie al toegepast is, en niets in deze
   fase mag ongevraagd de productiedatabank aanraken.
 
+### Beantwoord na het onderzoek van fase 1
+
+- **D-12:** Een boeking die met de hand aan een groep gekoppeld wordt, krijgt in deze fase
+  géén `series_id`. `group_id` is de blijvende identiteit; `series_id` is een artefact van
+  het in bulk aanmaken en hoort daar te blijven. Ze bestaan naast elkaar, nooit in elkaar.
+- **D-13:** Bij het aanmaken van een lesgroep is de trainer verplicht en de baan optioneel —
+  dezelfde keuze als `bookings.court_id`, dat ook mag ontbreken.
+- **D-14:** Het in bulk inplannen van de lessen van een groep hoort NIET in deze fase. Fase 1
+  levert het groepsmodel en het koppelen van een losse les; het genereren van een heel seizoen
+  komt bij de import (fase 5).
+
 ### Claude's Discretion
 
 De gebruiker heeft expliciet gezegd dat ik het formaat en de vormgeving bepaal. Vrij in te
