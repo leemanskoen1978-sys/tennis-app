@@ -45,7 +45,7 @@ Plans:
 - [x] 01-02-PLAN.md — Het schema als tekst: lesson_groups, bookings.group_id, index en twee admin-only RLS-policies onderaan supabase-schema.sql (wave 1)
 - [x] 01-03-PLAN.md — Beide opslagwegen: lib/sync.ts, mockStore, supabaseStore met selectAllOptioneel, en de vier provideracties (wave 2)
 - [x] 01-04-PLAN.md — Het lesgroepenscherm: lijst, aanmaakformulier, de tegel in Beheer en de beheerdersgrens op het scherm zelf (wave 3)
-- [ ] 01-05-PLAN.md — Groepsdetail: rooster via ParticipantPicker, de lessen van de groep, archiveren (wave 4)
+- [x] 01-05-PLAN.md — Groepsdetail: rooster via ParticipantPicker, de lessen van de groep, archiveren (wave 4)
 - [ ] 01-06-PLAN.md — Een losse les aan een groep hangen op het lesdetailblad, plus de lesduur als clubinstelling (wave 5)
 - [ ] 01-07-PLAN.md — De migratie draaien en de upsert-val met de hand nalopen (wave 6, checkpoints)
 
@@ -120,7 +120,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Lesgroepen | 4/7 | In Progress|  |
+| 1. Lesgroepen | 5/7 | In Progress|  |
 | 2. Wie gaf de les écht | 0/4 | Planned | - |
 | 3. Ziekmelding en vervangerswerklijst | 0/? | Not started | - |
 | 4. Excel-export | 0/? | Not started | - |

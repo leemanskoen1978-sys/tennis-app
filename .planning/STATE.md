@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-lesgroepen-04-PLAN.md
-last_updated: "2026-09-05T22:45:00.000Z"
-last_activity: 2026-09-05 — Plan 01-04 uitgevoerd (lesgroepenscherm, tegel, routes, Engels)
+stopped_at: Completed 01-lesgroepen-05-PLAN.md
+last_updated: "2026-09-06T00:10:00.000Z"
+last_activity: 2026-09-06 — Plan 01-05 uitgevoerd (groepsdetail: rooster, lessen, archiveren)
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 11
-  completed_plans: 4
-  percent: 36
+  completed_plans: 5
+  percent: 45
 ---
 
 # Project State
@@ -27,19 +27,19 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 ## Current Position
 
 Phase: 1 of 5 (Lesgroepen)
-Plan: 5 of 7 (01-05-PLAN.md — groepsdetail)
-Status: In progress — golf 3 klaar: de beheerder maakt een lesgroep aan en ziet zijn lijst
-Last activity: 2026-09-05 — Plan 01-04 uitgevoerd (lesgroepenscherm, tegel, routes, Engels)
+Plan: 6 of 7 (01-06-PLAN.md — een losse les aan een groep hangen)
+Status: In progress — golf 4 klaar: het groepsdetail staat, met rooster, lessen en archief
+Last activity: 2026-09-06 — Plan 01-05 uitgevoerd (groepsdetail: rooster, lessen, archiveren)
 
-Progress: [████░░░░░░] 36%
+Progress: [█████░░░░░] 45%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 4
-- Average duration: ~14 min
-- Total execution time: ~0,9 uur
+- Total plans completed: 5
+- Average duration: ~15 min
+- Total execution time: ~1,3 uur
 
 **By Phase:**
 
@@ -55,6 +55,7 @@ Progress: [████░░░░░░] 36%
 *Updated after each plan completion*
 | Phase 01-lesgroepen P02 | 8min | 1 tasks | 1 files |
 | Phase 01-lesgroepen P04 | 16min | 2 tasks | 4 files |
+| Phase 01-lesgroepen P05 | 22min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,8 @@ confirmed as phases ship).
 
 - [Phase 01-lesgroepen]: lesson_groups RLS kopieert rates_write (geen ownership-check op beide policies) — de tabel is volledig admin-only, geen 'dit is van mij'-tak zoals coach_rates
 - [Phase 01-lesgroepen]: de beheerdersgrens ligt op het lesgroepenscherm zelf, vóór elke andere return — de tegel in Beheer verbergen is wellevendheid, geen toegangscontrole (TOEG-01)
+- [Phase 01-lesgroepen]: het groepsdetail bewerkt de gegevens met één formulier en één Bewaren-knop, terwijl het rooster meteen wegschrijft — de groepsrij patchen en deelnemers over de komende lessen verplaatsen zijn twee verschillende gevolgen en horen niet achter dezelfde knop
+- [Phase 01-lesgroepen]: de lessen van een groep worden getoond met de bestaande LessonCards en zijn detailblad; geen eigen lesregel, zodat dezelfde les er niet per scherm anders uitziet
 
 ### Pending Todos
 
@@ -104,6 +107,8 @@ None yet.
 - Export format (Phase 4) must land before import (Phase 5) so the group identifier
   round-trips instead of relying on fuzzy name matching.
 
+- GROEP-05 is maar half waar: een speler erbij of eraf werkt vanaf vandaag vooruit via planRosterChange, maar een ander uur of een andere trainer op de groep verandert de al ingeplande lessen niet mee. Daarvoor bestaat geen planGroepWijziging, en die zou botsingscontrole (dubbele boeking) en de coach_id-betekenis van fase 2 raken. Geen enkel plan van fase 1 dekt dit.
+
 ## Deferred Items
 
 Items acknowledged and carried forward from previous milestone close:
@@ -118,6 +123,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T22:45:00.000Z
-Stopped at: Completed 01-lesgroepen-04-PLAN.md
-Resume file: .planning/phases/01-lesgroepen/01-05-PLAN.md
+Last session: 2026-09-05T22:07:22.633Z
+Stopped at: Completed 01-lesgroepen-05-PLAN.md
+Resume file: .planning/phases/01-lesgroepen/01-06-PLAN.md

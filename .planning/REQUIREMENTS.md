@@ -10,7 +10,7 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 
 - [x] **GROEP-01**: De beheerder kan een lesgroep aanmaken met naam, niveau, vaste dag en uur,
       vaste trainer, baan en seizoensperiode (van–tot).
-- [ ] **GROEP-02**: De beheerder kan spelers aan een lesgroep toevoegen en eruit halen.
+- [x] **GROEP-02**: De beheerder kan spelers aan een lesgroep toevoegen en eruit halen.
 - [ ] **GROEP-03**: De beheerder ziet per lesgroep welke lessen ervan ingepland staan en
       hoeveel er nog komen.
 - [ ] **GROEP-04**: Een les die uit een lesgroep is ontstaan, verwijst naar die groep en blijft
@@ -18,10 +18,10 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 - [ ] **GROEP-05**: Een wijziging aan een lesgroep (speler erbij of eraf, ander uur, andere
       trainer) werkt door in alle lessen van vandaag en later; lessen die al geweest zijn
       blijven staan zoals ze waren.
-- [ ] **GROEP-06**: Elke les houdt zijn eigen deelnemerslijst op het moment van de les, zodat
+- [x] **GROEP-06**: Elke les houdt zijn eigen deelnemerslijst op het moment van de les, zodat
       de groepsprijs en de aanwezigheid van een oude les niet verandert door een wijziging van
       vandaag.
-- [ ] **GROEP-07**: De beheerder kan een lesgroep archiveren aan het einde van een seizoen
+- [x] **GROEP-07**: De beheerder kan een lesgroep archiveren aan het einde van een seizoen
       zonder de gegeven lessen of hun geschiedenis te raken.
 
 ### Vervanging en loon
@@ -134,12 +134,12 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | GROEP-01 | Phase 1 | Complete |
-| GROEP-02 | Phase 1 | In Progress |
+| GROEP-02 | Phase 1 | Complete |
 | GROEP-03 | Phase 1 | In Progress |
 | GROEP-04 | Phase 1 | In Progress |
 | GROEP-05 | Phase 1 | In Progress |
-| GROEP-06 | Phase 1 | In Progress |
-| GROEP-07 | Phase 1 | In Progress |
+| GROEP-06 | Phase 1 | Complete |
+| GROEP-07 | Phase 1 | Complete |
 | VERV-01 | Phase 2 | Pending |
 | VERV-02 | Phase 2 | Pending |
 | VERV-03 | Phase 2 | Pending |
@@ -174,12 +174,30 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 
 **In Progress** betekent: de regels (plan 01), het schema (plan 02) en de opslag (plan 03)
 staan er, maar de beheerder kan er nog niet alles mee. Plan 04 zette het lijstscherm met het
-aanmaakformulier neer — daarmee gaat GROEP-01 op Complete. GROEP-02 t/m GROEP-07 wachten op het
-groepsdetail (plan 05) en het koppelen van een losse les (plan 06).
+aanmaakformulier neer (GROEP-01). Plan 05 zette het groepsdetail neer en maakte daarmee
+**GROEP-02**, **GROEP-06** en **GROEP-07** waar: spelers gaan er via de gedeelde
+`ParticipantPicker` in en uit, een oude les houdt zijn eigen deelnemerslijst, en archiveren en
+terugzetten raakt geen enkele boeking.
 
-**TOEG-01** blijft In Progress tot plan 05: de grens staat nu op de tegel én bovenaan
-`app/admin/lesgroepen/index.tsx`, maar het detailscherm van een groep moet hem straks óók
-dragen — pas als de hele module hem heeft, is de requirement waar.
+**GROEP-03** blijft In Progress tot plan 06. Het scherm telt en toont de lessen van een groep
+al — het lege geval staat er in gewone woorden bij — maar er is nog geen enkele manier om een
+les aan een groep te hángen; dat komt met het koppelblok op het lesdetailblad (plan 06). De
+requirement op Complete zetten zou een scherm claimen dat vandaag alleen nul kan tonen.
+
+**GROEP-05** blijft In Progress, en niet alleen door de golfindeling. De helft die over spelers
+gaat ("speler erbij of eraf") is waar: die loopt via `planRosterChange`, vanaf vandaag vooruit,
+met de lessen die geweest zijn onaangeroerd. De andere helft — "ander uur, andere trainer" —
+werkt niet door: `updateLesGroep` patcht uitsluitend de groepsrij en verzet geen enkele al
+ingeplande les. Daar bestaat geen `planGroepWijziging` voor, en zo'n functie raakt meteen de
+botsingscontrole (een verzette les kan dubbel boeken) en de betekenis van `coach_id` die fase 2
+onder handen neemt. Geen enkel plan van fase 1 dekt dit; het hoort bij een eigen plan of bij de
+bulkplanning van fase 5.
+
+**TOEG-01** blijft In Progress tot plan 07. De grens staat nu op de tegel, bovenaan
+`app/admin/lesgroepen/index.tsx` én bovenaan `app/admin/lesgroepen/[id].tsx` — een trainer die
+de link naar een groep intikt, komt er niet op. Maar de module krijgt in plan 06 nog een
+beheerdersstuk op het lesdetailblad, en plan 07 loopt de RLS-kant met de hand na. Pas als de
+héle module de grens draagt en die controle gedaan is, is de requirement waar.
 
 **Coverage:**
 - v1 requirements: 38 total
