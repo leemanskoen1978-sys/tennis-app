@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md (ziekmelding als pure regel)
-last_updated: "2026-09-06T00:00:00.000Z"
+stopped_at: Completed 03-03-PLAN.md (sick_leaves-tabel in het schema)
+last_updated: "2026-09-05T23:53:28.089Z"
 last_activity: 2026-09-05
 progress:
   total_phases: 6
-  completed_phases: 1
-  total_plans: 34
-  completed_plans: 16
-  percent: 47
+  completed_phases: 2
+  total_plans: 36
+  completed_plans: 19
+  percent: 33
 ---
 
 # Project State
@@ -27,15 +27,15 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 ## Current Position
 
 Phase: 3 of 6 (Ziekmelding en vervangerswerklijst)
-Plan: 2 of 8 af (03-02-PLAN.md — SickLeave, zoektVervanger en lessenVoorZiekmelding, met de zomertijd-fixture)
-Status: Executing
-Last activity: 2026-09-06
+Plan: 3 of 8 af (03-02-PLAN.md — SickLeave, zoektVervanger en lessenVoorZiekmelding, met de zomertijd-fixture)
+Status: Ready to execute
+Last activity: 2026-09-05
 
 Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draaiende app.
 Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
 de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
 
-Progress: [█████░░░░░] 47%
+Progress: [█████░░░░░] 53%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [█████░░░░░] 47%
 | Phase 04 P04 | ~25min | 2 tasks | 2 files |
 | Phase 04 P05 | ~20min | 2 tasks | 4 files |
 | Phase 03-ziekmelding P02 | ~40min | 3 tasks | 4 files |
+| Phase 03 P03 | 15min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,8 @@ confirmed as phases ship).
 - [Phase 04-excel-export]: de Nederlandse weekdagnamen komen uit een vaste tabel in lib/export-trainingen.ts en niet uit toLocaleDateString, zodat hetzelfde seizoen op twee toestellen twee gelijke bestanden oplevert
 - [Phase 04-excel-export]: Blad Uren per trainer rekent geen bedrag zelf uit: trainer, lessen en loon komen regel voor regel uit payoutsByCoach
 - [Phase 04-excel-export]: Blad Groepen draagt het Groep-ID, zodat een herimport de bestaande groep herkent in plaats van een tweede aan te maken
+- [Phase 03]: sick_leaves.coach_id gebruikt on delete cascade (niet set null zoals lesson_groups): een ziekmelding heeft geen betekenis meer zonder zijn trainer
+- [Phase 03]: sick_leaves-policies kopiëren rates_write exact: is_admin() op using en with check, geen created_by, tegen de upsert-val
 
 ### Pending Todos
 
@@ -175,6 +178,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T00:00:00.000Z
-Stopped at: Completed 03-02-PLAN.md (ziekmelding als pure regel)
+Last session: 2026-09-05T23:53:28.084Z
+Stopped at: Completed 03-03-PLAN.md (sick_leaves-tabel in het schema)
 Resume file: None
