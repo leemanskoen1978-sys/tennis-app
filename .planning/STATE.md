@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-excel-export-01-PLAN.md
-last_updated: "2026-09-06T12:00:00.000Z"
+stopped_at: Completed 04-01-PLAN.md (het gereedschap voor de export)
+last_updated: "2026-09-05T23:13:17.301Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 6
-  completed_phases: 0
-  total_plans: 23
+  completed_phases: 1
+  total_plans: 30
   completed_plans: 13
-  percent: 57
+  percent: 17
 ---
 
 # Project State
@@ -22,18 +22,18 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core value:** Als een trainer ziek is, ziet de beheerder binnen een minuut welke lessen dat
 raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf agenda's te zoeken.
-**Current focus:** Phase 4 — Excel-export (plan 01 af: het gereedschap staat klaar)
+**Current focus:** Phase 4 — Excel-export (plan 02 af: blad "Lessen" staat in het kolomformaat van de import)
 
 ## Current Position
 
 Phase: 4 of 6 (Excel-export)
-Plan: 1 of 5 af (04-01-PLAN.md — buildWorkbook en het ISO-weeknummer); volgende: 04-02-PLAN.md
-Status: Executing
+Plan: 2 of 5 af (04-02-PLAN.md — blad "Lessen"); volgende: 04-03-PLAN.md
+Status: Ready to execute
 Last activity: 2026-09-06
 
 Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draaiende app.
 
-Progress: [██████░░░░] 57%
+Progress: [████░░░░░░] 43%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [██████░░░░] 57%
 | Phase 02.1-groep-verzetten P01 | 30min | 2 tasks | 4 files |
 | Phase 02.1-groep-verzetten P02 | 25min | 2 tasks | 3 files |
 | Phase 04-excel-export P01 | ~20min | 2 tasks | 4 files |
+| Phase 04 P02 | ~25min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,8 @@ confirmed as phases ship).
 - [Phase 04-excel-export]: bij één blad levert buildWorkbook byte-voor-byte hetzelfde bestand als buildXlsx; die gelijkheid ligt als test vast en bewijst dat er in de lussen niets is weggevallen
 - [Phase 04-excel-export]: de tabnamen worden binnen de werkmap uniek gemaakt door een niet-geëxporteerde helper; bladnaam() blijft één naam schoonmaken zonder van zijn buren te weten
 - [Phase 04-excel-export]: het ISO-weeknummer staat in lib/datetime.ts met de jaarwissel als eigen test — 1 januari 2027 is week 53 van 2026 en 31 december 2025 is week 1 van 2026 (D-11)
+- [Phase 04-excel-export]: de koprij en de tabnaam van blad "Lessen" zijn vaste Nederlandse literals en gaan niet door t() — de import van fase 5 leest die koprij, dus een Engelse kop maakt een export onleesbaar voor de app die hem schreef
+- [Phase 04-excel-export]: de Nederlandse weekdagnamen komen uit een vaste tabel in lib/export-trainingen.ts en niet uit toLocaleDateString, zodat hetzelfde seizoen op twee toestellen twee gelijke bestanden oplevert
 
 ### Pending Todos
 
@@ -153,6 +156,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T12:00:00.000Z
+Last session: 2026-09-05T23:13:11.934Z
 Stopped at: Completed 04-01-PLAN.md (het gereedschap voor de export)
-Resume file: .planning/phases/04-excel-export/04-02-PLAN.md
+Resume file: None
