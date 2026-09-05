@@ -1215,7 +1215,12 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     beurtenkaarten: store?.beurtenkaarten ?? [],
     relaties: store?.relaties ?? [],
     lesGroepen: store?.lesGroepen ?? [],
-    settings: store?.settings ?? { booking_end_time: '21:00', theme: 'light', language: 'nl' },
+    // Zolang de opslag nog niet geladen is: dezelfde waarden als een club die het veld nog
+    // niet kent. Ook `lesson_duration_minutes`, want een scherm dat er `undefined` uit haalt
+    // rekent met niets in plaats van met een lesuur van 60 minuten.
+    settings: store?.settings ?? {
+      booking_end_time: '21:00', theme: 'light', language: 'nl', lesson_duration_minutes: 60,
+    },
     currentUser,
     loading,
     error,
