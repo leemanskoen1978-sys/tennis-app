@@ -23,6 +23,7 @@ import { useActieveSpeler } from '../providers/kindkeuze';
 import { cardsFor, remaining, GROEPSLES_ALLEEN_FACTUUR } from '../lib/beurtenkaart';
 import { formatDayTimeRange } from '../lib/datetime';
 import { isGroupLesson, lessonPlayerIds, participantIdsOf } from '../lib/groups';
+import { actieveGroepen } from '../lib/lesgroepen';
 import {
   aanwezigheidRegel, aanwezigheidVan, magAanwezigheidZetten,
 } from '../lib/aanwezigheid';
@@ -40,7 +41,7 @@ import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, minTapTarget, webCursor } from '../constants/theme';
 import { playersOf } from '../lib/hub';
 import { kinderenVan } from '../lib/ouderkind';
-import { magLesVerwijderen } from '../lib/rechten';
+import { isAdmin, magLesVerwijderen } from '../lib/rechten';
 
 /** De kleur bij een status; dezelfde die het maandoverzicht ooit op de kaart zette. */
 const STATUS_COLORS: Record<BookingStatus, string> = {
@@ -107,7 +108,7 @@ export function BookingDetailSheet({
   const router = useRouter();
   const speler = useActieveSpeler();
   const {
-    currentUser, bookings, users, courts, beurtenkaarten, relaties,
+    currentUser, bookings, users, courts, beurtenkaarten, relaties, lesGroepen,
     updateBooking, deleteBooking, cancelSeriesFrom, deleteSeriesFrom,
     approveBooking, rejectBooking,
     setPaymentMethod, setParticipants, setPaymentSplit, setAanwezigheid, error, clearError,
@@ -126,6 +127,10 @@ export function BookingDetailSheet({
   // Welke vraag er in het blad zelf openstaat: annuleren, verwijderen, of geen. Bewust geen
   // `Alert`, want die blokkeert op web — dit volgt het bevestigingsvak van de beurtenkaarten.
   const [confirming, setConfirming] = useState<'cancel' | 'delete' | null>(null);
+  // De lijst met lesgroepen klapt open achter een knop, net als `editingPlayers`: het blad is
+  // in de eerste plaats om een les te lezen, en een lijst van elke groep van de club erin
+  // laten staan duwt de aanwezigheid van het scherm af.
+  const [kiezenGroep, setKiezenGroep] = useState(false);
 
   // De aanroeper geeft de les mee die hij had toen de kaart werd aangetikt. Lees hem terug
   // uit de opslag, anders blijven status en betaalwijze hier op de oude waarde staan zodra
@@ -156,6 +161,17 @@ export function BookingDetailSheet({
   const magWeg = magLesVerwijderen(currentUser, speler, booking, new Date());
   // Alleen bij een lopende les: op een geannuleerde les valt niets meer te betalen.
   const canPay = (canManage || betaler) && !isCancelled;
+  // De tennisschool-module is van de beheerder en niet van elke trainer (D-09), dus dit is
+  // een eigen vraag naast `canManage`: die zegt "mag deze kijker deze les beheren", en daar
+  // valt de trainer van de les ook onder. Aan een lesgroep hangen is iets anders — dat gaat
+  // over de indeling van de club.
+  const magGroepen = isAdmin(currentUser);
+  const groepVanLes = booking.group_id
+    ? (lesGroepen.find((g) => g.id === booking.group_id) ?? null)
+    : null;
+  // Alleen de groepen die de club dit seizoen nog inplant. Een gearchiveerde groep hoort niet
+  // in de keuzelijst: een les eraan hangen zou een groep vullen die de club heeft weggezet.
+  const teKiezenGroepen = actieveGroepen(lesGroepen);
   const isGroup = isGroupLesson(booking);
   // Voor wie spreek je: jezelf, plus je goedgekeurde kinderen. Eén lijst, want de vraag "mag
   // ik dit zetten" is voor elke naam in de les dezelfde.
@@ -208,6 +224,7 @@ export function BookingDetailSheet({
   const close = (): void => {
     setNotice(null);
     setEditingPlayers(false);
+    setKiezenGroep(false);
     setConfirming(null);
     onClose();
   };
@@ -392,6 +409,101 @@ export function BookingDetailSheet({
               />
             </View>
           )
+        ) : null}
+
+        {/* Aan welke lesgroep deze les hangt, en dat veranderen.
+
+            Koppelen verandert alleen de verwijzing. Wie er bij déze les stond blijft staan
+            zoals het staat: het rooster van de groep wordt hier niet overgenomen en
+            `participant_ids` wordt nergens aangeraakt. Een les weet zelf wie erbij was, en
+            dat blijft zo — anders zou de afvinklijst van vorige maand meeverschuiven met een
+            groep die vandaag iemand erbij kreeg (D-07/D-08).
+
+            Er wordt géén `series_id` gezet. Een reeks is een aanmaakbatch — hij vertelt welke
+            lessen ooit in één keer gemaakt zijn — en een groep is een blijvende identiteit.
+            Ze bestaan naast elkaar en nooit in elkaar (D-12). Een les aan een groep hangen
+            maakt er dus ook geen reeks van: de knoppen hierboven blijven precies doen wat ze
+            deden.
+
+            Dit gaat bewust via het bestaande `updateBooking` en niet via een nieuwe
+            provideractie. Elke extra weg die zelf een `Partial<Booking>` samenstelt is een
+            weg langs `planMethodChange` heen, en dat is precies het gat waardoor een speler
+            ooit twee keer betaalde — zie OPENSTAAND.md, "Eén bewaakte weg". `group_id` valt
+            binnen wat het patchtype van `updateBooking` toelaat, dus er is hier niets nieuws
+            voor nodig. */}
+        {magGroepen ? (
+          <>
+            <Text style={styles.label}>{t('Lesgroep')}</Text>
+            {booking.group_id ? (
+              <>
+                <Text style={styles.hint}>
+                  {groepVanLes
+                    ? `${groepVanLes.name} · ${groepVanLes.level}`
+                    : t('Deze les verwijst naar een lesgroep die hier niet (meer) te vinden is.')}
+                </Text>
+                <View style={styles.actions}>
+                  <Button
+                    label={t('Losmaken van de lesgroep')}
+                    variant="secondary"
+                    fullWidth={false}
+                    onPress={() => {
+                      clearError();
+                      void updateBooking(booking.id, { group_id: undefined });
+                    }}
+                  />
+                </View>
+              </>
+            ) : kiezenGroep ? (
+              <>
+                {teKiezenGroepen.length === 0 ? (
+                  <Text style={styles.hint}>
+                    {t('Er is nog geen lesgroep om aan te hangen. Je maakt er een aan bij '
+                      + 'Beheer, onder Lesgroepen.')}
+                  </Text>
+                ) : (
+                  <View style={styles.chipRow}>
+                    {teKiezenGroepen.map((groep) => (
+                      <Chip
+                        key={groep.id}
+                        label={`${groep.name} · ${groep.level}`}
+                        onPress={() => {
+                          clearError();
+                          setKiezenGroep(false);
+                          void updateBooking(booking.id, { group_id: groep.id });
+                        }}
+                      />
+                    ))}
+                  </View>
+                )}
+                <View style={styles.actions}>
+                  <Button
+                    label={t('Klaar')}
+                    variant="secondary"
+                    fullWidth={false}
+                    onPress={() => setKiezenGroep(false)}
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.hint}>
+                  {t('Deze les hoort bij geen enkele lesgroep. Eraan hangen verandert niets '
+                    + 'aan de les zelf: wie erbij stond, het uur en de betaling blijven.')}
+                </Text>
+                <View style={styles.actions}>
+                  <Button
+                    label={t('Aan een lesgroep hangen')}
+                    variant="secondary"
+                    fullWidth={false}
+                    onPress={() => {
+                      clearError();
+                      setKiezenGroep(true);
+                    }}
+                  />
+                </View>
+              </>
+            )}
+          </>
         ) : null}
 
         {/* Wie er stond. De trainer van de les vinkt af — hij was erbij — en dat mag ook
