@@ -119,16 +119,50 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 
 ## Traceability
 
-Wordt ingevuld bij het maken van het stappenplan.
+Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (nog niet toegewezen) | — | Pending |
+| GROEP-01 | Phase 1 | Pending |
+| GROEP-02 | Phase 1 | Pending |
+| GROEP-03 | Phase 1 | Pending |
+| GROEP-04 | Phase 1 | Pending |
+| GROEP-05 | Phase 1 | Pending |
+| GROEP-06 | Phase 1 | Pending |
+| GROEP-07 | Phase 1 | Pending |
+| VERV-01 | Phase 2 | Pending |
+| VERV-02 | Phase 2 | Pending |
+| VERV-03 | Phase 2 | Pending |
+| VERV-04 | Phase 3 | Pending |
+| VERV-05 | Phase 3 | Pending |
+| VERV-06 | Phase 3 | Pending |
+| VERV-07 | Phase 3 | Pending |
+| VERV-08 | Phase 3 | Pending |
+| VERV-09 | Phase 3 | Pending |
+| VERV-10 | Phase 3 | Pending |
+| EXP-01 | Phase 4 | Pending |
+| EXP-02 | Phase 4 | Pending |
+| EXP-03 | Phase 4 | Pending |
+| EXP-04 | Phase 4 | Pending |
+| EXP-05 | Phase 4 | Pending |
+| EXP-06 | Phase 4 | Pending |
+| IMP-01 | Phase 5 | Pending |
+| IMP-02 | Phase 5 | Pending |
+| IMP-03 | Phase 5 | Pending |
+| IMP-04 | Phase 5 | Pending |
+| IMP-05 | Phase 5 | Pending |
+| IMP-06 | Phase 5 | Pending |
+| IMP-07 | Phase 5 | Pending |
+| IMP-08 | Phase 5 | Pending |
+| IMP-09 | Phase 5 | Pending |
+| TOEG-01 | Phase 1 | Pending |
+| TOEG-02 | Phase 1 | Pending |
+| TOEG-03 | Phase 1 | Pending |
 
 **Coverage:**
 - v1 requirements: 35 total
-- Mapped to phases: 0
-- Unmapped: 35 ⚠️
+- Mapped to phases: 35
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-05*
