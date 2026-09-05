@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { Platform, Alert, View, Text, StyleSheet } from 'react-native';
-import { Trash2, Clock, Globe, Moon } from 'lucide-react-native';
+import { Trash2, Clock, Globe, Moon, Timer } from 'lucide-react-native';
 
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
@@ -31,6 +31,16 @@ function confirmDanger(t: Translate, message: string, onYes: () => void): void {
 }
 
 const BOOKING_END_TIMES: readonly string[] = ['18:00', '19:00', '20:00', '21:00', '22:00'];
+
+// De lesduur is een clubinstelling en geen getal in de code, en ook geen veld per groep: de
+// club traint in uren van dezelfde lengte (D-05). Ontbreekt de instelling, dan is het 60 —
+// precies zoals de app zich gedroeg voordat dit bestond.
+//
+// Wat een wijziging hier NIET doet: hij raakt geen enkele les die al ingepland staat. Die
+// houdt haar eigen begin- en eindtijd, want anders zou één tik hier de afspraken verzetten
+// die spelers allang gekregen hebben. De nieuwe duur telt vanaf de volgende les die
+// ingepland wordt.
+const LESSON_DURATIONS: readonly number[] = [45, 60, 75, 90];
 
 // Functies en geen constanten: een lijst die bovenaan het bestand gemaakt wordt, houdt de
 // taal vast van het moment waarop de app startte.
@@ -75,6 +85,24 @@ export default function SettingsScreen(): React.JSX.Element {
               label={value}
               selected={settings.booking_end_time === value}
               onPress={() => update({ booking_end_time: value })}
+            />
+          ))}
+        </View>
+      </Card>
+
+      <Card>
+        <SectionHeader icon={<Timer size={18} color={tennisColors.primary} />} title={t('Lesduur')} />
+        <Text style={styles.helpText}>
+          {t('Hoe lang een les duurt. Dit geldt voor lessen die je hierna inplant; '
+            + 'lessen die al in de agenda staan houden hun eigen uur.')}
+        </Text>
+        <View style={styles.chipRow}>
+          {LESSON_DURATIONS.map((minuten) => (
+            <Chip
+              key={minuten}
+              label={t('{n} min', { n: minuten })}
+              selected={(settings.lesson_duration_minutes ?? 60) === minuten}
+              onPress={() => update({ lesson_duration_minutes: minuten })}
             />
           ))}
         </View>

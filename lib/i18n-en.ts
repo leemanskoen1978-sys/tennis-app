@@ -1148,4 +1148,21 @@ export const EN: Record<string, string> = {
   'Kies een beginminuut tussen 0 en 59.': 'Pick a start minute between 0 and 59.',
   'Kies een trainer voor de lesgroep.': 'Pick a coach for the lesson group.',
   'Het seizoen eindigt voor het begint.': 'The season ends before it starts.',
+  // Het groepsblok op het lesdetailblad (components/BookingDetailSheet), alleen voor de beheerder.
+  'Deze les verwijst naar een lesgroep die hier niet (meer) te vinden is.':
+    'This lesson points to a lesson group that cannot (no longer) be found here.',
+  'Losmaken van de lesgroep': 'Detach from the lesson group',
+  'Er is nog geen lesgroep om aan te hangen. Je maakt er een aan bij Beheer, onder Lesgroepen.':
+    'There is no lesson group to attach to yet. You create one under Admin, in Lesson groups.',
+  'Deze les hoort bij geen enkele lesgroep. Eraan hangen verandert niets aan de les zelf: wie erbij stond, het uur en de betaling blijven.':
+    'This lesson does not belong to any lesson group. Attaching it changes nothing about the '
+    + 'lesson itself: who was there, the hour and the payment all stay.',
+  'Aan een lesgroep hangen': 'Attach to a lesson group',
+
+  // --- Beheer → Instellingen: de lesduur als clubinstelling (app/admin/settings) ---
+  'Lesduur': 'Lesson length',
+  'Hoe lang een les duurt. Dit geldt voor lessen die je hierna inplant; lessen die al in de agenda staan houden hun eigen uur.':
+    'How long a lesson lasts. This applies to lessons you schedule from now on; lessons that '
+    + 'are already in the schedule keep their own hour.',
+  '{n} min': '{n} min',
 };
