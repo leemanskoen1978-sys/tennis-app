@@ -809,7 +809,7 @@ and `participant_ids` continue exactly as before.
 | A3 | Cancelled-but-future bookings should (or shouldn't) be included in `groupBookingsFrom`'s propagation set | Research Question 4 | Medium — affects whether a roster change silently "revives" a cancelled lesson's participant list; must be an explicit decision in the plan, not left to whatever the code happens to do |
 | A4 | Recommendation to defer lesson generation entirely to Phase 5, including for a single manually-created group | Research Question 10 | Low-Medium — if the user actually wants to book a group's first lesson through a dedicated "generate lessons" flow in Phase 1 rather than the existing single-booking screen, this changes scope meaningfully; CONTEXT.md flags this exact question as open discretion |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does a booking created "from a group" also get a `series_id`, or only `group_id`, in this
    phase's manual-linking flow?**
