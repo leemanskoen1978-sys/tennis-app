@@ -17,8 +17,14 @@
 // vorm. Zie `SickLeave` in lib/types.
 
 import { t } from './i18n';
-import { parseDag } from './vakanties';
-import type { SickLeave } from './types';
+import { dagSleutel, parseDag } from './vakanties';
+import type { Booking, SickLeave } from './types';
+
+/** De velden die deze vragen nodig hebben; meer weet dit bestand niet van een ziekmelding. */
+export type OpenZiekmelding = Pick<SickLeave, 'coach_id' | 'van' | 'tot' | 'retracted_at'>;
+
+/** Idem voor een les: vijf velden, en de rest van de boeking gaat dit bestand niets aan. */
+export type ZiekmeldingBoeking = Pick<Booking, 'id' | 'coach_id' | 'taught_by_id' | 'start_time' | 'status'>;
 
 /**
  * Waarom deze ziekmelding niet klopt, of `null` als hij deugt. Wordt gelezen terwijl iemand
@@ -49,4 +55,41 @@ export function ziekmeldingFout(coachId: string, van: string, tot: string): stri
  */
 export function openZiekmeldingen(alle: SickLeave[]): SickLeave[] {
   return alle.filter((z) => !z.retracted_at);
+}
+
+/**
+ * Valt deze dag in de ziekteperiode? Beide grenzen tellen mee: ziek van 1 tot en met 5 maart
+ * betekent ook op 1 en op 5 geen les. Een omgekeerd ingevulde periode wordt gelezen als de
+ * dagen ertussen, dezelfde afspraak als `vakantieOpDag` in lib/vakanties — een ziekmelding
+ * die niets tegenhoudt omdat iemand twee velden omdraaide zou pas echt verwarrend zijn.
+ */
+function dektDag(periode: Pick<SickLeave, 'van' | 'tot'>, dag: string): boolean {
+  const [van, tot] = periode.van <= periode.tot
+    ? [periode.van, periode.tot]
+    : [periode.tot, periode.van];
+  return dag >= van && dag <= tot;
+}
+
+/**
+ * Zoekt deze les nog een vervanger? Er is een openstaande ziekmelding die hem dekt, er staat
+ * nog geen lesgever, en de les is niet afgezegd.
+ *
+ * Geen kolom en geen status op de boeking: dit is een afgeleid feit. Een nieuwe waarde op
+ * `bookings.status` zou elke `switch` op status raken, en een opgeslagen vlaggetje kan
+ * blijven hangen omdat iemand het vergat uit te zetten. Dit is de ENIGE plek die deze vraag
+ * beantwoordt, net als `lesgeverId` in lib/lesgever — en precies daarom hoeft het intrekken
+ * van een ziekmelding geen enkele boeking aan te raken: zodra de melding niet meer open
+ * staat, is het antwoord hier vanzelf nee, overal waar iemand het opnieuw vraagt. Wie er een
+ * tweede antwoord naast zet, laat een les stil uit de werklijst verdwijnen.
+ *
+ * Leest alleen. Er wordt hier nooit iets aan een boeking geschreven.
+ */
+export function zoektVervanger(booking: ZiekmeldingBoeking, open: OpenZiekmelding[]): boolean {
+  if (booking.status === 'cancelled') return false;
+  if (booking.taught_by_id) return false;
+  // De lokale dag via `dagSleutel`, en nooit door de ISO-tekst af te knippen: die is in UTC
+  // gerenderd, dus een les van 23:00 op de laatste ziektedag zou naar de volgende UTC-dag
+  // schuiven en stil buiten de werklijst vallen.
+  const dag = dagSleutel(new Date(booking.start_time));
+  return open.some((z) => !z.retracted_at && z.coach_id === booking.coach_id && dektDag(z, dag));
 }
