@@ -952,3 +952,59 @@ create policy lesson_groups_write on lesson_groups for all
 -- precies zoals een lege waarde altijd al betekende.
 alter table bookings add column if not exists taught_by_id text references users(id) on delete set null;
 create index if not exists bookings_taught_by_idx on bookings (taught_by_id);
+
+-- Loongevoelig: alleen de beheerder mag invullen wie een les werkelijk gaf. Dit hoort bij
+-- bewaak_betaalvelden (dezelfde bewaking als payment_method), niet bij een nieuwe trigger
+-- ernaast (D-09). Belangrijk: dit MOET vóór de bestaande regel "de trainer van deze les mag
+-- alles" komen — die regel is precies waarom group_id destijds GEEN aanpassing nodig had
+-- (zie het commentaar boven `lesson_groups` hierboven) en waarom taught_by_id die WEL nodig
+-- heeft: de trainer van de les mag hier expliciet niet alles.
+create or replace function bewaak_betaalvelden()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  mijn text[];
+  vandaag timestamptz;
+begin
+  if auth.uid() is null then return new; end if;
+
+  if new.taught_by_id is distinct from old.taught_by_id and not is_admin() then
+    raise exception 'Alleen een beheerder kan invullen wie de les werkelijk gaf.';
+  end if;
+
+  if is_admin() or old.coach_id = app_user_id() then return new; end if;
+
+  if (to_jsonb(new) - 'payment_method' - 'beurtenkaart_id' - 'attendance')
+     is distinct from (to_jsonb(old) - 'payment_method' - 'beurtenkaart_id' - 'attendance') then
+    raise exception 'Alleen de betaalwijze en je eigen aanwezigheid mag je zelf wijzigen.';
+  end if;
+
+  if (new.payment_method is distinct from old.payment_method
+      or new.beurtenkaart_id is distinct from old.beurtenkaart_id)
+     and not (old.player_id = app_user_id() or is_mijn_kind(old.player_id)) then
+    raise exception 'De betaalwijze zet de speler die de rekening krijgt.';
+  end if;
+
+  if new.attendance is distinct from old.attendance then
+    vandaag := date_trunc('day', now() at time zone 'Europe/Brussels') at time zone 'Europe/Brussels';
+    if old.start_time < vandaag then
+      raise exception 'Wie er bij een les uit het verleden stond, noteert de trainer.';
+    end if;
+    mijn := array(
+      select coalesce(app_user_id(), '')
+      union
+      select child_id from ouder_kind
+        where parent_id = app_user_id() and status = 'approved'
+    );
+    if (coalesce(new.attendance, '{}'::jsonb) - mijn)
+       is distinct from (coalesce(old.attendance, '{}'::jsonb) - mijn) then
+      raise exception 'Je past alleen je eigen aanwezigheid aan.';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
