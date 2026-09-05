@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-lesgroepen-05-PLAN.md
-last_updated: "2026-09-06T00:10:00.000Z"
-last_activity: 2026-09-06 — Plan 01-05 uitgevoerd (groepsdetail: rooster, lessen, archiveren)
+stopped_at: Completed 01-lesgroepen-06-PLAN.md
+last_updated: "2026-09-06T01:20:00.000Z"
+last_activity: 2026-09-06 — Plan 01-06 uitgevoerd (een les aan een groep hangen, lesduur als clubinstelling)
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 11
-  completed_plans: 5
-  percent: 45
+  completed_plans: 6
+  percent: 55
 ---
 
 # Project State
@@ -27,19 +27,19 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 ## Current Position
 
 Phase: 1 of 5 (Lesgroepen)
-Plan: 6 of 7 (01-06-PLAN.md — een losse les aan een groep hangen)
-Status: In progress — golf 4 klaar: het groepsdetail staat, met rooster, lessen en archief
+Plan: 7 of 7 (01-07-PLAN.md — de migratie draaien en de upsert-val nalopen)
+Status: In progress — golf 5 klaar: een les hangt aan een groep, de lesduur staat in Beheer
 Last activity: 2026-09-06 — Plan 01-05 uitgevoerd (groepsdetail: rooster, lessen, archiveren)
 
-Progress: [█████░░░░░] 45%
+Progress: [██████░░░░] 55%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 5
-- Average duration: ~15 min
-- Total execution time: ~1,3 uur
+- Total plans completed: 6
+- Average duration: ~16 min
+- Total execution time: ~1,6 uur
 
 **By Phase:**
 
@@ -56,6 +56,7 @@ Progress: [█████░░░░░] 45%
 | Phase 01-lesgroepen P02 | 8min | 1 tasks | 1 files |
 | Phase 01-lesgroepen P04 | 16min | 2 tasks | 4 files |
 | Phase 01-lesgroepen P05 | 22min | 2 tasks | 2 files |
+| Phase 01-lesgroepen P06 | 18min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,10 @@ confirmed as phases ship).
 - [Phase 01-lesgroepen]: de beheerdersgrens ligt op het lesgroepenscherm zelf, vóór elke andere return — de tegel in Beheer verbergen is wellevendheid, geen toegangscontrole (TOEG-01)
 - [Phase 01-lesgroepen]: het groepsdetail bewerkt de gegevens met één formulier en één Bewaren-knop, terwijl het rooster meteen wegschrijft — de groepsrij patchen en deelnemers over de komende lessen verplaatsen zijn twee verschillende gevolgen en horen niet achter dezelfde knop
 - [Phase 01-lesgroepen]: de lessen van een groep worden getoond met de bestaande LessonCards en zijn detailblad; geen eigen lesregel, zodat dezelfde les er niet per scherm anders uitziet
+- [Phase 01-lesgroepen]: een les aan een groep hangen gaat via het bestaande updateBooking en niet via een nieuwe provideractie — group_id valt binnen het patchtype, en elke extra weg die zelf een Partial<Booking> samenstelt is een weg langs planMethodChange heen
+- [Phase 01-lesgroepen]: het groepsblok op het lesdetailblad staat achter isAdmin(currentUser) en niet achter canManage — canManage laat ook de trainer van de les toe, en die beheert zijn eigen lessen maar niet de indeling van de club (D-09)
+- [Phase 01-lesgroepen]: koppelen zet uitsluitend group_id en nooit series_id — een reeks is een aanmaakbatch, een groep een blijvende identiteit; ze staan naast elkaar (D-12)
+- [Phase 01-lesgroepen]: de lesduur is een clubinstelling met 45/60/75/90 als keuze en 60 als terugval; een wijziging telt vanaf de volgende ingeplande les en nooit met terugwerkende kracht (D-05)
 
 ### Pending Todos
 
@@ -123,6 +128,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T22:07:22.633Z
-Stopped at: Completed 01-lesgroepen-05-PLAN.md
-Resume file: .planning/phases/01-lesgroepen/01-06-PLAN.md
+Last session: 2026-09-06T01:20:00.000Z
+Stopped at: Completed 01-lesgroepen-06-PLAN.md
+Resume file: .planning/phases/01-lesgroepen/01-07-PLAN.md

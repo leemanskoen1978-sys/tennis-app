@@ -11,9 +11,9 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 - [x] **GROEP-01**: De beheerder kan een lesgroep aanmaken met naam, niveau, vaste dag en uur,
       vaste trainer, baan en seizoensperiode (van–tot).
 - [x] **GROEP-02**: De beheerder kan spelers aan een lesgroep toevoegen en eruit halen.
-- [ ] **GROEP-03**: De beheerder ziet per lesgroep welke lessen ervan ingepland staan en
+- [x] **GROEP-03**: De beheerder ziet per lesgroep welke lessen ervan ingepland staan en
       hoeveel er nog komen.
-- [ ] **GROEP-04**: Een les die uit een lesgroep is ontstaan, verwijst naar die groep en blijft
+- [x] **GROEP-04**: Een les die uit een lesgroep is ontstaan, verwijst naar die groep en blijft
       een gewone boeking — hij is te verzetten, af te zeggen en af te vinken als elke andere les.
 - [ ] **GROEP-05**: Een wijziging aan een lesgroep (speler erbij of eraf, ander uur, andere
       trainer) werkt door in alle lessen van vandaag en later; lessen die al geweest zijn
@@ -135,9 +135,9 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 |-------------|-------|--------|
 | GROEP-01 | Phase 1 | Complete |
 | GROEP-02 | Phase 1 | Complete |
-| GROEP-03 | Phase 1 | In Progress |
-| GROEP-04 | Phase 1 | In Progress |
-| GROEP-05 | Phase 1 | In Progress |
+| GROEP-03 | Phase 1 | Complete |
+| GROEP-04 | Phase 1 | Complete |
+| GROEP-05 | Phase 1 + 2.1 | In Progress |
 | GROEP-06 | Phase 1 | Complete |
 | GROEP-07 | Phase 1 | Complete |
 | VERV-01 | Phase 2 | Pending |
@@ -179,10 +179,14 @@ aanmaakformulier neer (GROEP-01). Plan 05 zette het groepsdetail neer en maakte 
 `ParticipantPicker` in en uit, een oude les houdt zijn eigen deelnemerslijst, en archiveren en
 terugzetten raakt geen enkele boeking.
 
-**GROEP-03** blijft In Progress tot plan 06. Het scherm telt en toont de lessen van een groep
-al — het lege geval staat er in gewone woorden bij — maar er is nog geen enkele manier om een
-les aan een groep te hángen; dat komt met het koppelblok op het lesdetailblad (plan 06). De
-requirement op Complete zetten zou een scherm claimen dat vandaag alleen nul kan tonen.
+**GROEP-03 en GROEP-04 gaan met plan 06 op Complete.** Het lesdetailblad heeft een blok
+"Lesgroep" gekregen waarmee de beheerder een bestaande les aan een actieve groep hangt en er
+weer af haalt. Daarmee kan het lessenblok van het groepsdetail eindelijk iets anders dan nul
+tonen (GROEP-03), en verwijst een les naar zijn groep zonder ook maar iets anders te worden:
+het koppelen zet uitsluitend `group_id`, en verzetten, afzeggen en afvinken werken erna
+precies zoals daarvoor (GROEP-04). Het in bulk inplannen van een heel seizoen hoort bij de
+import van fase 5 (D-14); "uit een lesgroep ontstaan" betekent in v1 dus "met de hand aan een
+lesgroep gehangen".
 
 **GROEP-05** blijft In Progress, en niet alleen door de golfindeling. De helft die over spelers
 gaat ("speler erbij of eraf") is waar: die loopt via `planRosterChange`, vanaf vandaag vooruit,
@@ -190,14 +194,16 @@ met de lessen die geweest zijn onaangeroerd. De andere helft — "ander uur, and
 werkt niet door: `updateLesGroep` patcht uitsluitend de groepsrij en verzet geen enkele al
 ingeplande les. Daar bestaat geen `planGroepWijziging` voor, en zo'n functie raakt meteen de
 botsingscontrole (een verzette les kan dubbel boeken) en de betekenis van `coach_id` die fase 2
-onder handen neemt. Geen enkel plan van fase 1 dekt dit; het hoort bij een eigen plan of bij de
-bulkplanning van fase 5.
+onder handen neemt. Geen enkel plan van fase 1 dekt dit: die helft is als **fase 2.1** in
+ROADMAP.md gezet, na fase 2, omdat ze de betekenis van `coach_id` nodig heeft die daar
+uiteengehaald wordt. Vandaar "Phase 1 + 2.1" in de tabel hierboven.
 
 **TOEG-01** blijft In Progress tot plan 07. De grens staat nu op de tegel, bovenaan
-`app/admin/lesgroepen/index.tsx` én bovenaan `app/admin/lesgroepen/[id].tsx` — een trainer die
-de link naar een groep intikt, komt er niet op. Maar de module krijgt in plan 06 nog een
-beheerdersstuk op het lesdetailblad, en plan 07 loopt de RLS-kant met de hand na. Pas als de
-héle module de grens draagt en die controle gedaan is, is de requirement waar.
+`app/admin/lesgroepen/index.tsx`, bovenaan `app/admin/lesgroepen/[id].tsx` én — sinds plan 06 —
+om het groepsblok van het lesdetailblad heen, dat achter `isAdmin(currentUser)` staat en niet
+achter `canManage`: een trainer beheert zijn eigen lessen, maar niet de indeling van de club.
+Het hele scherm van de app draagt de grens dus. Wat rest is plan 07: de RLS-kant met de hand
+nalopen. Pas als die controle gedaan is, is de requirement waar — de app is niet de bewaker.
 
 **Coverage:**
 - v1 requirements: 38 total
