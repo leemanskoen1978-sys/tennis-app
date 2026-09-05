@@ -777,9 +777,11 @@ describe('bladAanwezigheid', () => {
     });
     const blad = bladAanwezigheid([groepNu, g3], [...aanwezigheidslessen, beginnersles], groepstabellen);
     expect(blad.koppen).toEqual(['Groep', 'Speler', 'Les 1', 'Les 2']);
-    // Op naam gesorteerd staat Beginners voorop, met maar één lesmoment.
+    // Op naam gesorteerd staat Beginners voorop, met maar één lesmoment: één datumrij, twee
+    // spelers en de lege rij ertussen — daarna pas het blok van Groep 8.
     expect(rijTekst(blad, 0)).toEqual(['Beginners', 'Datum', '23/08']);
-    expect(rijTekst(blad, 3)).toEqual(['Groep 8', 'Datum', '19/08', '26/08']);
+    expect(blad.rijen[3]).toEqual([]);
+    expect(rijTekst(blad, 4)).toEqual(['Groep 8', 'Datum', '19/08', '26/08']);
   });
 
   it('geeft een leeg blad terug als er geen lessen zijn', () => {

@@ -7,11 +7,12 @@
 // lopen vroeg of laat uit elkaar — en in een bestand dat de club doorstuurt merkt niemand
 // dat het antwoord van gisteren was.
 
+import { aanwezigheidVan, type Aanwezigheid } from './aanwezigheid';
 import { isoWeeknummer } from './datetime';
 import { groupSize, lessonPlayerIds } from './groups';
 import { t } from './i18n';
 import { lesgeverId } from './lesgever';
-import { actieveGroepen } from './lesgroepen';
+import { actieveGroepen, lessenVanGroep } from './lesgroepen';
 import { bookingMinutes } from './payments';
 import { countedBookings, payoutsByCoach } from './reports';
 import { bookingStatusLabel } from './status';
@@ -491,5 +492,165 @@ export function bladGroepen(
     koppen: koppenVan(GROEPEN_KOLOMMEN),
     breedtes: GROEPEN_KOLOMMEN.map((c) => c.breedte),
     rijen: naarRijen(GROEPEN_KOLOMMEN, groepRijen(groepen, bookings, tabellen)),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Blad "Aanwezigheid" — per groep de spelers in de rijen en de lesdata in de kolommen
+//
+// Dit blad heeft geen voorbeeld elders in de app: het is het enige dat een tabel kantelt.
+// Daarom staat het hier als een blokindeling en niet als een kolomtabel met `naarRijen`.
+// Elke groep heeft haar eigen aantal lesmomenten, dus het aantal gevulde kolommen wisselt
+// per blok, en een kolomtabel gaat er nu juist van uit dat elke rij dezelfde kolommen heeft.
+// De tabel daarvoor verbuigen zou haar voor de drie andere bladen minder duidelijk maken;
+// dit blad met de hand als cellen bouwen is het eerlijke antwoord.
+//
+// Eén codepad, en geen tweede blad of vlag die de cellen leeg forceert (D-12). Het blad
+// wordt altijd met de werkelijke aanwezigheid gevuld; een periode waarin nog niets is
+// afgevinkt levert vanzelf de lege, afdrukbare tabel op waar een vervanger om vraagt.
+// ---------------------------------------------------------------------------
+
+/** Aanwezig, en kort genoeg voor een smalle kolom op papier. */
+const AANWEZIG_TEKEN = 'X';
+/** Afwezig. Met opzet niet `-` of `O`: die zijn in een handgeschreven kolom niet te scheiden van `X`. */
+const AFWEZIG_TEKEN = 'afw';
+
+/** Eén groepsblok van het blad: de lesdata in de kolommen, de spelers in de rijen. */
+interface AanwezigheidBlok {
+  groep: string;
+  /** Per lesmoment de datum als `dd/mm`, chronologisch. */
+  data: string[];
+  spelers: Array<{ naam: string; standen: Array<Aanwezigheid | null> }>;
+}
+
+/**
+ * De blokken van het blad: per groep haar lessen in de periode en wie er die dagen bij stond.
+ *
+ * De boekingen worden in één gang op groep gebucket. `lessenVanGroep` sorteert daarna de
+ * emmer van díe groep op tijd — dezelfde functie die overal in de app "de lessen van deze
+ * groep, op tijd" beantwoordt — maar op die kleine emmer en niet op de hele lijst. Zou elke
+ * groep de volledige boekingenlijst opnieuw doorlopen, dan is dat bij tientallen groepen en
+ * een seizoen van duizenden lessen een herscan per groep.
+ *
+ * Een afgezegde les valt hier al weg: er is die dag niets gebeurd om af te vinken, en een
+ * lege kolom met een datum erboven laat een vervanger denken dat hij iets vergeten is.
+ */
+function aanwezigheidBlokken(
+  groepen: readonly LesGroep[],
+  bookings: readonly Booking[],
+  tabellen: Opzoektabellen,
+): AanwezigheidBlok[] {
+  const perGroep = new Map<string, Booking[]>();
+  for (const b of bookings) {
+    if (!b.group_id || b.status === 'cancelled') continue;
+    const emmer = perGroep.get(b.group_id);
+    if (emmer) emmer.push(b);
+    else perGroep.set(b.group_id, [b]);
+  }
+
+  const blokken: AanwezigheidBlok[] = [];
+  // Op naam, net als blad "Groepen": twee exports van hetzelfde seizoen horen naast elkaar
+  // te leggen zijn.
+  for (const groep of [...groepen].sort((a, b) => a.name.localeCompare(b.name, 'nl'))) {
+    const lessen = lessenVanGroep(perGroep.get(groep.id) ?? [], groep.id);
+    // Een groep zonder lessen in deze periode krijgt geen blok: een kop met een lege tabel
+    // eronder is op papier alleen maar verwarrend.
+    if (lessen.length === 0) continue;
+
+    // DE VAL VAN DIT BLAD. De spelersrijen komen uit de lessen zelf en nooit uit het
+    // roosterveld van de lesgroep. Dat veld is wie er NÚ in de groep zit; wie er in maart bij
+    // stond staat in de lessen van maart (zie het kopcommentaar van lib/lesgroepen). Zou dit
+    // blad het rooster lezen, dan zag een export van vorig seizoen de spelers van vandaag:
+    // een kind dat pas in mei bij kwam stond ineens op de lijst van oktober, en een kind dat
+    // in januari stopte was er nooit geweest. De club zou haar eigen geschiedenis zien
+    // opschuiven met elke roosterwijziging van vandaag — op een blad dat uitgeprint en
+    // ondertekend wordt.
+    const spelerIds: string[] = [];
+    const gezien = new Set<string>();
+    for (const les of lessen) {
+      for (const id of lessonPlayerIds(les)) {
+        if (gezien.has(id)) continue;
+        gezien.add(id);
+        spelerIds.push(id);
+      }
+    }
+
+    blokken.push({
+      groep: groep.name,
+      data: lessen.map((les) => {
+        const d = geldigeDatum(les.start_time);
+        return d ? `${twee(d.getDate())}/${twee(d.getMonth() + 1)}` : '';
+      }),
+      spelers: spelerIds
+        .map((id) => ({
+          // Een speler die de app niet meer kent heet "Onbekend" en verdwijnt niet: hij stond
+          // er die dag wél bij, en een verwijderd account maakt dat niet ongedaan.
+          naam: tabellen.gebruikerById.get(id)?.name ?? t('Onbekend'),
+          // `aanwezigheidVan` is de enige plek die de drie standen kent, inclusief "deze
+          // speler deed aan deze les niet mee" — dat wordt hier vanzelf een lege cel.
+          standen: lessen.map((les) => aanwezigheidVan(les, id)),
+        }))
+        // Op naam, zodat een vervanger elke week dezelfde vaste lijst voor zich krijgt.
+        .sort((a, b) => a.naam.localeCompare(b.naam, 'nl')),
+    });
+  }
+  return blokken;
+}
+
+function tekstCel(waarde: string): XlsxCel {
+  return { soort: 'tekst', waarde };
+}
+
+/**
+ * De drie standen als drie uitkomsten.
+ *
+ * "Nog niet ingevuld" wordt een werkelijk lege cel, en met opzet geen `0` en geen streepje:
+ * dit blad wordt uitgeprint en met de hand ingevuld door een vervanger die geen app heeft
+ * (D-01, D-12). Er moet dus ruimte zijn om in te schrijven, en een streepje leest als "ik heb
+ * gekeken en er was niemand" terwijl er niemand gekeken heeft.
+ */
+function standCel(stand: Aanwezigheid | null): XlsxCel {
+  if (stand === 'aanwezig') return tekstCel(AANWEZIG_TEKEN);
+  if (stand === 'afwezig') return tekstCel(AFWEZIG_TEKEN);
+  return tekstCel('');
+}
+
+/**
+ * Blad "Aanwezigheid": per lesgroep een blok met de lesdata in de kolommen en de spelers in
+ * de rijen, gevuld uit de aanwezigheid die de trainers afvinkten.
+ *
+ * De tabnaam is net als bij de andere bladen een vaste Nederlandse waarde en gaat niet door
+ * `t()` — het bestand hoort op elk toestel hetzelfde te heten.
+ */
+export function bladAanwezigheid(
+  groepen: readonly LesGroep[],
+  bookings: readonly Booking[],
+  tabellen: Opzoektabellen,
+): XlsxBlad {
+  const blokken = aanwezigheidBlokken(groepen, bookings, tabellen);
+  // Zoveel leskolommen als de drukste groep nodig heeft; een groep met minder lessen laat de
+  // laatste kolommen gewoon leeg.
+  const meeste = blokken.reduce((n, blok) => Math.max(n, blok.data.length), 0);
+  const lesnummers = Array.from({ length: meeste }, (_, i) => i);
+
+  const rijen: XlsxCel[][] = [];
+  for (const blok of blokken) {
+    rijen.push([tekstCel(blok.groep), tekstCel('Datum'), ...blok.data.map(tekstCel)]);
+    for (const speler of blok.spelers) {
+      // De groepsnaam staat alleen boven het blok: hem bij elke speler herhalen maakt de
+      // kolom onleesbaar op papier.
+      rijen.push([tekstCel(''), tekstCel(speler.naam), ...speler.standen.map(standCel)]);
+    }
+    // Eén lege rij tussen de blokken, zodat ze op papier uit elkaar staan.
+    rijen.push([]);
+  }
+
+  return {
+    naam: 'Aanwezigheid',
+    koppen: ['Groep', 'Speler', ...lesnummers.map((i) => `Les ${i + 1}`)],
+    // De eerste twee kolommen breed genoeg voor een groeps- en een spelersnaam, de
+    // lesmomenten smal: op één blad papier moeten er een stuk of tien lessen naast passen.
+    breedtes: [22, 22, ...lesnummers.map(() => 7)],
+    rijen,
   };
 }
