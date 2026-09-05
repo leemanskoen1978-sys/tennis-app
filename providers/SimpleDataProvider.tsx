@@ -15,7 +15,7 @@ import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { upsertGoal, removeGoal } from '../lib/goals';
 import { aanvraagVoor, kinderenVan } from '../lib/ouderkind';
 import { zonderLid } from '../lib/leden';
-import { lesGroepFout } from '../lib/lesgroepen';
+import { lesGroepFout, planRosterChange } from '../lib/lesgroepen';
 import {
   SESSIONS_PER_CARD, useSession, releaseSession, removeManualSession,
   planMethodChange, planCancel, planCardDeletion, planParticipantsChange, planSplitChange,
@@ -180,6 +180,12 @@ interface DataShape {
    * krijgen er hun deelnemers uit. Dat loopt uitsluitend via `updateLesGroepRoster`.
    */
   updateLesGroep: (id: string, patch: Partial<Omit<LesGroep, 'id' | 'roster'>>) => Promise<void>;
+  /**
+   * Wie er in de groep zit opnieuw zetten. De komende lessen van de groep krijgen meteen de
+   * nieuwe deelnemerslijst; de lessen die al geweest zijn blijven staan zoals ze waren.
+   * Welke lessen dat precies zijn staat in lib/lesgroepen, en nergens anders.
+   */
+  updateLesGroepRoster: (id: string, nieuwRooster: string[]) => Promise<void>;
   addLesson: (l: Omit<Lesson, 'id'>) => Promise<void>;
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
@@ -1040,6 +1046,30 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [commit]);
 
+  const updateLesGroepRoster = useCallback(async (id: string, nieuwRooster: string[]) => {
+    const store = storeRef.current;
+    if (!store) return;
+    const groep = store.lesGroepen.find((g) => g.id === id);
+    if (!groep) return;
+
+    // Wélke lessen dit raakt wordt hier niet bedacht: dat is de regel uit lib/lesgroepen, en
+    // die staat daar juist apart omdat ze te testen moet zijn zonder opslag.
+    const plan = planRosterChange(groep, nieuwRooster, store.bookings, new Date());
+    const gepatcht = new Map(plan.bookingPatches.map((p) => [p.id, p.participant_ids]));
+
+    // De groep en haar lessen gaan samen in één opslag. Half doorgevoerd zou een groep
+    // opleveren die niet klopt met haar eigen lessen: het rooster zegt dan wie erin zit,
+    // terwijl volgende week nog de oude namen op de afvinklijst staan.
+    await commit({
+      ...store,
+      lesGroepen: store.lesGroepen.map((g) => (g.id === id ? plan.group : g)),
+      bookings: store.bookings.map((b) => {
+        const ids = gepatcht.get(b.id);
+        return ids === undefined ? b : { ...b, participant_ids: ids };
+      }),
+    });
+  }, [commit]);
+
   const addLesson = useCallback(async (l: Omit<Lesson, 'id'>) => {
     const store = storeRef.current;
     if (!store) return;
@@ -1206,6 +1236,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     wisRelatie,
     addLesGroep,
     updateLesGroep,
+    updateLesGroepRoster,
     addLesson,
     updateLesson,
     deleteLesson,
@@ -1228,7 +1259,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setPaymentMethod, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
-    vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, addLesson,
+    vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
     addMemo, deleteMemo, werkMemoUit,
     saveGoal, deleteGoal, saveSettings, emergencyCleanup,
