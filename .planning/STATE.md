@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-lesgroepen-03-PLAN.md
-last_updated: "2026-09-05T22:20:00.000Z"
-last_activity: 2026-09-05 — Plannen 01-01, 01-02 en 01-03 uitgevoerd (model, schema, opslag)
+stopped_at: Completed 01-lesgroepen-04-PLAN.md
+last_updated: "2026-09-05T22:45:00.000Z"
+last_activity: 2026-09-05 — Plan 01-04 uitgevoerd (lesgroepenscherm, tegel, routes, Engels)
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 7
-  completed_plans: 3
-  percent: 9
+  total_plans: 11
+  completed_plans: 4
+  percent: 36
 ---
 
 # Project State
@@ -27,19 +27,19 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 ## Current Position
 
 Phase: 1 of 5 (Lesgroepen)
-Plan: 4 of 7 (01-04-PLAN.md — het lesgroepenscherm)
-Status: In progress — golf 1 en 2 klaar (model, schema, opslag), schermen volgen
-Last activity: 2026-09-05 — Plannen 01-01, 01-02 en 01-03 uitgevoerd (model, schema, opslag)
+Plan: 5 of 7 (01-05-PLAN.md — groepsdetail)
+Status: In progress — golf 3 klaar: de beheerder maakt een lesgroep aan en ziet zijn lijst
+Last activity: 2026-09-05 — Plan 01-04 uitgevoerd (lesgroepenscherm, tegel, routes, Engels)
 
-Progress: [█░░░░░░░░░] 9%
+Progress: [████░░░░░░] 36%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 3
-- Average duration: ~13 min
-- Total execution time: ~0,7 uur
+- Total plans completed: 4
+- Average duration: ~14 min
+- Total execution time: ~0,9 uur
 
 **By Phase:**
 
@@ -54,6 +54,7 @@ Progress: [█░░░░░░░░░] 9%
 
 *Updated after each plan completion*
 | Phase 01-lesgroepen P02 | 8min | 1 tasks | 1 files |
+| Phase 01-lesgroepen P04 | 16min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,7 @@ confirmed as phases ship).
   `GroupBooking` — die naam was al bezet in lib/groups
 
 - [Phase 01-lesgroepen]: lesson_groups RLS kopieert rates_write (geen ownership-check op beide policies) — de tabel is volledig admin-only, geen 'dit is van mij'-tak zoals coach_rates
+- [Phase 01-lesgroepen]: de beheerdersgrens ligt op het lesgroepenscherm zelf, vóór elke andere return — de tegel in Beheer verbergen is wellevendheid, geen toegangscontrole (TOEG-01)
 
 ### Pending Todos
 
@@ -116,6 +118,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T22:20:00.000Z
-Stopped at: Completed 01-lesgroepen-03-PLAN.md
-Resume file: .planning/phases/01-lesgroepen/01-04-PLAN.md 
+Last session: 2026-09-05T22:45:00.000Z
+Stopped at: Completed 01-lesgroepen-04-PLAN.md
+Resume file: .planning/phases/01-lesgroepen/01-05-PLAN.md

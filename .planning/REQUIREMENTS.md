@@ -8,7 +8,7 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 
 ### Lesgroepen
 
-- [ ] **GROEP-01**: De beheerder kan een lesgroep aanmaken met naam, niveau, vaste dag en uur,
+- [x] **GROEP-01**: De beheerder kan een lesgroep aanmaken met naam, niveau, vaste dag en uur,
       vaste trainer, baan en seizoensperiode (van–tot).
 - [ ] **GROEP-02**: De beheerder kan spelers aan een lesgroep toevoegen en eruit halen.
 - [ ] **GROEP-03**: De beheerder ziet per lesgroep welke lessen ervan ingepland staan en
@@ -133,7 +133,7 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GROEP-01 | Phase 1 | In Progress |
+| GROEP-01 | Phase 1 | Complete |
 | GROEP-02 | Phase 1 | In Progress |
 | GROEP-03 | Phase 1 | In Progress |
 | GROEP-04 | Phase 1 | In Progress |
@@ -168,13 +168,18 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | IMP-09 | Phase 5 | Pending |
 | IMP-10 | Phase 5 | Pending |
 | IMP-11 | Phase 5 | Pending |
-| TOEG-01 | Phase 1 | Pending |
+| TOEG-01 | Phase 1 | In Progress |
 | TOEG-02 | Phase 1 | Pending |
 | TOEG-03 | Phase 1 | Complete |
 
 **In Progress** betekent: de regels (plan 01), het schema (plan 02) en de opslag (plan 03)
-staan er, maar de beheerder kan er nog niets mee — de schermen komen in plan 04. Pas dan gaat
-GROEP-01 t/m GROEP-07 op Complete en gaan de vinkjes hierboven aan.
+staan er, maar de beheerder kan er nog niet alles mee. Plan 04 zette het lijstscherm met het
+aanmaakformulier neer — daarmee gaat GROEP-01 op Complete. GROEP-02 t/m GROEP-07 wachten op het
+groepsdetail (plan 05) en het koppelen van een losse les (plan 06).
+
+**TOEG-01** blijft In Progress tot plan 05: de grens staat nu op de tegel én bovenaan
+`app/admin/lesgroepen/index.tsx`, maar het detailscherm van een groep moet hem straks óók
+dragen — pas als de hele module hem heeft, is de requirement waar.
 
 **Coverage:**
 - v1 requirements: 38 total
