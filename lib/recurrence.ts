@@ -102,22 +102,59 @@ function shiftDays(d: Date, days: number): Date {
   );
 }
 
+/** De velden die de bezetvraag nodig heeft; meer weet deze module niet van een les. */
+export type BezetBoeking = Pick<Booking, 'id' | 'coach_id' | 'court_id' | 'start_time' | 'end_time' | 'status'>;
+
+/** Voor wie en waarvoor de vraag gesteld wordt. */
+export interface BezetVraag {
+  /** De trainer die op dat uur zou lesgeven. */
+  coachId: string;
+  /**
+   * De baan waarop het zou gebeuren, als die vaststaat. Leeg betekent "kijk niet naar de
+   * baan": zo werkt het aanmaken van een reeks, waar de baan pas later gekozen wordt.
+   */
+  courtId?: string;
+  /**
+   * De lessen die zelf aan het verhuizen zijn. Zonder die uitzondering botst elke groep die
+   * een uur opschuift met haar eigen volgende week: de oude lessen staan er dan nog, en de
+   * verzetting zou van zichzelf zeggen dat ze niet kan.
+   */
+  negeer?: ReadonlySet<string>;
+}
+
 /**
- * Botst deze les met een bestaande boeking van dezelfde trainer? Woordelijk dezelfde
- * regel als `overlaps` in providers/SimpleDataProvider: dezelfde trainer, tijdvakken die
- * elkaar raken zonder de grenzen mee te tellen (een les van 10–11 botst niet met 11–12),
- * en een geannuleerde les houdt niets bezet. Wijkt deze versie ooit af, dan meldt het
- * scherm een reeks die de provider vervolgens weigert — daarom moeten de twee gelijk zijn.
+ * Botst dit tijdvak met een bestaande boeking — van dezelfde trainer, of op dezelfde baan?
+ * De eerste botsende boeking eruit, of `null`. De boeking zelf en niet enkel een ja, zodat
+ * de melder kan zeggen wáármee het botst; wie alleen het antwoord wil leest `!== null`.
+ *
+ * Woordelijk dezelfde regel als `overlaps` in providers/SimpleDataProvider: dezelfde
+ * trainer, tijdvakken die elkaar raken zonder de grenzen mee te tellen (een les van 10–11
+ * botst niet met 11–12), en een geannuleerde les houdt niets bezet. Wijkt deze versie ooit
+ * af, dan meldt het scherm een reeks of een verzetting die de provider vervolgens weigert —
+ * daarom is dit de enige plek in lib/ die deze vraag beantwoordt, en loopt `planSeries` er
+ * zelf ook doorheen.
+ *
+ * De baan hoort erbij omdat twee trainers niet tegelijk op hetzelfde terrein staan: een
+ * groep die naar een vrij uur van haar trainer verhuist kan alsnog op een bezette baan
+ * uitkomen, en dat is even hard een botsing. Een les zonder baan houdt geen baan bezet.
  */
-function collides(slot: SeriesSlot, coachId: string, existing: Booking[]): boolean {
+export function botstMet(
+  slot: SeriesSlot,
+  existing: BezetBoeking[],
+  vraag: BezetVraag,
+): BezetBoeking | null {
   const aStart = new Date(slot.start_time).getTime();
   const aEnd = new Date(slot.end_time).getTime();
-  return existing.some((b) => {
-    if (b.status === 'cancelled' || b.coach_id !== coachId) return false;
+  return existing.find((b) => {
+    if (b.status === 'cancelled') return false;
+    if (vraag.negeer?.has(b.id)) return false;
+    const zelfdeTrainer = b.coach_id === vraag.coachId;
+    const zelfdeBaan = !!vraag.courtId && !!b.court_id && b.court_id === vraag.courtId;
+    if (!zelfdeTrainer && !zelfdeBaan) return false;
     const bStart = new Date(b.start_time).getTime();
     const bEnd = new Date(b.end_time).getTime();
     return aStart < bEnd && bStart < aEnd;
-  });
+  }) ?? null;
 }
 
 /**
@@ -173,7 +210,7 @@ export function planSeries(
     const vakantie = vakantieOpMoment(vakanties, slot.start_time);
     if (vakantie) {
       skipped.push({ ...slot, reden: 'vakantie', vakantie: vakantie.naam });
-    } else if (collides(slot, coachId, existing)) {
+    } else if (botstMet(slot, existing, { coachId }) !== null) {
       skipped.push({ ...slot, reden: 'bezet' });
     } else {
       usable.push(slot);
