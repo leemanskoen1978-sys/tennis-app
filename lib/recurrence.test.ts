@@ -3,7 +3,10 @@
 process.env.TZ = 'Europe/Brussels';
 
 import type { Booking, Vakantie } from './types';
-import { MAX_LESSONS, laatsteDagVan, planSeries, seriesSummary, type RecurrenceRule } from './recurrence';
+import {
+  MAX_LESSONS, botstMet, laatsteDagVan, planSeries, seriesSummary,
+  type RecurrenceRule,
+} from './recurrence';
 
 /** Een les op een lokale dag en uur; ISO eruit, precies zoals de app zelf boekt. */
 function iso(y: number, m: number, d: number, hour: number, minute = 0): string {
@@ -281,5 +284,55 @@ describe('laatsteDagVan', () => {
   it('stapt netjes over een jaargrens', () => {
     const d = laatsteDagVan(new Date(2026, 11, 22), 'weekly', 3);
     expect([d.getDate(), d.getMonth() + 1, d.getFullYear()]).toEqual([5, 1, 2027]);
+  });
+});
+
+describe('botstMet', () => {
+  /** Het tijdvak waar de vraag over gaat: donderdag 20 aug, 10:00–11:00. */
+  const slot = { start_time: iso(2026, 7, 20, 10), end_time: iso(2026, 7, 20, 11) };
+
+  it('geeft de bestaande les van dezelfde trainer terug die het tijdvak overlapt', () => {
+    const bezet = booking({ id: 'bezet', start_time: iso(2026, 7, 20, 10, 30), end_time: iso(2026, 7, 20, 11, 30) });
+    expect(botstMet(slot, [bezet], { coachId: 'koen' })?.id).toBe('bezet');
+  });
+
+  it('noemt twee lessen die op elkaar aansluiten geen botsing', () => {
+    const erna = booking({ id: 'erna', start_time: iso(2026, 7, 20, 11), end_time: iso(2026, 7, 20, 12) });
+    const ervoor = booking({ id: 'ervoor', start_time: iso(2026, 7, 20, 9), end_time: iso(2026, 7, 20, 10) });
+    expect(botstMet(slot, [erna, ervoor], { coachId: 'koen' })).toBeNull();
+  });
+
+  it('houdt een afgezegde les niet voor bezet', () => {
+    const af = booking({ ...busy('af', 2026, 7, 20), status: 'cancelled' });
+    expect(botstMet(slot, [af], { coachId: 'koen' })).toBeNull();
+  });
+
+  it('meldt de baan als bezet, ook al is de trainer vrij', () => {
+    const andere = booking({ id: 'baan', coach_id: 'sofie', court_id: 'court-1' });
+    expect(botstMet(slot, [andere], { coachId: 'koen', courtId: 'court-1' })?.id).toBe('baan');
+    expect(botstMet(slot, [andere], { coachId: 'koen', courtId: 'court-2' })).toBeNull();
+  });
+
+  it('kijkt zonder courtId in de vraag niet naar de baan', () => {
+    const andere = booking({ id: 'baan', coach_id: 'sofie', court_id: 'court-1' });
+    expect(botstMet(slot, [andere], { coachId: 'koen' })).toBeNull();
+  });
+
+  it('laat een les zonder baan geen baan bezet houden', () => {
+    const zonderBaan = booking({ id: 'los', coach_id: 'sofie', court_id: '' });
+    expect(botstMet(slot, [zonderBaan], { coachId: 'koen', courtId: '' })).toBeNull();
+  });
+
+  it('telt een les die zelf aan het verhuizen is niet mee, ook niet bij volledige overlap', () => {
+    const eigen = busy('eigen', 2026, 7, 20);
+    expect(botstMet(slot, [eigen], { coachId: 'koen' })?.id).toBe('eigen');
+    expect(botstMet(slot, [eigen], { coachId: 'koen', negeer: new Set(['eigen']) })).toBeNull();
+    expect(botstMet(slot, [eigen], { coachId: 'koen', courtId: 'court-1', negeer: new Set(['eigen']) })).toBeNull();
+  });
+
+  it('geeft de eerste botsende boeking terug en niet enkel een ja', () => {
+    const een = busy('een', 2026, 7, 20);
+    const twee = booking({ id: 'twee', start_time: iso(2026, 7, 20, 10, 15), end_time: iso(2026, 7, 20, 10, 45) });
+    expect(botstMet(slot, [een, twee], { coachId: 'koen' })).toBe(een);
   });
 });
