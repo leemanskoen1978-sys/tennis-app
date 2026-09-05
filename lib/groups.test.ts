@@ -87,3 +87,35 @@ describe('groupSizeLabel', () => {
     expect(groupSizeLabel(4)).toBe('4 spelers');
   });
 });
+
+// Een les uit een lesgroep is een gewone boeking (GROEP-04). De groep waar ze bij hoort staat
+// als `group_id` op de rij, en dat veld mag aan geen enkel antwoord over die ene les iets
+// veranderen: wie er meedoet en wat de les kost hangt aan de boeking, niet aan het rooster
+// van de groep zoals dat er vandaag uitziet.
+describe('een boeking met een group_id', () => {
+  const zonder: Booking = { ...base, participant_ids: ['p2', 'p3'] };
+  const met: Booking = { ...zonder, group_id: 'g-1' };
+
+  it('levert dezelfde deelnemers op als dezelfde boeking zonder groep', () => {
+    expect(participantIdsOf(met)).toEqual(participantIdsOf(zonder));
+    expect(participantIdsOf(met)).toEqual(['p2', 'p3']);
+  });
+
+  it('telt even groot, dus kost even veel', () => {
+    expect(groupSize(met)).toBe(groupSize(zonder));
+    expect(groupSize(met)).toBe(3);
+  });
+
+  it('is even goed een groepsles als daarvoor', () => {
+    expect(isGroupLesson(met)).toBe(isGroupLesson(zonder));
+    // En een les van één speler blijft dat ook mét een groep erboven.
+    const alleenMaarGroep: Booking = { ...base, group_id: 'g-1' };
+    expect(isGroupLesson(alleenMaarGroep)).toBe(false);
+  });
+
+  it('laat dezelfde spelers meedoen', () => {
+    expect(lessonPlayerIds(met)).toEqual(lessonPlayerIds(zonder));
+    expect(playsIn(met, 'p3')).toBe(playsIn(zonder, 'p3'));
+    expect(playsIn(met, 'p9')).toBe(false);
+  });
+});

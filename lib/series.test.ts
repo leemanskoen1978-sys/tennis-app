@@ -67,3 +67,24 @@ describe('seriesFrom', () => {
     expect(seriesFrom(list, 'b2').map((b) => b.id)).toEqual(['b2']);
   });
 });
+
+// Een les uit een lesgroep blijft een gewone boeking (GROEP-04): te verzetten, af te zeggen
+// en af te vinken als elke andere. `group_id` en `series_id` bestaan naast elkaar en nooit in
+// elkaar — een reeks is de batch waarin lessen zijn aangemaakt, een groep is wie er traint —
+// dus "vanaf deze les" hoort zich met een groep erbij precies hetzelfde te gedragen.
+describe('seriesFrom met een group_id erbij', () => {
+  it('behandelt een reeks met een groep precies als een reeks zonder', () => {
+    const zonder = [week(1), week(2), week(3)];
+    const met = zonder.map((b) => ({ ...b, group_id: 'g-1' }));
+    expect(seriesFrom(met, 'b2').map((b) => b.id)).toEqual(seriesFrom(zonder, 'b2').map((b) => b.id));
+    expect(seriesFrom(met, 'b2').map((b) => b.id)).toEqual(['b2', 'b3']);
+  });
+
+  it('geeft alleen de les zelf terug als die wel een groep heeft maar geen reeks', () => {
+    // De les hoort bij een groep, maar is nooit in een batch aangemaakt: "vanaf deze les"
+    // gedraagt zich dan als de gewone actie op één les, en raakt de rest van de groep niet.
+    const losseGroepsles: Booking = { ...base, id: 'los', group_id: 'g-1', series_id: undefined };
+    expect(seriesFrom([losseGroepsles, ...[week(1), week(2)].map((b) => ({ ...b, group_id: 'g-1' }))], 'los'))
+      .toEqual([losseGroepsles]);
+  });
+});
