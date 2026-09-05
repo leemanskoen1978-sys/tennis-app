@@ -1,5 +1,69 @@
-import { koppenVan, naarRijen, opzoektabellen, type ExportKolom } from './export-trainingen';
+import {
+  bladLessen, koppenVan, naarRijen, opzoektabellen, type ExportKolom,
+} from './export-trainingen';
+import { buildWorkbook, type XlsxBlad } from './xlsx';
+import { translate } from './i18n';
 import type { Booking, Court, LesGroep, User } from './types';
+
+// ---------------------------------------------------------------------------
+// Dezelfde minimale zip-lezer als in `lib/xlsx.test.ts`, hier overgenomen omdat hij daar
+// niet geëxporteerd is — en dat hoort ook zo: hij is testgereedschap en geen onderdeel van
+// de schrijver. De round-trip hieronder moet het geschreven bestand lezen zoals Excel dat
+// doet, via de centrale map, en niet de bytes natellen die de schrijver zelf net neerzette.
+// ---------------------------------------------------------------------------
+
+function u16(b: Uint8Array, at: number): number {
+  return b[at] | (b[at + 1] << 8);
+}
+
+function u32(b: Uint8Array, at: number): number {
+  return (b[at] | (b[at + 1] << 8) | (b[at + 2] << 16) | (b[at + 3] << 24)) >>> 0;
+}
+
+function tekst(b: Uint8Array): string {
+  let uit = '';
+  for (let i = 0; i < b.length; i++) {
+    const c = b[i];
+    if (c < 0x80) {
+      uit += String.fromCharCode(c);
+    } else if ((c & 0xe0) === 0xc0) {
+      uit += String.fromCharCode(((c & 0x1f) << 6) | (b[++i] & 0x3f));
+      /* c8 ignore next */
+    } else if ((c & 0xf0) === 0xe0) {
+      uit += String.fromCharCode(((c & 0x0f) << 12) | ((b[++i] & 0x3f) << 6) | (b[++i] & 0x3f));
+    }
+  }
+  return uit;
+}
+
+/** De inhoud van één bestand uit de zip, gevonden via de centrale map achteraan. */
+function inhoudVan(bytes: Uint8Array, naam: string): string {
+  let eind = -1;
+  for (let i = bytes.length - 22; i >= 0; i--) {
+    if (u32(bytes, i) === 0x06054b50) {
+      eind = i;
+      break;
+    }
+  }
+  if (eind < 0) throw new Error('geen zip: het einde van de centrale map ontbreekt');
+
+  const aantal = u16(bytes, eind + 10);
+  let pos = u32(bytes, eind + 16);
+  for (let n = 0; n < aantal; n++) {
+    const grootte = u32(bytes, pos + 24);
+    const naamLengte = u16(bytes, pos + 28);
+    const extraLengte = u16(bytes, pos + 30);
+    const opmerkingLengte = u16(bytes, pos + 32);
+    const lokaal = u32(bytes, pos + 42);
+    const gevonden = tekst(bytes.subarray(pos + 46, pos + 46 + naamLengte));
+    if (gevonden === naam) {
+      const begin = lokaal + 30 + u16(bytes, lokaal + 26) + u16(bytes, lokaal + 28);
+      return tekst(bytes.subarray(begin, begin + grootte));
+    }
+    pos += 46 + naamLengte + extraLengte + opmerkingLengte;
+  }
+  throw new Error(`${naam} zit niet in het bestand`);
+}
 
 // ---------------------------------------------------------------------------
 // Gedeelde gegevens voor alle bladen van dit bestand.
@@ -133,5 +197,213 @@ describe('de gedeelde gegevens', () => {
     const b = booking();
     expect(b.coach_id).toBe('koen');
     expect(opzoektabellen(users, courts, groepen).gebruikerById.get(b.player_id)?.name).toBe('Mathis');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Blad "Lessen"
+// ---------------------------------------------------------------------------
+
+const tabellen = opzoektabellen(users, courts, groepen);
+
+/** De groepsles van woensdag 17:00: zes spelers, Mathis betaalt, in de hal. */
+function groepsles(over: Partial<Booking> = {}): Booking {
+  return booking({
+    id: 'g-les', group_id: 'g8', court_id: 'hal-1',
+    participant_ids: ['p2', 'p3', 'p4', 'p5', 'p6'],
+    ...over,
+  });
+}
+
+function kolom(blad: XlsxBlad, kop: string): number {
+  const i = blad.koppen.indexOf(kop);
+  if (i < 0) throw new Error(`kolom ${kop} staat niet op het blad`);
+  return i;
+}
+
+/** De cel van deze rij in deze kolom, als tekst — of hij nu tekst, getal of datum is. */
+function cel(blad: XlsxBlad, rij: number, kop: string): string {
+  return String((blad.rijen[rij][kolom(blad, kop)] as { waarde: unknown }).waarde);
+}
+
+describe('bladLessen', () => {
+  it('heet "Lessen" en heeft de zestien vastgelegde koppen, in volgorde', () => {
+    const blad = bladLessen([booking()], tabellen);
+    expect(blad.naam).toBe('Lessen');
+    expect(blad.koppen).toEqual([
+      'Datum', 'Weekdag', 'Weeknr', 'Uur', 'Einduur', 'Type les', 'Groep', 'Groep-ID',
+      'Coach', 'Gaf de les', 'Leerling', 'E-mail leerling', 'Baan', 'Indoor/Outdoor',
+      'Spelers', 'Status',
+    ]);
+  });
+
+  it('schrijft geen kolom Locatie: de app kent geen locatie en verzinnen is erger dan weglaten', () => {
+    expect(bladLessen([booking()], tabellen).koppen).not.toContain('Locatie');
+  });
+
+  it('geeft een privéles één rij, zonder groep en met Type les = Privéles', () => {
+    const blad = bladLessen([booking()], tabellen);
+    expect(blad.rijen).toHaveLength(1);
+    expect(cel(blad, 0, 'Groep')).toBe('');
+    expect(cel(blad, 0, 'Groep-ID')).toBe('');
+    expect(cel(blad, 0, 'Type les')).toBe('Privéles');
+    expect(cel(blad, 0, 'Leerling')).toBe('Mathis');
+    expect(cel(blad, 0, 'Spelers')).toBe('1');
+  });
+
+  it('klapt een groepsles van zes uit tot zes rijen, met de betaler vooraan', () => {
+    const blad = bladLessen([groepsles()], tabellen);
+    expect(blad.rijen).toHaveLength(6);
+    expect(blad.rijen.map((_, i) => cel(blad, i, 'Leerling')))
+      .toEqual(['Mathis', 'Lotte', 'Jules', 'Fien', 'Wout', 'Nore']);
+    expect(blad.rijen.map((_, i) => cel(blad, i, 'E-mail leerling'))[1]).toBe('lotte@x.be');
+  });
+
+  it('zet op die zes rijen dezelfde datum, hetzelfde uur en hetzelfde Groep-ID', () => {
+    const blad = bladLessen([groepsles()], tabellen);
+    const uniek = (kop: string) => new Set(blad.rijen.map((_, i) => cel(blad, i, kop)));
+    expect(uniek('Datum').size).toBe(1);
+    expect(uniek('Uur').size).toBe(1);
+    expect(uniek('Groep-ID')).toEqual(new Set(['g8']));
+    expect(uniek('Groep')).toEqual(new Set(['Groep 8']));
+    expect(uniek('Type les')).toEqual(new Set(['Gevorderd']));
+  });
+
+  it('zet Spelers op elk van die zes rijen op 6', () => {
+    const blad = bladLessen([groepsles()], tabellen);
+    expect(blad.rijen.map((_, i) => cel(blad, i, 'Spelers'))).toEqual(['6', '6', '6', '6', '6', '6']);
+  });
+
+  it('toont bij een vervanger de toegewezen trainer én wie de les werkelijk gaf', () => {
+    const blad = bladLessen([booking({ taught_by_id: 'ann' })], tabellen);
+    expect(cel(blad, 0, 'Coach')).toBe('Koen');
+    expect(cel(blad, 0, 'Gaf de les')).toBe('Ann');
+  });
+
+  it('toont zonder vervanger in beide kolommen dezelfde naam', () => {
+    const blad = bladLessen([booking()], tabellen);
+    expect(cel(blad, 0, 'Coach')).toBe('Koen');
+    expect(cel(blad, 0, 'Gaf de les')).toBe('Koen');
+  });
+
+  it('leest Indoor/Outdoor uit de baan van de les', () => {
+    const binnen = bladLessen([booking({ court_id: 'hal-1' })], tabellen);
+    expect(cel(binnen, 0, 'Baan')).toBe('Hal 1');
+    expect(cel(binnen, 0, 'Indoor/Outdoor')).toBe('Indoor');
+
+    const buiten = bladLessen([booking()], tabellen);
+    expect(cel(buiten, 0, 'Indoor/Outdoor')).toBe('Outdoor');
+  });
+
+  it('laat Baan en Indoor/Outdoor leeg bij een les zonder baan', () => {
+    const blad = bladLessen([booking({ court_id: '' })], tabellen);
+    expect(cel(blad, 0, 'Baan')).toBe('');
+    expect(cel(blad, 0, 'Indoor/Outdoor')).toBe('');
+  });
+
+  it('laat de rij staan als de speler, de trainer of de baan verdwenen is', () => {
+    const blad = bladLessen(
+      [booking({ player_id: 'weg', coach_id: 'ookweg', court_id: 'gesloopt' })],
+      tabellen,
+    );
+    expect(blad.rijen).toHaveLength(1);
+    expect(cel(blad, 0, 'Leerling')).toBe('Onbekend');
+    expect(cel(blad, 0, 'Coach')).toBe('Onbekend');
+    expect(cel(blad, 0, 'Gaf de les')).toBe('Onbekend');
+    expect(cel(blad, 0, 'Baan')).toBe('Onbekend');
+    expect(cel(blad, 0, 'E-mail leerling')).toBe('');
+    expect(cel(blad, 0, 'Indoor/Outdoor')).toBe('');
+  });
+
+  it('zet de rijen op tijd oplopend, ongeacht de volgorde van binnenkomst', () => {
+    const laat = booking({ id: 'b2', start_time: '2026-08-26T09:00:00', end_time: '2026-08-26T10:00:00' });
+    const blad = bladLessen([laat, booking()], tabellen);
+    expect(blad.rijen.map((_, i) => cel(blad, i, 'Weekdag'))).toEqual(['woensdag', 'woensdag']);
+    expect(blad.rijen.map((_, i) => cel(blad, i, 'Uur'))).toEqual(['17:00', '09:00']);
+    const datums = blad.rijen.map((r) => (r[kolom(blad, 'Datum')] as { waarde: Date }).waarde.getTime());
+    expect(datums[0]).toBeLessThan(datums[1]);
+  });
+
+  it('laat de meegegeven lijst met rust', () => {
+    const gegeven = [
+      booking({ id: 'b2', start_time: '2026-08-26T09:00:00', end_time: '2026-08-26T10:00:00' }),
+      booking(),
+    ];
+    bladLessen(gegeven, tabellen);
+    expect(gegeven.map((b) => b.id)).toEqual(['b2', 'b1']);
+  });
+
+  it('vult Weekdag, Uur en Einduur uit de les zelf', () => {
+    const blad = bladLessen([booking()], tabellen);
+    expect(cel(blad, 0, 'Weekdag')).toBe('woensdag');
+    expect(cel(blad, 0, 'Uur')).toBe('17:00');
+    expect(cel(blad, 0, 'Einduur')).toBe('18:00');
+    expect(cel(blad, 0, 'Status')).toBe('Bevestigd');
+  });
+
+  it('zet Weeknr van 1 januari 2027 op 53 — de week van het jaar ervoor', () => {
+    const blad = bladLessen(
+      [booking({ start_time: '2027-01-01T17:00:00', end_time: '2027-01-01T18:00:00' })],
+      tabellen,
+    );
+    expect(cel(blad, 0, 'Weeknr')).toBe('53');
+  });
+
+  it('houdt de koprij Nederlands, ook al bestaat er een Engelse vertaling van die woorden', () => {
+    // `translate('en', 'Datum')` is 'Date'; stond er `t()` in de koprij, dan schreef een
+    // beheerder met de app op Engels een bestand dat de eigen import niet meer herkent.
+    expect(translate('en', 'Datum')).toBe('Date');
+    expect(bladLessen([booking()], tabellen).koppen[0]).toBe('Datum');
+  });
+
+  it('geeft een leeg blad met alleen de koprij bij nul lessen', () => {
+    const blad = bladLessen([], tabellen);
+    expect(blad.rijen).toEqual([]);
+    expect(blad.koppen).toHaveLength(16);
+    expect(blad.breedtes).toHaveLength(16);
+  });
+
+  it('zet de datum als datum en het aantal spelers als getal', () => {
+    const blad = bladLessen([groepsles()], tabellen);
+    expect(blad.rijen[0][kolom(blad, 'Datum')].soort).toBe('datum');
+    expect(blad.rijen[0][kolom(blad, 'Spelers')]).toEqual({ soort: 'getal', waarde: 6 });
+    expect(blad.rijen[0][kolom(blad, 'Weeknr')].soort).toBe('getal');
+  });
+});
+
+describe('Lessen — round-trip', () => {
+  // De koppen letterlijk uit `.planning/IMPORT-SJABLOON.md`: vijf verplichte en vier die de
+  // import leest als ze er staan. Deze lijst staat hier apart en niet uit de code afgeleid —
+  // wie een kolom hernoemt, laat hem hier omvallen en niet pas in fase 5 bij een herimport
+  // die de halve club verdubbelt.
+  const VERPLICHT = ['Datum', 'Uur', 'Groep', 'Coach', 'Leerling'];
+  const OPTIONEEL = ['Groep-ID', 'Type les', 'E-mail leerling', 'Baan'];
+
+  function geschrevenBlad(): string {
+    const blad = bladLessen([groepsles(), booking()], tabellen);
+    return inhoudVan(buildWorkbook([blad]), 'xl/worksheets/sheet1.xml');
+  }
+
+  it('schrijft alle verplichte en optionele koppen die de import leest', () => {
+    const koprij = /<row r="1">(.*?)<\/row>/.exec(geschrevenBlad())?.[1] ?? '';
+    const koppen = [...koprij.matchAll(/<t xml:space="preserve">(.*?)<\/t>/g)].map((m) => m[1]);
+    for (const kop of [...VERPLICHT, ...OPTIONEEL]) {
+      expect(koppen).toContain(kop);
+    }
+    expect(koppen).toHaveLength(16);
+    expect(koppen).not.toContain('Locatie');
+  });
+
+  it('schrijft de Datum-cel als datumcel en niet als tekst', () => {
+    const eersteRij = /<row r="2">(.*?)<\/row>/.exec(geschrevenBlad())?.[1] ?? '';
+    const eersteCel = /<c r="A2"[^>]*>/.exec(eersteRij)?.[0] ?? '';
+    expect(eersteCel).not.toContain('inlineStr');
+    expect(eersteRij).toMatch(/<c r="A2" s="\d+"><v>\d+<\/v><\/c>/);
+  });
+
+  it('schrijft zes rijen voor de groepsles en één voor de privéles', () => {
+    const rijen = [...geschrevenBlad().matchAll(/<row r="(\d+)"/g)].map((m) => m[1]);
+    // De koprij plus zeven lesregels.
+    expect(rijen).toHaveLength(8);
   });
 });
