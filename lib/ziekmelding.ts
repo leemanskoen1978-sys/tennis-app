@@ -17,8 +17,8 @@
 // vorm. Zie `SickLeave` in lib/types.
 
 import { t } from './i18n';
-import { dagSleutel, parseDag } from './vakanties';
-import type { Booking, SickLeave } from './types';
+import { dagSleutel, parseDag, vakantieOpMoment } from './vakanties';
+import type { Booking, SickLeave, Vakantie } from './types';
 
 /** De velden die deze vragen nodig hebben; meer weet dit bestand niet van een ziekmelding. */
 export type OpenZiekmelding = Pick<SickLeave, 'coach_id' | 'van' | 'tot' | 'retracted_at'>;
@@ -92,4 +92,45 @@ export function zoektVervanger(booking: ZiekmeldingBoeking, open: OpenZiekmeldin
   // schuiven en stil buiten de werklijst vallen.
   const dag = dagSleutel(new Date(booking.start_time));
   return open.some((z) => !z.retracted_at && z.coach_id === booking.coach_id && dektDag(z, dag));
+}
+
+/**
+ * De lessen die deze ziekmelding raakt: alles wat de zieke trainer die dagen zou geven.
+ * Op tijd gesorteerd, want zo werkt de beheerder de werklijst van boven naar beneden af.
+ *
+ * Wat er uitvalt: afgezegde lessen (die raakt niemand meer) en lessen op een dag dat de club
+ * dicht is — die worden toch niet gegeven, en er een vervanger voor zoeken is werk voor
+ * niets. Wat er met opzet in blijft: een les waar al een vervanger op staat. De beheerder
+ * moet die rij zien om te weten dat hij geregeld is; het scherm toont hem als opgelost.
+ *
+ * De uitkomst is generiek in `T`, zodat het werklijstscherm er volle `Booking`-rijen in stopt
+ * en er volle `Booking`-rijen uit krijgt — met baan, groep en spelers erin — zonder dat dit
+ * bestand van meer dan vijf velden hoeft te weten.
+ *
+ * Er wordt hier nergens een uur opgeteld of afgetrokken: elke vergelijking loopt over de
+ * lokale dag uit `dagSleutel`, zodat een reeks over de zomertijdwissel dezelfde uren houdt.
+ */
+export function lessenVoorZiekmelding<T extends ZiekmeldingBoeking>(
+  bookings: T[],
+  ziekmelding: Pick<SickLeave, 'coach_id' | 'van' | 'tot'>,
+  vakanties: Vakantie[],
+): T[] {
+  return bookings
+    .filter((b) => {
+      if (b.status === 'cancelled') return false;
+      // D-15: ook de lessen waar de zieke trainer alléén als vervanger stond. Hij kan die
+      // evengoed niet geven, en een les die stilzwijgend buiten deze lijst valt is precies
+      // de fout waarvoor deze module bestaat.
+      const vanHem = b.coach_id === ziekmelding.coach_id
+        || b.taught_by_id === ziekmelding.coach_id;
+      if (!vanHem) return false;
+      if (!dektDag(ziekmelding, dagSleutel(new Date(b.start_time)))) return false;
+      // Is de club die dag dicht, dan was de les er sowieso niet: dat is de vakantie die hem
+      // wegneemt en niet de ziekmelding.
+      return vakantieOpMoment(vakanties, b.start_time) === null;
+    })
+    // `filter` gaf al een nieuwe lijst terug, dus deze `sort` raakt de invoer niet aan.
+    // `Date.parse` en niet de tekst zelf: een tijdstip met een zone-aanduiding sorteert als
+    // tekst verkeerd, en de volgorde van de werklijst is wat de beheerder afwerkt.
+    .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time));
 }
