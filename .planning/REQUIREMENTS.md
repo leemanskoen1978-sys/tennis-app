@@ -103,7 +103,7 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 - [ ] **TOEG-02**: Elke nieuwe tabel en elk nieuw veld heeft een RLS-policy die schrijven
       beperkt tot beheerders, ook langs de upsert-weg — met de hand nagelopen, want tsc en de
       testsuite zien dit niet.
-- [ ] **TOEG-03**: Alle schemawijzigingen staan als `alter table ... if not exists`-blok in
+- [x] **TOEG-03**: Alle schemawijzigingen staan als `alter table ... if not exists`-blok in
       `supabase-schema.sql`, klaar om door de gebruiker zelf in Supabase gedraaid te worden.
 
 ## v2 Requirements
@@ -170,7 +170,7 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | IMP-11 | Phase 5 | Pending |
 | TOEG-01 | Phase 1 | Pending |
 | TOEG-02 | Phase 1 | Pending |
-| TOEG-03 | Phase 1 | Pending |
+| TOEG-03 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 38 total
