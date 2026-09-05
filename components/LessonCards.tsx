@@ -61,9 +61,15 @@ export function LessonCards({
           // Bij een groepsles staat er "Mathis +2": de speler die de les op zijn naam heeft,
           // en hoeveel er nog bij stonden. De namen zelf staan in het detailblad — daar is
           // ruimte voor, op een korte kaart niet.
+          // Gaf iemand anders de les, dan blijft de naam van de vaste trainer staan met een
+          // korte markering erachter — nooit alleen de naam van de vervanger (D-07). Op een
+          // korte kaart passen geen twee volledige namen; het detailblad, één tik verder,
+          // toont ze allebei. De kaart is een samenvatting, het detailblad de bron.
           const other = isCoach(currentUser)
             ? shortGroupLabel(nameOf(booking.player_id), groupSize(booking))
-            : nameOf(booking.coach_id);
+            : booking.taught_by_id
+              ? `${nameOf(booking.coach_id)} (${t('vervangen')})`
+              : nameOf(booking.coach_id);
           return (
             <View key={booking.id} style={isWide ? styles.cell : undefined}>
               <Card

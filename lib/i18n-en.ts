@@ -23,6 +23,7 @@ export const EN: Record<string, string> = {
   'Vervanger': 'Stand-in',
   'Wie gaf deze les?': 'Who gave this lesson?',
   'Gaf hem zelf': 'Gave it himself',
+  'vervangen': 'stand-in',
   'Beheer': 'Admin',
   'Home': 'Home',
   'Profiel': 'Profile',
