@@ -1,6 +1,7 @@
 import {
-  bladLessen, koppenVan, naarRijen, opzoektabellen, type ExportKolom,
+  bladLessen, bladUrenPerTrainer, koppenVan, naarRijen, opzoektabellen, type ExportKolom,
 } from './export-trainingen';
+import { payoutsByCoach } from './reports';
 import { buildWorkbook, type XlsxBlad } from './xlsx';
 import { translate } from './i18n';
 import type { Booking, Court, LesGroep, User } from './types';
@@ -226,6 +227,13 @@ function cel(blad: XlsxBlad, rij: number, kop: string): string {
   return String((blad.rijen[rij][kolom(blad, kop)] as { waarde: unknown }).waarde);
 }
 
+/** De rij waar deze trainer op staat; de volgorde van het blad ligt bij payoutsByCoach. */
+function kolomRij(blad: XlsxBlad, naam: string): number {
+  const i = blad.rijen.findIndex((r) => (r[0] as { waarde: unknown }).waarde === naam);
+  if (i < 0) throw new Error(`${naam} staat niet op het blad`);
+  return i;
+}
+
 describe('bladLessen', () => {
   it('heet "Lessen" en heeft de zestien vastgelegde koppen, in volgorde', () => {
     const blad = bladLessen([booking()], tabellen);
@@ -405,5 +413,111 @@ describe('Lessen — round-trip', () => {
     const rijen = [...geschrevenBlad().matchAll(/<row r="(\d+)"/g)].map((m) => m[1]);
     // De koprij plus zeven lesregels.
     expect(rijen).toHaveLength(8);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Blad "Uren per trainer"
+// ---------------------------------------------------------------------------
+
+/** Sam geeft les maar heeft nog geen uurtarief ingevuld — de vergeten-tarief-toestand. */
+const trainers: User[] = [
+  ...users,
+  { id: 'sam', name: 'Sam', email: 'sam@club.be', role: 'coach' },
+];
+
+/**
+ * Zes lessen die samen elk geval van het blad raken: twee gewone lessen van Koen (waarvan
+ * één van anderhalf uur), een les van Ann, een les van Koen die Ann als vervangster gaf, een
+ * geannuleerde les van twee uur, en een les van Sam die geen tarief heeft.
+ */
+const loonlessen: Booking[] = [
+  booking({ id: 'l1' }),
+  booking({ id: 'l2', start_time: '2026-08-20T17:00:00', end_time: '2026-08-20T18:30:00' }),
+  booking({ id: 'l3', coach_id: 'ann' }),
+  booking({ id: 'l4', coach_id: 'koen', taught_by_id: 'ann' }),
+  booking({ id: 'l5', status: 'cancelled', start_time: '2026-08-21T17:00:00', end_time: '2026-08-21T19:00:00' }),
+  booking({ id: 'l6', coach_id: 'sam' }),
+];
+
+describe('bladUrenPerTrainer', () => {
+  it('heet "Uren per trainer" en heeft de vijf vastgelegde koppen, in volgorde', () => {
+    const blad = bladUrenPerTrainer(loonlessen, trainers);
+    expect(blad.naam).toBe('Uren per trainer');
+    expect(blad.koppen).toEqual(['Trainer', 'Lessen', 'Uren', 'Loon (EUR)', 'Let op']);
+  });
+
+  it('neemt trainer, lessen en loon letterlijk over uit payoutsByCoach, in dezelfde volgorde', () => {
+    // Met opzet geen met de hand herhaalde bedragen: het blad en Beheer → Rapport moeten
+    // hetzelfde tonen, dus de test vergelijkt met de bron en niet met een tweede berekening.
+    const blad = bladUrenPerTrainer(loonlessen, trainers);
+    const verwacht = payoutsByCoach(loonlessen, trainers);
+
+    expect(blad.rijen).toHaveLength(verwacht.length);
+    verwacht.forEach((r, i) => {
+      expect(cel(blad, i, 'Trainer')).toBe(r.name);
+      expect(Number(cel(blad, i, 'Lessen'))).toBe(r.lessons);
+      expect(Number(cel(blad, i, 'Loon (EUR)'))).toBe(r.amount);
+    });
+  });
+
+  it('telt de uren van dezelfde lessen die payoutsByCoach als lessen telt', () => {
+    const blad = bladUrenPerTrainer(loonlessen, trainers);
+    // Koen: één les van een uur plus één van anderhalf. Zijn geannuleerde les van twee uur
+    // telt niet mee, en zijn vervangen les evenmin — die staat bij Ann.
+    expect(Number(cel(blad, kolomRij(blad, 'Koen'), 'Uren'))).toBe(2.5);
+    // Ann: haar eigen les plus de les die ze voor Koen gaf.
+    expect(Number(cel(blad, kolomRij(blad, 'Ann'), 'Uren'))).toBe(2);
+  });
+
+  it('zet de uren en het loon van een vervangen les bij de vervangster', () => {
+    const blad = bladUrenPerTrainer([booking({ coach_id: 'koen', taught_by_id: 'ann' })], trainers);
+    expect(blad.rijen).toHaveLength(1);
+    expect(cel(blad, 0, 'Trainer')).toBe('Ann');
+    expect(Number(cel(blad, 0, 'Uren'))).toBe(1);
+    // Ann rekent 22 per uur, Koen 24: het bedrag bewijst dat ook het tarief mee verhuisde.
+    expect(Number(cel(blad, 0, 'Loon (EUR)'))).toBe(22);
+  });
+
+  it('laat een geannuleerde les in geen enkele kolom meetellen', () => {
+    const blad = bladUrenPerTrainer([
+      booking({ id: 'weg', status: 'cancelled', end_time: '2026-08-19T19:00:00' }),
+      booking({ id: 'blijft' }),
+    ], trainers);
+    expect(Number(cel(blad, 0, 'Lessen'))).toBe(1);
+    expect(Number(cel(blad, 0, 'Uren'))).toBe(1);
+    expect(Number(cel(blad, 0, 'Loon (EUR)'))).toBe(24);
+  });
+
+  it('markeert een trainer zonder uurtarief zichtbaar, met loon 0', () => {
+    const blad = bladUrenPerTrainer(loonlessen, trainers);
+    const rij = kolomRij(blad, 'Sam');
+    expect(Number(cel(blad, rij, 'Loon (EUR)'))).toBe(0);
+    expect(cel(blad, rij, 'Let op')).toBe('Geen uurtarief ingevuld');
+    // Een trainer die zijn tarief wél invulde krijgt geen melding.
+    expect(cel(blad, kolomRij(blad, 'Koen'), 'Let op')).toBe('');
+  });
+
+  it('schrijft loon als geldcel en lessen en uren als getalcellen', () => {
+    const blad = bladUrenPerTrainer(loonlessen, trainers);
+    expect(blad.rijen[0][kolom(blad, 'Lessen')].soort).toBe('getal');
+    expect(blad.rijen[0][kolom(blad, 'Uren')].soort).toBe('getal');
+    expect(blad.rijen[0][kolom(blad, 'Loon (EUR)')].soort).toBe('geld');
+    expect(blad.rijen[0][kolom(blad, 'Trainer')].soort).toBe('tekst');
+  });
+
+  it('heeft geen kolom met omzet, lesprijs of wat een speler betaalt', () => {
+    const blad = bladUrenPerTrainer(loonlessen, trainers);
+    // Omzet loopt op het uurtarief van de baan en het loon op dat van de trainer. Naast
+    // elkaar op één blad is precies hoe die twee bedragen in elkaar schuiven (D-05).
+    for (const kop of blad.koppen) {
+      expect(kop).not.toMatch(/omzet|prijs|betaal/i);
+    }
+  });
+
+  it('geeft een leeg blad terug als er geen lessen zijn', () => {
+    const blad = bladUrenPerTrainer([], trainers);
+    expect(blad.rijen).toHaveLength(0);
+    expect(blad.koppen).toHaveLength(5);
   });
 });
