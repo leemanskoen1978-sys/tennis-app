@@ -137,7 +137,7 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | GROEP-02 | Phase 1 | Complete |
 | GROEP-03 | Phase 1 | Complete |
 | GROEP-04 | Phase 1 | Complete |
-| GROEP-05 | Phase 1 + 2.1 | In Progress |
+| GROEP-05 | Phase 1 + 2.1 | Complete |
 | GROEP-06 | Phase 1 | Complete |
 | GROEP-07 | Phase 1 | Complete |
 | VERV-01 | Phase 2 | Complete |
@@ -188,15 +188,16 @@ precies zoals daarvoor (GROEP-04). Het in bulk inplannen van een heel seizoen ho
 import van fase 5 (D-14); "uit een lesgroep ontstaan" betekent in v1 dus "met de hand aan een
 lesgroep gehangen".
 
-**GROEP-05** blijft In Progress, en niet alleen door de golfindeling. De helft die over spelers
-gaat ("speler erbij of eraf") is waar: die loopt via `planRosterChange`, vanaf vandaag vooruit,
-met de lessen die geweest zijn onaangeroerd. De andere helft — "ander uur, andere trainer" —
-werkt niet door: `updateLesGroep` patcht uitsluitend de groepsrij en verzet geen enkele al
-ingeplande les. Daar bestaat geen `planGroepWijziging` voor, en zo'n functie raakt meteen de
-botsingscontrole (een verzette les kan dubbel boeken) en de betekenis van `coach_id` die fase 2
-onder handen neemt. Geen enkel plan van fase 1 dekt dit: die helft is als **fase 2.1** in
-ROADMAP.md gezet, na fase 2, omdat ze de betekenis van `coach_id` nodig heeft die daar
-uiteengehaald wordt. Vandaar "Phase 1 + 2.1" in de tabel hierboven.
+**GROEP-05 staat op Complete met fase 2.1.** De helft die over spelers gaat ("speler erbij of
+eraf") kwam met fase 1 en loopt via `planRosterChange`, vanaf vandaag vooruit, met de lessen die
+geweest zijn onaangeroerd. De andere helft — "ander uur, andere dag, andere trainer, andere
+baan" — werkte toen niet door: `updateLesGroep` patchte uitsluitend de groepsrij. Fase 2.1 heeft
+daar `planGroepWijziging` voor gezet (plan 01), met één gedeelde botsingsregel `botstMet` die ook
+de baan kent, en `updateLesGroep` schrijft de groepsrij en haar komende lessen nu in één
+`commit()` weg (plan 02). Het groepsdetailscherm toont vóór het bewaren hoeveel lessen
+meeverzetten en welke er om welke reden blijven staan; botsende lessen worden gemeld in plaats
+van stil overschreven, en `taught_by_id` gaat op deze weg nooit mee. Vandaar "Phase 1 + 2.1" in
+de tabel hierboven.
 
 **TOEG-01** blijft In Progress tot plan 07. De grens staat nu op de tegel, bovenaan
 `app/admin/lesgroepen/index.tsx`, bovenaan `app/admin/lesgroepen/[id].tsx` én — sinds plan 06 —

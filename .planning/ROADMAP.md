@@ -84,7 +84,7 @@ Plans:
 
 Plans:
 - [x] 02.1-01-PLAN.md — Het rekenwerk: botstMet gedeeld uit lib/recurrence (trainer én baan), planGroepWijziging naast planRosterChange met zijn test (wave 1)
-- [ ] 02.1-02-PLAN.md — De schrijfweg en de melding: updateLesGroep verzet de komende lessen mee in één opslag, het scherm toont de gevolgen vóór het bewaren (wave 2, checkpoint)
+- [x] 02.1-02-PLAN.md — De schrijfweg en de melding: updateLesGroep verzet de komende lessen mee in één opslag, het scherm toont de gevolgen vóór het bewaren (wave 2, checkpoint)
 
 ### Phase 3: Ziekmelding en vervangerswerklijst
 **Mode:** mvp

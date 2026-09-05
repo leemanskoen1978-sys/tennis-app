@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-wie-gaf-de-les-echt-03-PLAN.md
-last_updated: "2026-09-05T22:48:45.949Z"
-last_activity: 2026-09-05
+stopped_at: Completed 02.1-groep-verzetten-02-PLAN.md
+last_updated: "2026-09-06T00:00:00.000Z"
+last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 21
-  completed_plans: 10
+  total_plans: 23
+  completed_plans: 12
   percent: 0
 ---
 
@@ -22,16 +22,16 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core value:** Als een trainer ziek is, ziet de beheerder binnen een minuut welke lessen dat
 raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf agenda's te zoeken.
-**Current focus:** Phase 2 — Wie gaf de les écht
+**Current focus:** Phase 2.1 — Een groep verzetten (afgerond op de handmatige controle na)
 
 ## Current Position
 
-Phase: 2 of 6 (Wie gaf de les écht)
-Plan: 4 of 4 (02-03-PLAN.md — de schrijfweg en de zichtbaarheid)
-Status: Ready to execute
-Last activity: 2026-09-05
+Phase: 2.1 of 6 (Een groep verzetten)
+Plan: 2 of 2 (02.1-02-PLAN.md — de schrijfweg en de melding)
+Status: Awaiting human verification (taak 3 van 02.1-02)
+Last activity: 2026-09-06
 
-Progress: [█████░░░░░] 48%
+Progress: [█████░░░░░] 52%
 
 ## Performance Metrics
 
@@ -60,6 +60,8 @@ Progress: [█████░░░░░] 48%
 | Phase 02-wie-gaf-de-les-echt P02 | 12min | 2 tasks | 1 files |
 | Phase 02 P01 | 25min | 3 tasks | 6 files |
 | Phase 02-wie-gaf-de-les-echt P03 | 20min | 3 tasks | 4 files |
+| Phase 02.1-groep-verzetten P01 | 30min | 2 tasks | 4 files |
+| Phase 02.1-groep-verzetten P02 | 25min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -95,6 +97,9 @@ confirmed as phases ship).
 - [Phase 02-wie-gaf-de-les-echt]: setTaughtBy is de enige schrijfweg naar taught_by_id; het veld staat in dezelfde Omit<>-uitsluiting van updateBooking als payment_method, in het contexttype én in de implementatie, zodat een omweg niet compileert
 - [Phase 02-wie-gaf-de-les-echt]: de keuzeknoppen voor de vervanger staan achter isAdmin(currentUser) en niet achter canManage — canManage laat de trainer van de les toe, en die zou daarmee zijn eigen loonstaat zetten (D-08)
 - [Phase 02-wie-gaf-de-les-echt]: op de compacte leskaart blijft de naam van de vaste trainer staan met "(vervangen)" erachter; twee volledige namen staan alleen op het detailblad (D-07)
+- [Phase 02.1-groep-verzetten]: updateLesGroep geeft GroepWijzigingPlan | null terug in plaats van void — een aanroeper die niet weet wat er gebeurd is kan de geblokkeerde lessen ook niet melden
+- [Phase 02.1-groep-verzetten]: de voorvertoning op het groepsdetail en het bewaren gaan door dezelfde planGroepWijziging met dezelfde patchVan; twee eigen patches zouden een botsing kunnen tonen die er bij het bewaren niet meer is
+- [Phase 02.1-groep-verzetten]: de groepsrij en haar komende boekingen gaan in één commit(), met de hele VerzetPatch via { ...b, ...p } erover — wat er niet in het type staat kan er niet in belanden
 
 ### Pending Todos
 
@@ -125,7 +130,7 @@ None yet.
 - Export format (Phase 4) must land before import (Phase 5) so the group identifier
   round-trips instead of relying on fuzzy name matching.
 
-- GROEP-05 is maar half waar: een speler erbij of eraf werkt vanaf vandaag vooruit via planRosterChange, maar een ander uur of een andere trainer op de groep verandert de al ingeplande lessen niet mee. Daarvoor bestaat geen planGroepWijziging, en die zou botsingscontrole (dubbele boeking) en de coach_id-betekenis van fase 2 raken. Geen enkel plan van fase 1 dekt dit.
+- Het verzetten van een groep is nog niet met de hand nagelopen: taak 3 van plan 02.1-02 is een checkpoint met zes stappen in een draaiende app (uur wijzigen, botsing, andere trainer, alleen de naam). Tot dat gedaan is, is GROEP-05 wel af volgens tests en typecheck, maar nog niet met eigen ogen gezien.
 
 ## Deferred Items
 
@@ -141,6 +146,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T22:48:45.944Z
-Stopped at: Completed 02-wie-gaf-de-les-echt-03-PLAN.md
-Resume file: None
+Last session: 2026-09-06T00:00:00.000Z
+Stopped at: Completed 02.1-groep-verzetten-02-PLAN.md (taak 3: handmatige controle open)
+Resume file: .planning/phases/02.1-groep-verzetten/02.1-02-PLAN.md
