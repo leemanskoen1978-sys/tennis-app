@@ -15,6 +15,7 @@ import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { upsertGoal, removeGoal } from '../lib/goals';
 import { aanvraagVoor, kinderenVan } from '../lib/ouderkind';
 import { zonderLid } from '../lib/leden';
+import { lesGroepFout } from '../lib/lesgroepen';
 import {
   SESSIONS_PER_CARD, useSession, releaseSession, removeManualSession,
   planMethodChange, planCancel, planCardDeletion, planParticipantsChange, planSplitChange,
@@ -27,7 +28,7 @@ import { seriesFrom } from '../lib/series';
 import { planSeries, type OvergeslagenSlot, type RecurrenceRule } from '../lib/recurrence';
 import type {
   User, Court, Booking, Lesson, Memo, StudentProgress, PlayerGoal, Role, Settings,
-  Beurtenkaart, BookingStatus, OuderKind, PaymentMethod, PaymentSplit,
+  Beurtenkaart, BookingStatus, LesGroep, OuderKind, PaymentMethod, PaymentSplit,
 } from '../lib/types';
 
 interface DataShape {
@@ -41,6 +42,8 @@ interface DataShape {
   beurtenkaarten: Beurtenkaart[];
   /** De koppelingen ouder-kind: aangevraagd, goedgekeurd of geweigerd. Zie lib/ouderkind. */
   relaties: OuderKind[];
+  /** De lesgroepen van de club, actief én gearchiveerd. Zie lib/lesgroepen. */
+  lesGroepen: LesGroep[];
   settings: Settings;
   currentUser: User | null;
   loading: boolean;
@@ -164,6 +167,11 @@ interface DataShape {
   beslisOverKind: (relatieId: string, goedgekeurd: boolean) => Promise<void>;
   /** De koppeling of de aanvraag weghalen. Een ouder mag zijn eigen vraag intrekken. */
   wisRelatie: (relatieId: string) => Promise<void>;
+  /**
+   * Een lesgroep aanmaken. Geeft de gemaakte groep terug, of `null` met een melding op het
+   * scherm als er iets niet klopt — zie `lesGroepFout` in lib/lesgroepen.
+   */
+  addLesGroep: (g: Omit<LesGroep, 'id'>) => Promise<LesGroep | null>;
   addLesson: (l: Omit<Lesson, 'id'>) => Promise<void>;
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
@@ -987,6 +995,31 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     await commit({ ...store, relaties: store.relaties.filter((r) => r.id !== relatieId) });
   }, [commit]);
 
+  // ---------------------------------------------------------------------------
+  // Lesgroepen
+  //
+  // Een groep is een blijvend gegeven van de club en geen les: hij heeft een vast moment,
+  // een trainer en een rooster van wie er nú in zit. Het rekenwerk over wat een wijziging
+  // aan de groep met de al ingeplande lessen doet, staat in lib/lesgroepen — hier wordt het
+  // alleen weggeschreven.
+  // ---------------------------------------------------------------------------
+
+  const addLesGroep = useCallback(async (g: Omit<LesGroep, 'id'>): Promise<LesGroep | null> => {
+    const store = storeRef.current;
+    if (!store) return null;
+    // Dezelfde volgorde als bij een nieuwe les: eerst kijken of het klopt, en pas dan
+    // wegschrijven. Een halve groep in de opslag is lastiger recht te zetten dan een
+    // formulier dat nog even openblijft met de reden erbij.
+    const fout = lesGroepFout(g);
+    if (fout) {
+      setError(fout);
+      return null;
+    }
+    const created: LesGroep = { ...g, id: newId('lg'), created_at: new Date().toISOString() };
+    await commit({ ...store, lesGroepen: [...store.lesGroepen, created] });
+    return created;
+  }, [commit]);
+
   const addLesson = useCallback(async (l: Omit<Lesson, 'id'>) => {
     const store = storeRef.current;
     if (!store) return;
@@ -1110,6 +1143,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     goals: store?.goals ?? [],
     beurtenkaarten: store?.beurtenkaarten ?? [],
     relaties: store?.relaties ?? [],
+    lesGroepen: store?.lesGroepen ?? [],
     settings: store?.settings ?? { booking_end_time: '21:00', theme: 'light', language: 'nl' },
     currentUser,
     loading,
@@ -1150,6 +1184,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     vraagKindAan,
     beslisOverKind,
     wisRelatie,
+    addLesGroep,
     addLesson,
     updateLesson,
     deleteLesson,
@@ -1172,7 +1207,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setPaymentMethod, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
-    vraagKindAan, beslisOverKind, wisRelatie, addLesson,
+    vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
     addMemo, deleteMemo, werkMemoUit,
     saveGoal, deleteGoal, saveSettings, emergencyCleanup,
