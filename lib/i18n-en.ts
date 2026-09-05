@@ -1145,6 +1145,23 @@ export const EN: Record<string, string> = {
     + 'can still see later who was in it.',
   'Groep archiveren': 'Archive group',
   'Terug in de actieve lijst': 'Back in the active list',
+  // De voorvertoning bij de Bewaren-knop van het groepsdetail: wat er meeverzet en wat er om
+  // welke reden blijft staan. De tellingen '1 les' en '{n} lessen' staan al bij het
+  // boekingsvenster; deze zinnen hangen eraan vast.
+  'Een ander uur, een andere dag, een andere trainer of een andere baan werkt door in de lessen van vandaag en later. Een les die iemand anders al gaf, blijft van hem.':
+    'A different hour, a different day, a different coach or a different court carries through '
+    + 'to the lessons of today and later. A lesson someone else already taught stays theirs.',
+  '{lessen} van vandaag en later verzetten mee. De lessen die al geweest zijn blijven staan waar ze stonden.':
+    '{lessen} of today and later move along. The lessons that have already been taught stay '
+    + 'where they were.',
+  '{lessen} blijven staan: de trainer of de baan is dan al bezet: {dagen}.':
+    '{lessen} stay put: the coach or the court is already taken then: {dagen}.',
+  '{lessen} zouden in een vakantie vallen en blijven staan: {dagen}.':
+    '{lessen} would fall in a holiday and stay put: {dagen}.',
+  '{lessen} zouden hierdoor in het verleden komen te staan en blijven staan: {dagen}.':
+    '{lessen} would end up in the past because of this and stay put: {dagen}.',
+  'Naam, niveau en seizoen raken de lessen niet; er verzet niets mee.':
+    'Name, level and season do not touch the lessons; nothing moves along.',
   // De meldingen van `lesGroepFout` in lib/lesgroepen; ze komen op dit scherm in de foutregel
   // te staan, dus zonder deze regels bleven ze in het Nederlands hangen.
   'Geef de lesgroep een naam.': 'Give the lesson group a name.',
