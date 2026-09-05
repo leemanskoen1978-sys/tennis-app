@@ -23,7 +23,7 @@ import type { StoreData } from './mockStore';
 import { defaultSettings } from '../lib/seed';
 import { aanmeldUitkomst, type AanmeldUitkomst } from '../lib/wachtwoord';
 import type {
-  Beurtenkaart, Booking, Court, Lesson, Memo, OuderKind, PlayerGoal, Settings,
+  Beurtenkaart, Booking, Court, LesGroep, Lesson, Memo, OuderKind, PlayerGoal, Settings,
   StudentProgress, User,
 } from '../lib/types';
 
@@ -38,6 +38,7 @@ const TABLES: Record<SyncTable, string> = {
   beurtenkaarten: 'beurtenkaarten',
   memos: 'memos',
   relaties: 'ouder_kind',
+  lesGroepen: 'lesson_groups',
 };
 
 type Row = Record<string, unknown>;
@@ -133,6 +134,7 @@ function metTarief(users: User[], rates: RateRow[]): User[] {
 export async function loadFromSupabase(): Promise<StoreData> {
   const [
     users, courts, bookings, lessons, progress, goals, beurtenkaarten, memos, relaties, rates,
+    lesGroepen,
   ] = await Promise.all([
     selectAll<User>('users'),
     selectAll<Court>('courts'),
@@ -144,10 +146,14 @@ export async function loadFromSupabase(): Promise<StoreData> {
     selectAll<Beurtenkaart>('beurtenkaarten', ['auth_id']),
     // `created_at` hoort hier wél bij de app: de uitwerklijst zet de oudste bovenaan.
     selectAllOptioneel<Memo>('memos', ['auth_id']),
-    // Deze twee kwamen later dan de rest van het schema; een club die de nieuwe SQL nog
+    // Deze drie kwamen later dan de rest van het schema; een club die de nieuwe SQL nog
     // niet draaide kent ze niet, en dan mag de hele lading daar niet op stuklopen.
+    // `lesson_groups` is het verste in dat verhaal: de beheerder draait die migratie zelf
+    // en heeft dat op dit moment misschien nog niet gedaan. Dan hoort de app gewoon te
+    // laden met nog geen enkele groep, en niet te weigeren op te starten.
     selectAllOptioneel<OuderKind>('ouder_kind', ['auth_id']),
     selectAllOptioneel<RateRow>('coach_rates', ['auth_id', 'updated_at']),
+    selectAllOptioneel<LesGroep>('lesson_groups'),
   ]);
 
   const [settingsRow, catalogueRows] = await Promise.all([
@@ -169,6 +175,7 @@ export async function loadFromSupabase(): Promise<StoreData> {
     beurtenkaarten,
     memos,
     relaties,
+    lesGroepen,
     // De club heeft één rij instellingen; ontbrekende velden vallen terug op de standaard,
     // zodat een nieuw veld geen lege plek in een scherm oplevert.
     settings: { ...defaultSettings, ...stored },

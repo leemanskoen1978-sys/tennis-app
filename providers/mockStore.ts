@@ -2,8 +2,8 @@
 // Same shape the Supabase layer will later return, so screens don't change.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {
-  Beurtenkaart, Booking, Court, Lesson, Memo, OuderKind, PlayerGoal, StudentProgress, User,
-  Settings,
+  Beurtenkaart, Booking, Court, LesGroep, Lesson, Memo, OuderKind, PlayerGoal,
+  StudentProgress, User, Settings,
 } from '../lib/types';
 import {
   seedUsers, seedCourts, seedBookings, seedLessons, seedProgress, seedRelaties,
@@ -26,6 +26,8 @@ export interface StoreData {
   goals: PlayerGoal[];
   /** De koppelingen ouder-kind, aangevraagd of beslist. Zie lib/types: OuderKind. */
   relaties: OuderKind[];
+  /** De lesgroepen van de club, actief en gearchiveerd. Zie lib/types: LesGroep. */
+  lesGroepen: LesGroep[];
   settings: Settings;
   /** Which shipped lesson catalogues have already been added, so a deleted
    *  training stays deleted instead of reappearing on the next load. */
@@ -43,6 +45,8 @@ function freshSeed(): StoreData {
     memos: [],
     goals: [],
     relaties: [...seedRelaties],
+    // Geen zaaigegevens: een club die begint heeft haar groepen nog niet ingedeeld.
+    lesGroepen: [],
     settings: { ...defaultSettings },
     installed_catalogues: [],
   };
@@ -67,6 +71,8 @@ function withDefaults(data: StoreData): StoreData {
     goals: data.goals ?? [],
     // Een opslag van vóór de ouderkoppeling heeft dit veld niet.
     relaties: data.relaties ?? [],
+    // Een opslag van vóór de lesgroepen heeft dit veld niet.
+    lesGroepen: data.lesGroepen ?? [],
     settings: { ...defaultSettings, ...data.settings },
   };
 }
