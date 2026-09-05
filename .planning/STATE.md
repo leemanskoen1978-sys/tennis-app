@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 01-lesgroepen-06-PLAN.md
-last_updated: "2026-09-05T22:25:50.366Z"
-last_activity: 2026-09-05
+stopped_at: Completed 02-wie-gaf-de-les-echt-03-PLAN.md
+last_updated: "2026-09-05T22:30:26.846Z"
+last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 11
-  completed_plans: 8
-  percent: 0
+  completed_plans: 9
+  percent: 82
 ---
 
 # Project State
@@ -22,16 +22,16 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core value:** Als een trainer ziek is, ziet de beheerder binnen een minuut welke lessen dat
 raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf agenda's te zoeken.
-**Current focus:** Phase 1 — Lesgroepen
+**Current focus:** Phase 2 — Wie gaf de les écht
 
 ## Current Position
 
-Phase: 1 of 5 (Lesgroepen)
-Plan: 7 of 7 (01-07-PLAN.md — de migratie draaien en de upsert-val nalopen)
-Status: Phase complete — ready for verification
-Last activity: 2026-09-05
+Phase: 2 of 6 (Wie gaf de les écht)
+Plan: 3 of 4 (02-03-PLAN.md — de schrijfweg en de zichtbaarheid)
+Status: Plan complete — volgende is 02-04 (met de hand nalopen, checkpoints)
+Last activity: 2026-09-06
 
-Progress: [███████░░░] 73%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [███████░░░] 73%
 | Phase 01-lesgroepen P06 | 18min | 2 tasks | 3 files |
 | Phase 02-wie-gaf-de-les-echt P02 | 12min | 2 tasks | 1 files |
 | Phase 02 P01 | 25min | 3 tasks | 6 files |
+| Phase 02-wie-gaf-de-les-echt P03 | 20min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ confirmed as phases ship).
 - [Phase 01-lesgroepen]: de lesduur is een clubinstelling met 45/60/75/90 als keuze en 60 als terugval; een wijziging telt vanaf de volgende ingeplande les en nooit met terugwerkende kracht (D-05)
 - [Phase 02-wie-gaf-de-les-echt]: de taught_by_id-controle in bewaak_betaalvelden staat vóór de coach-bypass, niet in de to_jsonb-uitsluitingslijst — anders kan de trainer van de les zijn eigen loon zetten
 - [Phase 02-wie-gaf-de-les-echt]: taught_by_id gebruikt on delete set null, niet cascade — een verwijderde invaltrainer laat de les bestaan en valt terug op coach_id
+- [Phase 02-wie-gaf-de-les-echt]: setTaughtBy is de enige schrijfweg naar taught_by_id; het veld staat in dezelfde Omit<>-uitsluiting van updateBooking als payment_method, in het contexttype én in de implementatie, zodat een omweg niet compileert
+- [Phase 02-wie-gaf-de-les-echt]: de keuzeknoppen voor de vervanger staan achter isAdmin(currentUser) en niet achter canManage — canManage laat de trainer van de les toe, en die zou daarmee zijn eigen loonstaat zetten (D-08)
+- [Phase 02-wie-gaf-de-les-echt]: op de compacte leskaart blijft de naam van de vaste trainer staan met "(vervangen)" erachter; twee volledige namen staan alleen op het detailblad (D-07)
 
 ### Pending Todos
 
@@ -101,6 +105,11 @@ None yet.
 - De migratie voor `lesson_groups` is geschreven maar nog niet gedraaid (plan 01-07). Tot dan
   bestaat de tabel niet in productie; de app laadt door dankzij `selectAllOptioneel`, maar een
   aangemaakte groep kan nog nergens heen in Supabase-modus.
+
+- De migratie voor `bookings.taught_by_id` en de vervangen `bewaak_betaalvelden` is geschreven
+  maar nog niet gedraaid (plan 02-04). Tot dan blijft het veld overal leeg, rekent alles als
+  vóór deze fase, en heeft de vervangerknop op het detailblad in Supabase-modus nog geen kolom
+  om naartoe te schrijven.
 
 - Every phase adding a table/column must carry a manual RLS upsert-verification step
   (insert as user A, update as user B) — `tsc`/Jest cannot catch this; this bug class has hit
@@ -132,6 +141,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T22:25:50.360Z
-Stopped at: Completed 01-lesgroepen-06-PLAN.md
+Last session: 2026-09-06
+Stopped at: Completed 02-wie-gaf-de-les-echt-03-PLAN.md
 Resume file: None

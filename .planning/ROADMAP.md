@@ -65,7 +65,7 @@ Plans:
 Plans:
 - [x] 02-01-PLAN.md — De ene waarheid: Booking.taught_by_id, lib/lesgever.ts met zijn test, en de vier loonplekken die ermee rekenen (wave 1)
 - [x] 02-02-PLAN.md — Het schema als tekst: de kolom, de index, en bewaak_betaalvelden met de beheerdersgrens vóór de trainersuitzondering (wave 1)
-- [ ] 02-03-PLAN.md — De schrijfweg en de zichtbaarheid: setTaughtBy, de Omit-uitsluiting, beide namen op het detailblad en de markering op de kaart (wave 2)
+- [x] 02-03-PLAN.md — De schrijfweg en de zichtbaarheid: setTaughtBy, de Omit-uitsluiting, beide namen op het detailblad en de markering op de kaart (wave 2)
 - [ ] 02-04-PLAN.md — Met de hand nalopen: de migratie draaien, de trigger en de upsert-val, en wat het scherm toont (wave 3, checkpoints)
 
 ### Phase 2.1: De groep verzetten werkt door

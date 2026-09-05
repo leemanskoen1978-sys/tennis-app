@@ -30,7 +30,7 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
       aan wie de les is toegewezen.
 - [x] **VERV-02**: Loon, urenoverzicht en rapport rekenen met wie de les werkelijk gaf, tegen
       diens eigen uurtarief — via één plek in de code, zodat de twee nooit uit elkaar lopen.
-- [ ] **VERV-03**: Waar een les getoond wordt, is zichtbaar dat er een vervanger stond en wie
+- [x] **VERV-03**: Waar een les getoond wordt, is zichtbaar dat er een vervanger stond en wie
       de vaste trainer was.
 - [ ] **VERV-04**: De beheerder kan een trainer ziek melden over een periode (van–tot,
       eventueel met een reden).
@@ -142,7 +142,7 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | GROEP-07 | Phase 1 | Complete |
 | VERV-01 | Phase 2 | Complete |
 | VERV-02 | Phase 2 | Complete |
-| VERV-03 | Phase 2 | Pending |
+| VERV-03 | Phase 2 | Complete |
 | VERV-04 | Phase 3 | Pending |
 | VERV-05 | Phase 3 | Pending |
 | VERV-06 | Phase 3 | Pending |
