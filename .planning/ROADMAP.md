@@ -102,8 +102,8 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 03-01-PLAN.md — Eén botsingsregel in plaats van twee: lib/overlap.ts met zijn test, en recurrence + de provider wijzen erheen (wave 1)
-- [ ] 03-02-PLAN.md — Het hart als pure regel: SickLeave, ziekmeldingFout, lessenVoorZiekmelding en het afgeleide zoektVervanger, met de zomertijd-fixture (wave 1)
+- [x] 03-01-PLAN.md — Eén botsingsregel in plaats van twee: lib/overlap.ts met zijn test, en recurrence + de provider wijzen erheen (wave 1)
+- [x] 03-02-PLAN.md — Het hart als pure regel: SickLeave, ziekmeldingFout, lessenVoorZiekmelding en het afgeleide zoektVervanger, met de zomertijd-fixture (wave 1)
 - [ ] 03-03-PLAN.md — Het schema als tekst: sick_leaves, de index en twee admin-only RLS-policies onderaan supabase-schema.sql (wave 1)
 - [ ] 03-04-PLAN.md — Het vervangersvoorstel: kanVervangen met alle vijf de redenen, en vervangersVoor die niemand stil weglaat (wave 2)
 - [ ] 03-05-PLAN.md — De opslagweg: de vier stops plus meldZiek en trekZiekmeldingIn, die geen enkele boeking aanraakt (wave 2)
@@ -171,6 +171,6 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 | 1. Lesgroepen | 6/7 | In Progress|  |
 | 2. Wie gaf de les écht | 2/4 | In Progress|  |
 | 2.1 De groep verzetten werkt door | 1/2 | In Progress|  |
-| 3. Ziekmelding en vervangerswerklijst | 0/8 | Planned | - |
+| 3. Ziekmelding en vervangerswerklijst | 2/8 | In Progress|  |
 | 4. Excel-export | 5/5 | In Progress| Code af; taak 3 van 04-05 is een handmatige controle in Excel |
 | 5. Excel-import van trainingen | 0/10 | Not started | - |

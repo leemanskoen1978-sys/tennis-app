@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-05-PLAN.md (het exportscherm en de tegel); taak 3 is een handmatige controle in Excel
+stopped_at: Completed 03-02-PLAN.md (ziekmelding als pure regel)
 last_updated: "2026-09-06T00:00:00.000Z"
 last_activity: 2026-09-05
 progress:
@@ -22,13 +22,13 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core value:** Als een trainer ziek is, ziet de beheerder binnen een minuut welke lessen dat
 raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf agenda's te zoeken.
-**Current focus:** Phase 4 — Excel-export (code af: de beheerder downloadt het bestand vanaf Beheer → Club)
+**Current focus:** Phase 3 — Ziekmelding en vervangerswerklijst (het rekenwerk staat, het scherm nog niet)
 
 ## Current Position
 
-Phase: 4 of 6 (Excel-export)
-Plan: 5 of 5 af (04-05-PLAN.md — het exportscherm, de beheerdersgrens en de tegel in Beheer)
-Status: Awaiting verification
+Phase: 3 of 6 (Ziekmelding en vervangerswerklijst)
+Plan: 2 of 8 af (03-02-PLAN.md — SickLeave, zoektVervanger en lessenVoorZiekmelding, met de zomertijd-fixture)
+Status: Executing
 Last activity: 2026-09-06
 
 Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draaiende app.
@@ -71,6 +71,7 @@ Progress: [█████░░░░░] 47%
 | Phase 04 P03 | ~20min | 2 tasks | 2 files |
 | Phase 04 P04 | ~25min | 2 tasks | 2 files |
 | Phase 04 P05 | ~20min | 2 tasks | 4 files |
+| Phase 03-ziekmelding P02 | ~40min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,8 @@ None yet.
 - Export format (Phase 4) must land before import (Phase 5) so the group identifier
   round-trips instead of relying on fuzzy name matching.
 
+- "Zoekt vervanger" is een afgeleid feit (D-16): `zoektVervanger` in lib/ziekmelding is de enige plek die de vraag beantwoordt, er is geen kolom en geen nieuwe `bookings.status`-waarde. Daardoor raakt het intrekken van een ziekmelding (D-17) geen enkele boeking.
+
 - Het verzetten van een groep is nog niet met de hand nagelopen: taak 3 van plan 02.1-02 is een checkpoint met zes stappen in een draaiende app (uur wijzigen, botsing, andere trainer, alleen de naam). Tot dat gedaan is, is GROEP-05 wel af volgens tests en typecheck, maar nog niet met eigen ogen gezien.
 
 ## Deferred Items
@@ -173,5 +176,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-09-06T00:00:00.000Z
-Stopped at: Completed 04-03-PLAN.md (de bladen "Uren per trainer" en "Groepen")
+Stopped at: Completed 03-02-PLAN.md (ziekmelding als pure regel)
 Resume file: None
