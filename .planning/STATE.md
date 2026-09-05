@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 04-01-PLAN.md (het gereedschap voor de export)
-last_updated: "2026-09-05T23:13:17.301Z"
-last_activity: 2026-09-06
+last_updated: "2026-09-05T23:20:47.212Z"
+last_activity: 2026-09-05
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 30
-  completed_plans: 13
+  total_plans: 34
+  completed_plans: 14
   percent: 17
 ---
 
@@ -27,13 +27,13 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 ## Current Position
 
 Phase: 4 of 6 (Excel-export)
-Plan: 2 of 5 af (04-02-PLAN.md — blad "Lessen"); volgende: 04-03-PLAN.md
+Plan: 3 of 5 af (04-03-PLAN.md — de bladen "Uren per trainer" en "Groepen"); volgende: 04-04-PLAN.md
 Status: Ready to execute
 Last activity: 2026-09-06
 
 Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draaiende app.
 
-Progress: [████░░░░░░] 43%
+Progress: [████░░░░░░] 42%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [████░░░░░░] 43%
 | Phase 02.1-groep-verzetten P02 | 25min | 2 tasks | 3 files |
 | Phase 04-excel-export P01 | ~20min | 2 tasks | 4 files |
 | Phase 04 P02 | ~25min | 2 tasks | 2 files |
+| Phase 04 P03 | ~20min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,8 @@ confirmed as phases ship).
 - [Phase 04-excel-export]: het ISO-weeknummer staat in lib/datetime.ts met de jaarwissel als eigen test — 1 januari 2027 is week 53 van 2026 en 31 december 2025 is week 1 van 2026 (D-11)
 - [Phase 04-excel-export]: de koprij en de tabnaam van blad "Lessen" zijn vaste Nederlandse literals en gaan niet door t() — de import van fase 5 leest die koprij, dus een Engelse kop maakt een export onleesbaar voor de app die hem schreef
 - [Phase 04-excel-export]: de Nederlandse weekdagnamen komen uit een vaste tabel in lib/export-trainingen.ts en niet uit toLocaleDateString, zodat hetzelfde seizoen op twee toestellen twee gelijke bestanden oplevert
+- [Phase 04-excel-export]: Blad Uren per trainer rekent geen bedrag zelf uit: trainer, lessen en loon komen regel voor regel uit payoutsByCoach
+- [Phase 04-excel-export]: Blad Groepen draagt het Groep-ID, zodat een herimport de bestaande groep herkent in plaats van een tweede aan te maken
 
 ### Pending Todos
 
@@ -156,6 +159,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T23:13:11.934Z
-Stopped at: Completed 04-01-PLAN.md (het gereedschap voor de export)
+Last session: 2026-09-06T00:00:00.000Z
+Stopped at: Completed 04-03-PLAN.md (de bladen "Uren per trainer" en "Groepen")
 Resume file: None
