@@ -1,4 +1,4 @@
-import { kanVervangen } from './vervanger';
+import { kanVervangen, vervangersVoor } from './vervanger';
 import type { VervangerKandidaat, VervangerSlot, VervangerUitkomst } from './vervanger';
 import type { OpenZiekmelding } from './ziekmelding';
 import type { Booking, Vakantie } from './types';
@@ -202,5 +202,43 @@ describe('de volgorde ligt vast', () => {
     const k = trainer({ working_hours: { start: '09:00', end: '12:00' } });
     const w = { open: [ziek({ coach_id: 'piet' })], lessen: [les()], vakanties: [vakantie()] };
     expect(redenVan(k, w)).toBe(redenVan(k, w));
+  });
+});
+
+describe('geen kandidaat valt stil weg', () => {
+  const zieke = trainer({ id: 'jan', name: 'Jan' });
+  const vrije = trainer({ id: 'piet', name: 'Piet' });
+  const bezette = trainer({ id: 'ann', name: 'Ann' });
+  const vroege = trainer({ id: 'lore', name: 'Lore', working_hours: { start: '09:00', end: '12:00' } });
+  const kandidaten = [zieke, vrije, bezette, vroege];
+
+  const wereld = {
+    lessen: [les({ coach_id: 'ann' })],
+    open: [ziek({ coach_id: 'jan' })],
+  };
+
+  const lijst = (): VervangerUitkomst[] =>
+    vervangersVoor(kandidaten, slot, wereld.lessen, [], wereld.open, CLUB_EINDE);
+
+  it('geeft er even veel terug als er kandidaten in gingen', () => {
+    expect(lijst()).toHaveLength(kandidaten.length);
+  });
+
+  it('elke trainer staat er precies één keer in, in de volgorde van de invoer', () => {
+    expect(lijst().map((u) => u.coach.id)).toEqual(['jan', 'piet', 'ann', 'lore']);
+  });
+
+  it('wie niet kan staat er met zijn eigen reden bij', () => {
+    expect(lijst().map((u) => u.reden)).toEqual(['zelf_ziek', 'kan', 'eigen_les', 'buiten_uren']);
+  });
+
+  it('voegt niets toe en laat niets weg ten opzichte van kanVervangen', () => {
+    const los = kandidaten.map((k) =>
+      kanVervangen(k, slot, wereld.lessen, [], wereld.open, CLUB_EINDE));
+    expect(lijst()).toEqual(los);
+  });
+
+  it('een lege kandidatenlijst geeft een lege uitkomst', () => {
+    expect(vervangersVoor([], slot, wereld.lessen, [], wereld.open, CLUB_EINDE)).toEqual([]);
   });
 });
