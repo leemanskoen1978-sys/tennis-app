@@ -147,7 +147,19 @@ Plans:
   7. Elke nieuwe of gewijzigde tabel in dit importpad is met de hand geverifieerd op de upsert-val tegen een echte Supabase-omgeving.
   8. `koen.xlsx` — de echte seizoensplanning van de club, 1398 regels — leest ongewijzigd in en levert zeven lesgroepen op met hun eigen roster; de enige melding is dat trainer en banen gekoppeld moeten worden (IMP-10).
   9. De lesduur is een clubinstelling met 60 minuten als beginwaarde; een wijziging raakt geen les die al ingepland of gegeven is (IMP-11).
-**Plans**: TBD
+**Plans**: 10 plans in 9 waves
+
+Plans:
+- [ ] 05-01-PLAN.md — De uitpakker met de hand: RFC 1951 in lib/inflate.ts, bewezen tegen bekende bytevectoren (wave 1)
+- [ ] 05-02-PLAN.md — Twee kleine uitbreidingen: namen herkennen ongeacht de volgorde, en een .xlsx als bytes kiezen (wave 1)
+- [ ] 05-03-PLAN.md — De lezer, eerst en alleen: zip, XML, datum en tijd, byte-exact bewezen tegen het echte koen.xlsx (wave 2)
+- [ ] 05-04-PLAN.md — De kolomtabel, de koprij, de regels met betekenis, en het sjabloon om te downloaden (wave 3)
+- [ ] 05-05-PLAN.md — Lesgroepen afleiden op de sleutel naam+dag+uur; spelers aanmaken, trainer en baan alleen opzoeken (wave 4)
+- [ ] 05-06-PLAN.md — De lessen: vakanties eruit, botsingen gemeld, herimport zonder verdubbelen, en de zomertijdtest (wave 5)
+- [ ] 05-07-PLAN.md — De acceptatie: koen.xlsx van bytes tot plan, twee keer inlezen, en de export weer inlezen (wave 6)
+- [ ] 05-08-PLAN.md — De uitvoerder: het hele plan in één opslag, en eerlijk over wat een halve mislukking betekent (wave 7)
+- [ ] 05-09-PLAN.md — Het importscherm met de droogloop, de tegel in Beheer en de Engelse teksten (wave 8, checkpoint)
+- [ ] 05-10-PLAN.md — Met de hand nalopen: de upsert-val, en het echte seizoen één keer bewust inlezen (wave 9, checkpoints)
 
 ## Progress
 
@@ -161,4 +173,4 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 | 2.1 De groep verzetten werkt door | 1/2 | In Progress|  |
 | 3. Ziekmelding en vervangerswerklijst | 0/8 | Planned | - |
 | 4. Excel-export | 3/5 | In Progress|  |
-| 5. Excel-import van trainingen | 0/? | Not started | - |
+| 5. Excel-import van trainingen | 0/10 | Not started | - |
