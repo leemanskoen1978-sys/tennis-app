@@ -11,6 +11,8 @@ import { isoWeeknummer } from './datetime';
 import { groupSize, lessonPlayerIds } from './groups';
 import { t } from './i18n';
 import { lesgeverId } from './lesgever';
+import { bookingMinutes } from './payments';
+import { countedBookings, payoutsByCoach } from './reports';
 import { bookingStatusLabel } from './status';
 import { type XlsxBlad, type XlsxCel } from './xlsx';
 import type { Booking, Court, LesGroep, User } from './types';
@@ -268,5 +270,106 @@ export function bladLessen(bookings: readonly Booking[], tabellen: Opzoektabelle
     koppen: koppenVan(LESSEN_KOLOMMEN),
     breedtes: LESSEN_KOLOMMEN.map((c) => c.breedte),
     rijen: naarRijen(LESSEN_KOLOMMEN, lesRijen(bookings, tabellen)),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Blad "Uren per trainer" — het loonrapport van Beheer, in het bestand
+//
+// Dit blad rekent geen enkel bedrag zelf uit. Trainer, lessen en loon komen regel voor regel
+// uit `payoutsByCoach` (lib/reports), de enige plek die weet wie welke les gaf en wat hij
+// daarvoor krijgt. Twee implementaties van diezelfde vraag lopen uiteen zodra er één loonregel
+// verandert, en dan toont het scherm het ene bedrag en het doorgestuurde bestand het andere.
+// ---------------------------------------------------------------------------
+
+/**
+ * De gegeven minuten per lesgever, en daarna omgerekend naar uren.
+ *
+ * Dit is de enige nieuwe berekening op dit blad, en ze mag omdat het uren zijn en geen geld:
+ * `lib/reports.ts` telt de uren nergens op, maar de duur zelf komt onveranderd uit
+ * `bookingMinutes` (lib/payments) en de groepering gebruikt exact dezelfde sleutel
+ * (`lesgeverId`) en exact dezelfde lessenselectie (`countedBookings`) als `payoutsByCoach`.
+ * Daardoor kunnen de kolom "Uren" en de kolom "Lessen" niet uit elkaar lopen: ze tellen per
+ * definitie dezelfde lessen.
+ *
+ * De minuten worden eerst opgeteld en pas op het einde gedeeld — per les afronden laat een
+ * seizoen van les-van-vijftig-minuten centimeters verschuiven. Twee decimalen, want een
+ * cel met 0,8333333333333334 erin leest niemand.
+ */
+function urenPerLesgever(bookings: Booking[]): Map<string, number> {
+  const minuten = new Map<string, number>();
+  for (const b of countedBookings(bookings)) {
+    const lesgever = lesgeverId(b);
+    minuten.set(lesgever, (minuten.get(lesgever) ?? 0) + bookingMinutes(b));
+  }
+  return new Map([...minuten].map(([id, m]) => [id, Math.round((m / 60) * 100) / 100]));
+}
+
+/** Eén regel van het loonoverzicht: wat er van deze trainer op het blad komt. */
+interface UrenRij {
+  naam: string;
+  lessen: number;
+  uren: number;
+  /** Letterlijk `CoachTotal.amount` — hier wordt niets bijgeteld of afgetrokken. */
+  loon: number;
+  /** De zichtbare waarschuwing bij een ontbrekend uurtarief; leeg als er niets aan de hand is. */
+  letOp: string;
+}
+
+/**
+ * Het loonrapport als rijen, met de uren erbij.
+ *
+ * Eén `.map()` over `payoutsByCoach` en met opzet géén tweede sortering: dat rapport sorteert
+ * al aflopend op bedrag en bij een gelijk bedrag op naam. Wie hier opnieuw sorteert, laat het
+ * bestand in een andere volgorde staan dan Beheer → Rapport, en dan lijken twee overzichten
+ * van dezelfde periode iets anders te zeggen.
+ */
+function urenRijen(bookings: Booking[], users: User[]): UrenRij[] {
+  const uren = urenPerLesgever(bookings);
+  return payoutsByCoach(bookings, users).map((r) => ({
+    naam: r.name,
+    lessen: r.lessons,
+    uren: uren.get(r.coachId) ?? 0,
+    loon: r.amount,
+    // Wél door `t()`, anders dan de koppen: dit is schermtekst voor wie het bestand leest en
+    // geen kolomnaam die de import terugzoekt. Een vergeten tarief moet opvallen — €0,00 zonder
+    // melding is niet te onderscheiden van een trainer die gratis werkt.
+    letOp: r.missingRate ? t('Geen uurtarief ingevuld') : '',
+  }));
+}
+
+/**
+ * De vijf kolommen van blad "Uren per trainer".
+ *
+ * Er staat hier bewust GEEN omzetkolom (D-05). De omzet loopt op het uurtarief van de baan —
+ * wat de speler betaalt — en het loon op dat van de trainer — wat hij krijgt. Die twee
+ * bedragen naast elkaar op één blad is precies hoe ze in elkaar schuiven: iemand telt de
+ * verkeerde kolom op en de club denkt dat ze verlies maakt of dat een trainer te veel kreeg.
+ * Wie omzet wil, vindt ze in Beheer → Rapport, waar ze met haar eigen uitleg staat.
+ */
+const UREN_KOLOMMEN: readonly ExportKolom<UrenRij>[] = [
+  { label: 'Trainer', value: (r) => r.naam, breedte: 22 },
+  { label: 'Lessen', value: (r) => String(r.lessen), getal: (r) => r.lessen, breedte: 9 },
+  { label: 'Uren', value: (r) => String(r.uren), getal: (r) => r.uren, breedte: 9 },
+  {
+    label: 'Loon (EUR)', value: (r) => String(r.loon),
+    getal: (r) => r.loon, geld: true, breedte: 13,
+  },
+  { label: 'Let op', value: (r) => r.letOp, breedte: 26 },
+];
+
+/**
+ * Blad "Uren per trainer": per trainer het aantal lessen, de gegeven uren en het loon over de
+ * gekozen periode, gerekend op wie de les werkelijk gaf.
+ *
+ * De tabnaam is net als bij blad "Lessen" een vaste Nederlandse waarde en gaat niet door
+ * `t()`: het bestand hoort op elk toestel hetzelfde te heten.
+ */
+export function bladUrenPerTrainer(bookings: Booking[], users: User[]): XlsxBlad {
+  return {
+    naam: 'Uren per trainer',
+    koppen: koppenVan(UREN_KOLOMMEN),
+    breedtes: UREN_KOLOMMEN.map((c) => c.breedte),
+    rijen: naarRijen(UREN_KOLOMMEN, urenRijen(bookings, users)),
   };
 }
