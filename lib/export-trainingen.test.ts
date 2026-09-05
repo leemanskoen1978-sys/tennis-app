@@ -1,5 +1,6 @@
 import {
-  bladGroepen, bladLessen, bladUrenPerTrainer, koppenVan, naarRijen, opzoektabellen,
+  bladAanwezigheid, bladGroepen, bladLessen, bladUrenPerTrainer, koppenVan, naarRijen,
+  opzoektabellen,
   type ExportKolom,
 } from './export-trainingen';
 import { payoutsByCoach } from './reports';
@@ -648,5 +649,142 @@ describe('bladGroepen', () => {
     // wel degelijk ingepland en hoort de trainer te zien.
     const blad = bladGroepen([groepen[0]], [groepsles({ status: 'cancelled' })], groepstabellen);
     expect(Number(cel(blad, 0, 'Lessen in periode'))).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Blad "Aanwezigheid"
+// ---------------------------------------------------------------------------
+
+/** De eerste les van Groep 8: Mathis betaalt, Lotte en Jules staan erbij. */
+function lesA(over: Partial<Booking> = {}): Booking {
+  return booking({
+    id: 'a1', group_id: 'g8', court_id: 'hal-1',
+    participant_ids: ['p2', 'p3'],
+    // Jules is nog niet afgevinkt: dat is de derde stand, en die hoort een lege cel te worden.
+    attendance: { p1: 'aanwezig', p2: 'afwezig' },
+    ...over,
+  });
+}
+
+/** Een week later. Jules is weg, Fien staat er nu bij — dezelfde groep, andere spelers. */
+function lesB(over: Partial<Booking> = {}): Booking {
+  return booking({
+    id: 'a2', group_id: 'g8', court_id: 'hal-1',
+    start_time: '2026-08-26T17:00:00', end_time: '2026-08-26T18:00:00',
+    participant_ids: ['p2', 'p4'],
+    attendance: { p4: 'aanwezig' },
+    ...over,
+  });
+}
+
+/** Met opzet in de verkeerde volgorde meegegeven: het blad hoort zelf chronologisch te staan. */
+const aanwezigheidslessen: Booking[] = [lesB(), lesA()];
+
+/** Groep 8 met een rooster dat precies de spelers van de twee lessen bevat. */
+const groepNu: LesGroep = { ...groepen[0], roster: ['p1', 'p2', 'p3', 'p4'] };
+
+/** De cellen van één rij als tekst; de rijen van dit blad zijn niet allemaal even lang. */
+function rijTekst(blad: XlsxBlad, r: number): string[] {
+  return blad.rijen[r].map((c) => String((c as { waarde: unknown }).waarde));
+}
+
+describe('bladAanwezigheid', () => {
+  it('heet "Aanwezigheid" en zet de groep, de speler en daarna de lesmomenten in de koprij', () => {
+    const blad = bladAanwezigheid([groepNu], aanwezigheidslessen, tabellen);
+    expect(blad.naam).toBe('Aanwezigheid');
+    expect(blad.koppen).toEqual(['Groep', 'Speler', 'Les 1', 'Les 2']);
+  });
+
+  it('opent elk groepsblok met een datumrij, chronologisch als dd/mm', () => {
+    const blad = bladAanwezigheid([groepNu], aanwezigheidslessen, tabellen);
+    expect(rijTekst(blad, 0)).toEqual(['Groep 8', 'Datum', '19/08', '26/08']);
+  });
+
+  it('zet X bij aanwezig, afw bij afwezig en laat de cel echt leeg als er niets staat', () => {
+    const blad = bladAanwezigheid([groepNu], aanwezigheidslessen, tabellen);
+    // Op naam gesorteerd: Fien, Jules, Lotte, Mathis.
+    expect(rijTekst(blad, 1)).toEqual(['', 'Fien', '', 'X']);
+    // Jules stond alleen in de eerste les en werd daar niet afgevinkt: twee lege cellen.
+    expect(rijTekst(blad, 2)).toEqual(['', 'Jules', '', '']);
+    expect(rijTekst(blad, 3)).toEqual(['', 'Lotte', 'afw', '']);
+    expect(rijTekst(blad, 4)).toEqual(['', 'Mathis', 'X', '']);
+  });
+
+  it('schrijft de niet-ingevulde cel als lege tekstcel, zodat er met de hand in te schrijven valt', () => {
+    const blad = bladAanwezigheid([groepNu], aanwezigheidslessen, tabellen);
+    expect(blad.rijen[2][2]).toEqual({ soort: 'tekst', waarde: '' });
+    expect(blad.rijen[2][3]).toEqual({ soort: 'tekst', waarde: '' });
+  });
+
+  it('zet één lege rij na elk groepsblok', () => {
+    const blad = bladAanwezigheid([groepNu], aanwezigheidslessen, tabellen);
+    expect(blad.rijen).toHaveLength(6);
+    expect(blad.rijen[5]).toEqual([]);
+  });
+
+  it('verandert niet als er vandaag iemand aan het rooster van de groep bij komt', () => {
+    // De val van deze fase: het rooster is wie er nú in de groep zit. Een export van augustus
+    // mag niet meebewegen met een wijziging van vandaag.
+    const erbij: LesGroep = { ...groepNu, roster: [...groepNu.roster, 'p5', 'p6'] };
+    expect(bladAanwezigheid([erbij], aanwezigheidslessen, tabellen))
+      .toEqual(bladAanwezigheid([groepNu], aanwezigheidslessen, tabellen));
+    const namen = bladAanwezigheid([erbij], aanwezigheidslessen, tabellen)
+      .rijen.map((r) => String((r[1] as { waarde: unknown } | undefined)?.waarde ?? ''));
+    expect(namen).not.toContain('Wout');
+    expect(namen).not.toContain('Nore');
+  });
+
+  it('houdt een speler op het blad die uit het rooster gehaald is maar wél in de lessen zat', () => {
+    const zonderJules: LesGroep = { ...groepNu, roster: ['p1', 'p2', 'p4'] };
+    const namen = bladAanwezigheid([zonderJules], aanwezigheidslessen, tabellen)
+      .rijen.map((r) => String((r[1] as { waarde: unknown } | undefined)?.waarde ?? ''));
+    expect(namen).toContain('Jules');
+  });
+
+  it('slaat een groep zonder lessen in de periode over', () => {
+    const blad = bladAanwezigheid([groepNu, g3], aanwezigheidslessen, groepstabellen);
+    const groepsnamen = blad.rijen.map((r) => String((r[0] as { waarde: unknown } | undefined)?.waarde ?? ''));
+    expect(groepsnamen).not.toContain('Beginners');
+    expect(groepsnamen).toContain('Groep 8');
+  });
+
+  it('noemt een speler die de app niet meer kent Onbekend, en laat hem niet vallen', () => {
+    const blad = bladAanwezigheid(
+      [groepNu],
+      [lesA({ participant_ids: ['p2', 'weg'], attendance: { weg: 'aanwezig' } })],
+      tabellen,
+    );
+    const namen = blad.rijen.map((r) => String((r[1] as { waarde: unknown } | undefined)?.waarde ?? ''));
+    expect(namen).toContain('Onbekend');
+  });
+
+  it('geeft een geannuleerde les geen kolom: er is die dag niets gebeurd om af te vinken', () => {
+    const blad = bladAanwezigheid(
+      [groepNu],
+      [...aanwezigheidslessen, lesA({ id: 'a3', status: 'cancelled', start_time: '2026-09-02T17:00:00' })],
+      tabellen,
+    );
+    expect(blad.koppen).toEqual(['Groep', 'Speler', 'Les 1', 'Les 2']);
+    expect(rijTekst(blad, 0)).toEqual(['Groep 8', 'Datum', '19/08', '26/08']);
+  });
+
+  it('geeft evenveel leskolommen als de groep met de meeste lessen', () => {
+    const beginnersles = booking({
+      id: 'c1', group_id: 'g3', participant_ids: ['p2'],
+      start_time: '2026-08-23T09:30:00', end_time: '2026-08-23T10:30:00',
+      attendance: { p1: 'aanwezig' },
+    });
+    const blad = bladAanwezigheid([groepNu, g3], [...aanwezigheidslessen, beginnersles], groepstabellen);
+    expect(blad.koppen).toEqual(['Groep', 'Speler', 'Les 1', 'Les 2']);
+    // Op naam gesorteerd staat Beginners voorop, met maar één lesmoment.
+    expect(rijTekst(blad, 0)).toEqual(['Beginners', 'Datum', '23/08']);
+    expect(rijTekst(blad, 3)).toEqual(['Groep 8', 'Datum', '19/08', '26/08']);
+  });
+
+  it('geeft een leeg blad terug als er geen lessen zijn', () => {
+    const blad = bladAanwezigheid([groepNu], [], tabellen);
+    expect(blad.rijen).toHaveLength(0);
+    expect(blad.koppen).toEqual(['Groep', 'Speler']);
   });
 });
