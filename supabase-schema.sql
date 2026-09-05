@@ -1008,3 +1008,58 @@ begin
   return new;
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Ziekmeldingen
+-- ---------------------------------------------------------------------------
+
+-- Een ziekmelding is een periode op een trainer, los van zijn boekingstijden
+-- (users.booking_periods) en los van de clubvakanties. Zie D-03 in
+-- .planning/phases/03-ziekmelding-en-vervangerswerklijst/03-CONTEXT.md: een
+-- boekingsperiode is vooruit gepland ("hij geeft die weken geen les"), een ziekmelding is
+-- een gebeurtenis met lessen die al gepland stonden en nu opgelost moeten worden. Ze staan
+-- daarom in een eigen tabel, niet als extra velden op `booking_periods`.
+--
+-- `retracted_at` in plaats van verwijderen: intrekken (D-02/VERV-10) is iets dat gebeurd
+-- is en blijft zichtbaar. Een ziekmelding met `retracted_at` gezet telt nergens meer mee
+-- als "open" — niet in de werklijst, niet in het vervangersvoorstel — maar de rij zelf
+-- blijft bestaan.
+--
+-- Alleen de beheerder ziet en beheert deze tabel — dezelfde grens als `coach_rates` en
+-- `lesson_groups`, en om dezelfde reden geen "created_by"-kolom of -conditie: géén van
+-- beide policies hieronder verwijst naar wie een rij ooit gemaakt heeft. Dat is met opzet.
+-- Lees eerst het commentaar boven `bookings_insert` voordat je hier een eigenaarscontrole
+-- aan toevoegt: de app schrijft met een upsert, Postgres toetst de `with check` ook bij een
+-- latere wijziging, en alles wat hier over de máker van de rij geëist wordt, geldt dus ook
+-- voor iedere volgende beheerder die de rij aanpast. Precies die val brak `bookings_insert`
+-- ooit stilzwijgend, en dit project is er al twee keer stilzwijgend door geraakt.
+--
+-- coach_id gebruikt hier `on delete cascade`, niet `on delete set null` zoals
+-- `lesson_groups.coach_id` hierboven: een ziekmelding heeft geen betekenis meer zodra zijn
+-- trainer weg is, terwijl een les moet blijven bestaan en terugvalt op "de vaste trainer
+-- gaf hem zelf" (zie het `taught_by_id`-commentaar hierboven). Dat verschil is bewust.
+--
+-- Dit blok draait de gebruiker zelf (D-14) — geen enkele taak in deze fase voert het uit of
+-- legt een verbinding met Supabase. Zolang het niet gedraaid is, moet de app blijven
+-- werken: `providers/supabaseStore.ts` leest deze tabel daarom met `selectAllOptioneel`,
+-- niet met `selectAll`.
+create table if not exists sick_leaves (
+  id text primary key,
+  coach_id text not null references users(id) on delete cascade,
+  van date not null,
+  tot date not null,
+  reden text,
+  created_at timestamptz not null default now(),
+  retracted_at timestamptz
+);
+
+create index if not exists sick_leaves_coach_idx on sick_leaves (coach_id);
+
+alter table sick_leaves enable row level security;
+
+drop policy if exists sick_leaves_select on sick_leaves;
+create policy sick_leaves_select on sick_leaves for select
+  to authenticated using (is_admin());
+drop policy if exists sick_leaves_write on sick_leaves;
+create policy sick_leaves_write on sick_leaves for all
+  to authenticated using (is_admin()) with check (is_admin());
