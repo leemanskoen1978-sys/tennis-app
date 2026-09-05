@@ -884,3 +884,57 @@ on conflict (id) do nothing;
 insert into club_settings (id, value)
 values ('club', '{"booking_end_time":"21:00","theme":"light","language":"nl"}'::jsonb)
 on conflict (id) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Lesgroepen
+-- ---------------------------------------------------------------------------
+
+-- Een lesgroep is een blijvend gegeven — naam, niveau, vaste dag en uur, trainer, baan,
+-- seizoen en de lijst spelers die erin zitten — los van de losse les die er elke week uit
+-- ontstaat. Zie D-01/D-02 in .planning/phases/01-lesgroepen/01-CONTEXT.md. `roster` staat
+-- als jsonb en niet als koppeltabel, om dezelfde reden als ontwerpkeuze 3 bovenaan dit
+-- bestand: die lijst wordt nooit los van zijn groep opgevraagd of gewijzigd, altijd samen
+-- met de groep erbij — een eigen tabel zou dus alleen een join per scherm opleveren.
+--
+-- Alleen de beheerder ziet en beheert deze tabel — dezelfde grens als `coach_rates`
+-- hierboven, en om dezelfde reden geen "created_by"-kolom of -conditie: géén van beide
+-- policies hieronder verwijst naar wie een rij ooit gemaakt heeft. Dat is met opzet. Lees
+-- eerst het commentaar boven `bookings_insert` voordat je hier een eigenaarscontrole aan
+-- toevoegt: de app schrijft met een upsert, Postgres toetst de `with check` ook bij een
+-- latere wijziging, en alles wat hier over de máker van de rij geëist wordt, geldt dus ook
+-- voor iedere volgende beheerder die de rij aanpast. Precies die val brak `bookings_insert`
+-- ooit stilzwijgend, en dit project is er al twee keer stilzwijgend door geraakt — vandaar
+-- de vorm van `rates_write`, niet van `rates_select`.
+--
+-- `bewaak_betaalvelden` hoeft niet aangepast te worden voor de nieuwe kolom `group_id` op
+-- `bookings`. Die trigger vergelijkt de hele rij minus `payment_method`, `beurtenkaart_id`
+-- en `attendance`, dus `group_id` valt vanzelf onder "mag een speler niet wijzigen" — en de
+-- beheerder en de trainer van de les mogen sowieso al alles, want die twee staan bovenaan de
+-- functie al langs. Wie de groep van een les verzet, is per definitie een van die twee.
+create table if not exists lesson_groups (
+  id text primary key,
+  name text not null,
+  level text not null,
+  weekday int not null check (weekday between 0 and 6),
+  start_hour int not null check (start_hour between 0 and 23),
+  start_minute int not null default 0 check (start_minute between 0 and 59),
+  coach_id text references users(id) on delete set null,
+  court_id text references courts(id) on delete set null,
+  season_start date not null,
+  season_end date not null,
+  roster jsonb not null default '[]'::jsonb,
+  archived boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table bookings add column if not exists group_id text references lesson_groups(id) on delete set null;
+create index if not exists bookings_group_idx on bookings (group_id);
+
+alter table lesson_groups enable row level security;
+
+drop policy if exists lesson_groups_select on lesson_groups;
+create policy lesson_groups_select on lesson_groups for select
+  to authenticated using (is_admin());
+drop policy if exists lesson_groups_write on lesson_groups;
+create policy lesson_groups_write on lesson_groups for all
+  to authenticated using (is_admin()) with check (is_admin());

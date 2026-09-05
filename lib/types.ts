@@ -189,6 +189,17 @@ export interface Booking {
    * uitrekent welke lessen "vanaf deze les" bij elkaar horen.
    */
   series_id?: string;
+  /**
+   * De lesgroep waar deze les bij hoort. Leeg bij een les die los van een groep bestaat.
+   *
+   * Dit veld staat náást `series_id` en vervangt het niet: een reeks is de batch waarin een
+   * hoop lessen ooit in één keer zijn aangemaakt, een groep is een blijvende identiteit die
+   * het verzetten of schrappen van één les overleeft. Een les kan dus allebei dragen, of
+   * maar één van de twee. Zie `groupBookingsFrom` in lib/lesgroepen — de enige plek die
+   * uitrekent welke lessen van een groep "vanaf vandaag" zijn, en dus welke een wijziging
+   * aan die groep nog mogen voelen.
+   */
+  group_id?: string;
   notes?: string;
   /**
    * Wie deze les aanmaakte. Bepaalt bij het boeken of de les meteen vaststaat of eerst op
@@ -411,6 +422,14 @@ export interface Settings {
    * les — precies zoals de app zich gedroeg voordat dit bestond.
    */
   vakanties?: Vakantie[];
+  /**
+   * Hoeveel minuten een les duurt. Afwezig betekent 60 — precies zoals de app zich gedroeg
+   * voordat dit bestond. Een wijziging telt alleen voor lessen die daarna nog ingepland
+   * worden en nooit met terugwerkende kracht: wat al in de agenda staat houdt zijn eigen
+   * begin- en eindtijd, want anders verzet één instelling de afspraken die spelers allang
+   * gekregen hebben.
+   */
+  lesson_duration_minutes?: number;
   shot_types?: string[];   // choices for a goal's Type slag
   change_types?: string[]; // choices for a goal's Type wijziging
   theme?: 'light' | 'dark';
@@ -457,4 +476,57 @@ export interface OuderKind {
   decided_at?: string;
   /** De trainer die besliste. Leeg zolang er niets beslist is. */
   decided_by?: string;
+}
+
+/**
+ * Een lesgroep: dezelfde mensen die een heel seizoen op hetzelfde moment komen trainen.
+ *
+ * Een groep is een blijvend gegeven en geen eigenschap van één les. Hij heeft een naam, een
+ * niveau en een seizoen, en blijft bestaan als een losse les verzet of geschrapt wordt —
+ * daarom staat hij hier als eigen begrip en niet als een handvol extra velden op `Booking`.
+ *
+ * Eén groep is één vast moment: een weekdag plus een beginuur. Traint dezelfde ploeg zowel
+ * dinsdag als donderdag, dan zijn dat twee groepen. Dat is met opzet: de seizoensplanning
+ * herkent een groep aan naam plus dag plus uur, en een groep met twee momenten zou die
+ * herkenning meerduidig maken.
+ *
+ * `roster` is wie er nú in de groep zit, en nooit het antwoord op "wie stond er bij die
+ * les". Dat blijft `Booking.participant_ids`, gelezen via lib/groups. Zou een scherm het
+ * roster gebruiken om een gegeven les te beschrijven, dan veranderden de prijs en de
+ * aanwezigheid van vorige maand zodra iemand vandaag een speler aan de groep toevoegt.
+ */
+export interface LesGroep {
+  id: string;
+  name: string;
+  level: string;
+  /** De vaste lesdag, 0-6 met zondag = 0 — dezelfde telling als `Date#getDay`. */
+  weekday: number;
+  start_hour: number;
+  start_minute: number;
+  /**
+   * De trainer van de groep. Wie een groep via het scherm aanmaakt moet er een kiezen, maar
+   * het veld zelf blijft optioneel: een import levert groepen op waarvan de trainer nog aan
+   * een account gekoppeld moet worden, en zo'n rij hoort bewaard te kunnen worden in plaats
+   * van geweigerd.
+   */
+  coach_id?: string;
+  /**
+   * De vaste baan. Mag ontbreken, net zoals `bookings.court_id` mag ontbreken: een les
+   * waarvan de baan nog niet vastligt is een bestaande, aanvaarde toestand.
+   */
+  court_id?: string;
+  /** De eerste dag van het seizoen, als jjjj-mm-dd — dezelfde dagsleutel als `Vakantie.van`. */
+  season_start: string;
+  /** De laatste dag van het seizoen, meegerekend. */
+  season_end: string;
+  /** Wie er nú in de groep zit. Zonder betaler-begrip: een groep heeft er geen. */
+  roster: string[];
+  /**
+   * Uit de actieve lijst, doorgaans aan het einde van het seizoen. Archiveren is één vinkje
+   * en raakt geen enkele boeking aan: de gegeven lessen en hun geschiedenis blijven staan
+   * zoals ze waren, want er is niets gebeurd behalve dat de club deze groep niet meer
+   * inplant.
+   */
+  archived: boolean;
+  created_at?: string;
 }

@@ -49,6 +49,7 @@ export const seedCourts: Court[] = [
 
 export const defaultSettings: Settings = {
   booking_end_time: '21:00',
+  lesson_duration_minutes: 60,
   theme: 'light',
   language: 'nl',
   notifications: {},
