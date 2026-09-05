@@ -15,7 +15,7 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
       hoeveel er nog komen.
 - [x] **GROEP-04**: Een les die uit een lesgroep is ontstaan, verwijst naar die groep en blijft
       een gewone boeking — hij is te verzetten, af te zeggen en af te vinken als elke andere les.
-- [ ] **GROEP-05**: Een wijziging aan een lesgroep (speler erbij of eraf, ander uur, andere
+- [x] **GROEP-05**: Een wijziging aan een lesgroep (speler erbij of eraf, ander uur, andere
       trainer) werkt door in alle lessen van vandaag en later; lessen die al geweest zijn
       blijven staan zoals ze waren.
 - [x] **GROEP-06**: Elke les houdt zijn eigen deelnemerslijst op het moment van de les, zodat

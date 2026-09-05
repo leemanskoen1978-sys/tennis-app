@@ -83,7 +83,7 @@ Plans:
 **Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 02.1-01-PLAN.md — Het rekenwerk: botstMet gedeeld uit lib/recurrence (trainer én baan), planGroepWijziging naast planRosterChange met zijn test (wave 1)
+- [x] 02.1-01-PLAN.md — Het rekenwerk: botstMet gedeeld uit lib/recurrence (trainer én baan), planGroepWijziging naast planRosterChange met zijn test (wave 1)
 - [ ] 02.1-02-PLAN.md — De schrijfweg en de melding: updateLesGroep verzet de komende lessen mee in één opslag, het scherm toont de gevolgen vóór het bewaren (wave 2, checkpoint)
 
 ### Phase 3: Ziekmelding en vervangerswerklijst
@@ -148,7 +148,7 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Lesgroepen | 6/7 | In Progress|  |
 | 2. Wie gaf de les écht | 2/4 | In Progress|  |
-| 2.1 De groep verzetten werkt door | 0/2 | Not started | - |
+| 2.1 De groep verzetten werkt door | 1/2 | In Progress|  |
 | 3. Ziekmelding en vervangerswerklijst | 0/? | Not started | - |
 | 4. Excel-export | 0/5 | Not started | - |
 | 5. Excel-import van trainingen | 0/? | Not started | - |
