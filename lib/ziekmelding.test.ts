@@ -1,5 +1,5 @@
-import { openZiekmeldingen, ziekmeldingFout, zoektVervanger } from './ziekmelding';
-import type { Booking, SickLeave } from './types';
+import { lessenVoorZiekmelding, openZiekmeldingen, ziekmeldingFout, zoektVervanger } from './ziekmelding';
+import type { Booking, SickLeave, Vakantie } from './types';
 
 const basis: SickLeave = {
   id: 'z-1', coach_id: 'c-1', van: '2027-03-01', tot: '2027-03-05',
@@ -144,5 +144,111 @@ describe('één les uit een reeks', () => {
     const twee = les('r-2', lokaal(2027, 3, 3, 10), { series_id: 'reeks-1', taught_by_id: 'c-2' });
     const drie = les('r-3', lokaal(2027, 3, 4, 10), { series_id: 'reeks-1' });
     expect([een, twee, drie].map((b) => zoektVervanger(b, [basis]))).toEqual([true, false, true]);
+  });
+});
+
+const geenVakanties: Vakantie[] = [];
+
+describe('lessenVoorZiekmelding', () => {
+  it('geeft de lessen binnen de periode, op tijd gesorteerd', () => {
+    const laat = les('b-laat', lokaal(2027, 3, 4, 10));
+    const vroeg = les('b-vroeg', lokaal(2027, 3, 2, 10));
+    const uitkomst = lessenVoorZiekmelding([laat, vroeg], basis, geenVakanties);
+    expect(uitkomst.map((b) => b.id)).toEqual(['b-vroeg', 'b-laat']);
+  });
+
+  it('telt de van-dag en de tot-dag mee en laat de dagen ernaast weg', () => {
+    const lijst = [
+      les('b-voor', lokaal(2027, 2, 28, 10)),
+      les('b-van', lokaal(2027, 3, 1, 10)),
+      les('b-tot', lokaal(2027, 3, 5, 10)),
+      les('b-na', lokaal(2027, 3, 6, 10)),
+    ];
+    expect(lessenVoorZiekmelding(lijst, basis, geenVakanties).map((b) => b.id))
+      .toEqual(['b-van', 'b-tot']);
+  });
+
+  it('laat de lessen van een andere trainer weg', () => {
+    const lijst = [les('b-1', lokaal(2027, 3, 2, 10)), les('b-2', lokaal(2027, 3, 2, 11), { coach_id: 'c-9' })];
+    expect(lessenVoorZiekmelding(lijst, basis, geenVakanties).map((b) => b.id)).toEqual(['b-1']);
+  });
+
+  it('laat een afgezegde les weg — die raakt niemand meer', () => {
+    const lijst = [les('b-1', lokaal(2027, 3, 2, 10), { status: 'cancelled' })];
+    expect(lessenVoorZiekmelding(lijst, basis, geenVakanties)).toEqual([]);
+  });
+
+  it('laat een les in een clubvakantie weg — die wordt toch niet gegeven', () => {
+    const vakanties: Vakantie[] = [{ id: 'v-1', naam: 'Krokus', van: '2027-03-02', tot: '2027-03-03' }];
+    const lijst = [les('b-1', lokaal(2027, 3, 2, 10)), les('b-2', lokaal(2027, 3, 4, 10))];
+    expect(lessenVoorZiekmelding(lijst, basis, vakanties).map((b) => b.id)).toEqual(['b-2']);
+  });
+
+  it('houdt een les waar al een vervanger op staat in de lijst', () => {
+    // De beheerder moet die rij zien om te weten dat hij al geregeld is; het scherm toont
+    // hem als opgelost, deze functie verzwijgt hem niet.
+    const lijst = [les('b-1', lokaal(2027, 3, 2, 10), { taught_by_id: 'c-2' })];
+    expect(lessenVoorZiekmelding(lijst, basis, geenVakanties).map((b) => b.id)).toEqual(['b-1']);
+  });
+
+  it('laat de meegegeven lijst ongemoeid', () => {
+    const lijst = [les('b-laat', lokaal(2027, 3, 4, 10)), les('b-vroeg', lokaal(2027, 3, 2, 10))];
+    const voor = lijst.map((b) => ({ ...b }));
+    lessenVoorZiekmelding(lijst, basis, geenVakanties);
+    expect(lijst).toEqual(voor);
+    expect(lijst.map((b) => b.id)).toEqual(['b-laat', 'b-vroeg']);
+  });
+
+  it('geeft de volle boeking terug, met baan en groep erin', () => {
+    const groepsles = les('b-1', lokaal(2027, 3, 2, 10), { group_id: 'g-1', participant_ids: ['p-2', 'p-3'] });
+    expect(lessenVoorZiekmelding([groepsles], basis, geenVakanties)).toEqual([groepsles]);
+  });
+});
+
+describe('de zieke trainer stond alleen als vervanger', () => {
+  it('neemt de les mee waar hij als vervanger op staat', () => {
+    // D-15: de les is van een collega, maar hij zou hem geven — en dat kan hij niet.
+    const vanCollega = les('b-1', lokaal(2027, 3, 2, 10), { coach_id: 'c-9', taught_by_id: 'c-1' });
+    expect(lessenVoorZiekmelding([vanCollega], basis, geenVakanties).map((b) => b.id)).toEqual(['b-1']);
+  });
+
+  it('laat de les van een collega met een andere vervanger wel weg', () => {
+    const vanCollega = les('b-1', lokaal(2027, 3, 2, 10), { coach_id: 'c-9', taught_by_id: 'c-8' });
+    expect(lessenVoorZiekmelding([vanCollega], basis, geenVakanties)).toEqual([]);
+  });
+});
+
+// De uurwissel: in België springt de klok vooruit op de laatste zondag van maart
+// (2027-03-28) en terug op de laatste zondag van oktober (2027-10-31). Een les van 20:00 hoort
+// daarna nog steeds om 20:00 te staan, en geen dag te verschuiven.
+const winterOffset = new Date(2027, 0, 15).getTimezoneOffset();
+const zomerOffset = new Date(2027, 6, 15).getTimezoneOffset();
+const heeftZomertijd = winterOffset !== zomerOffset;
+if (!heeftZomertijd) {
+  console.warn(
+    `LET OP: de tijdzone van deze machine (${Intl.DateTimeFormat().resolvedOptions().timeZone}) kent geen ` +
+    'zomertijd. De zomertijdtests van lib/ziekmelding worden overgeslagen en bewijzen hier dus niets — ' +
+    'draai ze op een machine met TZ=Europe/Brussels voordat je hierop vertrouwt.',
+  );
+}
+const alsErZomertijdIs = heeftZomertijd ? it : it.skip;
+
+describe('zomertijd', () => {
+  alsErZomertijdIs('vindt de les na de lentewissel, nog steeds om 20:00', () => {
+    const ziekte = ziek({ van: '2027-03-25', tot: '2027-04-01' });
+    const ervoor = les('b-voor', lokaal(2027, 3, 23, 20));
+    const erna = les('b-na', lokaal(2027, 3, 30, 20));
+    const uitkomst = lessenVoorZiekmelding([ervoor, erna], ziekte, geenVakanties);
+    expect(uitkomst.map((b) => b.id)).toEqual(['b-na']);
+    expect(new Date(uitkomst[0].start_time).getHours()).toBe(20);
+  });
+
+  alsErZomertijdIs('vindt de les na de herfstwissel, nog steeds om 20:00', () => {
+    const ziekte = ziek({ van: '2027-10-28', tot: '2027-11-03' });
+    const ervoor = les('b-voor', lokaal(2027, 10, 26, 20));
+    const erna = les('b-na', lokaal(2027, 11, 2, 20));
+    const uitkomst = lessenVoorZiekmelding([ervoor, erna], ziekte, geenVakanties);
+    expect(uitkomst.map((b) => b.id)).toEqual(['b-na']);
+    expect(new Date(uitkomst[0].start_time).getHours()).toBe(20);
   });
 });
