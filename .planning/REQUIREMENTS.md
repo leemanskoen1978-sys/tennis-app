@@ -50,7 +50,7 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 
 ### Excel-export
 
-- [ ] **EXP-01**: De beheerder kiest een periode (van–tot) en krijgt daar één Excel-bestand van.
+- [x] **EXP-01**: De beheerder kiest een periode (van–tot) en krijgt daar één Excel-bestand van.
 - [ ] **EXP-02**: Blad "Lessen": één rij per les met datum, begin- en einduur, baan, toegewezen
       trainer, wie hem werkelijk gaf, groep of speler, aantal spelers en status.
 - [ ] **EXP-03**: Blad "Uren per trainer": uren en loon per trainer over de periode, gerekend
@@ -63,7 +63,7 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 - [ ] **EXP-07**: Blad "Lessen" staat in exact het kolomformaat dat de import leest, met het
       `Groep-ID` erin, zodat een export ongewijzigd weer ingelezen kan worden en dezelfde
       groepen en lessen terugvindt in plaats van ze te verdubbelen.
-- [ ] **EXP-06**: Bedragen zijn getallen en datums zijn datums in het bestand, zodat de
+- [x] **EXP-06**: Bedragen zijn getallen en datums zijn datums in het bestand, zodat de
       beheerder kan sorteren en optellen zonder het eerst uit te leggen aan Excel.
 
 ### Excel-import van trainingen
@@ -150,12 +150,12 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | VERV-08 | Phase 3 | Pending |
 | VERV-09 | Phase 3 | Pending |
 | VERV-10 | Phase 3 | Pending |
-| EXP-01 | Phase 4 | Pending |
+| EXP-01 | Phase 4 | Complete |
 | EXP-02 | Phase 4 | Pending |
 | EXP-03 | Phase 4 | Pending |
 | EXP-04 | Phase 4 | Pending |
 | EXP-05 | Phase 4 | Pending |
-| EXP-06 | Phase 4 | Pending |
+| EXP-06 | Phase 4 | Complete |
 | EXP-07 | Phase 4 | Pending |
 | IMP-01 | Phase 5 | Pending |
 | IMP-02 | Phase 5 | Pending |

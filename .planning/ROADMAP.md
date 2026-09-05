@@ -126,7 +126,7 @@ Plans:
 **Plans**: 5 plans in 5 waves
 
 Plans:
-- [ ] 04-01-PLAN.md — Het gereedschap: buildWorkbook naast het onveranderde buildXlsx, en het ISO-weeknummer in lib/datetime (wave 1)
+- [x] 04-01-PLAN.md — Het gereedschap: buildWorkbook naast het onveranderde buildXlsx, en het ISO-weeknummer in lib/datetime (wave 1)
 - [ ] 04-02-PLAN.md — Blad "Lessen" in exact het kolomformaat dat de import leest, één rij per les × leerling, met Groep-ID (wave 2)
 - [ ] 04-03-PLAN.md — Blad "Uren per trainer" via payoutsByCoach zonder omzet, en blad "Groepen" met het groepskenmerk (wave 3)
 - [ ] 04-04-PLAN.md — Blad "Aanwezigheid" uit de lessen zelf en niet uit het rooster van nu, plus exportWerkmap met de vier bladen (wave 4)
@@ -160,5 +160,5 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 | 2. Wie gaf de les écht | 2/4 | In Progress|  |
 | 2.1 De groep verzetten werkt door | 1/2 | In Progress|  |
 | 3. Ziekmelding en vervangerswerklijst | 0/8 | Planned | - |
-| 4. Excel-export | 0/5 | Not started | - |
+| 4. Excel-export | 1/5 | In Progress|  |
 | 5. Excel-import van trainingen | 0/? | Not started | - |

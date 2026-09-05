@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02.1-groep-verzetten-02-PLAN.md
-last_updated: "2026-09-06T00:00:00.000Z"
+stopped_at: Completed 04-excel-export-01-PLAN.md
+last_updated: "2026-09-06T12:00:00.000Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 23
-  completed_plans: 12
-  percent: 0
+  completed_plans: 13
+  percent: 57
 ---
 
 # Project State
@@ -22,16 +22,18 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core value:** Als een trainer ziek is, ziet de beheerder binnen een minuut welke lessen dat
 raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf agenda's te zoeken.
-**Current focus:** Phase 2.1 — Een groep verzetten (afgerond op de handmatige controle na)
+**Current focus:** Phase 4 — Excel-export (plan 01 af: het gereedschap staat klaar)
 
 ## Current Position
 
-Phase: 2.1 of 6 (Een groep verzetten)
-Plan: 2 of 2 (02.1-02-PLAN.md — de schrijfweg en de melding)
-Status: Awaiting human verification (taak 3 van 02.1-02)
+Phase: 4 of 6 (Excel-export)
+Plan: 1 of 5 af (04-01-PLAN.md — buildWorkbook en het ISO-weeknummer); volgende: 04-02-PLAN.md
+Status: Executing
 Last activity: 2026-09-06
 
-Progress: [█████░░░░░] 52%
+Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draaiende app.
+
+Progress: [██████░░░░] 57%
 
 ## Performance Metrics
 
@@ -62,6 +64,7 @@ Progress: [█████░░░░░] 52%
 | Phase 02-wie-gaf-de-les-echt P03 | 20min | 3 tasks | 4 files |
 | Phase 02.1-groep-verzetten P01 | 30min | 2 tasks | 4 files |
 | Phase 02.1-groep-verzetten P02 | 25min | 2 tasks | 3 files |
+| Phase 04-excel-export P01 | ~20min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -100,6 +103,10 @@ confirmed as phases ship).
 - [Phase 02.1-groep-verzetten]: updateLesGroep geeft GroepWijzigingPlan | null terug in plaats van void — een aanroeper die niet weet wat er gebeurd is kan de geblokkeerde lessen ook niet melden
 - [Phase 02.1-groep-verzetten]: de voorvertoning op het groepsdetail en het bewaren gaan door dezelfde planGroepWijziging met dezelfde patchVan; twee eigen patches zouden een botsing kunnen tonen die er bij het bewaren niet meer is
 - [Phase 02.1-groep-verzetten]: de groepsrij en haar komende boekingen gaan in één commit(), met de hele VerzetPatch via { ...b, ...p } erover — wat er niet in het type staat kan er niet in belanden
+- [Phase 04-excel-export]: buildWorkbook komt als nieuwe functie náást het onveranderde buildXlsx — lib/csv.ts en Historiek roepen buildXlsx vandaag aan met hun eigen tests eromheen (D-07)
+- [Phase 04-excel-export]: bij één blad levert buildWorkbook byte-voor-byte hetzelfde bestand als buildXlsx; die gelijkheid ligt als test vast en bewijst dat er in de lussen niets is weggevallen
+- [Phase 04-excel-export]: de tabnamen worden binnen de werkmap uniek gemaakt door een niet-geëxporteerde helper; bladnaam() blijft één naam schoonmaken zonder van zijn buren te weten
+- [Phase 04-excel-export]: het ISO-weeknummer staat in lib/datetime.ts met de jaarwissel als eigen test — 1 januari 2027 is week 53 van 2026 en 31 december 2025 is week 1 van 2026 (D-11)
 
 ### Pending Todos
 
@@ -146,6 +153,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T00:00:00.000Z
-Stopped at: Completed 02.1-groep-verzetten-02-PLAN.md (taak 3: handmatige controle open)
-Resume file: .planning/phases/02.1-groep-verzetten/02.1-02-PLAN.md
+Last session: 2026-09-06T12:00:00.000Z
+Stopped at: Completed 04-01-PLAN.md (het gereedschap voor de export)
+Resume file: .planning/phases/04-excel-export/04-02-PLAN.md
