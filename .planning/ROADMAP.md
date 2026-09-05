@@ -38,7 +38,16 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. De beheerder archiveert een lesgroep aan het einde van een seizoen zonder de gegeven lessen of hun geschiedenis te raken (GROEP-07).
   5. De tennisschool-module is enkel bereikbaar via Beheer en enkel zichtbaar voor een gebruiker met het beheerdersvinkje (TOEG-01).
   6. `supabase-schema.sql` bevat de nieuwe tabel(len) als `alter table ... if not exists`-blok met bijhorende RLS-policies (TOEG-03); de upsert-val is met de hand nagelopen tegen een echte Supabase-omgeving: invoegen als gebruiker A, bijwerken als gebruiker B slaagt voor een beheerder en faalt voor een niet-beheerder (TOEG-02).
-**Plans**: TBD
+**Plans**: 7 plans in 6 waves
+
+Plans:
+- [ ] 01-01-PLAN.md — Het groepsmodel als pure regel: LesGroep in lib/types, lib/lesgroepen.ts met zijn test, en regressiedekking dat group_id niets breekt (wave 1)
+- [ ] 01-02-PLAN.md — Het schema als tekst: lesson_groups, bookings.group_id, index en twee admin-only RLS-policies onderaan supabase-schema.sql (wave 1)
+- [ ] 01-03-PLAN.md — Beide opslagwegen: lib/sync.ts, mockStore, supabaseStore met selectAllOptioneel, en de vier provideracties (wave 2)
+- [ ] 01-04-PLAN.md — Het lesgroepenscherm: lijst, aanmaakformulier, de tegel in Beheer en de beheerdersgrens op het scherm zelf (wave 3)
+- [ ] 01-05-PLAN.md — Groepsdetail: rooster via ParticipantPicker, de lessen van de groep, archiveren (wave 4)
+- [ ] 01-06-PLAN.md — Een losse les aan een groep hangen op het lesdetailblad, plus de lesduur als clubinstelling (wave 5)
+- [ ] 01-07-PLAN.md — De migratie draaien en de upsert-val met de hand nalopen (wave 6, checkpoints)
 
 ### Phase 2: Wie gaf de les écht
 **Mode:** mvp
