@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md (het gereedschap voor de export)
-last_updated: "2026-09-05T23:20:47.212Z"
+stopped_at: Completed 04-04-PLAN.md (blad "Aanwezigheid" en exportWerkmap)
+last_updated: "2026-09-06T00:00:00.000Z"
 last_activity: 2026-09-05
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 34
-  completed_plans: 14
+  completed_plans: 15
   percent: 17
 ---
 
@@ -22,18 +22,18 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core value:** Als een trainer ziek is, ziet de beheerder binnen een minuut welke lessen dat
 raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf agenda's te zoeken.
-**Current focus:** Phase 4 — Excel-export (plan 02 af: blad "Lessen" staat in het kolomformaat van de import)
+**Current focus:** Phase 4 — Excel-export (plan 04 af: de vier bladen staan in één bestand)
 
 ## Current Position
 
 Phase: 4 of 6 (Excel-export)
-Plan: 3 of 5 af (04-03-PLAN.md — de bladen "Uren per trainer" en "Groepen"); volgende: 04-04-PLAN.md
+Plan: 4 of 5 af (04-04-PLAN.md — blad "Aanwezigheid" en exportWerkmap); volgende: 04-05-PLAN.md
 Status: Ready to execute
 Last activity: 2026-09-06
 
 Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draaiende app.
 
-Progress: [████░░░░░░] 42%
+Progress: [████░░░░░░] 44%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [████░░░░░░] 42%
 | Phase 04-excel-export P01 | ~20min | 2 tasks | 4 files |
 | Phase 04 P02 | ~25min | 2 tasks | 2 files |
 | Phase 04 P03 | ~20min | 2 tasks | 2 files |
+| Phase 04 P04 | ~25min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,13 @@ confirmed as phases ship).
 
 - [Phase 01-lesgroepen]: het smalle boekingstype in lib/lesgroepen heet `GroepBoeking` en niet
   `GroupBooking` — die naam was al bezet in lib/groups
+
+- [Phase 04-excel-export]: de spelersrijen van blad "Aanwezigheid" komen uit `lessonPlayerIds`
+  over de lessen van de periode en nooit uit het roosterveld van de lesgroep — anders schuift
+  een export van vorig seizoen mee met elke roosterwijziging van vandaag
+
+- [Phase 04-excel-export]: "leeg afdrukbaar" is één codepad en geen vlag of tweede blad (D-12):
+  een periode waarin nog niets is afgevinkt levert vanzelf de lege, afdrukbare tabel op
 
 - [Phase 01-lesgroepen]: lesson_groups RLS kopieert rates_write (geen ownership-check op beide policies) — de tabel is volledig admin-only, geen 'dit is van mij'-tak zoals coach_rates
 - [Phase 01-lesgroepen]: de beheerdersgrens ligt op het lesgroepenscherm zelf, vóór elke andere return — de tegel in Beheer verbergen is wellevendheid, geen toegangscontrole (TOEG-01)

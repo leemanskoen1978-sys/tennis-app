@@ -129,7 +129,7 @@ Plans:
 - [x] 04-01-PLAN.md — Het gereedschap: buildWorkbook naast het onveranderde buildXlsx, en het ISO-weeknummer in lib/datetime (wave 1)
 - [x] 04-02-PLAN.md — Blad "Lessen" in exact het kolomformaat dat de import leest, één rij per les × leerling, met Groep-ID (wave 2)
 - [x] 04-03-PLAN.md — Blad "Uren per trainer" via payoutsByCoach zonder omzet, en blad "Groepen" met het groepskenmerk (wave 3)
-- [ ] 04-04-PLAN.md — Blad "Aanwezigheid" uit de lessen zelf en niet uit het rooster van nu, plus exportWerkmap met de vier bladen (wave 4)
+- [x] 04-04-PLAN.md — Blad "Aanwezigheid" uit de lessen zelf en niet uit het rooster van nu, plus exportWerkmap met de vier bladen (wave 4)
 - [ ] 04-05-PLAN.md — Het exportscherm met de beheerdersgrens erop, de tegel in Beheer, en met de hand nalopen in Excel (wave 5, checkpoint)
 
 ### Phase 5: Excel-import van trainingen

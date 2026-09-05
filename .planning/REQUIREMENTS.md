@@ -55,7 +55,7 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
       trainer, wie hem werkelijk gaf, groep of speler, aantal spelers en status.
 - [x] **EXP-03**: Blad "Uren per trainer": uren en loon per trainer over de periode, gerekend
       op wie de les werkelijk gaf.
-- [ ] **EXP-04**: Blad "Aanwezigheid": per lesgroep de spelers in de rijen en de lesdata in de
+- [x] **EXP-04**: Blad "Aanwezigheid": per lesgroep de spelers in de rijen en de lesdata in de
       kolommen, gevuld uit de bestaande aanwezigheidsgegevens en leeg afdrukbaar voor een
       vervanger die geen app heeft.
 - [x] **EXP-05**: Blad "Groepen": één rij per lesgroep met naam, niveau, dag en uur, trainer,
@@ -157,7 +157,7 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | EXP-01 | Phase 4 | Complete |
 | EXP-02 | Phase 4 | Complete |
 | EXP-03 | Phase 4 | Complete |
-| EXP-04 | Phase 4 | Pending |
+| EXP-04 | Phase 4 | Complete |
 | EXP-05 | Phase 4 | Complete |
 | EXP-06 | Phase 4 | Complete |
 | EXP-07 | Phase 4 | Complete |
