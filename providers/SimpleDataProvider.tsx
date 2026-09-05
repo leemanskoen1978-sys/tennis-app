@@ -172,6 +172,14 @@ interface DataShape {
    * scherm als er iets niet klopt — zie `lesGroepFout` in lib/lesgroepen.
    */
   addLesGroep: (g: Omit<LesGroep, 'id'>) => Promise<LesGroep | null>;
+  /**
+   * De gegevens van een groep bijstellen: naam, niveau, moment, trainer, baan, seizoen.
+   *
+   * `roster` blijft er met opzet buiten, om dezelfde reden waarom `payment_method` buiten
+   * `updateBooking` blijft: aan het rooster hangt meer dan de rij zelf — de komende lessen
+   * krijgen er hun deelnemers uit. Dat loopt uitsluitend via `updateLesGroepRoster`.
+   */
+  updateLesGroep: (id: string, patch: Partial<Omit<LesGroep, 'id' | 'roster'>>) => Promise<void>;
   addLesson: (l: Omit<Lesson, 'id'>) => Promise<void>;
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
@@ -1020,6 +1028,18 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     return created;
   }, [commit]);
 
+  const updateLesGroep = useCallback(async (
+    id: string,
+    patch: Partial<Omit<LesGroep, 'id' | 'roster'>>,
+  ) => {
+    const store = storeRef.current;
+    if (!store) return;
+    await commit({
+      ...store,
+      lesGroepen: store.lesGroepen.map((g) => (g.id === id ? { ...g, ...patch } : g)),
+    });
+  }, [commit]);
+
   const addLesson = useCallback(async (l: Omit<Lesson, 'id'>) => {
     const store = storeRef.current;
     if (!store) return;
@@ -1185,6 +1205,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     beslisOverKind,
     wisRelatie,
     addLesGroep,
+    updateLesGroep,
     addLesson,
     updateLesson,
     deleteLesson,
@@ -1207,7 +1228,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setPaymentMethod, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
-    vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, addLesson,
+    vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
     addMemo, deleteMemo, werkMemoUit,
     saveGoal, deleteGoal, saveSettings, emergencyCleanup,
