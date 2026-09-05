@@ -186,6 +186,14 @@ interface DataShape {
    * Welke lessen dat precies zijn staat in lib/lesgroepen, en nergens anders.
    */
   updateLesGroepRoster: (id: string, nieuwRooster: string[]) => Promise<void>;
+  /**
+   * De groep uit de actieve lijst halen, of hem er weer in zetten.
+   *
+   * Archiveren raakt geen enkele boeking en wist het rooster niet: de gegeven lessen en wie
+   * erin zat horen zichtbaar te blijven voor wie er volgend seizoen op terugkijkt. Er is
+   * niets gebeurd behalve dat de club deze groep niet meer inplant.
+   */
+  archiveLesGroep: (id: string, gearchiveerd: boolean) => Promise<void>;
   addLesson: (l: Omit<Lesson, 'id'>) => Promise<void>;
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
@@ -1070,6 +1078,19 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [commit]);
 
+  const archiveLesGroep = useCallback(async (id: string, gearchiveerd: boolean) => {
+    const store = storeRef.current;
+    if (!store) return;
+    // Uitsluitend dit ene vinkje: geen boeking wordt geraakt en het rooster blijft staan,
+    // zodat later nog te zien is wie er in de groep zat (GROEP-07).
+    await commit({
+      ...store,
+      lesGroepen: store.lesGroepen.map((g) => (
+        g.id === id ? { ...g, archived: gearchiveerd } : g
+      )),
+    });
+  }, [commit]);
+
   const addLesson = useCallback(async (l: Omit<Lesson, 'id'>) => {
     const store = storeRef.current;
     if (!store) return;
@@ -1237,6 +1258,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     addLesGroep,
     updateLesGroep,
     updateLesGroepRoster,
+    archiveLesGroep,
     addLesson,
     updateLesson,
     deleteLesson,
@@ -1259,7 +1281,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setPaymentMethod, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
-    vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster, addLesson,
+    vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster, archiveLesGroep, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
     addMemo, deleteMemo, werkMemoUit,
     saveGoal, deleteGoal, saveSettings, emergencyCleanup,
