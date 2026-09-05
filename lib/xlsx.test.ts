@@ -1,5 +1,5 @@
 import {
-  buildXlsx, bladXml, bladnaam, crc32, datumNaarSerie, kolomLetter, zip, type XlsxCel,
+  buildXlsx, buildWorkbook, bladXml, bladnaam, crc32, datumNaarSerie, kolomLetter, zip, type XlsxCel,
 } from './xlsx';
 
 // ---------------------------------------------------------------------------
@@ -334,5 +334,125 @@ describe('buildXlsx', () => {
   it('maakt de bladnaam net voor hij hem wegschrijft', () => {
     const raar = buildXlsx({ naam: 'Lessen/aug', koppen: ['a'], rijen: [] });
     expect(inhoudVan(raar, 'xl/workbook.xml')).toContain('name="Lessen aug"');
+  });
+});
+
+describe('buildWorkbook', () => {
+  const drieBladen = buildWorkbook([
+    {
+      naam: 'Lessen',
+      koppen: ['Datum', 'Trainer'],
+      rijen: [[{ soort: 'datum', waarde: new Date(2026, 7, 20) }, { soort: 'tekst', waarde: 'Koen' }]],
+    },
+    {
+      naam: 'Uren per trainer',
+      koppen: ['Trainer', 'Uren', 'Prijs les (EUR)'],
+      rijen: [[
+        { soort: 'tekst', waarde: 'Sanne' },
+        { soort: 'getal', waarde: 12 },
+        { soort: 'geld', waarde: 27.5 },
+      ]],
+    },
+    {
+      naam: 'Aanwezigheid',
+      koppen: ['Lid'],
+      rijen: [[{ soort: 'tekst', waarde: 'Emma' }]],
+    },
+  ]);
+
+  it('zet elk blad als een eigen werkblad in de zip', () => {
+    expect(leesZip(drieBladen).map((i) => i.naam)).toEqual([
+      '[Content_Types].xml',
+      '_rels/.rels',
+      'xl/workbook.xml',
+      'xl/_rels/workbook.xml.rels',
+      'xl/styles.xml',
+      'xl/worksheets/sheet1.xml',
+      'xl/worksheets/sheet2.xml',
+      'xl/worksheets/sheet3.xml',
+    ]);
+  });
+
+  it('noemt elk blad in [Content_Types].xml', () => {
+    const types = inhoudVan(drieBladen, '[Content_Types].xml');
+    expect(types).toContain('/xl/worksheets/sheet1.xml');
+    expect(types).toContain('/xl/worksheets/sheet2.xml');
+    expect(types).toContain('/xl/worksheets/sheet3.xml');
+    expect(types).toContain('/xl/styles.xml');
+  });
+
+  it('houdt de tabvolgorde aan die de aanroeper meegeeft', () => {
+    const werkmap = inhoudVan(drieBladen, 'xl/workbook.xml');
+    expect(werkmap.indexOf('name="Lessen"')).toBeLessThan(werkmap.indexOf('name="Uren per trainer"'));
+    expect(werkmap.indexOf('name="Uren per trainer"')).toBeLessThan(werkmap.indexOf('name="Aanwezigheid"'));
+    expect(werkmap).toContain('sheetId="3"');
+    expect(werkmap).toContain('r:id="rId3"');
+  });
+
+  it('wijst elke rId naar zijn eigen blad, en de laatste naar de opmaak', () => {
+    const rels = inhoudVan(drieBladen, 'xl/_rels/workbook.xml.rels');
+    expect(rels).toContain('Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"');
+    expect(rels).toContain('Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"');
+    expect(rels).toContain('Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"');
+    expect(rels).toContain('Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"');
+  });
+
+  it('zet de rijen op het blad waar ze horen', () => {
+    expect(inhoudVan(drieBladen, 'xl/worksheets/sheet1.xml')).toContain('Koen');
+    expect(inhoudVan(drieBladen, 'xl/worksheets/sheet2.xml')).toContain('Sanne');
+    expect(inhoudVan(drieBladen, 'xl/worksheets/sheet3.xml')).toContain('Emma');
+  });
+
+  it('houdt een bedrag een bedrag, ook op het tweede blad', () => {
+    const tweede = inhoudVan(drieBladen, 'xl/worksheets/sheet2.xml');
+    expect(tweede).toContain('<v>27.5</v>');
+    expect(tweede).not.toContain('27,5');
+  });
+
+  it('houdt een datum een datumserie, ook buiten het eerste blad', () => {
+    const serie = datumNaarSerie(new Date(2026, 7, 20));
+    const werkmap = buildWorkbook([
+      { naam: 'Leeg', koppen: ['a'], rijen: [] },
+      { naam: 'Lessen', koppen: ['Datum'], rijen: [[{ soort: 'datum', waarde: new Date(2026, 7, 20) }]] },
+    ]);
+    expect(inhoudVan(werkmap, 'xl/worksheets/sheet2.xml')).toContain(`<v>${serie}</v>`);
+  });
+
+  it('geeft twee bladen met dezelfde naam elk een eigen tabnaam', () => {
+    const werkmap = buildWorkbook([
+      { naam: 'Lessen', koppen: ['a'], rijen: [] },
+      { naam: 'Lessen', koppen: ['a'], rijen: [] },
+      { naam: 'Lessen', koppen: ['a'], rijen: [] },
+    ]);
+    const namen = [...inhoudVan(werkmap, 'xl/workbook.xml').matchAll(/name="([^"]*)"/g)].map((m) => m[1]);
+    expect(namen[0]).toBe('Lessen');
+    expect(new Set(namen).size).toBe(3);
+    expect(namen.every((n) => n.length <= 31)).toBe(true);
+  });
+
+  it('maakt de bladnaam net zoals buildXlsx dat doet', () => {
+    const werkmap = buildWorkbook([{ naam: 'Lessen/aug', koppen: ['a'], rijen: [] }]);
+    expect(inhoudVan(werkmap, 'xl/workbook.xml')).toContain('name="Lessen aug"');
+  });
+
+  it('levert bij één blad hetzelfde bestand als buildXlsx', () => {
+    const blad = {
+      naam: 'Lessen',
+      koppen: ['Datum', 'Prijs les (EUR)'],
+      rijen: [[
+        { soort: 'datum', waarde: new Date(2026, 7, 20) },
+        { soort: 'geld', waarde: 30 },
+      ]] as ReadonlyArray<readonly XlsxCel[]>,
+      breedtes: [12, 14],
+    };
+    expect(Array.from(buildWorkbook([blad]))).toEqual(Array.from(buildXlsx(blad)));
+  });
+
+  it('levert twee keer achter elkaar hetzelfde bestand', () => {
+    const bladen = [
+      { naam: 'Lessen', koppen: ['a'], rijen: [] },
+      { naam: 'Groepen', koppen: ['b'], rijen: [] },
+    ];
+    expect(Array.from(buildWorkbook(bladen))).toEqual(Array.from(buildWorkbook(bladen)));
   });
 });
