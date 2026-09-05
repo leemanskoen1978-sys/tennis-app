@@ -1,7 +1,7 @@
 import {
-  bladAanwezigheid, bladGroepen, bladLessen, bladUrenPerTrainer, koppenVan, naarRijen,
-  opzoektabellen,
-  type ExportKolom,
+  bladAanwezigheid, bladGroepen, bladLessen, bladUrenPerTrainer, exportWerkmap, koppenVan,
+  naarRijen, opzoektabellen,
+  type ExportGegevens, type ExportKolom,
 } from './export-trainingen';
 import { payoutsByCoach } from './reports';
 import { buildWorkbook, type XlsxBlad } from './xlsx';
@@ -788,5 +788,84 @@ describe('bladAanwezigheid', () => {
     const blad = bladAanwezigheid([groepNu], [], tabellen);
     expect(blad.rijen).toHaveLength(0);
     expect(blad.koppen).toEqual(['Groep', 'Speler']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// De werkmap zelf
+// ---------------------------------------------------------------------------
+
+/**
+ * Alles wat het scherm zou meegeven: de lessen van de periode, de leden, de banen en de
+ * groepen. Eén privéles erbij, zodat blad "Lessen" ook een regel zonder groep heeft.
+ */
+const gegevens: ExportGegevens = {
+  bookings: [...aanwezigheidslessen, booking({ id: 'prive' })],
+  users: trainers,
+  courts,
+  groepen: alleGroepen,
+};
+
+/** De namen van de tabbladen, in de volgorde waarin ze in het bestand staan. */
+function tabnamen(bytes: Uint8Array): string[] {
+  const workbook = inhoudVan(bytes, 'xl/workbook.xml');
+  return [...workbook.matchAll(/<sheet name="([^"]*)"/g)].map((m) => m[1]);
+}
+
+describe('exportWerkmap', () => {
+  it('levert bytes die met de zip-handtekening beginnen', () => {
+    const bytes = exportWerkmap(gegevens);
+    expect(bytes.length).toBeGreaterThan(0);
+    expect([bytes[0], bytes[1], bytes[2], bytes[3]]).toEqual([0x50, 0x4b, 0x03, 0x04]);
+  });
+
+  it('zet vier bladen in het bestand', () => {
+    const bytes = exportWerkmap(gegevens);
+    for (const pad of ['sheet1.xml', 'sheet2.xml', 'sheet3.xml', 'sheet4.xml']) {
+      expect(inhoudVan(bytes, `xl/worksheets/${pad}`)).toContain('<worksheet');
+    }
+  });
+
+  it('noemt de tabbladen Lessen, Uren per trainer, Aanwezigheid, Groepen — in die volgorde', () => {
+    // De volgorde ligt vast (D-01): "Lessen" vooraan omdat dat het blad is dat de import van
+    // fase 5 terugleest, en het blad waar de beheerder als eerste in kijkt.
+    expect(tabnamen(exportWerkmap(gegevens)))
+      .toEqual(['Lessen', 'Uren per trainer', 'Aanwezigheid', 'Groepen']);
+  });
+
+  it('zet op elk blad zijn eigen inhoud', () => {
+    const bytes = exportWerkmap(gegevens);
+    expect(inhoudVan(bytes, 'xl/worksheets/sheet1.xml')).toContain('>Mathis<');
+    expect(inhoudVan(bytes, 'xl/worksheets/sheet2.xml')).toContain('>Koen<');
+    expect(inhoudVan(bytes, 'xl/worksheets/sheet3.xml')).toMatch(/<t xml:space="preserve">X<\/t>/);
+    expect(inhoudVan(bytes, 'xl/worksheets/sheet4.xml')).toContain('>Groep-ID<');
+  });
+
+  it('schrijft de datums op blad Lessen als datumcellen en niet als tekst', () => {
+    const blad1 = inhoudVan(exportWerkmap(gegevens), 'xl/worksheets/sheet1.xml');
+    const eersteRij = /<row r="2">(.*?)<\/row>/.exec(blad1)?.[1] ?? '';
+    expect(eersteRij).toMatch(/<c r="A2" s="3"><v>\d+<\/v><\/c>/);
+    expect(/<c r="A2"[^>]*>/.exec(eersteRij)?.[0]).not.toContain('inlineStr');
+  });
+
+  it('schrijft het loon op blad Uren per trainer als geldcel en niet als tekst', () => {
+    const blad2 = inhoudVan(exportWerkmap(gegevens), 'xl/worksheets/sheet2.xml');
+    const eersteRij = /<row r="2">(.*?)<\/row>/.exec(blad2)?.[1] ?? '';
+    // Kolom D is "Loon (EUR)"; stijl 2 is het bedrag met twee decimalen.
+    expect(eersteRij).toMatch(/<c r="D2" s="2"><v>[\d.]+<\/v><\/c>/);
+  });
+
+  it('levert bij lege invoer nog steeds een geldig bestand met vier bladen en alleen koprijen', () => {
+    const leeg = exportWerkmap({ bookings: [], users: [], courts: [], groepen: [] });
+    expect(tabnamen(leeg)).toHaveLength(4);
+    for (const pad of ['sheet1.xml', 'sheet2.xml', 'sheet3.xml', 'sheet4.xml']) {
+      const blad = inhoudVan(leeg, `xl/worksheets/${pad}`);
+      expect([...blad.matchAll(/<row r="(\d+)"/g)]).toHaveLength(1);
+    }
+  });
+
+  it('levert twee keer hetzelfde bestand bij dezelfde invoer', () => {
+    // Anders kan niemand twee exports van hetzelfde seizoen naast elkaar leggen.
+    expect(exportWerkmap(gegevens)).toEqual(exportWerkmap(gegevens));
   });
 });
