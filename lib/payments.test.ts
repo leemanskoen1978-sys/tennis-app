@@ -651,3 +651,35 @@ describe('totalCoachPayout met een vervanging', () => {
     expect(totalCoachPayout([{ ...base, coach_id: vast.id }], [vast, vervanger])).toBe(20);
   });
 });
+
+// D-06 is stil te breken: een `lesgeverId` die in `bookingPrice` of `totalRevenue` sluipt
+// geeft geen typefout en maakt geen enkele bestaande test rood — alleen een verkeerd bedrag
+// op de rekening van de club. Vandaar drie verschillende tarieven: baan 40, vaste trainer 20,
+// vervanger 30. Zo levert geen enkele verwisselde sleutel toevallig hetzelfde getal op.
+describe('een vervanging raakt de omzet niet', () => {
+  const baan: Court = { id: 'baan-1', name: 'Baan 1', number: 1, indoor: false, hourly_rate: 40 };
+  const vast: User = { id: 'vast', email: 'v@x.be', name: 'Vaste Trainer', role: 'coach', hourly_rate: 20 };
+  const vervanger: User = { id: 'vervanger', email: 'w@x.be', name: 'Vervanger', role: 'coach', hourly_rate: 30 };
+
+  const les = (patch: Partial<Booking> = {}): Booking => ({
+    ...base, court_id: baan.id, coach_id: vast.id, payment_method: 'cash', ...patch,
+  });
+  const vervangen = les({ taught_by_id: vervanger.id });
+
+  it('rekent de speler exact hetzelfde, met of zonder vervanger', () => {
+    expect(bookingPrice(vervangen, baan)).toBe(bookingPrice(les(), baan));
+    // Het uurtarief van de BAAN, niet dat van een van beide trainers.
+    expect(bookingPrice(vervangen, baan)).toBe(40);
+  });
+
+  it('laat de omzet van de club onveranderd', () => {
+    expect(totalRevenue([vervangen], [baan])).toBe(totalRevenue([les()], [baan]));
+    expect(totalRevenue([vervangen], [baan])).toBe(40);
+  });
+
+  it('beweegt alleen aan de loonkant: 40 omzet, 30 loon in plaats van 20', () => {
+    expect(totalCoachPayout([les()], [vast, vervanger])).toBe(20);
+    expect(totalCoachPayout([vervangen], [vast, vervanger])).toBe(30);
+    expect(totalRevenue([vervangen], [baan])).toBe(40);
+  });
+});
