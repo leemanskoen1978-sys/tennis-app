@@ -20,6 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Lesgroepen** - Een lesgroep is een blijvend gegeven met eigen roster, zichtbaar in Beheer, dat vooruit wijzigt zonder de geschiedenis te raken.
 - [ ] **Phase 2: Wie gaf de les écht** - Elke les kan een vervanger vastleggen naast de vaste trainer, en loon/rapport rekenen daarmee.
+- [ ] **Phase 2.1: De groep verzetten werkt door** (INSERTED) - Uur, dag, trainer of baan van een groep verzetten werkt door in alle komende lessen, met de botsingen gemeld.
 - [ ] **Phase 3: Ziekmelding en vervangerswerklijst** - Eén werklijst per ziekmelding, met een vervangersvoorstel dat alleen écht beschikbare collega's toont.
 - [ ] **Phase 4: Excel-export** - Eén export per periode met vier bladen, inclusief het groepskenmerk dat een latere herimport nodig heeft.
 - [ ] **Phase 5: Excel-import van trainingen** - Een seizoen in één keer inladen met droogloop, en herimporteren zonder te verdubbelen.
@@ -66,6 +67,20 @@ Plans:
 - [ ] 02-02-PLAN.md — Het schema als tekst: de kolom, de index, en bewaak_betaalvelden met de beheerdersgrens vóór de trainersuitzondering (wave 1)
 - [ ] 02-03-PLAN.md — De schrijfweg en de zichtbaarheid: setTaughtBy, de Omit-uitsluiting, beide namen op het detailblad en de markering op de kaart (wave 2)
 - [ ] 02-04-PLAN.md — Met de hand nalopen: de migratie draaien, de trigger en de upsert-val, en wat het scherm toont (wave 3, checkpoints)
+
+### Phase 2.1: De groep verzetten werkt door
+**Mode:** mvp
+**Goal**: Een lesgroep naar een ander uur, een andere dag, een andere trainer of een andere baan verzetten, werkt door in alle lessen van vandaag en later — met de botsingen gemeld in plaats van stil overschreven.
+**Depends on**: Phase 2
+**Requirements**: GROEP-05
+**Inserted**: 2026-09-06, na fase 1. Fase 1 leverde de helft van GROEP-05: een speler erbij of eraf werkt vooruit via `planRosterChange`. Het verzetten van uur, dag, trainer of baan doet dat niet — `updateLesGroep` past alleen de groepsrij aan. Dat is bewust niet ter plekke opgelost: doorwerken raakt de botsingscontrole én de betekenis van `coach_id`, die fase 2 net apart zet van `taught_by_id`. Daarom hier, na fase 2.
+**Success Criteria** (what must be TRUE):
+  1. Een groep naar een ander uur of een andere dag verzetten, verzet alle lessen van vandaag en later mee; lessen die al geweest zijn blijven staan waar ze stonden.
+  2. Een groep aan een andere trainer geven, zet `coach_id` op alle komende lessen — en raakt `taught_by_id` nooit: een les die iemand anders al gaf, blijft van hem.
+  3. Lessen die na het verzetten zouden botsen met een bezette trainer of baan worden gemeld vóór er iets vastligt; de beheerder ziet welke en beslist.
+  4. Het rekenwerk staat puur in `lib/lesgroepen.ts` met een test ernaast, in dezelfde vorm als `planRosterChange`; het scherm rekent niets uit.
+  5. `npx tsc --noEmit`, `npm test` en `npx expo export --platform web` slagen.
+**Plans**: TBD
 
 ### Phase 3: Ziekmelding en vervangerswerklijst
 **Mode:** mvp
@@ -116,12 +131,13 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Lesgroepen | 5/7 | In Progress|  |
 | 2. Wie gaf de les écht | 0/4 | Planned | - |
+| 2.1 De groep verzetten werkt door | 0/? | Not started | - |
 | 3. Ziekmelding en vervangerswerklijst | 0/? | Not started | - |
 | 4. Excel-export | 0/? | Not started | - |
 | 5. Excel-import van trainingen | 0/? | Not started | - |
