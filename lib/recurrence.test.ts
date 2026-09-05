@@ -330,6 +330,17 @@ describe('botstMet', () => {
     expect(botstMet(slot, [eigen], { coachId: 'koen', courtId: 'court-1', negeer: new Set(['eigen']) })).toBeNull();
   });
 
+  it('noemt een lege agenda nooit bezet', () => {
+    expect(botstMet(slot, [], { coachId: 'koen' })).toBeNull();
+  });
+
+  it('ziet ook een les die het hele tijdvak omvat', () => {
+    // De ochtendstage van 9 tot 13 slokt het uur van 10 tot 11 helemaal op; zonder dit
+    // geval zou een regel die enkel op de begintijden kijkt er stilletjes doorheen glippen.
+    const stage = booking({ id: 'stage', start_time: iso(2026, 7, 20, 9), end_time: iso(2026, 7, 20, 13) });
+    expect(botstMet(slot, [stage], { coachId: 'koen' })?.id).toBe('stage');
+  });
+
   it('geeft de eerste botsende boeking terug en niet enkel een ja', () => {
     const een = busy('een', 2026, 7, 20);
     const twee = booking({ id: 'twee', start_time: iso(2026, 7, 20, 10, 15), end_time: iso(2026, 7, 20, 10, 45) });
