@@ -828,6 +828,22 @@ export const EN: Record<string, string> = {
   'Het bestand bevat precies de lessen die je hier ziet: {periode}, {trainer}.':
     'The file contains exactly the lessons you see here: {periode}, {trainer}.',
   'Exporteren is niet gelukt. Probeer het opnieuw.': 'Export failed. Please try again.',
+
+  // Beheer → Trainingen exporteren: één periode, één bestand met vier bladen
+  // (app/admin/export). De bladnamen zelf staan hier niet: die blijven in het bestand vast
+  // Nederlands, omdat de import ze op hun naam terugzoekt.
+  'Trainingen exporteren': 'Export trainings',
+  'Eén Excel-bestand per periode': 'One Excel file per period',
+  'Exporteren is alleen voor de beheerder.': 'Exporting is for the administrator only.',
+  // Staat hier al is hij aan beide kanten gelijk: zonder regel zou de knop als enige zin op
+  // dit scherm ontbreken, en dan lijkt hij vergeten in plaats van bewust hetzelfde.
+  'Excel (.xlsx)': 'Excel (.xlsx)',
+  'De lessen zijn die van {periode}; de lesgroepen staan er allemaal in, met hun lessen binnen die periode.':
+    'The lessons are those of {periode}; every lesson group is included, with its lessons within that period.',
+  'Een Excel-bestand maken kan alleen op de website.': 'Making an Excel file only works on the website.',
+  'Het bestand krijgt vier bladen: Lessen, Uren per trainer, Aanwezigheid en Groepen, over {periode}. Blad “Aanwezigheid” is ook leeg uit te printen als invullijst voor een vervanger die de app niet heeft.':
+    'The file gets four sheets: Lessen, Uren per trainer, Aanwezigheid and Groepen, covering {periode}. '
+    + 'The “Aanwezigheid” sheet can also be printed empty as a tick list for a stand-in who does not have the app.',
   'Elk bedrag is het totaal voor de hele les, niet per speler: "tot 4 spelers € 45" betekent dat een les met vier spelers samen € 45 per uur kost. Een groepsles gaat altijd op factuur — een beurtenkaart en het sponsorbudget gelden alleen voor een privéles. Deze tarieven bepalen de omzetberekening.':
     'Every amount is the total for the whole lesson, not per player: "up to 4 players € 45" means '
     + 'a lesson with four players costs € 45 per hour together. A group lesson always goes on '

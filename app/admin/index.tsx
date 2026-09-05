@@ -3,7 +3,8 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
-  Upload, Users, UserCog, BookOpen, CalendarOff, Clock, GraduationCap, type LucideIcon,
+  Upload, Users, UserCog, BookOpen, CalendarOff, Clock, GraduationCap, FileSpreadsheet,
+  type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
@@ -88,6 +89,13 @@ export default function Admin() {
           : []),
         ...(isAdmin(currentUser)
           ? [{ key: 'leden', title: t('Leden'), subtitle: t('Gegevens, type account en beheerders'), icon: UserCog, onPress: () => router.push('/admin/leden') } as Tile]
+          : []),
+        // Het bestand gaat over de hele club — alle trainers, alle groepen — en dat is niet
+        // wat een gewone trainer van zijn collega's hoort mee te nemen. Dat de tegel hier
+        // wegblijft is wellevendheid en geen bewaking: het scherm zelf doet dat werk (D-06),
+        // en het is deze fase de enige grens, want er is geen tabel en dus geen policy achter.
+        ...(isAdmin(currentUser)
+          ? [{ key: 'export', title: t('Trainingen exporteren'), subtitle: t('Eén Excel-bestand per periode'), icon: FileSpreadsheet, onPress: () => router.push('/admin/export') } as Tile]
           : []),
         // Het aantal op de tegel is het aantal beslissingen dat op iemand ligt te wachten:
         // zolang er niets gebeurt, ziet een ouder een lege app.
