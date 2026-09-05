@@ -1124,6 +1124,21 @@ export const EN: Record<string, string> = {
     'Whoever you add or remove here is on this group\u2019s lessons from today onwards. The '
     + 'lessons that have already been taught keep their own list of players and do not change '
     + 'along with it.',
+  'Er hangt nog geen enkele les aan deze groep. Het inplannen van een heel seizoen komt met de import van de planning; tot dan hang je een les zelf aan deze groep.':
+    'There is not a single lesson attached to this group yet. Planning a whole season comes '
+    + 'with the import of the planning; until then you attach a lesson to this group yourself.',
+  'Nog 1 les te gaan': '1 lesson still to come',
+  'Nog {n} lessen te gaan': '{n} lessons still to come',
+  'Er komt geen les van deze groep meer aan.': 'No more lessons of this group are coming up.',
+  'Eerder en afgezegd': 'Earlier and cancelled',
+  'Er is nog geen les van deze groep geweest.': 'No lesson of this group has been taught yet.',
+  'Archiveren': 'Archiving',
+  'Archiveren haalt de groep uit de actieve lijst, en verder gebeurt er niets: de lessen die gegeven zijn en hun geschiedenis blijven onaangeroerd, en het rooster blijft staan zodat je later nog ziet wie erin zat.':
+    'Archiving takes the group out of the active list, and nothing else happens: the lessons '
+    + 'that have been taught and their history stay untouched, and the roster stays put so you '
+    + 'can still see later who was in it.',
+  'Groep archiveren': 'Archive group',
+  'Terug in de actieve lijst': 'Back in the active list',
   // De meldingen van `lesGroepFout` in lib/lesgroepen; ze komen op dit scherm in de foutregel
   // te staan, dus zonder deze regels bleven ze in het Nederlands hangen.
   'Geef de lesgroep een naam.': 'Give the lesson group a name.',

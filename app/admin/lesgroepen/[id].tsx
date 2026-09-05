@@ -16,7 +16,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { Save } from 'lucide-react-native';
+import { Archive, ArchiveRestore, Save } from 'lucide-react-native';
 
 import { Screen } from '../../../components/ui/Screen';
 import { Card } from '../../../components/ui/Card';
@@ -24,10 +24,11 @@ import { Chip } from '../../../components/ui/Chip';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { ParticipantPicker } from '../../../components/ParticipantPicker';
+import { LessonCards } from '../../../components/LessonCards';
 import { useSimpleData } from '../../../providers/SimpleDataProvider';
 import { formatDayInput, parseDayInput } from '../../../lib/period';
 import { dagSleutel, parseDag, periodeTekst } from '../../../lib/vakanties';
-import { lesGroepFout } from '../../../lib/lesgroepen';
+import { komendeLessen, lesGroepFout, lessenVanGroep } from '../../../lib/lesgroepen';
 import { keuzeUren } from '../../../lib/boekingstijd';
 import { coachesOf, playersOf } from '../../../lib/hub';
 import { isAdmin } from '../../../lib/rechten';
@@ -79,7 +80,8 @@ export default function LesgroepDetailScreen(): React.JSX.Element {
   const t = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
-    currentUser, users, courts, lesGroepen, updateLesGroep, updateLesGroepRoster, error,
+    currentUser, users, courts, bookings, lesGroepen,
+    updateLesGroep, updateLesGroepRoster, archiveLesGroep, error,
   } = useSimpleData();
 
   const groep = lesGroepen.find((g) => g.id === id) ?? null;
@@ -92,6 +94,24 @@ export default function LesgroepDetailScreen(): React.JSX.Element {
 
   const trainers = useMemo(() => coachesOf(users), [users]);
   const spelers = useMemo(() => playersOf(users), [users]);
+
+  // Eén moment voor het hele scherm. Zou "nu" bij elke tekening opnieuw gelezen worden, dan
+  // kon een les tijdens het kijken van "komt nog" naar "geweest" springen.
+  const now = useMemo(() => new Date(), []);
+
+  // Wélke lessen dit zijn wordt hier niet bedacht: lessenVanGroep en komendeLessen staan in
+  // lib/lesgroepen, met dezelfde "vanaf vandaag"-grens als de roosterwijziging eronder. Twee
+  // antwoorden op dezelfde vraag is precies wat die module moet voorkomen.
+  const { alle, komend, eerder } = useMemo(() => {
+    const groepId = groep?.id ?? '';
+    const alles = lessenVanGroep(bookings, groepId);
+    const komt = komendeLessen(bookings, groepId, now);
+    const komtIds = new Set(komt.map((b) => b.id));
+    // Wat overblijft is niet alleen "al geweest": een afgezegde les van volgende week valt er
+    // ook in. Die hoort de beheerder te blijven zien in plaats van tussen twee lijsten weg te
+    // vallen — vandaar dat dit blok "Eerder en afgezegd" heet en niet "Geweest".
+    return { alle: alles, komend: komt, eerder: alles.filter((b) => !komtIds.has(b.id)) };
+  }, [bookings, groep?.id, now]);
 
   // De grens staat hier, en niet alleen op het lijstscherm: een scherm dat zijn grens erft van
   // waar je vandaan kwam heeft er geen, want een trainer kan deze link gewoon intikken
@@ -295,6 +315,66 @@ export default function LesgroepDetailScreen(): React.JSX.Element {
             : t('{n} spelers', { n: groep.roster.length })}
         </Text>
       </Card>
+
+      <Card>
+        <Text style={styles.label}>{t('Lessen')}</Text>
+        {alle.length === 0 ? (
+          // De eerlijke zin in plaats van een knop die er bewust niet is: een heel seizoen
+          // inplannen komt met de import (D-14). Laat de beheerder niet zoeken naar lessen die
+          // er nooit waren.
+          <Text style={styles.uitleg}>
+            {t('Er hangt nog geen enkele les aan deze groep. Het inplannen van een heel '
+              + 'seizoen komt met de import van de planning; tot dan hang je een les zelf '
+              + 'aan deze groep.')}
+          </Text>
+        ) : (
+          <Text style={styles.telling}>
+            {komend.length === 1
+              ? t('Nog 1 les te gaan')
+              : t('Nog {n} lessen te gaan', { n: komend.length })}
+          </Text>
+        )}
+      </Card>
+
+      {/* Dezelfde leskaarten als in de agenda, met hetzelfde detailblad eraan vast: wie er bij
+          die ene les stond leest dat blad uit de boeking zelf, en niet uit het rooster van de
+          groep. Een eigen lijstvorm hier zou dezelfde les er per scherm anders uit laten zien. */}
+      {alle.length > 0 ? (
+        <>
+          <LessonCards
+            bookings={komend}
+            empty={t('Er komt geen les van deze groep meer aan.')}
+          />
+          {eerder.length > 0 ? (
+            <View style={styles.eerder}>
+              <Text style={styles.eerderKop}>{t('Eerder en afgezegd')}</Text>
+              <LessonCards
+                bookings={eerder}
+                empty={t('Er is nog geen les van deze groep geweest.')}
+              />
+            </View>
+          ) : null}
+        </>
+      ) : null}
+
+      <Card>
+        <Text style={styles.label}>{t('Archiveren')}</Text>
+        <Text style={styles.uitleg}>
+          {t('Archiveren haalt de groep uit de actieve lijst, en verder gebeurt er niets: de '
+            + 'lessen die gegeven zijn en hun geschiedenis blijven onaangeroerd, en het '
+            + 'rooster blijft staan zodat je later nog ziet wie erin zat.')}
+        </Text>
+        {/* Geen gevaarknop: archiveren wist niets en is met dezelfde knop terug te draaien. */}
+        <Button
+          label={groep.archived ? t('Terug in de actieve lijst') : t('Groep archiveren')}
+          variant="secondary"
+          icon={groep.archived
+            ? <ArchiveRestore size={16} color={tennisColors.text} />
+            : <Archive size={16} color={tennisColors.text} />}
+          onPress={() => { void archiveLesGroep(groep.id, !groep.archived); }}
+          style={styles.knop}
+        />
+      </Card>
     </Screen>
   );
 }
@@ -318,6 +398,14 @@ const styles = StyleSheet.create({
   knop: { marginTop: spacing.md },
   fout: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.sm },
   muted: { ...typography.body, color: tennisColors.textMuted },
+  telling: { ...typography.body, color: tennisColors.text, fontWeight: '600' },
+  eerder: { gap: spacing.md, opacity: 0.7 },
+  eerderKop: {
+    ...typography.label,
+    color: tennisColors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   naam: { ...typography.h3, color: tennisColors.text },
   onder: { fontSize: 13, color: tennisColors.textMuted },
 });
