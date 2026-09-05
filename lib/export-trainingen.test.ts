@@ -1,5 +1,6 @@
 import {
-  bladLessen, bladUrenPerTrainer, koppenVan, naarRijen, opzoektabellen, type ExportKolom,
+  bladGroepen, bladLessen, bladUrenPerTrainer, koppenVan, naarRijen, opzoektabellen,
+  type ExportKolom,
 } from './export-trainingen';
 import { payoutsByCoach } from './reports';
 import { buildWorkbook, type XlsxBlad } from './xlsx';
@@ -225,6 +226,13 @@ function kolom(blad: XlsxBlad, kop: string): number {
 /** De cel van deze rij in deze kolom, als tekst — of hij nu tekst, getal of datum is. */
 function cel(blad: XlsxBlad, rij: number, kop: string): string {
   return String((blad.rijen[rij][kolom(blad, kop)] as { waarde: unknown }).waarde);
+}
+
+/** De rij waar deze groep op staat; het blad staat op naam gesorteerd. */
+function groepRij(blad: XlsxBlad, naam: string): number {
+  const i = blad.rijen.findIndex((r) => (r[kolom(blad, 'Groep')] as { waarde: unknown }).waarde === naam);
+  if (i < 0) throw new Error(`${naam} staat niet op het blad`);
+  return i;
 }
 
 /** De rij waar deze trainer op staat; de volgorde van het blad ligt bij payoutsByCoach. */
@@ -519,5 +527,126 @@ describe('bladUrenPerTrainer', () => {
     const blad = bladUrenPerTrainer([], trainers);
     expect(blad.rijen).toHaveLength(0);
     expect(blad.koppen).toHaveLength(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Blad "Groepen"
+// ---------------------------------------------------------------------------
+
+/** Een tweede actieve groep, met opzet vóór "Groep 8" in het alfabet. */
+const g3: LesGroep = {
+  id: 'g3', name: 'Beginners', level: 'Start',
+  weekday: 0, start_hour: 9, start_minute: 30,
+  coach_id: 'ann', court_id: 'baan-1',
+  season_start: '2026-09-01', season_end: '2027-06-30',
+  roster: ['p1', 'p2'], archived: false,
+};
+
+/** Een groep van vorig seizoen die in de geëxporteerde periode nog lessen had. */
+const gOud: LesGroep = {
+  ...g3, id: 'g-oud', name: 'Groep van vorig jaar', level: 'Gevorderd',
+  weekday: 5, start_hour: 20, start_minute: 0, coach_id: 'koen',
+  roster: ['p3'], archived: true,
+};
+
+/** Een groep van vóór dat: gearchiveerd én zonder les in de periode. */
+const gWeg: LesGroep = { ...gOud, id: 'g-weg', name: 'Allang gestopt', roster: [] };
+
+/** Een actieve groep zonder trainer — een import levert die op, en dat mag. */
+const gZonderTrainer: LesGroep = {
+  ...g3, id: 'g-los', name: 'Nog te koppelen', coach_id: undefined, roster: ['p4'],
+  archived: false,
+};
+
+const alleGroepen: LesGroep[] = [...groepen, g3, gOud, gWeg, gZonderTrainer];
+const groepstabellen = opzoektabellen(users, courts, alleGroepen);
+
+/** Twee lessen voor Groep 8 en één voor de gearchiveerde groep. */
+const groepslessen: Booking[] = [
+  groepsles({ id: 'gl1' }),
+  groepsles({ id: 'gl2', start_time: '2026-08-26T17:00:00', end_time: '2026-08-26T18:00:00' }),
+  booking({ id: 'oud1', group_id: 'g-oud', participant_ids: ['p3'] }),
+];
+
+describe('bladGroepen', () => {
+  it('heet "Groepen" en heeft de acht vastgelegde koppen, in volgorde', () => {
+    const blad = bladGroepen(alleGroepen, groepslessen, groepstabellen);
+    expect(blad.naam).toBe('Groepen');
+    expect(blad.koppen).toEqual([
+      'Groep-ID', 'Groep', 'Type les', 'Dag', 'Uur', 'Trainer', 'Spelers', 'Lessen in periode',
+    ]);
+  });
+
+  it('zet het Groep-ID van de lesgroep zelf in de eerste kolom', () => {
+    const blad = bladGroepen([groepen[0]], [], groepstabellen);
+    expect(cel(blad, 0, 'Groep-ID')).toBe('g8');
+    expect(cel(blad, 0, 'Groep')).toBe('Groep 8');
+    expect(cel(blad, 0, 'Type les')).toBe('Gevorderd');
+  });
+
+  it('toont de Nederlandse weekdag met zondag = 0, en het uur als HH:MM', () => {
+    const blad = bladGroepen([groepen[0], g3], [], groepstabellen);
+    expect(cel(blad, groepRij(blad, 'Groep 8'), 'Dag')).toBe('woensdag');
+    expect(cel(blad, groepRij(blad, 'Groep 8'), 'Uur')).toBe('17:00');
+    expect(cel(blad, groepRij(blad, 'Beginners'), 'Dag')).toBe('zondag');
+    expect(cel(blad, groepRij(blad, 'Beginners'), 'Uur')).toBe('09:30');
+  });
+
+  it('toont de trainer bij coach_id en laat hem leeg als de groep er nog geen heeft', () => {
+    const blad = bladGroepen([groepen[0], gZonderTrainer], [], groepstabellen);
+    expect(cel(blad, groepRij(blad, 'Groep 8'), 'Trainer')).toBe('Koen');
+    // Een groep zonder trainer is een aanvaarde toestand, geen fout — dus geen "Onbekend".
+    expect(cel(blad, groepRij(blad, 'Nog te koppelen'), 'Trainer')).toBe('');
+  });
+
+  it('telt de spelers uit het roster en de lessen uit de meegegeven boekingen', () => {
+    const blad = bladGroepen(alleGroepen, groepslessen, groepstabellen);
+    const rij = groepRij(blad, 'Groep 8');
+    expect(Number(cel(blad, rij, 'Spelers'))).toBe(6);
+    expect(Number(cel(blad, rij, 'Lessen in periode'))).toBe(2);
+  });
+
+  it('houdt een actieve groep zonder lessen op het blad, met 0 lessen', () => {
+    const blad = bladGroepen(alleGroepen, groepslessen, groepstabellen);
+    const rij = groepRij(blad, 'Beginners');
+    expect(Number(cel(blad, rij, 'Lessen in periode'))).toBe(0);
+    expect(Number(cel(blad, rij, 'Spelers'))).toBe(2);
+  });
+
+  it('neemt een gearchiveerde groep mee die in de periode nog een les had', () => {
+    // Een export van vorig seizoen mist anders precies de groepen waar hij over gaat.
+    const blad = bladGroepen(alleGroepen, groepslessen, groepstabellen);
+    const rij = groepRij(blad, 'Groep van vorig jaar');
+    expect(cel(blad, rij, 'Groep-ID')).toBe('g-oud');
+    expect(Number(cel(blad, rij, 'Lessen in periode'))).toBe(1);
+  });
+
+  it('laat een gearchiveerde groep zonder lessen in de periode weg', () => {
+    const blad = bladGroepen(alleGroepen, groepslessen, groepstabellen);
+    expect(blad.rijen.map((r) => (r[1] as { waarde: unknown }).waarde)).not.toContain('Allang gestopt');
+  });
+
+  it('sorteert de rijen op groepsnaam, zodat twee exports naast elkaar te leggen zijn', () => {
+    const blad = bladGroepen(alleGroepen, groepslessen, groepstabellen);
+    expect(blad.rijen.map((r) => (r[1] as { waarde: unknown }).waarde)).toEqual([
+      'Beginners', 'Groep 8', 'Groep van vorig jaar', 'Nog te koppelen',
+    ]);
+  });
+
+  it('schrijft spelers en lessen als getalcellen en het Groep-ID als tekst', () => {
+    const blad = bladGroepen(alleGroepen, groepslessen, groepstabellen);
+    expect(blad.rijen[0][kolom(blad, 'Spelers')].soort).toBe('getal');
+    expect(blad.rijen[0][kolom(blad, 'Lessen in periode')].soort).toBe('getal');
+    // Een id is geen getal: als tekst blijft de laatste cijfergroep heel en gaat er niets
+    // in wetenschappelijke notatie het bestand uit.
+    expect(blad.rijen[0][kolom(blad, 'Groep-ID')].soort).toBe('tekst');
+  });
+
+  it('telt een geannuleerde les van de groep mee als ingeplande les', () => {
+    // Dit blad beschrijft de planning van de groep, niet het loon: een afgezegde les stond
+    // wel degelijk ingepland en hoort de trainer te zien.
+    const blad = bladGroepen([groepen[0]], [groepsles({ status: 'cancelled' })], groepstabellen);
+    expect(Number(cel(blad, 0, 'Lessen in periode'))).toBe(1);
   });
 });
