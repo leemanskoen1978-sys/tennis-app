@@ -163,6 +163,17 @@ export interface Booking {
    */
   participant_ids?: string[];
   coach_id: string;
+  /**
+   * Wie deze les werkelijk gaf, als dat niet de vaste trainer (`coach_id`) was. Leeg
+   * betekent "de vaste trainer gaf hem zelf" — er hoeft dus niets ingevuld te worden voor
+   * de gewone les, en elke les van vóór dit veld blijft rekenen zoals ze altijd rekende.
+   *
+   * `coach_id` verandert hierdoor NOOIT: dat blijft van wie de les is — zijn agenda, zijn
+   * rooster, zijn dubbele-boekingscontrole. Loon, uren en het trainersrapport lezen hier,
+   * en nergens anders, wie er echt op de baan stond: zie `lesgeverId` in lib/lesgever, de
+   * enige plek die deze vraag beantwoordt.
+   */
+  taught_by_id?: string;
   court_id: string;
   start_time: string; // ISO
   end_time: string; // ISO
