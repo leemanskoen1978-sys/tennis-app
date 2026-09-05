@@ -127,12 +127,13 @@ export interface BezetVraag {
  * De eerste botsende boeking eruit, of `null`. De boeking zelf en niet enkel een ja, zodat
  * de melder kan zeggen wáármee het botst; wie alleen het antwoord wil leest `!== null`.
  *
- * Woordelijk dezelfde regel als `overlaps` in providers/SimpleDataProvider: dezelfde
+ * Dit is de enige plek in de hele codebase die twee tijdvakken vergelijkt: dezelfde
  * trainer, tijdvakken die elkaar raken zonder de grenzen mee te tellen (een les van 10–11
- * botst niet met 11–12), en een geannuleerde les houdt niets bezet. Wijkt deze versie ooit
- * af, dan meldt het scherm een reeks of een verzetting die de provider vervolgens weigert —
- * daarom is dit de enige plek in lib/ die deze vraag beantwoordt, en loopt `planSeries` er
- * zelf ook doorheen.
+ * botst niet met 11–12), en een geannuleerde les houdt niets bezet. De provider had hier
+ * tot vandaag een eigen kopie van (`overlaps` in providers/SimpleDataProvider); die is weg,
+ * want twee kopieën lopen uiteen en dan meldt het scherm een reeks die de provider daarna
+ * weigert. `planSeries`, `planGroepWijziging` en `addBooking` lopen alle drie hier doorheen,
+ * en wie in deze fase een vervanger zoekt hoort dat ook te doen — schrijf geen vierde.
  *
  * De baan hoort erbij omdat twee trainers niet tegelijk op hetzelfde terrein staan: een
  * groep die naar een vrij uur van haar trainer verhuist kan alsnog op een bezette baan

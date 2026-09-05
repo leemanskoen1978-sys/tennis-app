@@ -26,7 +26,7 @@ import { isGroupLesson } from '../lib/groups';
 import { zetAanwezigheid, magAanwezigheidZetten, type Aanwezigheid } from '../lib/aanwezigheid';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
-import { planSeries, type OvergeslagenSlot, type RecurrenceRule } from '../lib/recurrence';
+import { botstMet, planSeries, type OvergeslagenSlot, type RecurrenceRule } from '../lib/recurrence';
 import type {
   User, Court, Booking, Lesson, Memo, StudentProgress, PlayerGoal, Role, Settings,
   Beurtenkaart, BookingStatus, LesGroep, OuderKind, PaymentMethod, PaymentSplit,
@@ -260,18 +260,6 @@ interface DataShape {
 const Ctx = createContext<DataShape | null>(null);
 
 const nowISO = () => new Date().toISOString();
-
-/** Two bookings clash when same coach + overlapping time window (and not cancelled). */
-function overlaps(a: Pick<Booking, 'coach_id' | 'start_time' | 'end_time' | 'status'>, list: Booking[]): boolean {
-  const aStart = new Date(a.start_time).getTime();
-  const aEnd = new Date(a.end_time).getTime();
-  return list.some((b) => {
-    if (b.status === 'cancelled' || b.coach_id !== a.coach_id) return false;
-    const bStart = new Date(b.start_time).getTime();
-    const bEnd = new Date(b.end_time).getTime();
-    return aStart < bEnd && bStart < aEnd;
-  });
-}
 
 /** Een verwijderde les mag geen beurt blijven opeten. */
 function releaseCardFor(data: StoreData, booking: Booking | undefined): Beurtenkaart[] {
@@ -618,7 +606,11 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const addBooking = useCallback(async (b: Omit<Booking, 'id'>): Promise<Booking | null> => {
     const store = storeRef.current;
     if (!store) return null;
-    if (overlaps(b, store.bookings)) {
+    // Dezelfde botsingsregel als het reeksscherm gebruikt: hier stond tot vandaag een eigen
+    // kopie, en twee kopieën lopen vroeg of laat uiteen -- dan meldt het scherm een reeks die
+    // de provider daarna weigert, of erger, andersom. Zonder baan in de vraag, want dat is
+    // precies wat de oude kopie deed: alleen de agenda van de trainer telt hier.
+    if (botstMet(b, store.bookings, { coachId: b.coach_id }) !== null) {
       setError('Dit tijdslot is al geboekt bij deze coach.');
       return null;
     }
