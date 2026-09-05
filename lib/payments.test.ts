@@ -635,3 +635,19 @@ describe('openBalanceFor — alleen wat geweest is', () => {
     expect(openBalanceFor(speler, [netAf], courts, NU)).toEqual({ amount: 30, lessons: 1 });
   });
 });
+
+// Zonder dit geval betaalt de club het uur uit aan de trainer die de les in zijn agenda had
+// staan, tegen diens tarief — terwijl iemand anders er stond. Loon volgt de lesgever.
+describe('totalCoachPayout met een vervanging', () => {
+  const vast: User = { id: 'vast', email: 'v@x.be', name: 'Vaste Trainer', role: 'coach', hourly_rate: 20 };
+  const vervanger: User = { id: 'vervanger', email: 'w@x.be', name: 'Vervanger', role: 'coach', hourly_rate: 30 };
+
+  it('rekent met het uurtarief van de vervanger, niet met dat van de vaste trainer', () => {
+    const vervangenLes: Booking = { ...base, coach_id: vast.id, taught_by_id: vervanger.id };
+    expect(totalCoachPayout([vervangenLes], [vast, vervanger])).toBe(30);
+  });
+
+  it('rekent zonder vervanger gewoon met de vaste trainer', () => {
+    expect(totalCoachPayout([{ ...base, coach_id: vast.id }], [vast, vervanger])).toBe(20);
+  });
+});

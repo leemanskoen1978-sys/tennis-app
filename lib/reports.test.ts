@@ -454,3 +454,41 @@ describe('coachPayoutThisMonth', () => {
     expect(coachPayoutThisMonth(null, [les({})], nu)).toBe(0);
   });
 });
+
+// Loon volgt wie de les gaf, niet wie hem in zijn agenda had staan. Zonder deze gevallen
+// blijft het rapport stil naast de waarheid: de vaste trainer uitbetaald voor een uur dat
+// hij niet gaf, de vervanger niets — en de club merkt het pas bij het uitbetalen.
+describe('trainersrapport met een vervanging', () => {
+  const vast: User = { id: 'vast', email: 'v@x.be', name: 'Vaste Trainer', role: 'coach', hourly_rate: 20 };
+  const vervanger: User = { id: 'vervanger', email: 'w@x.be', name: 'Vervanger', role: 'coach', hourly_rate: 30 };
+  const beiden = [vast, vervanger];
+  const nu = new Date(2026, 7, 15);
+
+  /** Een les van de vaste trainer die de vervanger heeft gegeven. */
+  const vervangenLes = onDay('b1', 2026, 7, 10, { coach_id: vast.id, taught_by_id: vervanger.id });
+
+  it('betaalt de vervanger tegen zijn eigen tarief, en de vaste trainer niets voor die les', () => {
+    const rows = payoutsByCoach([vervangenLes], beiden);
+    expect(rows.find((r) => r.coachId === vast.id)).toBeUndefined();
+    // 30, zijn eigen uurtarief — niet de 20 van de trainer van wie de les is.
+    expect(rows.find((r) => r.coachId === vervanger.id)?.amount).toBe(30);
+  });
+
+  it('zet naam en tariefmelding op het dossier van de vervanger', () => {
+    const zonderTarief: User = { ...vervanger, hourly_rate: undefined };
+    expect(payoutsByCoach([vervangenLes], [vast, zonderTarief])).toEqual([
+      { coachId: 'vervanger', name: 'Vervanger', lessons: 1, amount: 0, missingRate: true },
+    ]);
+  });
+
+  it('telt de les één keer, bij de vervanger', () => {
+    const rows = payoutsByCoach([vervangenLes], beiden);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].lessons).toBe(1);
+  });
+
+  it('geeft het maandbedrag aan de vervanger en niets aan de vaste trainer', () => {
+    expect(coachPayoutThisMonth(vervanger, [vervangenLes], nu)).toBe(30);
+    expect(coachPayoutThisMonth(vast, [vervangenLes], nu)).toBe(0);
+  });
+});

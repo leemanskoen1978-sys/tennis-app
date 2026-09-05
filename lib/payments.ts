@@ -1,6 +1,7 @@
 import { tennisColors } from '../constants/tennis-colors';
 import { groupSize, groupSizeLabel, isGroupLesson, lessonPlayerIds, playsIn } from './groups';
 import { t } from './i18n';
+import { lesgeverId } from './lesgever';
 import { isCoach } from './rechten';
 import { formatEuro } from './money';
 import type {
@@ -422,7 +423,9 @@ export function totalCoachPayout(bookings: Booking[], users: User[]): number {
   const rateById = new Map(users.map((u) => [u.id, u.hourly_rate]));
   const sum = bookings
     .filter((b) => PAYABLE_STATUSES.includes(b.status))
-    .reduce((total, b) => total + coachPayout(b, rateById.get(b.coach_id)), 0);
+    // Het tarief van wie de les gaf, niet van wie hem in zijn agenda had staan: anders
+    // betaalt de club de vaste trainer voor een uur dat een vervanger heeft gegeven.
+    .reduce((total, b) => total + coachPayout(b, rateById.get(lesgeverId(b))), 0);
   // Zelfde reden als bij `totalRevenue`: centen bij elkaar optellen laat kommagetallen driften.
   return Math.round(sum * 100) / 100;
 }

@@ -14,6 +14,7 @@
 //     (wat hij krijgt). Ze mogen nooit in elkaar geschoven worden.
 
 import { t } from './i18n';
+import { lesgeverId } from './lesgever';
 import {
   bookingPrice, coachPayout, countsAsRevenue, lessonShares, totalCoachPayout,
 } from './payments';
@@ -160,9 +161,13 @@ export function payoutsByCoach(bookings: Booking[], users: User[]): CoachTotal[]
   const totals = new Map<string, CoachTotal>();
 
   for (const b of countedBookings(bookings)) {
-    const coach = byId.get(b.coach_id);
-    const row = totals.get(b.coach_id) ?? {
-      coachId: b.coach_id,
+    // Wie de les gaf, niet van wie hij is: zowel de groeperingssleutel als het tarief moeten
+    // mee. Verhuist alleen het tarief, dan staat het bedrag van de vervanger op de regel van
+    // de vaste trainer — dan klopt het totaal wel en de uitbetaling niet.
+    const lesgever = lesgeverId(b);
+    const coach = byId.get(lesgever);
+    const row = totals.get(lesgever) ?? {
+      coachId: lesgever,
       name: coach?.name ?? t('Onbekend'),
       lessons: 0,
       amount: 0,
@@ -174,7 +179,7 @@ export function payoutsByCoach(bookings: Booking[], users: User[]): CoachTotal[]
     if (PAYABLE_STATUSES.includes(b.status)) {
       row.amount += coachPayout(b, coach?.hourly_rate);
     }
-    totals.set(b.coach_id, row);
+    totals.set(lesgever, row);
   }
 
   return [...totals.values()]
@@ -279,6 +284,10 @@ export function coachPayoutThisMonth(
   now: Date = new Date(),
 ): number {
   if (!coach) return 0;
-  const mine = bookings.filter((b) => b.coach_id === coach.id);
+  // "Eigen lessen" is hier: lessen die hij zelf gaf. Een les die hij liet overnemen valt er
+  // dus uit, en een les die hij van een collega overnam komt erbij — het bedrag op zijn
+  // profiel is wat hij verdiende, niet wat er in zijn agenda stond. Het scherm
+  // (app/coaches/[id].tsx) hoeft daar niets voor te doen: het rekent hier, en nergens zelf.
+  const mine = bookings.filter((b) => lesgeverId(b) === coach.id);
   return totalCoachPayout(bookingsInPeriod(mine, currentPeriod(now)), [coach]);
 }
