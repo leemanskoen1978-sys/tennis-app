@@ -98,8 +98,18 @@ Plans:
   4. Het intrekken van een ziekmelding zet lessen die nog geen vervanger hebben terug naar de vaste trainer (VERV-10).
   5. Het markeren van één losse les uit een reeks met een vervanger raakt de rest van de reeks (`series_id`) niet.
   6. De nieuwe tabel voor ziekmeldingen (en eventuele vervanger-koppeling) staat als `alter table ... if not exists`-blok met admin-only RLS-policies, met de hand geverifieerd via de upsert-weg tegen een echte Supabase-omgeving.
-**Plans**: TBD
+**Plans**: 8 plans in 5 waves
 **UI hint**: yes
+
+Plans:
+- [ ] 03-01-PLAN.md — Eén botsingsregel in plaats van twee: lib/overlap.ts met zijn test, en recurrence + de provider wijzen erheen (wave 1)
+- [ ] 03-02-PLAN.md — Het hart als pure regel: SickLeave, ziekmeldingFout, lessenVoorZiekmelding en het afgeleide zoektVervanger, met de zomertijd-fixture (wave 1)
+- [ ] 03-03-PLAN.md — Het schema als tekst: sick_leaves, de index en twee admin-only RLS-policies onderaan supabase-schema.sql (wave 1)
+- [ ] 03-04-PLAN.md — Het vervangersvoorstel: kanVervangen met alle vijf de redenen, en vervangersVoor die niemand stil weglaat (wave 2)
+- [ ] 03-05-PLAN.md — De opslagweg: de vier stops plus meldZiek en trekZiekmeldingIn, die geen enkele boeking aanraakt (wave 2)
+- [ ] 03-06-PLAN.md — Het ziekmeldingsscherm: formulier, lijst, intrekken, de tegel in Beheer en de beheerdersgrens op het scherm zelf (wave 3)
+- [ ] 03-07-PLAN.md — De werklijst: drie keuzes per les, het voorstel met redenen, en de markering "zoekt vervanger" in de agenda (wave 4)
+- [ ] 03-08-PLAN.md — De migratie draaien, de upsert-val nalopen en het fasedoel met de hand bevestigen (wave 5, checkpoints)
 
 ### Phase 4: Excel-export
 **Mode:** mvp
@@ -149,6 +159,6 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 | 1. Lesgroepen | 6/7 | In Progress|  |
 | 2. Wie gaf de les écht | 2/4 | In Progress|  |
 | 2.1 De groep verzetten werkt door | 1/2 | In Progress|  |
-| 3. Ziekmelding en vervangerswerklijst | 0/? | Not started | - |
+| 3. Ziekmelding en vervangerswerklijst | 0/8 | Planned | - |
 | 4. Excel-export | 0/5 | Not started | - |
 | 5. Excel-import van trainingen | 0/? | Not started | - |
