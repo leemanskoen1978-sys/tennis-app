@@ -1,5 +1,5 @@
 import { diffStores, sameRow, type SyncableStore } from './sync';
-import type { Booking, Memo, Settings, User } from './types';
+import type { Booking, LesGroep, Memo, Settings, User } from './types';
 
 const settings: Settings = { booking_end_time: '21:00', theme: 'light', language: 'nl' };
 
@@ -22,6 +22,7 @@ const store = (extra: Partial<SyncableStore> = {}): SyncableStore => ({
   beurtenkaarten: [],
   memos: [],
   relaties: [],
+  lesGroepen: [],
   settings,
   installed_catalogues: ['u9-kdt-v1'],
   ...extra,
@@ -132,6 +133,52 @@ describe('diffStores — memos', () => {
 
   it('zwijgt als er aan de memos niets veranderde', () => {
     const zelfde = diffStores(store({ memos: [memo('m1')] }), store({ memos: [memo('m1')] }));
+    expect(zelfde.empty).toBe(true);
+  });
+});
+
+const groep = (id: string, roster: string[] = ['u-mathis']): LesGroep => ({
+  id,
+  name: 'U9 dinsdag',
+  level: 'U9',
+  weekday: 2,
+  start_hour: 17,
+  start_minute: 0,
+  coach_id: 'u-koen',
+  season_start: '2026-09-01',
+  season_end: '2027-06-30',
+  roster,
+  archived: false,
+  created_at: '2026-09-05T10:00:00.000Z',
+});
+
+describe('diffStores — lesGroepen', () => {
+  it('ziet een nieuwe lesgroep als iets dat weggeschreven moet worden', () => {
+    const verschil = diffStores(store(), store({ lesGroepen: [groep('lg1')] }));
+    const tabel = verschil.tables.find((tb) => tb.table === 'lesGroepen');
+    expect(tabel?.upsert.map((r) => r.id)).toEqual(['lg1']);
+    expect(verschil.empty).toBe(false);
+  });
+
+  it('ziet een verdwenen lesgroep als een verwijdering', () => {
+    const verschil = diffStores(store({ lesGroepen: [groep('lg1')] }), store({ lesGroepen: [] }));
+    const tabel = verschil.tables.find((tb) => tb.table === 'lesGroepen');
+    expect(tabel?.remove).toEqual(['lg1']);
+    expect(tabel?.upsert).toEqual([]);
+  });
+
+  it('ziet een gewijzigd rooster als een upsert en niet als iets nieuws', () => {
+    const verschil = diffStores(
+      store({ lesGroepen: [groep('lg1')] }),
+      store({ lesGroepen: [groep('lg1', ['u-mathis', 'u-lotte'])] }),
+    );
+    const tabel = verschil.tables.find((tb) => tb.table === 'lesGroepen');
+    expect(tabel?.upsert.map((r) => r.id)).toEqual(['lg1']);
+    expect(tabel?.remove).toEqual([]);
+  });
+
+  it('zwijgt als er aan de lesgroepen niets veranderde', () => {
+    const zelfde = diffStores(store({ lesGroepen: [groep('lg1')] }), store({ lesGroepen: [groep('lg1')] }));
     expect(zelfde.empty).toBe(true);
   });
 });
