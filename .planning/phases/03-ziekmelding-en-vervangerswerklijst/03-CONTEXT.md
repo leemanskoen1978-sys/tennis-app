@@ -74,6 +74,20 @@ ziek meldt (v2).
   `supabase-schema.sql`. **De gebruiker draait ze zelf.** Niets in deze fase mag SQL draaien of
   de productiedatabank aanraken.
 
+### Beantwoord na het onderzoek van fase 3
+
+- **D-15:** De werklijst neemt ook de lessen mee waar de zieke trainer alléén als vervanger
+  stond, niet als toegewezen trainer. Hij kan die les evengoed niet geven, en een les die
+  stilzwijgend buiten de lijst valt is precies de fout die deze module moet voorkomen.
+- **D-16:** "Zoekt vervanger" wordt **afgeleid**, niet opgeslagen: er is een openstaande
+  ziekmelding die deze les dekt, er staat nog geen lesgever, en de les is niet afgezegd. Zo
+  hoeft `bookings.status` geen nieuwe waarde te krijgen (dat zou elke `switch` op status
+  raken en een migratie vragen), en kan een vergeten vlaggetje niet blijven hangen.
+- **D-17:** Een ziekmelding intrekken raakt daardoor geen enkele boeking. `coach_id` is nooit
+  overschreven (fase 2), dus er is niets terug te zetten: de markering verdwijnt vanzelf zodra
+  de ziekmelding is ingetrokken. Lessen waar al een vervanger op staat, blijven staan — die
+  afspraak is gemaakt.
+
 ### Claude's Discretion
 
 - De vorm van de markering "zoekt vervanger" — een status, een veld, of iets afgeleids.
