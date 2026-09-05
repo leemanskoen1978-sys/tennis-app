@@ -1118,6 +1118,12 @@ export const EN: Record<string, string> = {
     'No lesson groups yet. A group you create here does not put any lessons in the schedule: '
     + 'planning a whole season comes with the import of the planning. Until then you attach a '
     + 'lesson to a group yourself.',
+  // Het detailscherm van één groep (app/admin/lesgroepen/[id]).
+  'Lesgroep niet gevonden.': 'Lesson group not found.',
+  'Wie je hier toevoegt of weghaalt, staat vanaf vandaag op de lessen van deze groep. De lessen die al geweest zijn houden hun eigen deelnemerslijst en veranderen niet mee.':
+    'Whoever you add or remove here is on this group\u2019s lessons from today onwards. The '
+    + 'lessons that have already been taught keep their own list of players and do not change '
+    + 'along with it.',
   // De meldingen van `lesGroepFout` in lib/lesgroepen; ze komen op dit scherm in de foutregel
   // te staan, dus zonder deze regels bleven ze in het Nederlands hangen.
   'Geef de lesgroep een naam.': 'Give the lesson group a name.',

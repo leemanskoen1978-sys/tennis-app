@@ -1,0 +1,323 @@
+// Beheer → Lesgroepen → één groep: wat er van de groep vastligt, wie erin zit, welke lessen
+// eraan hangen, en hoe je hem aan het einde van het seizoen wegzet.
+//
+// De grens die dit scherm moet bewaken: `groep.roster` is "wie er nú in de groep zit". Het is
+// nooit het antwoord op "wie stond er bij díe les". Dat antwoord blijft `participant_ids` van
+// de boeking zelf, gelezen via lib/groups. Wie hier ooit `roster` zou gebruiken om een lesregel
+// te vullen, laat de prijs en de aanwezigheid van een les van vorige maand meebewegen met een
+// wijziging van vandaag — de club ziet dan haar eigen geschiedenis opschuiven (D-07, D-08).
+// Daarom komt het woord `participant_ids` in dit bestand alleen in dit commentaar voor.
+//
+// Dit scherm rekent om diezelfde reden zelf niets uit over de lessen. Een roosterwijziging gaat
+// naar `updateLesGroepRoster`, en de regel eronder — vanaf vandaag vooruit, wat geweest is
+// blijft staan — ligt één keer vast in lib/lesgroepen, met een test eromheen (D-06). Een
+// tweede versie van die regel hier zou stilletjes uit de pas gaan lopen.
+
+import React, { useMemo, useState } from 'react';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { Save } from 'lucide-react-native';
+
+import { Screen } from '../../../components/ui/Screen';
+import { Card } from '../../../components/ui/Card';
+import { Chip } from '../../../components/ui/Chip';
+import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
+import { ParticipantPicker } from '../../../components/ParticipantPicker';
+import { useSimpleData } from '../../../providers/SimpleDataProvider';
+import { formatDayInput, parseDayInput } from '../../../lib/period';
+import { dagSleutel, parseDag, periodeTekst } from '../../../lib/vakanties';
+import { lesGroepFout } from '../../../lib/lesgroepen';
+import { keuzeUren } from '../../../lib/boekingstijd';
+import { coachesOf, playersOf } from '../../../lib/hub';
+import { isAdmin } from '../../../lib/rechten';
+import { DAY_LABELS } from '../../../lib/slots';
+import { useT } from '../../../lib/i18n';
+import { tennisColors } from '../../../constants/tennis-colors';
+import { spacing, radius, typography } from '../../../constants/theme';
+import type { LesGroep } from '../../../lib/types';
+
+/** Lesdagen op leesvolgorde: maandag eerst, zondag laatst. De waarden blijven getDay(). */
+const DAG_VOLGORDE = [1, 2, 3, 4, 5, 6, 0] as const;
+
+/**
+ * Wat er in het formulier staat terwijl de beheerder aan het wijzigen is. Dezelfde velden en
+ * dezelfde schrijfwijzen als het aanmaakformulier op het lijstscherm: gaan de twee vormen uit
+ * elkaar lopen, dan laten ze op termijn andere dingen toe voor hetzelfde begrip.
+ */
+interface Concept {
+  naam: string;
+  niveau: string;
+  weekdag: number;
+  /** Het beginuur als 'HH:MM', precies zoals keuzeUren() het aanlevert. */
+  beginuur: string;
+  trainerId: string | null;
+  baanId: string | null;
+  van: string;
+  tot: string;
+}
+
+/** Het formulier zoals het eruitziet zolang niemand er iets aan veranderd heeft. */
+function conceptVan(g: LesGroep): Concept {
+  const alsInvoer = (sleutel: string): string => {
+    const d = parseDag(sleutel);
+    return d ? formatDayInput(d) : '';
+  };
+  return {
+    naam: g.name,
+    niveau: g.level,
+    weekdag: g.weekday,
+    beginuur: `${String(g.start_hour).padStart(2, '0')}:${String(g.start_minute).padStart(2, '0')}`,
+    trainerId: g.coach_id ?? null,
+    baanId: g.court_id ?? null,
+    van: alsInvoer(g.season_start),
+    tot: alsInvoer(g.season_end),
+  };
+}
+
+export default function LesgroepDetailScreen(): React.JSX.Element {
+  const t = useT();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const {
+    currentUser, users, courts, lesGroepen, updateLesGroep, updateLesGroepRoster, error,
+  } = useSimpleData();
+
+  const groep = lesGroepen.find((g) => g.id === id) ?? null;
+
+  // `null` betekent: nog niets aangeraakt, dan komen de waarden uit de groep zelf. Zo blijft
+  // een wijziging die iemand anders wegschreef zichtbaar zolang dit scherm niet aan het
+  // typen is.
+  const [concept, setConcept] = useState<Concept | null>(null);
+  const [fout, setFout] = useState<string | null>(null);
+
+  const trainers = useMemo(() => coachesOf(users), [users]);
+  const spelers = useMemo(() => playersOf(users), [users]);
+
+  // De grens staat hier, en niet alleen op het lijstscherm: een scherm dat zijn grens erft van
+  // waar je vandaan kwam heeft er geen, want een trainer kan deze link gewoon intikken
+  // (TOEG-01). De databank weigert hem daarna ook — dit zorgt dat hij het scherm niet eens te
+  // zien krijgt.
+  if (!isAdmin(currentUser)) {
+    return (
+      <Screen scroll={false}>
+        <Text style={styles.muted}>{t('Lesgroepen zijn alleen voor de beheerder.')}</Text>
+      </Screen>
+    );
+  }
+
+  if (!groep) {
+    return (
+      <Screen scroll={false}>
+        <Text style={styles.muted}>{t('Lesgroep niet gevonden.')}</Text>
+      </Screen>
+    );
+  }
+
+  const uren = keuzeUren();
+  const huidig = concept ?? conceptVan(groep);
+  const zet = (patch: Partial<Concept>): void => setConcept({ ...huidig, ...patch });
+
+  const bewaar = (): void => {
+    const vanDag = parseDayInput(huidig.van);
+    const totDag = parseDayInput(huidig.tot);
+    const [uurTekst, minuutTekst] = huidig.beginuur.split(':');
+    const patch = {
+      name: huidig.naam.trim(),
+      level: huidig.niveau.trim(),
+      weekday: huidig.weekdag,
+      start_hour: Number(uurTekst),
+      start_minute: Number(minuutTekst),
+      // Uitdrukkelijk `undefined` en niet weglaten: kiest de beheerder "Geen baan", dan hoort
+      // de baan die er stond ook echt weg te gaan.
+      coach_id: huidig.trainerId ?? undefined,
+      court_id: huidig.baanId ?? undefined,
+      season_start: vanDag ? dagSleutel(vanDag) : '',
+      season_end: totDag ? dagSleutel(totDag) : '',
+    };
+    // Valideren doet uitsluitend lib/lesgroepen, net als op het aanmaakscherm. Het rooster en
+    // het archiefvinkje gaan alleen mee om de controle een hele groep te laten zien; ze staan
+    // niet in de patch, want ze hebben elk hun eigen weg.
+    const melding = lesGroepFout({ ...patch, roster: groep.roster, archived: groep.archived });
+    if (melding || !vanDag || !totDag) {
+      setFout(melding ?? t('Vul beide dagen in als dd/mm/jjjj.'));
+      return;
+    }
+    setFout(null);
+    void updateLesGroep(groep.id, patch);
+    setConcept(null);
+  };
+
+  return (
+    <Screen>
+      <Card>
+        <Text style={styles.naam}>{groep.name}</Text>
+        <Text style={styles.onder}>
+          {`${groep.level} · ${periodeTekst(groep.season_start, groep.season_end)}`}
+        </Text>
+        {/* Een gearchiveerde groep hoort aan het scherm te zien te zijn: anders zit je erin te
+            wijzigen zonder te weten dat de club hem niet meer inplant. */}
+        {groep.archived ? (
+          <Badge label={t('Gearchiveerd')} color={tennisColors.primaryFill} />
+        ) : null}
+      </Card>
+
+      <Card>
+        <Text style={styles.label}>{t('Naam')}</Text>
+        <TextInput
+          style={styles.input}
+          value={huidig.naam}
+          onChangeText={(v) => zet({ naam: v })}
+          placeholder={t('bv. Woensdag 16u groep 3')}
+          placeholderTextColor={tennisColors.textMuted}
+        />
+
+        <Text style={styles.label}>{t('Niveau')}</Text>
+        <TextInput
+          style={styles.input}
+          value={huidig.niveau}
+          onChangeText={(v) => zet({ niveau: v })}
+          placeholder={t('bv. Kidstennis oranje')}
+          placeholderTextColor={tennisColors.textMuted}
+        />
+
+        <Text style={styles.label}>{t('Lesdag')}</Text>
+        <View style={styles.chipRij}>
+          {DAG_VOLGORDE.map((d) => (
+            <Chip
+              key={d}
+              label={t(DAY_LABELS[d])}
+              selected={huidig.weekdag === d}
+              onPress={() => zet({ weekdag: d })}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.label}>{t('Beginuur')}</Text>
+        <View style={styles.chipRij}>
+          {uren.map((u) => (
+            <Chip
+              key={u}
+              label={u}
+              selected={huidig.beginuur === u}
+              onPress={() => zet({ beginuur: u })}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.label}>{t('Trainer')}</Text>
+        <View style={styles.chipRij}>
+          {trainers.map((c) => (
+            <Chip
+              key={c.id}
+              label={c.name}
+              selected={huidig.trainerId === c.id}
+              onPress={() => zet({ trainerId: c.id })}
+            />
+          ))}
+        </View>
+
+        {/* De baan mag leeg blijven, net als bij een gewone les (D-13). */}
+        <Text style={styles.label}>{t('Baan (mag leeg)')}</Text>
+        <View style={styles.chipRij}>
+          <Chip
+            label={t('Geen baan')}
+            selected={huidig.baanId === null}
+            onPress={() => zet({ baanId: null })}
+          />
+          {courts.map((c) => (
+            <Chip
+              key={c.id}
+              label={c.name}
+              selected={huidig.baanId === c.id}
+              onPress={() => zet({ baanId: c.id })}
+            />
+          ))}
+        </View>
+
+        <View style={styles.datumRij}>
+          <View style={styles.veld}>
+            <Text style={styles.label}>{t('Seizoen van')}</Text>
+            <TextInput
+              style={styles.input}
+              value={huidig.van}
+              onChangeText={(v) => zet({ van: v })}
+              placeholder={t('dd/mm/jjjj')}
+              placeholderTextColor={tennisColors.textMuted}
+              inputMode="numeric"
+            />
+          </View>
+          <View style={styles.veld}>
+            <Text style={styles.label}>{t('Tot en met')}</Text>
+            <TextInput
+              style={styles.input}
+              value={huidig.tot}
+              onChangeText={(v) => zet({ tot: v })}
+              placeholder={t('dd/mm/jjjj')}
+              placeholderTextColor={tennisColors.textMuted}
+              inputMode="numeric"
+            />
+          </View>
+        </View>
+
+        {fout ? <Text style={styles.fout}>{fout}</Text> : null}
+        {error ? <Text style={styles.fout}>{error}</Text> : null}
+
+        <Button
+          label={t('Bewaren')}
+          onPress={bewaar}
+          icon={<Save size={16} color={tennisColors.onFill} />}
+          style={styles.knop}
+        />
+      </Card>
+
+      <Card>
+        <Text style={styles.label}>{t('Spelers')}</Text>
+        {/* Deze zin is geen versiering. Wie midden in een seizoen iemand toevoegt, hoort te
+            weten wat er dan met de lessen gebeurt — anders is het een onzichtbare regel die
+            iemand later per ongeluk omdraait (GROEP-05, GROEP-06). */}
+        <Text style={styles.uitleg}>
+          {t('Wie je hier toevoegt of weghaalt, staat vanaf vandaag op de lessen van deze '
+            + 'groep. De lessen die al geweest zijn houden hun eigen deelnemerslijst en '
+            + 'veranderen niet mee.')}
+        </Text>
+        {/* Dezelfde keuzelijst als op het boekscherm en in het lesdetail; zie het kopcommentaar
+            van ParticipantPicker waarom die niet overgeschreven wordt. Een groep heeft geen
+            betaler — dat begrip hoort bij één les — dus `payerId` is undefined. */}
+        <ParticipantPicker
+          players={spelers}
+          payerId={undefined}
+          value={groep.roster}
+          onChange={(ids) => { void updateLesGroepRoster(groep.id, ids); }}
+        />
+        <Text style={styles.onder}>
+          {groep.roster.length === 1
+            ? t('1 speler')
+            : t('{n} spelers', { n: groep.roster.length })}
+        </Text>
+      </Card>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  uitleg: { ...typography.body, color: tennisColors.textMuted },
+  label: { ...typography.label, color: tennisColors.textMuted, marginTop: spacing.sm },
+  input: {
+    backgroundColor: tennisColors.background,
+    borderWidth: 1,
+    borderColor: tennisColors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    fontSize: 15,
+    color: tennisColors.text,
+  },
+  chipRij: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
+  datumRij: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  veld: { flexGrow: 1, flexBasis: 140 },
+  knop: { marginTop: spacing.md },
+  fout: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.sm },
+  muted: { ...typography.body, color: tennisColors.textMuted },
+  naam: { ...typography.h3, color: tennisColors.text },
+  onder: { fontSize: 13, color: tennisColors.textMuted },
+});
