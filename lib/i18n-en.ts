@@ -19,6 +19,10 @@ export const EN: Record<string, string> = {
   'Spelers': 'Players',
   'Trainers': 'Coaches',
   'Trainer': 'Coach',
+  // --- wie de les werkelijk gaf ------------------------------------------
+  'Vervanger': 'Stand-in',
+  'Wie gaf deze les?': 'Who gave this lesson?',
+  'Gaf hem zelf': 'Gave it himself',
   'Beheer': 'Admin',
   'Home': 'Home',
   'Profiel': 'Profile',
@@ -769,6 +773,7 @@ export const EN: Record<string, string> = {
   // --- dossiers -----------------------------------------------------------
   'Open dossier van {naam}': 'Open the file of {naam}',
   'Open dossier van trainer {naam}': 'Open the file of coach {naam}',
+  'Open dossier van vervanger {naam}': 'Open the file of stand-in {naam}',
   '{groep}, {betaler} betaalt': '{groep}, {betaler} pays',
   'Een nieuwe les van {naam} krijgt deze betaalwijze meteen.':
     'A new lesson for {naam} gets this payment method straight away.',

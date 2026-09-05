@@ -41,7 +41,7 @@ import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, minTapTarget, webCursor } from '../constants/theme';
 import { playersOf } from '../lib/hub';
 import { kinderenVan } from '../lib/ouderkind';
-import { isAdmin, magLesVerwijderen } from '../lib/rechten';
+import { isAdmin, isCoach, magLesVerwijderen } from '../lib/rechten';
 
 /** De kleur bij een status; dezelfde die het maandoverzicht ooit op de kaart zette. */
 const STATUS_COLORS: Record<BookingStatus, string> = {
@@ -111,7 +111,8 @@ export function BookingDetailSheet({
     currentUser, bookings, users, courts, beurtenkaarten, relaties, lesGroepen,
     updateBooking, deleteBooking, cancelSeriesFrom, deleteSeriesFrom,
     approveBooking, rejectBooking,
-    setPaymentMethod, setParticipants, setPaymentSplit, setAanwezigheid, error, clearError,
+    setPaymentMethod, setParticipants, setPaymentSplit, setAanwezigheid, setTaughtBy,
+    error, clearError,
   } = useSimpleData();
   // Twee bladen over elkaar heen wordt op web en telefoon rommelig: de tweede backdrop
   // verduistert de eerste en op Android sluit één druk op terug ze allebei. Daarom is dit
@@ -142,6 +143,9 @@ export function BookingDetailSheet({
   const courtName = courts.find((c) => c.id === booking.court_id)?.name ?? t('Onbekend terrein');
   const playerName = nameOf(booking.player_id);
   const coachName = nameOf(booking.coach_id);
+  // De vervanger staat náást de vaste trainer, nooit in zijn plaats (D-07): leeg betekent
+  // dat de vaste trainer de les zelf gaf (D-02).
+  const vervangerNaam = booking.taught_by_id ? nameOf(booking.taught_by_id) : null;
 
   const payment = bookingPaymentMeta(booking);
   const paymentLabel = paymentLabelFor(booking, payment, beurtenkaarten);
@@ -324,6 +328,57 @@ export function BookingDetailSheet({
           <Text style={styles.partyLink}>{t('Trainer')}: {coachName}</Text>
           <ChevronRight size={16} color={tennisColors.textMuted} />
         </Pressable>
+        {/* Beide namen blijven staan. Wie hier alleen de vervanger zou tonen, maakt achteraf
+            onnavolgbaar wat er gebeurd is: dan is niet meer te zien aan wie de les was
+            toegewezen én wie hem uiteindelijk gaf (D-07). */}
+        {vervangerNaam && booking.taught_by_id ? (
+          <Pressable
+            onPress={() => goTo(`/coaches/${booking.taught_by_id as string}`)}
+            accessibilityRole="button"
+            accessibilityLabel={t('Open dossier van vervanger {naam}', { naam: vervangerNaam })}
+            style={[styles.partyLine, webCursor]}
+          >
+            <Text style={styles.partyLink}>{t('Vervanger')}: {vervangerNaam}</Text>
+            <ChevronRight size={16} color={tennisColors.textMuted} />
+          </Pressable>
+        ) : null}
+
+        {/* Invullen wie de les werkelijk gaf mag alleen de beheerder (D-08) — bewust niet
+            `canManage`, want daar valt de trainer van de les zelf ook onder. Die grens loopt
+            hier anders: dit veld beslist wie er uitbetaald wordt, dus een trainer die op zijn
+            eigen les een vervanger invult, zet daarmee zijn eigen loonstaat.
+
+            Voor wie het niet mag staat er geen uitgeschakelde knop maar helemaal geen knop:
+            er bestaat dan geen `onPress` die `setTaughtBy` kan bereiken. Dat is geen
+            bewaking maar netheid — de bewaking staat in `bewaak_betaalvelden` in de databank,
+            zodat het scherm geen knop toont die daarna geweigerd wordt (lib/rechten:
+            "de app is niet de bewaker"). */}
+        {isAdmin(currentUser) ? (
+          <>
+            <Text style={styles.label}>{t('Wie gaf deze les?')}</Text>
+            <View style={styles.chipRow}>
+              <Chip
+                label={t('Gaf hem zelf')}
+                selected={!booking.taught_by_id}
+                onPress={() => {
+                  void setTaughtBy(booking.id, null);
+                }}
+              />
+              {users
+                .filter((u) => isCoach(u) && u.id !== booking.coach_id)
+                .map((u) => (
+                  <Chip
+                    key={u.id}
+                    label={u.name}
+                    selected={booking.taught_by_id === u.id}
+                    onPress={() => {
+                      void setTaughtBy(booking.id, u.id);
+                    }}
+                  />
+                ))}
+            </View>
+          </>
+        ) : null}
 
         <View style={styles.badgeRow}>
           <Badge label={bookingStatusLabel(booking.status)} color={STATUS_COLORS[booking.status]} />
