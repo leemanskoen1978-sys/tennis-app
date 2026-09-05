@@ -82,6 +82,35 @@ het.
   de productiedatabank aanraken — en dat weegt hier het zwaarst van alle fases, want dit is de
   enige fase die in bulk schrijft.
 
+### Beantwoord na het onderzoek van fase 5
+
+- **D-18:** De xlsx-lezer krijgt een **zelfgeschreven inflate** (RFC 1951: stored, vaste en
+  dynamische Huffman), ongeveer 300-500 regels, in een eigen `lib/`-bestand met een eigen test.
+  Geen pakket erbij. Dat is dezelfde afweging die de schrijver in `lib/xlsx.ts` al maakte, en
+  om dezelfde reden: dit draait op web én op een telefoon, en een afhankelijkheid die op één
+  van de twee stilvalt is erger dan vierhonderd regels die volledig te testen zijn.
+  `DecompressionStream` is géén alternatief: het bestaat niet overal waar deze app draait.
+- **D-19:** De lezer wordt **eerst** gebouwd en byte-exact bewezen tegen `koen.xlsx` vóór er
+  één regel importlogica op komt. Dat is een eigen plan, met een eigen test die het echte
+  bestand uitleest en de bekende waarden controleert: 1398 regels, de kop
+  `Datum/Weekdag/Weeknr/Uur/Type les/Groep/Coach/Leerling/Locatie/Indoor/Outdoor`, datum 46274
+  = 9 september 2026, tijdbreuk 0.625 = 15:00.
+- **D-20:** Een tijdbreuk wordt omgerekend door **eerst de totale minuten af te ronden**, niet
+  door het uur apart te nemen. `0.58333333333333337 × 24 = 13.999...` en `Math.floor` daarvan
+  is 13, niet 14. Precies het soort fout dat pas opvalt als een heel seizoen een uur te vroeg
+  staat.
+- **D-21:** IMP-09 betekent **"veilig opnieuw te draaien"**, niet "één databanktransactie".
+  Supabase krijgt de tabellen na elkaar; er is geen kruistabel-transactie en die kan er niet
+  komen zonder SQL te draaien, wat deze module niet doet. Wat wél waar moet zijn: een import
+  die halverwege afbreekt, laat een toestand achter die door hetzelfde bestand opnieuw in te
+  lezen compleet wordt gemaakt — zonder verdubbeling. Dat is te testen en het is eerlijk.
+  Zeg het ook zo tegen de gebruiker op het scherm.
+- **D-22:** Namen matchen ongeacht de volgorde van voor- en achternaam gebeurt met een
+  woordenvergelijking in `lib/students.ts`, zodat de trainerzoekopdracht en de spelerzoekopdracht
+  dezelfde regel gebruiken. Twee verschillende regels zouden IMP-10 stilzwijgend breken.
+- **D-23:** `lib/lesgroepen.ts` heeft al `groepSleutel` met precies de sleutel uit het sjabloon
+  (`naam|weekdag|beginuur`). De import gebruikt die en schrijft geen tweede versie.
+
 ### Claude's Discretion
 
 - Het lezen van een xlsx (`lib/xlsx.ts` schrijft alleen; lezen moet erbij, zonder pakket).
