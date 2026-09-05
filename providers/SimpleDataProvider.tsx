@@ -81,13 +81,18 @@ interface DataShape {
   cancelSeriesFrom: (bookingId: string) => Promise<void>;
   /** Verwijdert deze les en alle latere uit dezelfde reeks. */
   deleteSeriesFrom: (bookingId: string) => Promise<void>;
-  /** `payment_method`, `beurtenkaart_id`, `participant_ids`, `payment_split` en
-   *  `attendance` blijven erbuiten: die lopen uitsluitend via `setPaymentMethod`,
-   *  `setParticipants`, `setPaymentSplit` en `setAanwezigheid` — de plekken die de
-   *  beurtenkaart, de factuurregel en de afvinklijst in de pas houden. */
+  /** `payment_method`, `beurtenkaart_id`, `participant_ids`, `payment_split`,
+   *  `attendance` en `taught_by_id` blijven erbuiten: die lopen uitsluitend via
+   *  `setPaymentMethod`, `setParticipants`, `setPaymentSplit`, `setAanwezigheid` en
+   *  `setTaughtBy` — de plekken die de beurtenkaart, de factuurregel, de afvinklijst en
+   *  de loonstaat in de pas houden.
+   *
+   *  Het commentaar en de twee `Omit<>`-lijsten (hier en bij de implementatie) noemen
+   *  bewust dezelfde zes velden: liep die lijst uiteen, dan zou een veld zich bewaakt
+   *  wanen terwijl `updateBooking` het gewoon doorlaat. */
   updateBooking: (
     id: string,
-    patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id' | 'participant_ids' | 'payment_split' | 'attendance'>>,
+    patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id' | 'participant_ids' | 'payment_split' | 'attendance' | 'taught_by_id'>>,
   ) => Promise<void>;
   /**
    * De deelnemers van een les zetten. Geeft de melding terug als het geld erdoor veranderde
@@ -121,6 +126,17 @@ interface DataShape {
   /** `false` bij een geweigerde keuze: onbekende boeking, geannuleerde les, geen kaart met
    *  beurten over, of een sponsorbudget dat deze les niet meer draagt. */
   setPaymentMethod: (bookingId: string, method: PaymentMethod) => Promise<boolean>;
+  /**
+   * Wie de les werkelijk gaf. `null` wist het weer: dan gaf de vaste trainer hem zelf (D-02).
+   *
+   * Alleen de beheerder mag dit zetten (D-08) — het beslist wie er betaald wordt, dus zelfs
+   * de trainer van de les mag het niet op zijn eigen les. `updateBooking` sluit
+   * `taught_by_id` daarom uit van zijn patch-type, net als `payment_method`: dit is de enige
+   * weg naar dat veld. De échte bewaking staat in `bewaak_betaalvelden` in de databank —
+   * dit is de weg ernaartoe, niet de grens zelf (zie lib/rechten.ts: "de app is niet de
+   * bewaker").
+   */
+  setTaughtBy: (bookingId: string, coachId: string | null) => Promise<void>;
   addBeurtenkaart: (playerId: string) => Promise<void>;
   updateBeurtenkaart: (id: string, patch: Pick<Beurtenkaart, 'remarks'>) => Promise<void>;
   /** Handmatig een beurt af- of bijboeken op het kaartscherm. */
@@ -731,7 +747,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
 
   const updateBooking = useCallback(async (
     id: string,
-    patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id' | 'participant_ids' | 'payment_split'>>,
+    patch: Partial<Omit<Booking, 'payment_method' | 'beurtenkaart_id' | 'participant_ids' | 'payment_split' | 'attendance' | 'taught_by_id'>>,
   ) => {
     const store = storeRef.current;
     if (!store) return;
@@ -872,6 +888,24 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       ),
     });
     return true;
+  }, [commit]);
+
+  // Eén patch, één veld: `coach_id` blijft staan zoals hij stond. Er valt hier niets te
+  // verzoenen zoals bij `setPaymentMethod` — geen beurt terug te geven, geen splitsing te
+  // herrekenen — dus geen `plan*`-functie: alleen lezen, afbreken bij een onbekende
+  // boeking, en committen.
+  const setTaughtBy = useCallback(async (bookingId: string, coachId: string | null): Promise<void> => {
+    const store = storeRef.current;
+    if (!store) return;
+    const booking = store.bookings.find((b) => b.id === bookingId);
+    if (!booking) return;
+    await commit({
+      ...store,
+      bookings: store.bookings.map((b) =>
+        // Leeg is `undefined` op het type, niet `null` (D-02): zo leest `lesgeverId` het.
+        b.id === bookingId ? { ...b, taught_by_id: coachId ?? undefined } : b,
+      ),
+    });
   }, [commit]);
 
   const addBeurtenkaart = useCallback(async (playerId: string) => {
@@ -1247,6 +1281,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setPaymentSplit,
     setAanwezigheid,
     setPaymentMethod,
+    setTaughtBy,
     addBeurtenkaart,
     updateBeurtenkaart,
     addCardSession,
@@ -1283,7 +1318,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
     updateBooking, deleteBooking, approveBooking, rejectBooking,
     setParticipants, setPaymentSplit, setAanwezigheid,
-    setPaymentMethod, addBeurtenkaart,
+    setPaymentMethod, setTaughtBy, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
     vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster, archiveLesGroep, addLesson,
