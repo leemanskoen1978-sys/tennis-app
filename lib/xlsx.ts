@@ -399,3 +399,88 @@ export function buildXlsx(blad: XlsxBlad): Uint8Array {
     { naam: 'xl/worksheets/sheet1.xml', inhoud: utf8(bladXml({ ...blad, naam })) },
   ]);
 }
+
+/**
+ * Twee tabbladen mogen binnen één werkmap niet dezelfde naam dragen — Excel weigert zo'n
+ * bestand in zijn geheel. `bladnaam()` kijkt bewust naar één naam en niet naar zijn buren;
+ * dat blijft zo. Deze helper legt de namen naast elkaar en hangt bij een botsing een
+ * oplopend achtervoegsel aan, binnen de 31 tekens die een tabnaam mag zijn. De eerste houdt
+ * zijn naam, want die is de naam die de aanroeper bedoelde.
+ *
+ * Hoofdletters tellen niet mee: voor Excel zijn "Lessen" en "lessen" dezelfde tab.
+ */
+function uniekeBladnamen(bladen: readonly XlsxBlad[]): string[] {
+  const gezien = new Set<string>();
+  return bladen.map((blad) => {
+    const schoon = bladnaam(blad.naam);
+    let naam = schoon;
+    let volgnummer = 2;
+    while (gezien.has(naam.toLowerCase())) {
+      const achtervoegsel = ` (${volgnummer})`;
+      naam = schoon.slice(0, 31 - achtervoegsel.length) + achtervoegsel;
+      volgnummer++;
+    }
+    gezien.add(naam.toLowerCase());
+    return naam;
+  });
+}
+
+/**
+ * Hetzelfde bestand, maar met meer dan één tabblad.
+ *
+ * Waarom dit een nieuwe functie is en geen ruimere signatuur van `buildXlsx`: `lib/csv.ts`
+ * en het historiekscherm roepen `buildXlsx` vandaag aan met één blad, en er staan tests om
+ * die aanroepen heen. Die mogen niet omvallen omdat er elders vier tabbladen nodig zijn.
+ * `buildXlsx` blijft daarom letterlijk zoals hij was; hier staat ernaast wat hij niet kan.
+ *
+ * Wat in `buildXlsx` drie vaste strings zijn — het ene blad in `[Content_Types].xml`, in
+ * `xl/workbook.xml` en in `xl/_rels/workbook.xml.rels` — zijn hieronder drie lussen. De
+ * volgorde van `bladen` is de volgorde van de tabs onderin Excel. De opmaak wordt één keer
+ * geschreven en door alle bladen gedeeld: een bedrag blijft dus ook op blad vier een getal
+ * en een datum een datum.
+ */
+export function buildWorkbook(bladen: readonly XlsxBlad[]): Uint8Array {
+  const namen = uniekeBladnamen(bladen);
+  const bladPad = (index: number) => `worksheets/sheet${index + 1}.xml`;
+
+  const contentTypes = `${KOP}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">`
+    + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    + '<Default Extension="xml" ContentType="application/xml"/>'
+    + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+    + bladen
+      .map((_, i) => `<Override PartName="/xl/${bladPad(i)}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`)
+      .join('')
+    + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+    + '</Types>';
+
+  const rels = `${KOP}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
+    + `<Relationship Id="rId1" Type="${REL_NS}/officeDocument" Target="xl/workbook.xml"/>`
+    + '</Relationships>';
+
+  const workbook = `${KOP}<workbook xmlns="${HOOFD_NS}" xmlns:r="${REL_NS}">`
+    + `<sheets>${namen
+      .map((naam, i) => `<sheet name="${xml(naam)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`)
+      .join('')}</sheets>`
+    + '</workbook>';
+
+  // De opmaak krijgt de rId ná die van het laatste blad; anders wijst een blad naar de
+  // stijlen en de stijlen naar een blad, en dan opent het bestand niet.
+  const workbookRels = `${KOP}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
+    + bladen
+      .map((_, i) => `<Relationship Id="rId${i + 1}" Type="${REL_NS}/worksheet" Target="${bladPad(i)}"/>`)
+      .join('')
+    + `<Relationship Id="rId${bladen.length + 1}" Type="${REL_NS}/styles" Target="styles.xml"/>`
+    + '</Relationships>';
+
+  return zip([
+    { naam: '[Content_Types].xml', inhoud: utf8(contentTypes) },
+    { naam: '_rels/.rels', inhoud: utf8(rels) },
+    { naam: 'xl/workbook.xml', inhoud: utf8(workbook) },
+    { naam: 'xl/_rels/workbook.xml.rels', inhoud: utf8(workbookRels) },
+    { naam: 'xl/styles.xml', inhoud: utf8(stijlenXml()) },
+    ...bladen.map((blad, i) => ({
+      naam: `xl/${bladPad(i)}`,
+      inhoud: utf8(bladXml({ ...blad, naam: namen[i] })),
+    })),
+  ]);
+}
