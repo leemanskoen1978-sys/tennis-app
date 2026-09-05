@@ -16,7 +16,7 @@ import { actieveGroepen, lessenVanGroep } from './lesgroepen';
 import { bookingMinutes } from './payments';
 import { countedBookings, payoutsByCoach } from './reports';
 import { bookingStatusLabel } from './status';
-import { type XlsxBlad, type XlsxCel } from './xlsx';
+import { buildWorkbook, type XlsxBlad, type XlsxCel } from './xlsx';
 import type { Booking, Court, LesGroep, User } from './types';
 
 /**
@@ -653,4 +653,45 @@ export function bladAanwezigheid(
     breedtes: [22, 22, ...lesnummers.map(() => 7)],
     rijen,
   };
+}
+
+// ---------------------------------------------------------------------------
+// De werkmap: de vier bladen achter elkaar in één bestand
+// ---------------------------------------------------------------------------
+
+/**
+ * Alles wat het exportscherm al geladen heeft, in één keer meegegeven.
+ *
+ * `bookings` is al op de periode afgebakend door het scherm (`bookingsInPeriod` uit
+ * lib/period). Dat is met opzet: zo gaan alle vier de bladen over exact dezelfde selectie
+ * lessen. Zou elk blad zijn eigen afbakening doen, dan kan één bestand half over de ene en
+ * half over de andere periode lopen — en dat is precies het soort verschil dat pas opvalt
+ * als iemand de uren van het blad naast de lessen van het andere blad legt en ze niet
+ * kloppen.
+ */
+export interface ExportGegevens {
+  bookings: Booking[];
+  users: User[];
+  courts: Court[];
+  groepen: LesGroep[];
+}
+
+/**
+ * Het hele bestand: vier bladen, één zip.
+ *
+ * Hier wordt niets uitgerekend. Deze functie bouwt de opzoektabellen één keer — een seizoen
+ * is enkele duizenden rijen, en drie bladen die er elk hun eigen maken is drie keer hetzelfde
+ * werk — en zet daarna de vier bladen achter elkaar.
+ *
+ * De volgorde ligt vast (D-01). "Lessen" staat vooraan omdat dat het blad is dat de import
+ * van fase 5 terugleest, en omdat het het blad is waar de beheerder als eerste in kijkt.
+ */
+export function exportWerkmap(g: ExportGegevens): Uint8Array {
+  const tabellen = opzoektabellen(g.users, g.courts, g.groepen);
+  return buildWorkbook([
+    bladLessen(g.bookings, tabellen),
+    bladUrenPerTrainer(g.bookings, g.users),
+    bladAanwezigheid(g.groepen, g.bookings, tabellen),
+    bladGroepen(g.groepen, g.bookings, tabellen),
+  ]);
 }
