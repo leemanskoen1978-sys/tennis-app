@@ -911,10 +911,17 @@ export function groepRosterVerschil(
 /**
  * De trainer met deze naam, of niemand.
  *
- * Twee dingen liggen hier vast. Ten eerste: er wordt alleen gezócht. Een trainer aanmaken
- * betekent een uurtarief en toegang tot de club, en dat is geen bijproduct van een import
- * (D-07). Ontbreekt hij, dan meldt de droogloop het en gaan de lessen van die groep niet door —
- * de groep zelf wél, met een lege `coach_id`.
+ * Twee dingen liggen hier vast. Ten eerste: deze functie zóekt alleen, en maakt niets aan. Wie
+ * er ontbreekt aanmaken doet `trainersUitGroepen`, en dat is sinds 6 september 2026 een aparte,
+ * zichtbare stap in het plan (`trainersNieuw`) in plaats van iets wat hier stilletjes gebeurt.
+ *
+ * WAT ER VAN D-07 OVERBLIJFT. Die afspraak zei: een trainer aanmaken is geen bijproduct van een
+ * import, want het betekent een uurtarief en toegang tot de club. De eigenaar heeft dat
+ * omgedraaid, en met reden: de clublijst noemt twaalf trainers die de club niet als account
+ * heeft, en zonder trainer plant `lessenUitGroep` geen enkele les — dat waren 192 groepen zonder
+ * één les. Wat van D-07 overeind blijft is dat het niet stilletjes mag: de droogloop toont de
+ * namen vóór het wegschrijven, ze krijgen geen uurtarief, en hun login is een aparte handeling
+ * (TRAINERS-LOGIN.sql) en geen gevolg van de import.
  *
  * Ten tweede: dit gaat langs `zoekOpNaam` uit `lib/students.ts`, precies dezelfde naamregel als
  * de spelerzoekopdracht hieronder. Dat moet, want in dit bestand staat de achternaam vooraan:
@@ -1744,6 +1751,13 @@ export function groepWijzigingen(
   }
   if (groep.seizoenVan < bestaand.season_start) wijzigingen.season_start = groep.seizoenVan;
   if (groep.seizoenTot > bestaand.season_end) wijzigingen.season_end = groep.seizoenTot;
+  // De duur telt mee als wijziging: een groep die in het bestand van 60 naar 90 minuten gaat,
+  // hoort dat in de app ook te worden. Geeft het bestand geen duur, dan blijft staan wat er
+  // stond — `null` betekent "de clubinstelling" en dat mag een handmatige correctie niet
+  // wegvegen.
+  if (groep.duurMinuten !== null && groep.duurMinuten !== bestaand.duration_minutes) {
+    wijzigingen.duration_minutes = groep.duurMinuten;
+  }
   return wijzigingen;
 }
 
@@ -1761,6 +1775,72 @@ export function groepWijzigingen(
  * wegschrijft, vervangt elke plaatshouder door het id dat hij zojuist aanmaakte.
  */
 export const NIEUWE_SPELER = 'nieuw:';
+
+/** Het voorvoegsel van een trainer die nog aangemaakt moet worden. Zie `NIEUWE_SPELER`. */
+export const NIEUWE_TRAINER = 'nieuwe-trainer:';
+
+/** Een trainer uit het bestand: hoe hij er stond, en wie hij bij ons al is. */
+export interface GeplandeTrainer {
+  naam: string;
+  bestaand: User | null;
+}
+
+/** Het id waarmee een nog niet bestaande trainer door het plan reist. */
+export function trainerSleutel(trainer: GeplandeTrainer): string {
+  return trainer.bestaand ? trainer.bestaand.id : `${NIEUWE_TRAINER}${normalizeName(trainer.naam)}`;
+}
+
+/**
+ * Wie er in dit bestand lesgeeft, en wie van hen de club al kent.
+ *
+ * WAAROM DE ONBEKENDEN AANGEMAAKT WORDEN. Tot 6 september 2026 leverde een onbekende trainer een
+ * waarschuwing op en kwam de groep er zonder trainer — en zonder trainer plant `lessenUitGroep`
+ * geen enkele les, want `Booking.coach_id` is verplicht. Bij de clublijst zijn dat twaalf
+ * trainers en dus 192 groepen zonder één les. De beheerder eerst twaalf accounts met de hand
+ * laten aanmaken voor hij mag importeren is geen betere uitkomst dan ze aanmaken en het hem in
+ * de droogloop laten zien.
+ *
+ * Ze krijgen rol `coach` en een demo-adres; een login hoort er niet bij, dat doet
+ * TRAINERS-LOGIN.sql na afloop.
+ *
+ * Eén ingang per unieke naam, genormaliseerd: dezelfde trainer op twintig groepen is één
+ * account. Precies de vorm van `spelersUitRegels`, en met opzet — het is dezelfde vraag over een
+ * andere kolom. Passen er twee bestaande trainers op dezelfde naam, dan komt er géén koppeling
+ * uit maar een melding: een derde naamgenoot aanmaken is erger dan hem overslaan.
+ */
+export function trainersUitGroepen(
+  groepen: readonly GeplandeGroep[],
+  users: readonly User[],
+): { trainers: GeplandeTrainer[]; waarschuwingen: ImportFoutLessen[] } {
+  const gezien = new Set<string>();
+  const trainers: GeplandeTrainer[] = [];
+  const waarschuwingen: ImportFoutLessen[] = [];
+  for (const groep of groepen) {
+    const naam = groep.coachNaam.trim();
+    if (!naam) continue;
+    const sleutel = normalizeName(naam);
+    if (gezien.has(sleutel)) continue;
+    gezien.add(sleutel);
+    const bestaand = zoekTrainer(users, naam);
+    if (!bestaand) {
+      // `zoekTrainer` geeft `null` bij niemand én bij twee treffers. Dat verschil telt hier: het
+      // eerste geval wordt een nieuw account, het tweede mag er juist geen worden.
+      const kandidaten = users.filter(
+        (u) => u.role === 'coach' && zelfdeNaamOngeachtVolgorde(u.name, naam),
+      );
+      if (kandidaten.length > 1) {
+        waarschuwingen.push({
+          regel: groep.regels[0]?.regel ?? 1,
+          reden: 'Er staan al meerdere trainers die {naam} kunnen zijn; koppel deze groep zelf.',
+          vars: { naam },
+        });
+        continue;
+      }
+    }
+    trainers.push({ naam, bestaand });
+  }
+  return { trainers, waarschuwingen };
+}
 
 /** Het id van deze leerling, of zijn plaatshouder zolang hij er nog geen heeft. */
 export function spelerSleutel(speler: GeplandeSpeler): string {
@@ -1802,6 +1882,11 @@ export interface ImportPlanLessen {
   groepenOngewijzigd: GroepInPlan[];
   /** De leerlingen die de club nog niet kent, in de volgorde van het bestand. */
   spelersNieuw: GeplandeSpeler[];
+  /**
+   * De trainers die de club nog niet als account heeft; die worden aangemaakt. Zie
+   * `trainersUitGroepen` voor waarom dat gebeurt en niet alleen gemeld wordt.
+   */
+  trainersNieuw: GeplandeTrainer[];
   nieuweLessen: GeplandeLes[];
   /** De ids van de boekingen die al precies goed staan. */
   ongewijzigdeLessen: string[];
@@ -1875,6 +1960,7 @@ export function planImportLessen(
     groepenBijgewerkt: [],
     groepenOngewijzigd: [],
     spelersNieuw: [],
+    trainersNieuw: [],
     nieuweLessen: [],
     ongewijzigdeLessen: [],
     overgeslagen: [],
@@ -1912,6 +1998,24 @@ export function planImportLessen(
   }
   plan.waarschuwingen.push(...uitGroepen.waarschuwingen);
 
+  const uitTrainers = trainersUitGroepen(uitGroepen.groepen, users);
+  plan.waarschuwingen.push(...uitTrainers.waarschuwingen);
+  plan.trainersNieuw = uitTrainers.trainers.filter((tr) => tr.bestaand === null);
+
+  // De nog aan te maken trainers meetellen als bestaande gebruikers voor de rest van dit plan.
+  // Zonder dit vindt `koppelingVoorGroep` ze niet en plant `lessenUitGroep` geen les — precies de
+  // toestand die deze stap wegneemt. Het zijn plaatshouders; hun echte id ontstaat pas in
+  // `bouwImportWijziging`, net als bij een nieuwe speler.
+  const usersMetNieuwe: User[] = [
+    ...users,
+    ...plan.trainersNieuw.map((tr) => ({
+      id: trainerSleutel(tr),
+      name: tr.naam,
+      email: '',
+      role: 'coach' as const,
+    })),
+  ];
+
   const uitSpelers = spelersUitRegels(spelerRegels, users);
   plan.waarschuwingen.push(...uitSpelers.waarschuwingen);
   plan.spelersNieuw = uitSpelers.spelers.filter((s) => s.bestaand === null);
@@ -1936,7 +2040,7 @@ export function planImportLessen(
   }
 
   for (const groep of uitGroepen.groepen) {
-    const koppeling = koppelingVoorGroep(groep, users, courts);
+    const koppeling = koppelingVoorGroep(groep, usersMetNieuwe, courts);
     plan.waarschuwingen.push(...koppeling.meldingen);
 
     // De namen van het bestand als ids; een leerling die om een melding vroeg (twee naamgenoten)
@@ -1987,7 +2091,7 @@ export function planImportLessen(
     // De duur van de groep wint van die van de club. Vier van de 192 groepen van de club wijken
     // af — twee van 30 minuten, twee van 90 — en die stonden zonder dit op 60.
     const lessen = lessenUitGroep(
-      groep, koppeling, users, [...raakbaar.values()], vakanties,
+      groep, koppeling, usersMetNieuwe, [...raakbaar.values()], vakanties,
       groep.duurMinuten ?? clubDuur, nu,
     );
     plan.nieuweLessen.push(...lessen.nieuweLessen);
@@ -2106,6 +2210,9 @@ function groepUitPlan(inPlan: GroepInPlan, roster: string[]): Omit<LesGroep, 'id
   };
   if (inPlan.trainer) groep.coach_id = inPlan.trainer.id;
   if (inPlan.baan) groep.court_id = inPlan.baan.id;
+  // Alleen zetten als het bestand een duur gaf. Leeg betekent "de lesduur van de club", en dat
+  // is iets anders dan nul — zie `LesGroep.duration_minutes`.
+  if (inPlan.groep.duurMinuten !== null) groep.duration_minutes = inPlan.groep.duurMinuten;
   return groep;
 }
 
@@ -2393,9 +2500,26 @@ export function bouwImportWijziging(
     fouten: [],
   };
 
-  // 1. De spelers. Zij hangen nergens aan vast en moeten er eerst zijn: elk rooster hieronder
-  //    verwijst naar hun ids.
+  // 1. De mensen. Zij hangen nergens aan vast en moeten er eerst zijn: elk rooster en elke groep
+  //    hieronder verwijst naar hun ids.
   const idVanPlaatshouder = new Map<string, string>();
+
+  //    De trainers eerst. Een groep zonder trainer plant geen les, dus zij dragen meer dan een
+  //    naam. Hun adres is verzonnen — de clublijst heeft geen e-mailkolom — en moet uniek zijn,
+  //    want `users.email` is `unique not null`; zie `demoAdres`. `plan.spelersNieuw` draagt zijn
+  //    adressen al, dus die tellen hier mee om te voorkomen dat een trainer die óók als speler in
+  //    het bestand staat twee keer hetzelfde adres krijgt.
+  const bezetteAdressen = new Set(
+    plan.spelersNieuw.map((sp) => sp.email.trim().toLowerCase()).filter(Boolean),
+  );
+  for (const trainer of plan.trainersNieuw) {
+    const id = maakId('u');
+    idVanPlaatshouder.set(trainerSleutel(trainer), id);
+    const email = demoAdres(trainer.naam, bezetteAdressen);
+    bezetteAdressen.add(email.toLowerCase());
+    uit.nieuweUsers.push({ id, name: trainer.naam, email, role: 'coach' });
+  }
+
   for (const speler of plan.spelersNieuw) {
     const id = maakId('u');
     idVanPlaatshouder.set(spelerSleutel(speler), id);
@@ -2411,6 +2535,13 @@ export function bouwImportWijziging(
   const echteIds = (roster: readonly string[]): string[] => roster
     .map((id) => idVanPlaatshouder.get(id) ?? id)
     .filter((id) => !id.startsWith(NIEUWE_SPELER));
+
+  /**
+   * Hetzelfde voor één trainer-id. Een groep en haar lessen dragen de plaatshouder van een
+   * trainer die deze importbeurt zelf aanmaakt; zonder deze vervanging staat straks
+   * `coach_id: 'nieuwe-trainer:ann devries'` in de databank en wijst hij nergens naar.
+   */
+  const echtTrainerId = (id: string): string => idVanPlaatshouder.get(id) ?? id;
 
   // 2. De groepen. Ze verwijzen naar de spelers hierboven, en de lessen verwijzen straks naar
   //    hen. Het id van een bestaande groep is dat wat de club al kende.
@@ -2428,7 +2559,9 @@ export function bouwImportWijziging(
     if (geweigerd.has(inPlan.groep)) continue;
     const id = maakId('lg');
     idVanGroep.set(inPlan.groep, id);
-    uit.nieuweGroepen.push({ ...groepUitPlan(inPlan, echteIds(inPlan.roster)), id });
+    const nieuweGroep = { ...groepUitPlan(inPlan, echteIds(inPlan.roster)), id };
+    if (nieuweGroep.coach_id) nieuweGroep.coach_id = echtTrainerId(nieuweGroep.coach_id);
+    uit.nieuweGroepen.push(nieuweGroep);
   }
 
   for (const inPlan of plan.groepenBijgewerkt) {
@@ -2479,9 +2612,9 @@ export function bouwImportWijziging(
     if (!inPlan || !groepId) continue;
 
     // `Booking.coach_id` en `Booking.court_id` zijn allebei verplicht: een les zonder trainer of
-    // zonder baan bestaat niet in dit gegevensmodel. Er wordt er geen aangemaakt en er wordt ook
-    // geen trainer of baan verzonnen — dat is uitdrukkelijk geen bijproduct van een import
-    // (D-07, en het besluit over een ontbrekende trainer in plan 05-05).
+    // zonder baan bestaat niet in dit gegevensmodel. Een BAAN wordt hier nog steeds niet
+    // verzonnen — die is een ding met een uurtarief en een agenda, en dat volgt niet uit een cel.
+    // Een trainer wél, maar dan hierboven en zichtbaar: zie `trainersUitGroepen`.
     const deelnemers = deelnemersVoorLes(echteIds(inPlan.roster));
     if (!inPlan.trainer || !inPlan.baan || !deelnemers) {
       if (!gemeld.has(les.groep)) {
@@ -2499,7 +2632,7 @@ export function bouwImportWijziging(
       id: maakId('b'),
       group_id: groepId,
       player_id: deelnemers.player_id,
-      coach_id: inPlan.trainer.id,
+      coach_id: echtTrainerId(inPlan.trainer.id),
       court_id: inPlan.baan.id,
       start_time: les.start.toISOString(),
       end_time: les.eind.toISOString(),

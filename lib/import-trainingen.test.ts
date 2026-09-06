@@ -9,7 +9,7 @@ import {
   ingrijpendeWijzigingen, overgeslagenPerReden,
   groepRosterVerschil, kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
-  seizoenUitSettings, demoAdres, spelersUitRegels as leesSpelers,
+  seizoenUitSettings, demoAdres, spelersUitRegels as leesSpelers, trainerSleutel,
   trainerwisselVoorGroep,
   NIEUWE_SPELER, planImportLessen, spelerSleutel,
   groepWijzigingen, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
@@ -1756,6 +1756,80 @@ describe('planImportLessen met het clubweekschema', () => {
   });
 });
 
+describe('trainers die de club nog niet kent', () => {
+  const KOP_WEEK = [
+    'Doelgroep', 'Groep', 'Weekdag', 'Uur', 'Terrein(en)', 'Trainer(s)', 'Speler(s)',
+  ];
+  const SETTINGS_WEEK = {
+    lesson_duration_minutes: 60,
+    vakanties: [],
+    season_start: '2026-09-07',
+    season_end: '2026-09-30',
+  };
+  const weekRij = (trainer: string, groep = 'Blauw 1', uur = '14:00 - 15:00') => [
+    'Kidstennis blauw', groep, 'woensdag', uur, 'Baan 1', trainer, 'Peferoen Astor',
+  ];
+
+  it('zet een onbekende trainer in het plan als nieuwe trainer', () => {
+    const uit = planImportLessen(
+      [KOP_WEEK, weekRij('Ann Devries')], [], [], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    expect(uit.trainersNieuw.map((t) => t.naam)).toEqual(['Ann Devries']);
+  });
+
+  it('noemt dezelfde trainer een keer, ook als hij twintig groepen draait', () => {
+    const uit = planImportLessen(
+      [KOP_WEEK, weekRij('Ann Devries', 'Blauw 1'), weekRij('ann devries', 'Rood 3', '15:00 - 16:00')],
+      [], [], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    expect(uit.trainersNieuw).toHaveLength(1);
+  });
+
+  it('noemt een trainer die de club al kent niet als nieuw', () => {
+    const uit = planImportLessen(
+      [KOP_WEEK, weekRij('Koen Leemans')], [], [KOEN], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    expect(uit.trainersNieuw).toEqual([]);
+  });
+
+  it('plant de lessen in nu de trainer bestaat', () => {
+    const uit = planImportLessen(
+      [KOP_WEEK, weekRij('Ann Devries')], [], [], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    expect(uit.nieuweLessen).toHaveLength(4);
+  });
+
+  it('maakt de trainer aan met rol coach en een demo-adres, en hangt de groep eraan', () => {
+    const plan = planImportLessen(
+      [KOP_WEEK, weekRij('Ann Devries')], [], [], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    const uit = bouwImportWijziging(plan, teller(), { ingrijpend: true });
+    const trainer = uit.nieuweUsers.find((u) => u.role === 'coach');
+    expect(trainer).toMatchObject({ name: 'Ann Devries', email: 'ann.devries@example.com' });
+    expect(uit.nieuweGroepen[0].coach_id).toBe(trainer?.id);
+  });
+
+  it('geeft de lessen van die groep dezelfde trainer als de groep', () => {
+    const plan = planImportLessen(
+      [KOP_WEEK, weekRij('Ann Devries')], [], [], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    const uit = bouwImportWijziging(plan, teller(), { ingrijpend: true });
+    const trainer = uit.nieuweUsers.find((u) => u.role === 'coach');
+    expect(uit.nieuweBoekingen.every((b) => b.coach_id === trainer?.id)).toBe(true);
+  });
+
+  it('laat het adres van de trainer niet botsen met dat van een speler', () => {
+    const plan = planImportLessen(
+      [KOP_WEEK, ['Kidstennis blauw', 'Blauw 1', 'woensdag', '14:00 - 15:00', 'Baan 1',
+        'Ann Devries', 'Ann Devries']],
+      [], [], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    const uit = bouwImportWijziging(plan, teller(), { ingrijpend: true });
+    const adressen = uit.nieuweUsers.map((u) => u.email);
+    expect(new Set(adressen).size).toBe(adressen.length);
+  });
+});
+
 describe('planImportLessen', () => {
   const RIJEN = [
     KOP_MET_BAAN,
@@ -1770,7 +1844,8 @@ describe('planImportLessen', () => {
     expect(Object.keys(plan()).sort()).toEqual([
       'botsingen', 'dubbel', 'fouten', 'groepenBijgewerkt', 'groepenNieuw', 'groepenOngewijzigd',
       'handmatigGewijzigd', 'nietHerkend', 'nieuweLessen', 'ongewijzigdeLessen', 'overgeslagen',
-      'regels', 'spelersNieuw', 'trainerwissels', 'verdwenenUitBestand', 'waarschuwingen',
+      'regels', 'spelersNieuw', 'trainersNieuw', 'trainerwissels', 'verdwenenUitBestand',
+      'waarschuwingen',
     ]);
   });
 
@@ -2157,18 +2232,18 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(LEGE_CLUB.verdwenenUitBestand).toEqual([]);
   });
 
-  alsKoenErIs('meldt uitsluitend de trainer en de baan, één keer per groep', () => {
+  alsKoenErIs('meldt uitsluitend de baan, één keer per groep, en maakt de trainer aan', () => {
     const meldingen = LEGE_CLUB.waarschuwingen;
-    // Tien groepen × twee ontbrekende schakels. Eén melding per regel zou er 2796 opleveren.
-    expect(meldingen).toHaveLength(20);
-    const overTrainer = meldingen.filter((m) => m.reden.includes('trainer'));
-    const overBaan = meldingen.filter((m) => m.reden.includes('baan'));
-    expect(overTrainer).toHaveLength(10);
-    expect(overBaan).toHaveLength(10);
-    // En niets anders: geen onbekende kop, geen naamgenoot, geen tweede niveau, geen tweede
-    // coach. Deze bewering is de kern van IMP-10 — "de droogloop meldt precies die twee dingen".
-    expect(meldingen.filter((m) => !overTrainer.includes(m) && !overBaan.includes(m))).toEqual([]);
-    expect(new Set(overTrainer.map((m) => m.vars?.naam))).toEqual(new Set(['Leemans Koen']));
+    // Tien groepen, één ontbrekende schakel. Eén melding per regel zou er 1398 opleveren.
+    //
+    // Tot 6 september 2026 stonden hier twintig meldingen: ook tien over de ontbrekende trainer.
+    // Die is weg omdat een onbekende trainer sindsdien aangemaakt wordt in plaats van gemeld —
+    // zonder trainer plant `lessenUitGroep` geen enkele les, en bij de clublijst zou dat 192
+    // groepen zonder één les opleveren. Hij staat nu in `trainersNieuw` en de droogloop toont
+    // hem daar.
+    expect(meldingen).toHaveLength(10);
+    expect(meldingen.every((m) => m.reden.includes('baan'))).toBe(true);
+    expect(LEGE_CLUB.trainersNieuw.map((t) => t.naam)).toEqual(['Leemans Koen']);
   });
 
   alsKoenErIs('laat de trainermelding verdwijnen zodra Leemans Koen een account heeft', () => {
@@ -2182,6 +2257,8 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     const metTrainer = planImportLessen(blad.rijen, [], [KOEN], [], [], {}, NU);
     expect(metTrainer.waarschuwingen).toHaveLength(10);
     expect(metTrainer.waarschuwingen.every((m) => m.reden.includes('baan'))).toBe(true);
+    // En er wordt niemand aangemaakt: de club kent deze trainer al.
+    expect(metTrainer.trainersNieuw).toEqual([]);
     expect(metTrainer.groepenNieuw.every((g) => g.trainer?.id === KOEN.id)).toBe(true);
     expect(metTrainer.groepenNieuw.every((g) => g.trainerNaam === 'Koen Leemans')).toBe(true);
     // Nog steeds nul lessen: de baan is de tweede ontbrekende schakel en de enige die over is.
@@ -2218,9 +2295,17 @@ function toestandUitPlan(plan: ImportPlanLessen): Toestand {
   const users = plan.spelersNieuw.map((s, i) => userVan({
     id: `u-nieuw-${i}`, name: s.naam, email: s.email,
   }));
-  const idVanPlaatshouder = new Map(
+  const idVanPlaatshouder = new Map<string, string>(
     plan.spelersNieuw.map((s, i) => [spelerSleutel(s), `u-nieuw-${i}`]),
   );
+  // De trainers horen er net zo goed bij: `bouwImportWijziging` maakt ze aan, dus de toestand ná
+  // het wegschrijven kent ze. Liet deze helper ze weg, dan zou een tweede inleesbeurt ze telkens
+  // opnieuw als nieuw zien — een gat in de nabouw en niet in de import.
+  plan.trainersNieuw.forEach((tr, i) => {
+    const id = `u-trainer-${i}`;
+    idVanPlaatshouder.set(trainerSleutel(tr), id);
+    users.push(userVan({ id, name: tr.naam, email: `${id}@example.com`, role: 'coach' }));
+  });
   const groepen = [
     ...plan.groepenNieuw, ...plan.groepenBijgewerkt, ...plan.groepenOngewijzigd,
   ].map((g, i): LesGroep => ({
@@ -2230,8 +2315,9 @@ function toestandUitPlan(plan: ImportPlanLessen): Toestand {
     weekday: g.weekdag,
     start_hour: g.beginuur,
     start_minute: g.beginminuut,
-    // Geen `coach_id` en geen `court_id`: dit bestand levert die niet, en `LesGroep` laat ze
-    // met opzet leeg zijn voor precies dit geval.
+    // Geen `court_id`: dit bestand levert er geen, en `LesGroep` laat dat veld met opzet leeg.
+    // De trainer staat er wél, met het id dat hij bij het wegschrijven kreeg.
+    coach_id: g.trainer ? idVanPlaatshouder.get(g.trainer.id) ?? g.trainer.id : undefined,
     season_start: g.groep.seizoenVan,
     season_end: g.groep.seizoenTot,
     roster: g.roster.map((id) => idVanPlaatshouder.get(id) ?? id),
@@ -2258,7 +2344,8 @@ describe('koen.xlsx twee keer inlezen', () => {
     expect(eerste.groepenNieuw).toHaveLength(10);
     expect(eerste.spelersNieuw).toHaveLength(42);
     expect(naDeEerste.groepen).toHaveLength(10);
-    expect(naDeEerste.users).toHaveLength(42);
+    // 42 spelers plus de trainer die de import aanmaakt.
+    expect(naDeEerste.users).toHaveLength(43);
   });
 
   alsKoenErIs('verdubbelt de tweede keer niets: nul nieuwe groepen, spelers en lessen', () => {
@@ -2278,9 +2365,12 @@ describe('koen.xlsx twee keer inlezen', () => {
   });
 
   alsKoenErIs('meldt de tweede keer nog steeds de trainer en de baan, en niets erbij', () => {
-    // Die twee schakels lost een tweede inleesbeurt niet op — en dat hoort ook zo: de import
-    // maakt geen trainer en geen baan aan (D-07).
-    expect(tweede.waarschuwingen).toHaveLength(20);
+    // De baan lost een tweede inleesbeurt niet op, en dat hoort ook zo: de import verzint geen
+    // baan — die is een ding met een uurtarief en een agenda. De trainer is er de tweede keer
+    // wél, want die maakte de eerste beurt aan; vandaar tien meldingen en niet twintig.
+    expect(tweede.waarschuwingen).toHaveLength(10);
+    expect(tweede.waarschuwingen.every((m) => m.reden.includes('baan'))).toBe(true);
+    expect(tweede.trainersNieuw).toEqual([]);
     expect(tweede.fouten).toEqual([]);
   });
 
@@ -2717,16 +2807,25 @@ describe('geweigerdeNieuweGroepen', () => {
       .toEqual([]);
   });
 
-  it('meldt de groep waarvan de trainer nog geen account heeft, met naam en regelnummer', () => {
+  it('weigert de groep niet meer als de trainer nog geen account heeft: die wordt aangemaakt', () => {
     // Precies het geval van `koen.xlsx`: de coach staat op elke regel, maar de club heeft geen
-    // account voor hem. `lesGroepFout` eist een `coach_id`, dus deze groep komt er niet.
-    const geweigerd = geweigerdeNieuweGroepen(
-      planImportLessen(RIJEN, [], [], [BAAN], [], {}, NU),
-    );
-    expect(geweigerd).toHaveLength(1);
-    expect(geweigerd[0].inPlan.naam).toBe('Woensdag 17:00 — Baan 1');
-    expect(geweigerd[0].fout.regel).toBe(2);
-    expect(geweigerd[0].fout.vars).toMatchObject({ groep: 'Woensdag 17:00 — Baan 1' });
+    // account voor hem. Tot 6 september 2026 kwam die groep er dan niet — `lesGroepFout` eist een
+    // `coach_id` — en dat was bij de clublijst 192 groepen zonder één les. Sindsdien maakt de
+    // import de trainer aan, zichtbaar in de droogloop.
+    const plan = planImportLessen(RIJEN, [], [], [BAAN], [], {}, NU);
+    expect(plan.trainersNieuw.map((t) => t.naam)).toEqual(['Leemans Koen']);
+    expect(geweigerdeNieuweGroepen(plan)).toEqual([]);
+  });
+
+  it('verzint nog steeds geen baan: de groep komt er, haar lessen niet', () => {
+    // `lesGroepFout` eist geen baan — een groep zonder baan is een aanvaarde toestand — dus deze
+    // groep wordt niet geweigerd. Wat er niet komt zijn haar lessen: `Booking.court_id` is wél
+    // verplicht, en een baan is een ding met een uurtarief en een agenda dat je niet uit een cel
+    // verzint.
+    const plan = planImportLessen(RIJEN, [], [KOEN], [], [], {}, NU);
+    expect(geweigerdeNieuweGroepen(plan)).toEqual([]);
+    expect(plan.nieuweLessen).toEqual([]);
+    expect(plan.waarschuwingen.every((m) => m.reden.includes('baan'))).toBe(true);
   });
 
   it('zegt hetzelfde als wat de uitvoerder straks weigert — één bron, geen twee verhalen', () => {
@@ -2836,12 +2935,15 @@ describe('bouwImportWijziging', () => {
   });
 
   it('weigert een groep die lesGroepFout niet doorstaat, en schrijft dan ook haar lessen niet weg', () => {
-    // Geen trainer in de ledenlijst: `koppelingVoorGroep` vindt er geen, de groep krijgt dus
-    // geen `coach_id`, en dat is precies waar `addLesGroep` haar op zou weigeren. Beter hier
-    // dan halverwege de opslag.
-    const uit = bouwImportWijziging(
-      planImportLessen(RIJEN_NIEUW, [], [], [BAAN], [], {}, NU), teller(), { ingrijpend: true },
-    );
+    // Een groep zonder niveau: `lesGroepFout` eist er een, en dat is precies waar `addLesGroep`
+    // haar op zou weigeren. Beter hier dan halverwege de opslag.
+    //
+    // Tot 6 september 2026 werd dit met een ontbrekende trainer aangetoond. Dat kan niet meer:
+    // een onbekende trainer wordt sindsdien aangemaakt, dus de groep krijgt altijd een
+    // `coach_id`. Het niveau is de schakel die de import nog steeds niet verzint.
+    const plan = planImportLessen(RIJEN_NIEUW, [], [KOEN], [BAAN], [], {}, NU);
+    plan.groepenNieuw[0].groep.niveau = '';
+    const uit = bouwImportWijziging(plan, teller(), { ingrijpend: true });
     expect(uit.nieuweGroepen).toEqual([]);
     expect(uit.nieuweBoekingen).toEqual([]);
     expect(uit.fouten).toHaveLength(1);
@@ -3350,10 +3452,12 @@ describe('lessen-voorbeeld.xlsx — van bytes tot lesplan', () => {
     expect(LEGE_CLUB.nieuweLessen).toEqual([]);
   });
 
-  it('meldt uitsluitend de trainer en de baan, één keer per groep', () => {
-    expect(LEGE_CLUB.waarschuwingen).toHaveLength(4);
-    expect(LEGE_CLUB.waarschuwingen.filter((w) => w.reden.includes('trainer'))).toHaveLength(2);
-    expect(LEGE_CLUB.waarschuwingen.filter((w) => w.reden.includes('baan'))).toHaveLength(2);
+  it('meldt uitsluitend de baan, één keer per groep, en maakt de trainer aan', () => {
+    // Twee groepen, één ontbrekende schakel. De trainer stond hier tot 6 september 2026 ook bij;
+    // die wordt nu aangemaakt in plaats van gemeld en staat in `trainersNieuw`.
+    expect(LEGE_CLUB.waarschuwingen).toHaveLength(2);
+    expect(LEGE_CLUB.waarschuwingen.every((w) => w.reden.includes('baan'))).toBe(true);
+    expect(LEGE_CLUB.trainersNieuw.length).toBeGreaterThan(0);
   });
 
   it('verdubbelt niets als je hetzelfde bestand een tweede keer inleest', () => {
