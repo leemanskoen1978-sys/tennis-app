@@ -20,6 +20,7 @@ import {
   type GeplandeGroep, type ImportFoutLessen, type LesRegel, type Seizoen, type SpelerRegel,
 } from './import-trainingen';
 import { actieveGroepen, groepSleutel } from './lesgroepen';
+import { normalizeName } from './students';
 import type { Court, LesGroep } from './types';
 
 // ---------------------------------------------------------------------------
@@ -474,11 +475,36 @@ export function weekSleutels(regels: ReadonlyArray<SleutelRegel>): string[] {
  * De e-mail is altijd leeg: de clublijst heeft geen adreskolom. Wat daarmee gebeurt staat in
  * `demoAdres` — een leeg adres kan niet, want `users.email` is uniek én verplicht.
  */
-export function spelerRegelsUitWeek(regels: readonly WeekRegel[]): SpelerRegel[] {
+export function spelerRegelsUitWeek(
+  regels: readonly WeekRegel[],
+  leden: readonly Groepslid[] = [],
+): SpelerRegel[] {
+  // Op naam, met de woorden op alfabetische volgorde. De twee bladen van de club schrijven allebei
+  // "Naam Voornaam", dus in de praktijk staat er hetzelfde — maar het is één export van één
+  // systeem en die kan van vorm veranderen. Dat de volgorde niet uitmaakt is bovendien geen nieuwe
+  // regel in deze app: `zelfdeNaamOngeachtVolgorde` in lib/students koppelt "de Clippele Antoine"
+  // uit een bestand al aan "Antoine de Clippele" in de ledenlijst. Hier hetzelfde doen houdt de
+  // twee bladen bij elkaar op precies de manier waarop het bestand bij de ledenlijst komt.
+  //
+  // `normalizeName` alleen zou niet volstaan: dat maakt klein en haalt de rare tekens weg, maar
+  // laat de volgorde staan.
+  const naamsleutel = (naam: string): string => normalizeName(naam).split(' ').sort().join(' ');
+  const opNaam = new Map<string, Groepslid>();
+  for (const lid of leden) {
+    const sleutel = naamsleutel(lid.naam);
+    if (!opNaam.has(sleutel)) opNaam.set(sleutel, lid);
+  }
+
   const uit: SpelerRegel[] = [];
   for (const r of regels) {
     for (const naam of r.spelers) {
-      uit.push({ regel: r.regel, leerling: naam, emailLeerling: '' });
+      const lid = opNaam.get(naamsleutel(naam));
+      uit.push({
+        regel: r.regel,
+        leerling: naam,
+        emailLeerling: lid?.email ?? '',
+        telefoon: lid?.telefoon ?? '',
+      });
     }
   }
   return uit;
@@ -638,4 +664,133 @@ export function groepenUitWeekRegels(
   });
 
   return { groepen, waarschuwingen };
+}
+
+// ---------------------------------------------------------------------------
+// Het tweede blad: groepsleden
+//
+// De werkmap van de club heeft twee bladen. `groepen` is het weekschema hierboven; `groepsleden`
+// zet dezelfde spelers nóg een keer neer, één regel per lid per groep, mét hun e-mailadres,
+// gsm-nummer en geboortedatum.
+//
+// WAAROM DAT BLAD ERBIJ GELEZEN WORDT. Zonder dit krijgen 552 spelers een verzonnen adres op
+// example.com, terwijl hun echte adres in hetzelfde bestand staat. Dat is niet alleen zonde: een
+// club die haar spelers niet vanuit de app kan bereiken, gaat het ergens anders doen.
+//
+// WAT ER NIET UIT GELEZEN WORDT, en met opzet: het rooster. Wie er in welke groep zit staat in de
+// kolom `Speler(s)` van het blad `groepen`, en dat blijft de bron. Twee bronnen voor hetzelfde
+// rooster betekent twee antwoorden zodra ze uiteenlopen, en dan moet er een derde regel komen die
+// zegt welke wint. Dit blad doet één ding: het vult aan wat de club over een speler weet.
+//
+// De geboortedatum wordt evenmin overgenomen. `User` heeft er geen veld voor, en er een bij
+// verzinnen omdat het bestand het toevallig levert is een reden om later spijt te hebben.
+// ---------------------------------------------------------------------------
+
+/** Welke kolom waar staat op het blad `groepsleden`. Alleen wat we echt gebruiken. */
+export interface KolommenGroepsleden {
+  naam: number;
+  voornaam: number;
+  email: number;
+  gsm: number;
+}
+
+/** De koppen van dat blad, met dezelfde normalisatie als hierboven. */
+const GROEPSLEDEN_KOPPEN = new Map<string, keyof KolommenGroepsleden>([
+  ['naam', 'naam'],
+  ['achternaam', 'naam'],
+  ['voornaam', 'voornaam'],
+  ['e-mailadres', 'email'],
+  ['emailadres', 'email'],
+  ['e-mail', 'email'],
+  ['email', 'email'],
+  ['gsm-nummer', 'gsm'],
+  ['gsmnummer', 'gsm'],
+  ['gsm', 'gsm'],
+  ['telefoon', 'gsm'],
+]);
+
+/** De vier velden die dit blad moet hebben om bruikbaar te zijn. */
+const GROEPSLEDEN_VELDEN: Array<keyof KolommenGroepsleden> = ['naam', 'voornaam', 'email', 'gsm'];
+
+function leesKopregelGroepsleden(kopregel: readonly string[]): KolommenGroepsleden | null {
+  const gevonden = new Map<keyof KolommenGroepsleden, number>();
+  kopregel.forEach((kop, index) => {
+    const veld = GROEPSLEDEN_KOPPEN.get(kopSleutel(kop));
+    if (veld && !gevonden.has(veld)) gevonden.set(veld, index);
+  });
+  if (GROEPSLEDEN_VELDEN.some((v) => !gevonden.has(v))) return null;
+  return {
+    naam: gevonden.get('naam') as number,
+    voornaam: gevonden.get('voornaam') as number,
+    email: gevonden.get('email') as number,
+    gsm: gevonden.get('gsm') as number,
+  };
+}
+
+/** Eén lid van de club, zoals het blad `groepsleden` hem kent. */
+export interface Groepslid {
+  /**
+   * Naam en voornaam aan elkaar, in die volgorde — precies zoals de kolom `Speler(s)` van het
+   * andere blad ze schrijft ("Jansen Jan"). Zo vinden de twee bladen elkaar zonder dat er een
+   * tweede naamregel bij komt: `zoekOpNaam` uit lib/students doet de rest, en die kan al met een
+   * omgedraaide volgorde overweg.
+   */
+  naam: string;
+  email: string;
+  telefoon: string;
+}
+
+/**
+ * Is dit blad de ledenlijst uit de werkmap van de club?
+ *
+ * Op `Voornaam` én een adreskolom: `Voornaam` scheidt dit blad van `groepen` (dat heeft alleen
+ * `Speler(s)`), en de adreskolom is het enige waarvoor dit blad erbij gelezen wordt.
+ */
+export function isGroepsledenBlad(rijen: ReadonlyArray<readonly string[]>): boolean {
+  const diepte = Math.min(rijen.length, KOPREGEL_ZOEKDIEPTE);
+  for (let i = 0; i < diepte; i++) {
+    if (leesKopregelGroepsleden(rijen[i])) return true;
+  }
+  return false;
+}
+
+/**
+ * De leden van dat blad, ontdubbeld op naam.
+ *
+ * Ontdubbeld omdat een speler die in twee groepen zit er twee keer op staat: 666 regels voor 552
+ * spelers. Het eerste ingevulde adres wint, net als in `spelersUitRegels` — later overschrijven
+ * zou regel 600 stil laten bepalen wie er post krijgt, en leeg overschrijven zou een adres
+ * kwijtmaken.
+ *
+ * Regels zonder naam of zonder voornaam vallen weg zonder melding. Dit blad is een aanvulling en
+ * geen opdracht: wat er niet in staat, blijft gewoon zoals het zonder dit blad was.
+ */
+export function leesGroepsleden(rijen: ReadonlyArray<readonly string[]>): Groepslid[] {
+  const diepte = Math.min(rijen.length, KOPREGEL_ZOEKDIEPTE);
+  let kop: KolommenGroepsleden | null = null;
+  let start = 0;
+  for (let i = 0; i < diepte; i++) {
+    const gevonden = leesKopregelGroepsleden(rijen[i]);
+    if (gevonden) { kop = gevonden; start = i + 1; break; }
+  }
+  if (!kop) return [];
+
+  const opNaam = new Map<string, Groepslid>();
+  for (let i = start; i < rijen.length; i++) {
+    const rij = rijen[i];
+    const cel = (index: number): string => (rij[index] ?? '').trim();
+    const achternaam = cel(kop.naam);
+    const voornaam = cel(kop.voornaam);
+    if (!achternaam || !voornaam) continue;
+    const naam = `${achternaam} ${voornaam}`;
+    const sleutel = naam.toLowerCase();
+    const bestaand = opNaam.get(sleutel);
+    if (!bestaand) {
+      opNaam.set(sleutel, { naam, email: cel(kop.email), telefoon: cel(kop.gsm) });
+      continue;
+    }
+    if (!bestaand.email) bestaand.email = cel(kop.email);
+    if (!bestaand.telefoon) bestaand.telefoon = cel(kop.gsm);
+  }
+  return [...opNaam.values()];
 }

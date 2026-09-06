@@ -1,6 +1,7 @@
 import {
   groepenUitWeekRegels, isWeekschema, leesKopregelWeekschema, leesLijstCel, leesUurReeksCel,
-  leesWeekdagCel, leesWeekRegels, spelerRegelsUitWeek, vindKopregelWeekschema, weekSleutels,
+  isGroepsledenBlad, leesGroepsleden, leesWeekdagCel, leesWeekRegels, spelerRegelsUitWeek,
+  vindKopregelWeekschema, weekSleutels,
   type WeekRegel,
 } from './import-weekschema';
 import { spelersUitRegels } from './import-trainingen';
@@ -514,9 +515,9 @@ describe('spelerRegelsUitWeek', () => {
       weekRegel({ regel: 2, spelers: ['Jan Jansen', 'Piet Peeters'] }),
       weekRegel({ regel: 3, spelers: ['Jan Jansen'] }),
     ])).toEqual([
-      { regel: 2, leerling: 'Jan Jansen', emailLeerling: '' },
-      { regel: 2, leerling: 'Piet Peeters', emailLeerling: '' },
-      { regel: 3, leerling: 'Jan Jansen', emailLeerling: '' },
+      { regel: 2, leerling: 'Jan Jansen', emailLeerling: '', telefoon: '' },
+      { regel: 2, leerling: 'Piet Peeters', emailLeerling: '', telefoon: '' },
+      { regel: 3, leerling: 'Jan Jansen', emailLeerling: '', telefoon: '' },
     ]);
   });
 
@@ -611,5 +612,132 @@ describe('weekschema — van bytes tot lesplan', () => {
     for (const naam of ['Devries', 'Lasoen']) {
       expect(tekst).not.toContain(naam);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Het tweede blad: groepsleden
+// ---------------------------------------------------------------------------
+
+const KOP_LEDEN = [
+  'Naam', 'Voornaam', 'Geslacht', 'Geboorte-datum', 'Enkel klas.', 'Dubbel klas.',
+  'Padel klas.', 'E-mailadres', 'Gsm-nummer', 'Doelgroep', 'Groep', 'Weekdag', 'Uur',
+  'Groeps-leden', 'Terrein(en)', 'Trainer(s)',
+];
+const lidRij = (naam: string, voornaam: string, email: string, gsm: string): string[] => [
+  naam, voornaam, 'M', '18/10/1985', '', '', '', email, gsm,
+  'Kidstennis blauw', 'Blauw Gr1', 'woensdag', '14:00 - 15:00', '3', 'Terrein 7', 'Aerts Lien',
+];
+
+describe('leesGroepsleden', () => {
+  it('plakt naam en voornaam in de volgorde van de kolom Speler(s)', () => {
+    const leden = leesGroepsleden([
+      KOP_LEDEN,
+      lidRij('Jansen', 'Jan', 'jan@echt.be', '+32 470 00 00 01'),
+    ]);
+    expect(leden).toEqual([
+      { naam: 'Jansen Jan', email: 'jan@echt.be', telefoon: '+32 470 00 00 01' },
+    ]);
+  });
+
+  it('leest door de titelregel van de club heen', () => {
+    const leden = leesGroepsleden([
+      ['Aanbod: Tennis - Jaarcyclus 2026 - 2027', ''],
+      [],
+      KOP_LEDEN,
+      lidRij('Jansen', 'Jan', 'jan@echt.be', '+32 470 00 00 01'),
+    ]);
+    expect(leden).toHaveLength(1);
+  });
+
+  it('ontdubbelt een speler die in twee groepen zit', () => {
+    const leden = leesGroepsleden([
+      KOP_LEDEN,
+      lidRij('Jansen', 'Jan', 'jan@echt.be', '+32 470 00 00 01'),
+      lidRij('Jansen', 'Jan', 'jan@echt.be', '+32 470 00 00 01'),
+    ]);
+    expect(leden).toHaveLength(1);
+  });
+
+  it('vult een leeg adres aan uit een latere regel van dezelfde speler', () => {
+    const leden = leesGroepsleden([
+      KOP_LEDEN,
+      lidRij('Jansen', 'Jan', '', ''),
+      lidRij('Jansen', 'Jan', 'jan@echt.be', '+32 470 00 00 01'),
+    ]);
+    expect(leden[0]).toEqual({
+      naam: 'Jansen Jan', email: 'jan@echt.be', telefoon: '+32 470 00 00 01',
+    });
+  });
+
+  it('laat een regel zonder naam of voornaam stil vallen', () => {
+    expect(leesGroepsleden([KOP_LEDEN, lidRij('', 'Jan', 'x@y.be', '')])).toEqual([]);
+    expect(leesGroepsleden([KOP_LEDEN, lidRij('Jansen', '', 'x@y.be', '')])).toEqual([]);
+  });
+
+  it('geeft niets terug als dit blad geen ledenlijst is', () => {
+    expect(leesGroepsleden([KOP])).toEqual([]);
+  });
+});
+
+describe('isGroepsledenBlad', () => {
+  it('herkent de ledenlijst', () => {
+    expect(isGroepsledenBlad([KOP_LEDEN])).toBe(true);
+  });
+
+  it('herkent het weekschema niet als ledenlijst', () => {
+    expect(isGroepsledenBlad([KOP])).toBe(false);
+  });
+
+  it('vindt de koprij ook onder een titelregel', () => {
+    expect(isGroepsledenBlad([['Aanbod: Tennis'], [], KOP_LEDEN])).toBe(true);
+  });
+});
+
+describe('spelerRegelsUitWeek met de ledenlijst erbij', () => {
+  const regels = leesWeekRegels([
+    KOP,
+    rij('Kidstennis blauw', 'Blauw Gr1', 'woensdag', '14:00 - 15:00',
+      'Terrein 7', 'Aerts Lien', 'Jansen Jan, Peeters Piet'),
+  ]).regels;
+
+  it('geeft elke speler het adres en het nummer uit de ledenlijst', () => {
+    const leden = leesGroepsleden([
+      KOP_LEDEN,
+      lidRij('Jansen', 'Jan', 'jan@echt.be', '+32 470 00 00 01'),
+      lidRij('Peeters', 'Piet', 'piet@echt.be', '+32 470 00 00 02'),
+    ]);
+    expect(spelerRegelsUitWeek(regels, leden)).toEqual([
+      { regel: 2, leerling: 'Jansen Jan', emailLeerling: 'jan@echt.be', telefoon: '+32 470 00 00 01' },
+      { regel: 2, leerling: 'Peeters Piet', emailLeerling: 'piet@echt.be', telefoon: '+32 470 00 00 02' },
+    ]);
+  });
+
+  it('vindt de speler ook als de twee bladen de naam omdraaien', () => {
+    const leden = leesGroepsleden([KOP_LEDEN, lidRij('Jan', 'Jansen', 'jan@echt.be', '')]);
+    expect(spelerRegelsUitWeek(regels, leden)[0].emailLeerling).toBe('jan@echt.be');
+  });
+
+  it('laat het adres leeg voor een speler die niet in de ledenlijst staat', () => {
+    expect(spelerRegelsUitWeek(regels, [])[0].emailLeerling).toBe('');
+  });
+
+  it('levert samen met planImportLessen echte adressen in plaats van verzonnen', () => {
+    const bladLessen = [
+      KOP,
+      rij('Kidstennis blauw', 'Blauw Gr1', 'woensdag', '14:00 - 15:00',
+        'Terrein 7', 'Aerts Lien', 'Jansen Jan, Peeters Piet'),
+    ];
+    const bladLeden = [
+      KOP_LEDEN,
+      lidRij('Jansen', 'Jan', 'jan@echt.be', '+32 470 00 00 01'),
+      // Piet staat niet in de ledenlijst: hij valt terug op een verzonnen adres.
+    ];
+    const plan = planImportLessen(
+      bladLessen, [], [], BANEN7, [], SETTINGS_KORT, new Date(2026, 8, 6), bladLeden,
+    );
+    expect(plan.spelersNieuw.map((sp) => sp.email))
+      .toEqual(['jan@echt.be', 'peeters.piet@example.com']);
+    expect(plan.spelersNieuw[0].telefoon).toBe('+32 470 00 00 01');
   });
 });

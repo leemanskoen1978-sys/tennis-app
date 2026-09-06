@@ -9,7 +9,7 @@ import {
   ingrijpendeWijzigingen, overgeslagenPerReden,
   groepRosterVerschil, kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
-  seizoenUitSettings, demoAdres, spelersUitRegels as leesSpelers, trainerSleutel,
+  seizoenUitSettings, demoAdres, spelersUitRegels as leesSpelers, trainerSleutel, uniekAdres,
   trainerwisselVoorGroep,
   NIEUWE_SPELER, planImportLessen, spelerSleutel,
   groepWijzigingen, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
@@ -909,7 +909,9 @@ describe('spelersUitRegels', () => {
   it('herkent een leerling die exact zo in de ledenlijst staat', () => {
     const antoine = userVan({ id: 'u-a', name: 'Antoine de Clippele' });
     const uitkomst = spelersUitRegels([regelVan({ leerling: 'Antoine de Clippele' })], [antoine]);
-    expect(uitkomst.spelers).toEqual([{ naam: 'Antoine de Clippele', email: '', bestaand: antoine }]);
+    expect(uitkomst.spelers).toEqual([{
+      naam: 'Antoine de Clippele', email: '', telefoon: '', bestaand: antoine,
+    }]);
     expect(uitkomst.waarschuwingen).toEqual([]);
   });
 
@@ -925,7 +927,7 @@ describe('spelersUitRegels', () => {
       [],
     );
     expect(uitkomst.spelers).toEqual([
-      { naam: 'Peferoen Astor', email: 'astor@club.be', bestaand: null },
+      { naam: 'Peferoen Astor', email: 'astor@club.be', telefoon: '', bestaand: null },
     ]);
   });
 
@@ -972,11 +974,21 @@ describe('spelersUitRegels', () => {
 
 describe('nieuwLidUitSpeler', () => {
   it('bouwt een speler zoals de ledenimport een lid bouwt', () => {
-    const lid = nieuwLidUitSpeler({ naam: 'Peferoen Astor', email: 'astor@club.be', bestaand: null });
+    const lid = nieuwLidUitSpeler({
+      naam: 'Peferoen Astor', email: 'astor@club.be', telefoon: '', bestaand: null,
+    });
     expect(lid).toEqual({ name: 'Peferoen Astor', email: 'astor@club.be', role: 'player' });
     // Geen sleutel met `undefined` erin: dat is het verschil tussen "niet ingevuld" en
     // "leeggemaakt", precies zoals in lib/import-leden.ts.
     expect(Object.keys(lid).sort()).toEqual(['email', 'name', 'role']);
+  });
+
+  it('neemt het gsm-nummer over als het bestand er een gaf', () => {
+    const lid = nieuwLidUitSpeler({
+      naam: 'Peferoen Astor', email: 'astor@club.be', telefoon: '+32 470 00 00 00',
+      bestaand: null,
+    });
+    expect(lid.phone).toBe('+32 470 00 00 00');
   });
 });
 
@@ -1124,6 +1136,50 @@ describe('demoAdres', () => {
 
   it('valt terug op een naamloos adres als er van de naam niets overblijft', () => {
     expect(demoAdres('???', new Set())).toBe('lid@example.com');
+  });
+});
+
+describe('uniekAdres', () => {
+  it('houdt het adres uit het bestand als het nog vrij is', () => {
+    expect(uniekAdres('Jan@Echt.be', 'Jansen Jan', new Set())).toBe('jan@echt.be');
+  });
+
+  it('maakt er een plus-adres van als het al vergeven is, zodat de post nog aankomt', () => {
+    const bezet = new Set(['ouder@gmail.com']);
+    expect(uniekAdres('ouder@gmail.com', 'Jansen Jan', bezet)).toBe('ouder+2@gmail.com');
+    bezet.add('ouder+2@gmail.com');
+    expect(uniekAdres('ouder@gmail.com', 'Jansen Piet', bezet)).toBe('ouder+3@gmail.com');
+  });
+
+  it('valt terug op een verzonnen adres als er geen adres is', () => {
+    expect(uniekAdres('', 'Jansen Jan', new Set())).toBe('jansen.jan@example.com');
+  });
+
+  it('valt terug op een verzonnen adres als er geen apenstaartje in staat', () => {
+    const bezet = new Set(['geen adres']);
+    expect(uniekAdres('geen adres', 'Jansen Jan', bezet)).toBe('jansen.jan@example.com');
+  });
+});
+
+describe('een gezin op één adres', () => {
+  const kind = (naam: string, regel: number) => ({
+    regel, leerling: naam, emailLeerling: 'ouder@gmail.com',
+  });
+
+  it('geeft elk kind een eigen adres, zodat users.email niet botst', () => {
+    const { spelers } = leesSpelers(
+      [kind('Jansen Jan', 2), kind('Jansen Piet', 3), kind('Jansen Marie', 4)], [],
+    );
+    expect(spelers.map((sp) => sp.email))
+      .toEqual(['ouder@gmail.com', 'ouder+2@gmail.com', 'ouder+3@gmail.com']);
+  });
+
+  it('botst ook niet met een lid dat de club al op dat adres kent', () => {
+    const { spelers } = leesSpelers(
+      [kind('Jansen Jan', 2)],
+      [{ id: 'u1', name: 'Jansen Ouder', email: 'ouder@gmail.com', role: 'player' }],
+    );
+    expect(spelers[0].email).toBe('ouder+2@gmail.com');
   });
 });
 

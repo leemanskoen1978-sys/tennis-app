@@ -23,7 +23,7 @@ import { isAdmin } from '../../lib/rechten';
 import { DAY_LABELS } from '../../lib/slots';
 import { kanBestandKiezen, kiesBinairBestand } from '../../lib/bestand';
 import { shareXlsx, xlsxWordtOndersteund } from '../../lib/share';
-import { leesWerkmap } from '../../lib/xlsx-lezen';
+import { leesWerkmap, type GelezenBlad } from '../../lib/xlsx-lezen';
 import {
   bestandAfgekeurdLessen, bestandsperiode, geweigerdeNieuweGroepen, importWaarschuwingen,
   ingrijpendeWijzigingen, kiesLessenBlad, overgeslagenPerReden,
@@ -31,7 +31,7 @@ import {
   type GroepInPlan, type ImportPlanLessen, type ImportUitslagLessen,
   type ImportWaarschuwing, type IngrijpendeWijzigingen,
 } from '../../lib/import-trainingen';
-import { isWeekschema } from '../../lib/import-weekschema';
+import { isGroepsledenBlad, isWeekschema } from '../../lib/import-weekschema';
 import { botsingTekst } from '../../lib/botsingen';
 import { formatDayTime } from '../../lib/datetime';
 import { tennisColors } from '../../constants/tennis-colors';
@@ -105,6 +105,22 @@ export default function TrainingenImport(): React.JSX.Element {
 /** Het uur zoals het op het scherm hoort te staan: 09:00 en niet 9:0. */
 function uurTekst(uur: number, minuut: number): string {
   return `${String(uur).padStart(2, '0')}:${String(minuut).padStart(2, '0')}`;
+}
+
+/**
+ * Het blad `groepsleden` uit de werkmap van de club, of niets.
+ *
+ * De club levert één werkmap met twee bladen aan: `groepen` is het weekschema, `groepsleden` zet
+ * dezelfde spelers nog een keer neer mét hun e-mailadres en gsm-nummer. Zonder dat tweede blad
+ * krijgen 552 spelers een verzonnen adres terwijl hun echte adres in hetzelfde bestand staat.
+ *
+ * Op de vorm van de koprij en niet op de bladnaam: een export die haar tabbladen anders noemt
+ * hoort niet stil de helft van haar gegevens te verliezen. `kiesLessenBlad` doet het andersom —
+ * die kijkt wél eerst naar de naam — omdat dáár een verkeerd blad kiezen erger is dan er geen
+ * vinden.
+ */
+function ledenBladVan(werkmap: readonly GelezenBlad[]): ReadonlyArray<readonly string[]> {
+  return werkmap.find((b) => isGroepsledenBlad(b.rijen))?.rijen ?? [];
 }
 
 function ImportInhoud(): React.JSX.Element {
@@ -213,7 +229,8 @@ function ImportInhoud(): React.JSX.Element {
     // Eén melding over het hele bestand als het niet eens een werkmap blijkt: dat is iets
     // anders dan een regel die niet deugt, en het hoort ook anders op het scherm te staan.
     try {
-      const blad = kiesLessenBlad(leesWerkmap(inhoud));
+      const werkmap = leesWerkmap(inhoud);
+      const blad = kiesLessenBlad(werkmap);
       if (!blad) {
         setPlan(null);
         setLeesFout(t('Dit bestand heeft geen enkel blad met lessen erin.'));
@@ -225,6 +242,7 @@ function ImportInhoud(): React.JSX.Element {
       setNu(moment);
       setPlan(planImportLessen(
         blad.rijen, lesGroepen, users, courts, bookings, settings, moment,
+        ledenBladVan(werkmap),
       ));
     } catch {
       setPlan(null);

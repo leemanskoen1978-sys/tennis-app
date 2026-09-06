@@ -19,7 +19,7 @@ import { normalizeEmail } from './contact';
 // verdwijnen bij het compileren. Wat de kring oplevert is dat `planImportLessen` de ene ingang
 // voor allebei de formaten blijft: het scherm hoeft niet te weten welk bestand het openmaakt.
 import {
-  groepenUitWeekRegels, isWeekschema, leesWeekRegels, spelerRegelsUitWeek,
+  groepenUitWeekRegels, isWeekschema, leesGroepsleden, leesWeekRegels, spelerRegelsUitWeek,
 } from './import-weekschema';
 import { actieveGroepen, groepSleutel, groupBookingsFrom, lesGroepFout } from './lesgroepen';
 import { botstMet, type BezetBoeking } from './recurrence';
@@ -964,6 +964,8 @@ export interface GeplandeSpeler {
   naam: string;
   /** Het genormaliseerde adres uit `E-mail leerling`, of leeg als er geen stond. */
   email: string;
+  /** Het gsm-nummer, als de bron er een gaf. Zie `SpelerRegel.telefoon`. */
+  telefoon: string;
   /** Het bestaande lid, of `null` als dit een nieuw lid wordt. */
   bestaand: User | null;
 }
@@ -1006,10 +1008,49 @@ export function demoAdres(naam: string, bezet: ReadonlySet<string>): string {
   return adres;
 }
 
+/**
+ * Een adres dat nog vrij is: dat van het bestand als het kan, anders een variant erop.
+ *
+ * WAAROM DIT MOET BESTAAN. `users.email` is `unique not null`, en de ledenlijst van de club heeft
+ * 552 spelers op 451 adressen. Dat is geen slordigheid: het zijn gezinnen, waar de kinderen op
+ * het adres van een ouder staan. Zonder deze functie strandt de import op het tweede kind van
+ * elk gezin — halverwege, met leerlingen zonder groep als restant. Precies dezelfde klasse fout
+ * als een leeg adres, en even onzichtbaar tot je hem draait.
+ *
+ * DE VARIANT IS PLUS-ADRESSERING EN GEEN VERZONNEN ADRES. `ouder@gmail.com` wordt
+ * `ouder+2@gmail.com`, en post daarop komt bij Gmail, Outlook, iCloud en de meeste andere
+ * aanbieders gewoon in de bus van de ouder. Zo blijft het tweede kind bereikbaar. Een adres op
+ * example.com zou uniek zijn en verder niets: dan had de club het kind wél in haar lijst en kon
+ * ze het niet bereiken, en dat is het enige waarvoor die adressen er zijn.
+ *
+ * Steunt de aanbieder plus-adressering niet, dan komt die post niet aan. Dat is een echte
+ * beperking en geen theoretische; ze is aanvaard omdat het alternatief — geen adres — met
+ * zekerheid niet aankomt.
+ *
+ * Zonder `@` in het adres valt hij terug op `demoAdres`: dan is het geen adres maar een cel met
+ * iets erin, en er een plus in plakken maakt het niet beter.
+ */
+export function uniekAdres(gewenst: string, naam: string, bezet: ReadonlySet<string>): string {
+  const adres = gewenst.trim().toLowerCase();
+  if (!adres) return demoAdres(naam, bezet);
+  if (!bezet.has(adres)) return adres;
+  const scheiding = adres.lastIndexOf('@');
+  if (scheiding <= 0) return demoAdres(naam, bezet);
+  const lokaal = adres.slice(0, scheiding);
+  const domein = adres.slice(scheiding + 1);
+  for (let n = 2; n < 1000; n++) {
+    const kandidaat = `${lokaal}+${n}@${domein}`;
+    if (!bezet.has(kandidaat)) return kandidaat;
+  }
+  // Duizend mensen op één adres bestaat niet; dit is er zodat de lus met zekerheid eindigt.
+  return demoAdres(naam, bezet);
+}
+
 /** Wat er onderweg per leerling verzameld wordt. */
 interface SpelerEmmer {
   naam: string;
   email: string;
+  telefoon: string;
   /** Het eerste regelnummer waarop deze naam stond; daar wijst een melding over hem naar. */
   regel: number;
 }
@@ -1033,7 +1074,18 @@ interface SpelerEmmer {
  * bepaalt wie een bestaand lid is en wie een nieuw, voor allebei de formaten; een tweede zou
  * vroeg of laat anders gaan matchen dan deze.
  */
-export type SpelerRegel = Pick<LesRegel, 'regel' | 'leerling' | 'emailLeerling'>;
+export interface SpelerRegel {
+  regel: number;
+  leerling: string;
+  emailLeerling: string;
+  /**
+   * Het gsm-nummer, als de bron er een geeft. Alleen het weekschema doet dat: de werkmap van de
+   * club heeft een tweede blad `groepsleden` met adres én nummer per lid. Het sjabloon van de app
+   * heeft geen telefoonkolom, dus daar blijft dit leeg — een `LesRegel` past nog steeds op dit
+   * type.
+   */
+  telefoon?: string;
+}
 
 export function spelersUitRegels(
   regels: readonly SpelerRegel[],
@@ -1046,20 +1098,25 @@ export function spelersUitRegels(
     const sleutel = normalizeName(naam);
     const email = normalizeEmail(r.emailLeerling);
     const emmer = emmers.get(sleutel);
+    const telefoon = (r.telefoon ?? '').trim();
     if (!emmer) {
-      emmers.set(sleutel, { naam, email, regel: r.regel });
+      emmers.set(sleutel, { naam, email, telefoon, regel: r.regel });
       continue;
     }
     // Het eerste ingevulde adres wint. Later overschrijven zou betekenen dat regel 1300 stil
-    // bepaalt wie er post krijgt; leeg overschrijven zou een adres kwijtmaken.
+    // bepaalt wie er post krijgt; leeg overschrijven zou een adres kwijtmaken. Hetzelfde voor
+    // het nummer.
     if (!emmer.email && email) emmer.email = email;
+    if (!emmer.telefoon && telefoon) emmer.telefoon = telefoon;
   }
 
   const spelers: GeplandeSpeler[] = [];
   const waarschuwingen: ImportFoutLessen[] = [];
   // De adressen die al vergeven zijn: die van de leden die de club kent, plus die van de leden
-  // die deze importbeurt zelf aanmaakt. Eén verzameling voor allebei, want een verzonnen adres
-  // mag niet botsen met een echt adres én niet met een verzonnen adres van drie regels eerder.
+  // die deze importbeurt zelf aanmaakt. Eén verzameling voor allebei, want geen enkel nieuw adres
+  // mag botsen met een bestaand adres én niet met een adres van drie regels eerder. Dat geldt net
+  // zo goed voor de échte adressen uit het bestand: 552 spelers van de club staan op 451
+  // adressen, want de kinderen van een gezin delen dat van hun ouder.
   const bezetteAdressen = new Set(
     users.map((u) => u.email.trim().toLowerCase()).filter(Boolean),
   );
@@ -1083,9 +1140,9 @@ export function spelersUitRegels(
     // lid raken we niet aan — dat heeft er al een, en dat is misschien wel zijn echte.
     const email = bestaand
       ? emmer.email
-      : emmer.email || demoAdres(emmer.naam, bezetteAdressen);
+      : uniekAdres(emmer.email, emmer.naam, bezetteAdressen);
     if (!bestaand) bezetteAdressen.add(email.toLowerCase());
-    spelers.push({ naam: emmer.naam, email, bestaand });
+    spelers.push({ naam: emmer.naam, email, telefoon: emmer.telefoon, bestaand });
   });
 
   return { spelers, waarschuwingen };
@@ -1107,7 +1164,11 @@ export function spelersUitRegels(
  * ledenimport, en het importscherm hoort eraan te herinneren.
  */
 export function nieuwLidUitSpeler(speler: GeplandeSpeler): Omit<User, 'id'> {
-  return { name: speler.naam, email: speler.email, role: 'player' };
+  const lid: Omit<User, 'id'> = { name: speler.naam, email: speler.email, role: 'player' };
+  // Alleen zetten als er een nummer is. Een lege sleutel is het verschil tussen "niet ingevuld"
+  // en "leeggemaakt" — dezelfde regel als in lib/import-leden.
+  if (speler.telefoon) lid.phone = speler.telefoon;
+  return lid;
 }
 
 /** De trainer en de baan van één lesgroep, met wat er nog aan ontbreekt. */
@@ -1943,6 +2004,17 @@ export function planImportLessen(
     Settings, 'lesson_duration_minutes' | 'vakanties' | 'season_start' | 'season_end'
   >,
   nu: Date,
+  /**
+   * Het blad `groepsleden` uit dezelfde werkmap, als het er is.
+   *
+   * De werkmap van de club heeft twee bladen: `groepen` (dat is `rijen` hierboven) en
+   * `groepsleden`, met per lid zijn e-mailadres en gsm-nummer. Zonder dat tweede blad krijgen
+   * 552 spelers een verzonnen adres terwijl hun echte adres in hetzelfde bestand staat.
+   *
+   * Optioneel en achteraan, zodat elke bestaande aanroep — en het sjabloon van de app, dat maar
+   * één blad heeft — ongewijzigd blijft werken.
+   */
+  ledenRijen: ReadonlyArray<readonly string[]> = [],
 ): ImportPlanLessen {
   // Welk van de twee formaten is dit? De clublijst heeft een kolom `Weekdag` en het sjabloon van
   // de app heeft datums; die twee sluiten elkaar uit. Zie `isWeekschema` voor waarom er op dat
@@ -1991,7 +2063,7 @@ export function planImportLessen(
       return plan;
     }
     uitGroepen = groepenUitWeekRegels(gelezenWeek.regels, bestaandeGroepen, courts, seizoen);
-    spelerRegels = spelerRegelsUitWeek(gelezenWeek.regels);
+    spelerRegels = spelerRegelsUitWeek(gelezenWeek.regels, leesGroepsleden(ledenRijen));
   } else {
     uitGroepen = groepenUitRegels(gelezen!.regels, bestaandeGroepen, courts);
     spelerRegels = gelezen!.regels;
