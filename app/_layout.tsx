@@ -88,6 +88,9 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   // Eén scherm voor de vraag wanneer er les kan zijn: de gesloten dagen van de club en de
   // uren per trainer stonden eerder als twee tegels naast elkaar hetzelfde te vertellen.
   { name: 'admin/kalender', title: t('Kalender') },
+  // De ingang van de tennisschool. De kop herhaalt de tegel waarop je tikte, want een
+  // tussenscherm dat anders heet dan de tegel ernaartoe laat je twijfelen of je goed zit.
+  { name: 'admin/tennisschool', title: t('Lessen beheren') },
   { name: 'admin/lesgroepen/index', title: t('Lesgroepen') },
   // Vooruit geregistreerd: het groepsscherm zelf komt later, en zonder deze regel krijgt het
   // straks geen kop.
@@ -96,7 +99,8 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   // Vooruit geregistreerd, net als het groepsscherm hierboven: de werklijst van één melding
   // komt in het volgende plan, en zonder deze regel krijgt ze straks geen kop.
   { name: 'admin/ziekmelding/[id]', title: t('Werklijst') },
-  // De export staat bij de club en niet bij het geld: het gaat over de trainingen zelf.
+  // De export staat bij de tennisschool en niet bij het geld: het gaat over de trainingen
+  // zelf.
   { name: 'admin/export', title: t('Trainingen exporteren') },
   { name: 'admin/leden', title: t('Leden') },
   { name: 'admin/leden-import', title: t('Leden importeren') },

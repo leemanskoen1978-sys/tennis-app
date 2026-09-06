@@ -197,7 +197,10 @@ export default function ProfileScreen(): React.JSX.Element {
           key: 'set',
           icon: SettingsIcon,
           title: t('Instellingen'),
-          subtitle: t('Boekingstijden, thema en taal'),
+          // Niet "Boekingstijden": die staan sinds de samenvoeging op de Kalender, en dat
+          // is nota bene de rij hieronder. Twee rijen naast elkaar die hetzelfde beloven,
+          // is precies één rij te veel.
+          subtitle: t('Lesduur, thema en taal'),
           onPress: () => router.push('/admin/settings'),
         },
         {

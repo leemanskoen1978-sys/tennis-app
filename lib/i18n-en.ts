@@ -396,7 +396,14 @@ export const EN: Record<string, string> = {
   'Omzet en aantallen': 'Revenue and counts',
   'Namen en uurtarieven': 'Names and hourly rates',
   'Nieuw lid aanmaken': 'Create a new member',
-  'Boekingstijden, thema en taal': 'Booking times, theme and language',
+  'Lesduur, thema en taal': 'Lesson length, theme and language',
+  'Tennisschool': 'Tennis school',
+  'Lessen beheren': 'Manage lessons',
+  'Lesgroepen, ziekmelding, import en export':
+    'Lesson groups, sick leave, import and export',
+  'Lessen beheren is alleen voor de beheerder.': 'Managing lessons is for the admin only.',
+  'Alles wat de lessen van de tennisschool draaiende houdt: wie in welke groep zit, wie een les overneemt als een trainer uitvalt, en het seizoen dat in en uit Excel gaat.':
+    'Everything that keeps the lessons of the tennis school running: who is in which group, who takes over a lesson when a coach drops out, and the season that goes in and out of Excel.',
   'Banen, doelen, beurtenkaarten en leden': 'Courts, goals, punch cards and members',
   'Jouw boekingen per betaalwijze': 'Your bookings per payment method',
   'Jouw uurtarief': 'Your hourly rate',
