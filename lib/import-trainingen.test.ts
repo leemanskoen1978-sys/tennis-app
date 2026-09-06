@@ -2,18 +2,20 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 import { GROEPSLES_METHOD } from './beurtenkaart';
+import { bladLessen, opzoektabellen } from './export-trainingen';
 import {
   alsBezet, bestandAfgekeurdLessen, deelnemersVoorLes, groepenUitRegels, groepRosterVerschil,
   kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
-  planImportLessen,
+  planImportLessen, spelerSleutel,
   groepWijzigingen, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
-  type GeplandeGroep, type GeplandeLes, type GroepKoppeling, type ImportBoeking, type LesRegel,
+  type GeplandeGroep, type GeplandeLes, type GroepKoppeling, type ImportBoeking,
+  type ImportPlanLessen, type LesRegel,
 } from './import-trainingen';
 import { groepSleutel } from './lesgroepen';
-import type { Court, LesGroep, User } from './types';
+import type { Booking, Court, LesGroep, User } from './types';
 import { dagSleutel } from './vakanties';
-import { datumNaarSerie } from './xlsx';
+import { buildXlsx, datumNaarSerie } from './xlsx';
 import { leesWerkmap } from './xlsx-lezen';
 
 // De koprij van `koen.xlsx`, letterlijk zoals plan 05-03 hem uit het echte bestand las. Vier
@@ -1546,5 +1548,256 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     // Nog steeds nul lessen: de baan is de tweede ontbrekende schakel en de enige die over is.
     expect(metTrainer.nieuweLessen).toEqual([]);
     expect(metTrainer.spelersNieuw).toHaveLength(42);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// koen.xlsx twee keer inlezen (IMP-06)
+//
+// IMP-06 is pas echt bewezen als het op 1398 regels en tien groepen gebeurt en niet op drie
+// verzonnen rijen: het gaat over een bestand dat de club per ongeluk een tweede keer doorstuurt,
+// en dat mag niets verdubbelen.
+// ---------------------------------------------------------------------------
+
+/** De club zoals ze eruitziet nadat een plan is weggeschreven: haar groepen en haar leden. */
+interface Toestand {
+  groepen: LesGroep[];
+  users: User[];
+}
+
+/**
+ * De toestand die de uitvoerder van plan 05-08 uit dit plan zou maken, hier met de hand
+ * nagebouwd: elke nieuwe groep krijgt een verzonnen id, elke nieuwe speler ook, en de
+ * plaatshouders in het rooster (`NIEUWE_SPELER`) worden door die ids vervangen.
+ *
+ * Met opzet met de hand en niet via die uitvoerder: die schrijft weg, en deze test moet puur
+ * blijven — geen databank, geen netwerk, geen volgorde-afhankelijkheid. Het is dezelfde reden
+ * waarom `planImportLessen` zelf puur is (D-10). De prijs is dat deze helper meeverandert als
+ * het model verandert; de winst is dat IMP-06 te bewijzen valt zonder één verbinding.
+ */
+function toestandUitPlan(plan: ImportPlanLessen): Toestand {
+  const users = plan.spelersNieuw.map((s, i) => userVan({
+    id: `u-nieuw-${i}`, name: s.naam, email: s.email,
+  }));
+  const idVanPlaatshouder = new Map(
+    plan.spelersNieuw.map((s, i) => [spelerSleutel(s), `u-nieuw-${i}`]),
+  );
+  const groepen = [
+    ...plan.groepenNieuw, ...plan.groepenBijgewerkt, ...plan.groepenOngewijzigd,
+  ].map((g, i): LesGroep => ({
+    id: `g-nieuw-${i}`,
+    name: g.naam,
+    level: g.groep.niveau,
+    weekday: g.weekdag,
+    start_hour: g.beginuur,
+    start_minute: g.beginminuut,
+    // Geen `coach_id` en geen `court_id`: dit bestand levert die niet, en `LesGroep` laat ze
+    // met opzet leeg zijn voor precies dit geval.
+    season_start: g.groep.seizoenVan,
+    season_end: g.groep.seizoenTot,
+    roster: g.roster.map((id) => idVanPlaatshouder.get(id) ?? id),
+    archived: false,
+  }));
+  return { groepen, users };
+}
+
+describe('koen.xlsx twee keer inlezen', () => {
+  const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
+  const lees = (toestand: Toestand) => planImportLessen(
+    blad.rijen, toestand.groepen, toestand.users, [], [], {}, NU,
+  );
+
+  const eerste = planImportLessen(blad.rijen, [], [], [], [], {}, NU);
+  const naDeEerste = toestandUitPlan(eerste);
+  const tweede = lees(naDeEerste);
+  const derde = lees(naDeEerste);
+
+  it('levert de eerste keer tien groepen en 42 spelers op', () => {
+    expect(eerste.groepenNieuw).toHaveLength(10);
+    expect(eerste.spelersNieuw).toHaveLength(42);
+    expect(naDeEerste.groepen).toHaveLength(10);
+    expect(naDeEerste.users).toHaveLength(42);
+  });
+
+  it('verdubbelt de tweede keer niets: nul nieuwe groepen, spelers en lessen', () => {
+    expect(tweede.groepenNieuw).toEqual([]);
+    expect(tweede.groepenBijgewerkt).toEqual([]);
+    expect(tweede.spelersNieuw).toEqual([]);
+    expect(tweede.nieuweLessen).toEqual([]);
+  });
+
+  it('herkent alle tien de groepen als ongewijzigd, elk met haar eigen bestaande groep', () => {
+    expect(tweede.groepenOngewijzigd).toHaveLength(10);
+    expect(tweede.groepenOngewijzigd.map((g) => g.groep.bestaand?.id).sort())
+      .toEqual(naDeEerste.groepen.map((g) => g.id).sort());
+    // Elk roster staat er nog voluit, met echte ids in plaats van plaatshouders.
+    expect(tweede.groepenOngewijzigd.every((g) => g.roster.every((id) => id.startsWith('u-nieuw-'))))
+      .toBe(true);
+  });
+
+  it('meldt de tweede keer nog steeds de trainer en de baan, en niets erbij', () => {
+    // Die twee schakels lost een tweede inleesbeurt niet op — en dat hoort ook zo: de import
+    // maakt geen trainer en geen baan aan (D-07).
+    expect(tweede.waarschuwingen).toHaveLength(20);
+    expect(tweede.fouten).toEqual([]);
+  });
+
+  it('geeft de derde keer exact hetzelfde antwoord als de tweede', () => {
+    // Stabiel, en niet toevallig: was de tweede uitkomst een gevolg van iets wat de eerste
+    // opbouwde, dan zou de derde ervan afwijken.
+    expect(derde.groepenNieuw).toEqual([]);
+    expect(derde.groepenOngewijzigd).toHaveLength(10);
+    expect(derde.spelersNieuw).toEqual([]);
+    expect(derde.nieuweLessen).toEqual([]);
+    expect(derde.waarschuwingen).toEqual(tweede.waarschuwingen);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Heen en terug met de export van fase 4 (EXP-07, IMP-06, D-03)
+//
+// Dit blok gaat niet over Excel maar over een belofte: de club exporteert een seizoen, past er
+// iets in aan, en leest het weer in — en dat mag niets verdubbelen. Zolang die lus niet echt
+// gelopen is, is EXP-07 een belofte zonder dekking; een kop die aan één kant hernoemd wordt
+// valt hier om en niet pas bij de beheerder.
+// ---------------------------------------------------------------------------
+
+/** De drie leerlingen van de groep waarmee dit blok heen en weer schrijft. */
+const RONDRIT_SPELERS = [
+  userVan({ id: 'u-astor', name: 'Peferoen Astor', email: 'astor@club.be' }),
+  userVan({ id: 'u-clara', name: 'Martens Clara', email: 'clara@club.be' }),
+  userVan({ id: 'u-mila', name: 'Bertrem Mila', email: 'mila@club.be' }),
+];
+
+const RONDRIT_GROEP = groepVan({
+  id: 'g-rondrit',
+  name: 'Groep 8',
+  level: 'Kidstennis oranje',
+  weekday: 3,
+  start_hour: 17,
+  coach_id: KOEN.id,
+  court_id: BAAN.id,
+  roster: RONDRIT_SPELERS.map((s) => s.id),
+});
+
+/**
+ * Drie woensdagen van 17:00 tot 18:00, met lokale datumvelden gebouwd — nooit een ISO-tekst
+ * ineen geknutseld. Zou hier UTC staan, dan zou deze test in een westelijke tijdzone een dag
+ * opschuiven en de hele rondrit op een andere weekdag laten uitkomen.
+ */
+function rondritBoekingen(): Booking[] {
+  return [9, 16, 23].map((dag, i): Booking => ({
+    id: `b-rondrit-${i}`,
+    player_id: RONDRIT_SPELERS[0].id,
+    participant_ids: RONDRIT_SPELERS.slice(1).map((s) => s.id),
+    coach_id: KOEN.id,
+    court_id: BAAN.id,
+    group_id: RONDRIT_GROEP.id,
+    start_time: new Date(2026, 8, dag, 17, 0).toISOString(),
+    end_time: new Date(2026, 8, dag, 18, 0).toISOString(),
+    status: 'confirmed',
+    payment_method: GROEPSLES_METHOD,
+  }));
+}
+
+/** Wat de export schrijft, opnieuw gelezen: dezelfde weg als een beheerder met een bestand. */
+function heenEnTerug(bookings: readonly Booking[], groepen: readonly LesGroep[]): string[][] {
+  const blad = bladLessen(bookings, opzoektabellen([...RONDRIT_SPELERS, KOEN], [BAAN], groepen));
+  const gelezen = kiesLessenBlad(leesWerkmap(buildXlsx(blad)));
+  if (!gelezen) throw new Error('de export leverde geen leesbaar blad op');
+  return gelezen.rijen;
+}
+
+describe('heen en terug met de export van fase 4', () => {
+  const rijen = heenEnTerug(rondritBoekingen(), [RONDRIT_GROEP]);
+
+  it('schrijft een blad dat de eigen lezer weer opent, met de zestien koppen', () => {
+    expect(rijen[0]).toEqual(KOP_EXPORT);
+    expect(rijen).toHaveLength(1 + 3 * 3);
+  });
+
+  it('leest de groep ongewijzigd terug: dag, uur, niveau, trainer, baan en het volledige roster', () => {
+    const plan = planImportLessen(
+      rijen, [RONDRIT_GROEP], [...RONDRIT_SPELERS, KOEN], [BAAN], rondritBoekingen(), {}, NU,
+    );
+    expect(plan.fouten).toEqual([]);
+    expect(plan.nietHerkend).toEqual([]);
+    expect(plan.waarschuwingen).toEqual([]);
+    expect(plan.groepenNieuw).toEqual([]);
+    expect(plan.groepenOngewijzigd).toHaveLength(1);
+
+    const terug = plan.groepenOngewijzigd[0];
+    expect(terug.groep.bestaand?.id).toBe(RONDRIT_GROEP.id);
+    expect(terug).toMatchObject({
+      naam: 'Groep 8', weekdag: 3, beginuur: 17, aantalSpelers: 3, trainerNaam: 'Koen Leemans',
+    });
+    expect(terug.groep.niveau).toBe('Kidstennis oranje');
+    expect(terug.trainer?.id).toBe(KOEN.id);
+    expect(terug.baan?.id).toBe(BAAN.id);
+    expect([...terug.roster].sort()).toEqual([...RONDRIT_GROEP.roster].sort());
+  });
+
+  it('verdubbelt de drie lessen niet: ze staan er al en blijven ongewijzigd', () => {
+    const plan = planImportLessen(
+      rijen, [RONDRIT_GROEP], [...RONDRIT_SPELERS, KOEN], [BAAN], rondritBoekingen(), {}, NU,
+    );
+    expect(plan.nieuweLessen).toEqual([]);
+    expect(plan.ongewijzigdeLessen).toHaveLength(3);
+    expect(plan.spelersNieuw).toEqual([]);
+    expect(plan.handmatigGewijzigd).toEqual([]);
+    expect(plan.verdwenenUitBestand).toEqual([]);
+  });
+
+  it('herkent de groep aan haar Groep-ID, ook als iemand de naam in het bestand veranderde', () => {
+    // D-03: het `Groep-ID` dat de export invult wint van de afgeleide sleutel. Zonder die kolom
+    // zou een hernoemde groep een tweede groep worden — de halve club verdubbeld.
+    const kolom = rijen[0].indexOf('Groep');
+    const hernoemd = rijen.map((rij, i) => (i === 0 ? rij : rij.map(
+      (cel, k) => (k === kolom ? 'Groep 8 gevorderden' : cel),
+    )));
+    const plan = planImportLessen(
+      hernoemd, [RONDRIT_GROEP], [...RONDRIT_SPELERS, KOEN], [BAAN], rondritBoekingen(), {}, NU,
+    );
+
+    expect(plan.groepenNieuw).toEqual([]);
+    const alle = [...plan.groepenBijgewerkt, ...plan.groepenOngewijzigd];
+    expect(alle).toHaveLength(1);
+    expect(alle[0].groep.bestaand?.id).toBe(RONDRIT_GROEP.id);
+    // De nieuwe naam staat wél in het plan — het scherm toont hem dus.
+    expect(alle[0].naam).toBe('Groep 8 gevorderden');
+    // BEVINDING (plan 05-07): de groep komt hier als `ongewijzigd` binnen en niet als
+    // `bijgewerkt`, want `groepWijzigingen` vergelijkt de naam niet — die is bij een match op
+    // de sleutel per definitie gelijk, maar bij een match op `Groep-ID` juist niet. Gevolg: de
+    // hernoeming wordt herkend maar niet doorgevoerd. Deze test legt vast wat er vandaag
+    // gebeurt; de fix hoort in `groepWijzigingen` (plan 05-06) en staat in
+    // `.planning/phases/05-excel-import-van-trainingen/05-07-SUMMARY.md`.
+    expect(alle[0].wijzigingen).toEqual({});
+    expect(plan.groepenOngewijzigd).toHaveLength(1);
+  });
+
+  it('maakt van een privéles uit de export geen lesgroep', () => {
+    // De export schrijft bij een les zonder groep `Groep` leeg en `Type les` = `Privéles`
+    // (D-08). Die lege `Groep` is het teken: hier hoort geen lesgroep te ontstaan.
+    const prive: Booking = {
+      id: 'b-prive',
+      player_id: RONDRIT_SPELERS[0].id,
+      coach_id: KOEN.id,
+      court_id: BAAN.id,
+      start_time: new Date(2026, 8, 10, 19, 0).toISOString(),
+      end_time: new Date(2026, 8, 10, 20, 0).toISOString(),
+      status: 'confirmed',
+      payment_method: GROEPSLES_METHOD,
+    };
+    const priveRijen = heenEnTerug([prive], []);
+    const kop = priveRijen[0];
+    expect(priveRijen[1][kop.indexOf('Type les')]).toBe('Privéles');
+    expect(priveRijen[1][kop.indexOf('Groep')]).toBe('');
+
+    const plan = planImportLessen(priveRijen, [], [...RONDRIT_SPELERS, KOEN], [BAAN], [], {}, NU);
+    expect(plan.regels).toHaveLength(1);
+    expect(plan.groepenNieuw).toEqual([]);
+    expect(plan.groepenBijgewerkt).toEqual([]);
+    expect(plan.groepenOngewijzigd).toEqual([]);
+    expect(plan.nieuweLessen).toEqual([]);
   });
 });
