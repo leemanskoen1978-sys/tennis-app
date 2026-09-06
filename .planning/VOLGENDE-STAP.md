@@ -128,3 +128,60 @@ Aandachtspunten die nu al bekend zijn en in die review horen:
 de repo is publiek. `koen.xlsx` is gitignored; de clubijst stond alleen in het gesprek. Het
 testbestand `lib/__fixtures__/lessen-voorbeeld.xlsx` is een geanonimiseerde kopie met
 verzonnen namen, met een test die bewaakt dat er geen echte naam in terechtkomt.
+
+---
+
+## 4. HET PRIJSMODEL KLOPT NIET — belangrijkste vondst, 6 september 2026
+
+De gebruiker leverde het tarievenblad van de club aan. **De club rekent per lesvolger, per
+seizoen (30 lesweken), per lessoort.** Een vast bedrag per speler:
+
+| Aanbod | Per lesvolger, 30 lesweken | Per speler per les |
+| --- | --- | --- |
+| Kidstennis wit | € 450 | € 15,00 |
+| Kidstennis blauw | € 500 | € 16,67 |
+| Kidstennis rood | € 500 | € 16,67 |
+| Kidstennis oranje | € 575 | € 19,17 |
+| Kidstennis groen | € 600 | € 20,00 |
+| Tienertennis | € 600 | € 20,00 |
+| Tienertennis voor starters | € 600 | € 20,00 |
+| Groepslessen voor volwassenen | € 600 | € 20,00 |
+| Groepslessen voor (her)starters | € 600 | € 20,00 |
+| Duoles | € 1.150 | € 38,33 |
+| Groepsles 3 spelers | € 800 | € 26,67 |
+| Privéles | € 2.000 | € 66,67 |
+
+**De app rekent iets anders.** `bookingPrice` in `lib/payments.ts` neemt het uurtarief van de
+**baan** naar rato van de duur, met `Court.group_rates` als staffel op groepsgrootte. Dat
+staat als vaste afspraak in `OPENSTAAND.md` en er zitten tests omheen.
+
+Die twee modellen zijn niet hetzelfde en te herleiden is er niets:
+
+- De prijs hangt bij de club aan de **lessoort**, bij de app aan de **baan**. De app heeft
+  geen prijsveld op een lessoort of op een lesgroep.
+- Een duoles brengt bij de club méér op dan een privéles (2 × € 1.150 = € 2.300 tegen
+  € 2.000). Geen enkele staffel op een baan levert dat op, want een staffel gaat naar beneden
+  naarmate de groep groter wordt.
+- Beheer → Rapport toont dus niet de omzet van deze club. Het telt baanuren.
+- De € 60/uur die op terrein 1 t/m 11 gezet is, speelt in het echte model geen rol.
+
+**Wat de gebruiker al besliste:** alles op `invoice`. Dat past bij de bestaande regel dat een
+groepsles altijd op factuur gaat.
+
+**Wat nog open staat, en het is een ontwerpvraag, geen detail:**
+
+1. Blijft de prijs per les (seizoensprijs ÷ 30, per speler) of wordt het een seizoensbijdrage
+   per speler die los van de losse lessen staat? Het eerste past in het bestaande model met
+   één nieuw prijsveld; het tweede is eerlijker tegenover hoe de club werkelijk factureert en
+   maakt "een speler stapt in januari in" oplosbaar.
+2. Waar hangt het bedrag? Voorstel: op de **lesgroep** (die kent haar niveau al) of op een
+   nieuwe tabel lessoort→prijs. Niet op de baan.
+3. Wat gebeurt er met `bookingPrice`, `totalRevenue` en Beheer → Rapport? Die zijn vandaag
+   correct voor het baanmodel en fout voor dit. De geldregels in `OPENSTAAND.md` moeten
+   navenant herschreven worden — dat zijn afspraken die tot nu toe als vast golden.
+4. `payment_split`: bij een vast bedrag per lesvolger is 'separate' het enige dat klopt, want
+   iedereen betaalt zijn eigen seizoensprijs. Te bevestigen.
+
+**Niets hiervan is gebouwd.** Er is bewust niet aan begonnen: het raakt vastgelegde
+geldregels en 550 facturen. Dit hoort vóór de lessen ingelezen worden, want elke boeking
+draagt een betaalwijze en een bedrag.
