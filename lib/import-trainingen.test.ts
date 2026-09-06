@@ -6,11 +6,13 @@ import {
   alsBezet, bestandAfgekeurdLessen, deelnemersVoorLes, groepenUitRegels, groepRosterVerschil,
   kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
+  planImportLessen,
   groepWijzigingen, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
   type GeplandeGroep, type GeplandeLes, type GroepKoppeling, type ImportBoeking, type LesRegel,
 } from './import-trainingen';
 import { groepSleutel } from './lesgroepen';
 import type { Court, LesGroep, User } from './types';
+import { dagSleutel } from './vakanties';
 import { datumNaarSerie } from './xlsx';
 import { leesWerkmap } from './xlsx-lezen';
 
@@ -1155,5 +1157,202 @@ describe('groepWijzigingen', () => {
     // Het bestand loopt van 9 september tot 9 september; het seizoen begint dus vroeger en
     // eindigt niet eerder.
     expect(groepWijzigingen(club, groep, GEKOPPELD)).toEqual({ season_start: '2026-09-09' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Het hele plan (plan 05-06, taak 3)
+// ---------------------------------------------------------------------------
+
+/** De koprij die de plantests gebruiken: de vijf verplichte kolommen plus een baan. */
+const KOP_MET_BAAN = ['Datum', 'Uur', 'Groep', 'Coach', 'Leerling', 'Baan'];
+
+/** Eén rij van het bestand, in de vorm waarin een beheerder hem typt. */
+function rij(datum: string, uur: string, groep: string, leerling: string): string[] {
+  return [datum, uur, groep, 'Leemans Koen', leerling, 'Baan 1'];
+}
+
+describe('planImportLessen', () => {
+  const RIJEN = [
+    KOP_MET_BAAN,
+    rij('09/09/2026', '17:00', 'Groep 8', 'Peferoen Astor'),
+    rij('09/09/2026', '17:00', 'Groep 8', 'Martens Clara'),
+    rij('16/09/2026', '17:00', 'Groep 8', 'Peferoen Astor'),
+    rij('16/09/2026', '17:00', 'Groep 8', 'Martens Clara'),
+  ];
+  const plan = () => planImportLessen(RIJEN, [], [KOEN], [BAAN], [], {}, NU);
+
+  it('geeft een plan met alles erin wat de droogloop moet tonen', () => {
+    expect(Object.keys(plan()).sort()).toEqual([
+      'dubbel', 'fouten', 'groepenBijgewerkt', 'groepenNieuw', 'groepenOngewijzigd',
+      'handmatigGewijzigd', 'nieuweLessen', 'nietHerkend', 'ongewijzigdeLessen', 'overgeslagen',
+      'regels', 'spelersNieuw', 'verdwenenUitBestand', 'waarschuwingen',
+    ]);
+  });
+
+  it('toont de groep zoals het scherm hem nodig heeft, zonder terug naar de rijen te moeten', () => {
+    const uit = plan();
+    expect(uit.groepenNieuw).toHaveLength(1);
+    expect(uit.groepenBijgewerkt).toEqual([]);
+    expect(uit.groepenOngewijzigd).toEqual([]);
+    expect(uit.groepenNieuw[0]).toMatchObject({
+      naam: 'Groep 8',
+      weekdag: 3,
+      beginuur: 17,
+      trainerNaam: 'Koen Leemans',
+      aantalSpelers: 2,
+      status: 'nieuw',
+    });
+  });
+
+  it('plant twee lessen uit vier regels en noemt de twee nieuwe spelers', () => {
+    const uit = plan();
+    expect(uit.nieuweLessen).toHaveLength(2);
+    expect(uit.spelersNieuw.map((s) => s.naam)).toEqual(['Peferoen Astor', 'Martens Clara']);
+    expect(uit.fouten).toEqual([]);
+    expect(uit.waarschuwingen).toEqual([]);
+  });
+
+  it('laat het bestand met zichzelf botsen: twee groepen op hetzelfde uur bij dezelfde trainer', () => {
+    const uit = planImportLessen([
+      KOP_MET_BAAN,
+      rij('09/09/2026', '17:00', 'Groep 8', 'Peferoen Astor'),
+      rij('09/09/2026', '17:00', 'Groep 12', 'Bertrem Mila'),
+    ], [], [KOEN], [BAAN], [], {}, NU);
+
+    expect(uit.groepenNieuw).toHaveLength(2);
+    expect(uit.nieuweLessen).toHaveLength(1);
+    expect(uit.overgeslagen.map((o) => o.reden)).toEqual(['bezet']);
+  });
+
+  it('neemt de lesduur uit de clubinstelling', () => {
+    const uit = planImportLessen(RIJEN, [], [KOEN], [BAAN], [], { lesson_duration_minutes: 90 }, NU);
+    expect(uit.nieuweLessen[0].eind.getHours()).toBe(18);
+    expect(uit.nieuweLessen[0].eind.getMinutes()).toBe(30);
+  });
+
+  it('slaat de lessen over die in een clubvakantie vallen', () => {
+    const uit = planImportLessen(RIJEN, [], [KOEN], [BAAN], [], {
+      vakanties: [{ id: 'v1', naam: 'Herfstvakantie', van: '2026-09-14', tot: '2026-09-20' }],
+    }, NU);
+    expect(uit.nieuweLessen).toHaveLength(1);
+    expect(uit.overgeslagen.map((o) => [o.reden, o.vakantie])).toEqual([['vakantie', 'Herfstvakantie']]);
+  });
+
+  it('verandert niets als hetzelfde bestand een tweede keer binnenkomt', () => {
+    const club = groepVan({ coach_id: 'u-koen', court_id: 'c1', roster: ['u-astor', 'u-clara'] });
+    const spelers = [
+      KOEN,
+      userVan({ id: 'u-astor', name: 'Astor Peferoen' }),
+      userVan({ id: 'u-clara', name: 'Clara Martens' }),
+    ];
+    const eerste = planImportLessen(RIJEN, [club], spelers, [BAAN], [], {}, NU);
+    const boekingen = alsBoekingen(eerste.nieuweLessen, club.id);
+
+    const tweede = planImportLessen(RIJEN, [club], spelers, [BAAN], boekingen, {}, NU);
+    expect(tweede.nieuweLessen).toEqual([]);
+    expect(tweede.ongewijzigdeLessen).toHaveLength(2);
+    expect(tweede.spelersNieuw).toEqual([]);
+    expect(tweede.groepenOngewijzigd).toHaveLength(1);
+    expect(tweede.groepenNieuw).toEqual([]);
+    expect(tweede.handmatigGewijzigd).toEqual([]);
+    expect(tweede.verdwenenUitBestand).toEqual([]);
+  });
+
+  it('keurt een leeg bestand en een koprij zonder verplichte kolom af', () => {
+    expect(bestandAfgekeurdLessen(planImportLessen([], [], [], [], [], {}, NU))).toBe(true);
+    const zonderCoach = planImportLessen([['Datum', 'Uur', 'Groep', 'Leerling']], [], [], [], [], {}, NU);
+    expect(bestandAfgekeurdLessen(zonderCoach)).toBe(true);
+  });
+
+  it('keurt het bestand niet af zodra er één regel doorkwam', () => {
+    expect(bestandAfgekeurdLessen(plan())).toBe(false);
+  });
+});
+
+// De uurwissel. Een reeks die met "168 uur erbij" gebouwd wordt staat na de wissel een uur
+// verkeerd, en dat merkt niemand — tot een ouder belt dat zijn kind een uur te vroeg voor een
+// gesloten club stond. In België springt de klok in het seizoen 2026-2027 terug op 25 oktober
+// 2026 en vooruit op 28 maart 2027; een les van 17:00 hoort op beide zijden van die twee
+// zondagen om 17:00 te staan.
+//
+// Deze test bewijst alleen iets in een tijdzone die een wissel kent. Draait de suite in UTC,
+// dan slaagt hij zonder iets aan te tonen — daarom wordt hij dan luid overgeslagen in plaats
+// van stil te slagen.
+const zomerOffset2026 = new Date(2026, 6, 1).getTimezoneOffset();
+const winterOffset2026 = new Date(2026, 0, 1).getTimezoneOffset();
+const kentEenWissel = zomerOffset2026 !== winterOffset2026;
+if (!kentEenWissel) {
+  console.warn(
+    `LET OP: de tijdzone van deze machine (${Intl.DateTimeFormat().resolvedOptions().timeZone}) kent geen `
+    + 'zomertijd. De zomer- en wintertijdtests van lib/import-trainingen worden overgeslagen en '
+    + 'bewijzen hier dus niets — draai ze met TZ=Europe/Brussels voordat je hierop vertrouwt.',
+  );
+}
+const alsErEenWisselIs = kentEenWissel ? it : it.skip;
+
+describe('zomer- en wintertijd', () => {
+  /** Elke woensdag van 1 oktober 2026 tot en met 30 april 2027, als regels van 17:00. */
+  const woensdagen = (): LesRegel[] => {
+    const regels: LesRegel[] = [];
+    const laatste = new Date(2027, 3, 30).getTime();
+    // Zeven dagen erbij in het dagveld, precies zoals lib/recurrence het doet.
+    for (let i = 0; ; i++) {
+      const d = new Date(2026, 9, 7 + i * 7);
+      if (d.getTime() > laatste) break;
+      regels.push(regelVan({
+        regel: i + 2,
+        datum: { jaar: d.getFullYear(), maand: d.getMonth() + 1, dag: d.getDate() },
+        uur: { uur: 17, minuut: 0 },
+      }));
+    }
+    return regels;
+  };
+
+  const lessen = () => lessenUitGroep(groepUit(woensdagen()), GEKOPPELD, [], [], 60, NU).nieuweLessen;
+
+  alsErEenWisselIs('zet elke les van het seizoen op hetzelfde lokale uur', () => {
+    const alle = lessen();
+    expect(alle.length).toBe(30);
+    expect(alle.every((l) => l.start.getHours() === 17)).toBe(true);
+    expect(alle.every((l) => l.start.getDay() === 3)).toBe(true);
+  });
+
+  alsErEenWisselIs('staat rond beide wissels om 17:00 en niet om 16:00 of 18:00', () => {
+    const opDag = new Map(lessen().map((l) => [dagSleutel(l.start), l]));
+    // De woensdagen vóór en na 25 oktober 2026, en vóór en na 28 maart 2027.
+    for (const dag of ['2026-10-21', '2026-10-28', '2027-03-24', '2027-03-31']) {
+      const les = opDag.get(dag);
+      expect(les).toBeDefined();
+      expect(new Date(les!.start).getHours()).toBe(17);
+      expect(new Date(les!.eind).getHours()).toBe(18);
+    }
+  });
+
+  alsErEenWisselIs('houdt het lokale uur ook vast in de ISO-tekst die weggeschreven wordt', () => {
+    const opDag = new Map(lessen().map((l) => [dagSleutel(l.start), l]));
+    for (const dag of ['2026-10-21', '2026-10-28', '2027-03-24', '2027-03-31']) {
+      const les = opDag.get(dag)!;
+      expect(new Date(les.start.toISOString()).getHours()).toBe(17);
+      expect(new Date(les.eind.toISOString()).getHours()).toBe(18);
+    }
+  });
+
+  alsErEenWisselIs('zet alle lessen van Groep 8 op woensdag van koen.xlsx om 17:00', () => {
+    // Het echte bestand loopt van 9 september 2026 tot 25 juni 2027 en overspant dus allebei de
+    // wissels. Het heeft geen kolom Baan, dus er valt via het volledige plan niets in te
+    // plannen (dat is de bedoeling, zie plan 05-05); de trainer en de baan worden hier dus
+    // gekoppeld meegegeven, zodat de test over de datums gaat en niet over de koppeling.
+    const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
+    const { regels } = leesLesRegels(blad.rijen);
+    const groepen = groepenUitRegels(regels, []).groepen;
+    const acht = groepen.find((g) => g.naam === 'Groep 8' && g.weekdag === 3 && g.beginuur === 17)!;
+    const uit = lessenUitGroep(acht, GEKOPPELD, [], [], 60, NU);
+
+    expect(uit.nieuweLessen.length).toBeGreaterThan(30);
+    expect(uit.nieuweLessen.every((l) => l.start.getHours() === 17)).toBe(true);
+    expect(uit.nieuweLessen.some((l) => l.start.getHours() === 16)).toBe(false);
+    expect(uit.nieuweLessen.some((l) => l.start.getHours() === 18)).toBe(false);
+    expect(uit.nieuweLessen.every((l) => l.start.getDay() === 3)).toBe(true);
   });
 });
