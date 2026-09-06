@@ -197,7 +197,9 @@ function ImportInhoud(): React.JSX.Element {
     setBezig(true);
     setMislukking(null);
     try {
-      meldImportKlaar(await importeerTrainingen(plan));
+      // De keuze reist mee vanaf hier; het vinkje dat hem zet komt in taak 3 van dit plan.
+      // Standaard uit: wie doorklikt zonder te lezen doet niets onomkeerbaars (IMP-16).
+      meldImportKlaar(await importeerTrainingen(plan, { ingrijpend: false }));
     } catch (e) {
       // `commit` zet de lokale opslag terug en gooit de fout door, maar wat er al bij Supabase
       // stond blijft daar staan. Er wordt hier dus niet gezegd dat er niets gebeurd is — het

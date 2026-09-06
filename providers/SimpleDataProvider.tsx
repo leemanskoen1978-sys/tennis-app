@@ -25,7 +25,7 @@ import {
 } from '../lib/beurtenkaart';
 import { isGroupLesson } from '../lib/groups';
 import { bouwImportWijziging } from '../lib/import-trainingen';
-import type { ImportPlanLessen, ImportUitslagLessen } from '../lib/import-trainingen';
+import type { ImportKeuze, ImportPlanLessen, ImportUitslagLessen } from '../lib/import-trainingen';
 import { zetAanwezigheid, magAanwezigheidZetten, type Aanwezigheid } from '../lib/aanwezigheid';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
@@ -247,7 +247,7 @@ interface DataShape {
    * de droogloop gezien heeft. Er wordt hier niets aan bijgesteld — wat hij zag, is wat er
    * gebeurt. De uitslag geeft de aantallen terug en wat er niet doorging.
    */
-  importeerTrainingen: (plan: ImportPlanLessen) => Promise<ImportUitslagLessen>;
+  importeerTrainingen: (plan: ImportPlanLessen, keuze: ImportKeuze) => Promise<ImportUitslagLessen>;
   /**
    * Een trainer ziek melden, van dag tot en met dag. Geeft de gemaakte melding terug, zodat
    * het scherm er meteen de werklijst van kan openen.
@@ -1254,9 +1254,16 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
    * vooruit), `taught_by_id` wordt niet aangeraakt (wie de les werkelijk gaf bepaalt het loon), en
    * er wordt nog steeds niets verwijderd: de patch gaat óver de bestaande boeking heen, ze
    * vervangt hem niet.
+   *
+   * En sinds plan 05.1-05 gebeurt dát tweetal — een andere trainer op komende lessen, en een
+   * speler die uit een roster valt — alleen als de beheerder het apart bevestigde: dat is wat
+   * `keuze` hier meebrengt. Zonder die bevestiging gaat de rest van de import gewoon door
+   * (nieuwe groepen, nieuwe spelers, nieuwe lessen) en blijft staan wat er stond. Verwijderen
+   * doet deze functie nog altijd nooit.
    */
   const importeerTrainingen = useCallback(async (
     plan: ImportPlanLessen,
+    keuze: ImportKeuze,
   ): Promise<ImportUitslagLessen> => {
     const store = storeRef.current;
     if (!store) {
@@ -1268,7 +1275,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
 
     // De provider rekent zelf niets uit: welke rijen dit worden, staat al vast in het plan dat
     // de beheerder goedkeurde. Alleen de ids komen van hier.
-    const wijziging = bouwImportWijziging(plan, newId);
+    const wijziging = bouwImportWijziging(plan, newId, keuze);
     const patches = new Map(wijziging.gewijzigdeGroepen.map((g) => [g.id, g.patch]));
     // Dezelfde vorm voor de boekingen: id naar patch, en die patch draagt alleen een `coach_id`.
     const boekingPatches = new Map(wijziging.gewijzigdeBoekingen.map((b) => [b.id, b.patch]));
@@ -1294,6 +1301,12 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
         }),
         ...wijziging.nieuweBoekingen,
       ],
+      // In dezelfde opslag als de import zelf: dat er ingelezen is, is pas waar als het
+      // inlezen ook echt gebeurd is. Het tijdstip wordt hier gezet en niet in
+      // lib/import-trainingen: dat bestand mag geen klok lezen — dat is wat het hele
+      // importpad testbaar houdt — en de provider is al de plek waar `newId` en de tijd
+      // vandaan komen.
+      settings: { ...store.settings, laatste_trainingen_import: new Date().toISOString() },
     });
 
     return {

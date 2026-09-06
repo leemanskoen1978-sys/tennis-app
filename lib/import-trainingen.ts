@@ -1838,6 +1838,19 @@ export interface GroepBijwerking {
  * verdween staat in `ImportPlanLessen.verdwenenUitBestand` — dat is een melding voor de
  * beheerder en geen opdracht. De import maakt aan en werkt bij; wissen doet ze nooit (D-13).
  */
+/**
+ * Wat de beheerder apart bevestigde: mag deze import ook wegnemen en omzetten?
+ *
+ * Er is met opzet GEEN standaardwaarde, dezelfde discipline als `nu` overal in dit importpad.
+ * Een standaard `true` zou betekenen dat een aanroeper die vergeet te kiezen stilzwijgend de
+ * agenda omzet; een standaard `false` zou betekenen dat hij stilzwijgend de bevestiging van de
+ * beheerder negeert. Allebei erger dan een compilefout.
+ */
+export interface ImportKeuze {
+  /** Waar: pas ook toe wat wegneemt of omzet. Onwaar: laat precies díé twee dingen staan. */
+  ingrijpend: boolean;
+}
+
 export interface ImportWijziging {
   nieuweUsers: User[];
   nieuweGroepen: LesGroep[];
@@ -2170,10 +2183,19 @@ export function importWaarschuwingen(
  * heeft `planImportLessen` al beslist en de beheerder al gezien — die laatste lijst mét het aantal
  * erbij, want dat is wat de droogloop toont. Zou deze functie daar iets aan bijstellen, dan schreef ze iets anders weg
  * dan de droogloop toonde — en dan is die droogloop een belofte die niet nagekomen wordt (D-10).
+ * De keuze van de beheerder verandert daar niets aan: ze LAAT WEG, ze berekent niets anders.
+ *
+ * Die keuze werkt op precies twee plekken hieronder, en de asymmetrie is het hele punt (D-16).
+ * Wegnemen en omzetten — een andere trainer op komende lessen, een speler die uit een roster
+ * valt — is wat een oud bestand terugdraait, en dat gebeurt alleen als de beheerder het apart
+ * bevestigde. Erbij komen is nooit ingrijpend en wordt daarom nooit geremd: een nieuwe groep,
+ * een nieuwe speler en een nieuwe les gaan altijd door. De gewone weg — een seizoen inladen —
+ * blijft één klik, want een rem die overal staat is een rem die niemand meer leest.
  */
 export function bouwImportWijziging(
   plan: ImportPlanLessen,
   maakId: (voorvoegsel: string) => string,
+  keuze: ImportKeuze,
 ): ImportWijziging {
   const uit: ImportWijziging = {
     nieuweUsers: [],
@@ -2228,9 +2250,14 @@ export function bouwImportWijziging(
     idVanGroep.set(inPlan.groep, bestaand.id);
     // Het rooster gaat altijd mee: dat is wat "bijgewerkt" hier betekent. Welke velden verder
     // veranderen heeft `groepWijzigingen` al bepaald — er wordt niets bij bedacht.
+    //
+    // Eerste van de twee plekken waar de keuze werkt (zie de kop van deze functie). Zonder de
+    // aparte bevestiging blijft wie eruit zou vallen gewoon staan; wie erbij komt zit al in
+    // `inPlan.roster` en gaat dus hoe dan ook door.
+    const rooster = keuze.ingrijpend ? inPlan.roster : [...inPlan.roster, ...inPlan.verwijderd];
     uit.gewijzigdeGroepen.push({
       id: bestaand.id,
-      patch: { ...inPlan.wijzigingen, roster: echteIds(inPlan.roster) },
+      patch: { ...inPlan.wijzigingen, roster: echteIds(rooster) },
     });
   }
 
@@ -2244,9 +2271,13 @@ export function bouwImportWijziging(
   //     van af — ze kon net zo goed eerst — maar ze hoort logisch bij de groep waarvan ze is, en
   //     daarom staat ze hier: ná de groepen en vóór de lessen. Welke lessen wisselen staat al in
   //     het plan dat de beheerder goedkeurde; er wordt hier niets herrekend.
-  for (const wissel of plan.trainerwissels) {
-    for (const id of wissel.boekingIds) {
-      uit.gewijzigdeBoekingen.push({ id, patch: { coach_id: wissel.trainerId } });
+  //     Tweede en laatste plek waar de keuze werkt: zonder de aparte bevestiging blijft de
+  //     trainer op de komende lessen staan zoals hij stond.
+  if (keuze.ingrijpend) {
+    for (const wissel of plan.trainerwissels) {
+      for (const id of wissel.boekingIds) {
+        uit.gewijzigdeBoekingen.push({ id, patch: { coach_id: wissel.trainerId } });
+      }
     }
   }
 
