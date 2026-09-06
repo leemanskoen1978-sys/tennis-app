@@ -11,7 +11,7 @@ Fases 1, 2, 2.1, 3, 4, 5 en 5.1 staan op `main`, de build is groen en de site is
 Drie SQL-bestanden die de gebruiker zelf draait, in deze volgorde:
 1. `MIGRATIE-tennisschool.sql` — de tabellen. **Nog niet gedraaid.**
 2. `BANEN-toevoegen.sql` — terrein 1 t/m 11. **Gedraaid.**
-3. `KALENDER-2026-2027.sql` — dertien vakantieperiodes. **Nog niet gedraaid.**
+3. `KALENDER-2026-2027.sql` — dertien vakantieperiodes. **Gedraaid op 6 september 2026**, geverifieerd: 13 periodes in `club_settings`.
 
 Sinds fase 5.1 nog bijgekomen, buiten de fases om: het banenscherm compact (keuzelijst +
 detail + overzichtslijst), een baan kunnen toevoegen, het banenscherm beheerder-only, de
