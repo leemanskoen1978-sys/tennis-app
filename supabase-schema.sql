@@ -1063,3 +1063,27 @@ create policy sick_leaves_select on sick_leaves for select
 drop policy if exists sick_leaves_write on sick_leaves;
 create policy sick_leaves_write on sick_leaves for all
   to authenticated using (is_admin()) with check (is_admin());
+
+-- ---------------------------------------------------------------------------
+-- Banen: schrijven is voortaan van de beheerder
+-- ---------------------------------------------------------------------------
+
+-- `courts_write` stond hierboven op `is_coach()`: elke trainer kon het uurtarief van een
+-- baan aanpassen. Dat tarief is wat een speler per uur betaalt en wat de omzetberekening
+-- optelt — het is geld, en geld is van de beheerder. Vandaar `is_admin()`, aan beide
+-- kanten: `using` bewaakt welke rijen je mag raken, `with check` de waarde die je
+-- achterlaat, en één van de twee vergeten laat de deur gewoon open staan.
+--
+-- Het blok hierboven blijft met opzet ongemoeid: elke wijziging van deze mijlpaal staat als
+-- een `drop policy` / `create policy`-paar onderaan dit bestand, zodat leesbaar blijft wat
+-- er veranderd is en in welke volgorde.
+--
+-- `courts_select` blijft precies zoals het is: iedereen moet banen kunnen LEZEN. Zet je die
+-- ook op `is_admin()`, dan ziet een speler niet meer op welke baan hij staat en breekt het
+-- boeken van een les.
+--
+-- Dit blok draait de gebruiker zelf — geen enkele taak voert het uit of legt een verbinding
+-- met Supabase.
+drop policy if exists courts_write on courts;
+create policy courts_write on courts for all
+  to authenticated using (is_admin()) with check (is_admin());

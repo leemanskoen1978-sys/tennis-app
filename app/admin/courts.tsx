@@ -14,8 +14,11 @@ import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Chip } from '../../components/ui/Chip';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { groupRateSteps } from '../../lib/payments';
+import { baanFout, type NieuweBaan } from '../../lib/banen';
+import { isAdmin } from '../../lib/rechten';
 import { formatEuro, parseEuro } from '../../lib/money';
 import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
@@ -161,11 +164,126 @@ function CourtCard({ court }: { court: Court }): React.JSX.Element {
 
 export default function Courts(): React.JSX.Element {
   const t = useT();
-  const { courts } = useSimpleData();
+  const { currentUser } = useSimpleData();
+
+  // De grens staat hier, en niet alleen op de tegel in Beheer: een verborgen tegel is geen
+  // toegangscontrole, want een trainer kan de link gewoon intikken. Waarom de beheerder en
+  // niet elke trainer: het uurtarief van een baan is wat een speler per uur betaalt, en dat
+  // is geld. De databank weigert het schrijven daarna ook — `courts_write` staat op
+  // `is_admin()` — maar dan zag de trainer het scherm al wel.
+  if (!isAdmin(currentUser)) {
+    return (
+      <Screen scroll={false}>
+        <Text style={styles.muted}>{t('Banen zijn alleen voor de beheerder.')}</Text>
+      </Screen>
+    );
+  }
+
+  return <BanenInhoud />;
+}
+
+/**
+ * Alles achter de grens.
+ *
+ * Apart, omdat de hooks van dit scherm niet vóór de vroege `return` hierboven mogen staan —
+ * en die `return` hoort nu juist vóór alle andere schermlogica te komen. Dezelfde oplossing
+ * als op het exportscherm.
+ */
+function BanenInhoud(): React.JSX.Element {
+  const t = useT();
+  const { courts, addCourt, error } = useSimpleData();
   const sorted = [...courts].sort((a, b) => a.number - b.number);
+
+  const [naam, setNaam] = useState('');
+  const [nummer, setNummer] = useState('');
+  const [uurtarief, setUurtarief] = useState('');
+  const [binnen, setBinnen] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
+
+  const voegToe = async (): Promise<void> => {
+    const concept: NieuweBaan = { naam, nummer, uurtarief, indoor: binnen };
+    // Eén plek waar de regels staan: lib/banen. Hier alleen de melding tonen. Een tweede
+    // kopie in dit scherm zou vroeg of laat iets doorlaten dat de provider daarna weigert.
+    const melding = baanFout(concept, courts);
+    if (melding) {
+      setFout(melding);
+      return;
+    }
+    setFout(null);
+    const gemaakt = await addCourt(concept);
+    // Alleen leegmaken als de baan er echt staat: mislukt het wegschrijven, dan blijft wat
+    // ingetypt was staan en hoeft niemand het opnieuw te typen.
+    if (!gemaakt) return;
+    setNaam('');
+    setNummer('');
+    setUurtarief('');
+    setBinnen(false);
+  };
 
   return (
     <Screen>
+      <Card>
+        <Text style={styles.name}>{t('Baan toevoegen')}</Text>
+
+        <Text style={styles.label}>{t('Naam')}</Text>
+        <TextInput
+          style={styles.input}
+          value={naam}
+          onChangeText={setNaam}
+          placeholder={t('bv. Gravel 3')}
+          placeholderTextColor={tennisColors.textMuted}
+        />
+
+        <View style={styles.formRij}>
+          <View style={styles.veld}>
+            <Text style={styles.label}>{t('Nummer')}</Text>
+            <TextInput
+              style={styles.input}
+              value={nummer}
+              onChangeText={setNummer}
+              placeholder={t('bv. 3')}
+              placeholderTextColor={tennisColors.textMuted}
+              keyboardType="number-pad"
+            />
+          </View>
+          <View style={styles.veld}>
+            <Text style={styles.label}>{t('Uurtarief privéles')}</Text>
+            <View style={styles.field}>
+              <Text style={styles.euro}>€</Text>
+              <TextInput
+                style={[styles.input, styles.groeit]}
+                value={uurtarief}
+                onChangeText={setUurtarief}
+                placeholder={t('bv. 30')}
+                placeholderTextColor={tennisColors.textMuted}
+                keyboardType="decimal-pad"
+              />
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.label}>{t('Ligging')}</Text>
+        <View style={styles.chipRij}>
+          <Chip label={t('Buiten')} selected={!binnen} onPress={() => setBinnen(false)} />
+          <Chip label={t('Binnen')} selected={binnen} onPress={() => setBinnen(true)} />
+        </View>
+
+        {fout ? <Text style={styles.fout}>{fout}</Text> : null}
+        {error ? <Text style={styles.fout}>{error}</Text> : null}
+
+        <Button
+          label={t('Toevoegen')}
+          onPress={() => { void voegToe(); }}
+          icon={<Plus size={16} color={tennisColors.onFill} />}
+          style={styles.knop}
+        />
+
+        <Text style={styles.help}>
+          {t('Een nieuwe baan begint zonder staffel: tot je er een instelt, geldt dit '
+            + 'uurtarief ook voor een groepsles.')}
+        </Text>
+      </Card>
+
       {sorted.length === 0 ? (
         <Text style={styles.muted}>{t('Nog geen banen.')}</Text>
       ) : (
@@ -223,4 +341,10 @@ const styles = StyleSheet.create({
   },
   addRow: { marginTop: spacing.sm, alignItems: 'flex-start' },
   help: { fontSize: 13, color: tennisColors.textMuted },
+  formRij: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  veld: { flexGrow: 1, flexBasis: 140 },
+  groeit: { flexGrow: 1 },
+  chipRij: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  knop: { marginTop: spacing.md, marginBottom: spacing.sm },
+  fout: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.sm },
 });

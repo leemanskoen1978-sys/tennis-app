@@ -68,7 +68,13 @@ export default function Admin() {
       key: 'club',
       label: t('Club'),
       tiles: [
-        { key: 'courts', title: t('Banen'), subtitle: t('Namen en uurtarieven'), icon: LayoutGrid, onPress: () => router.push('/admin/courts') },
+        // Alleen voor een beheerder: het uurtarief van een baan is wat een speler per uur
+        // betaalt, dus dit is geld, en geld is van de beheerder. Dat de tegel hier wegblijft
+        // is wellevendheid en geen bewaking — het scherm zelf en de policy `courts_write`
+        // doen dat werk.
+        ...(isAdmin(currentUser)
+          ? [{ key: 'courts', title: t('Banen'), subtitle: t('Namen en uurtarieven'), icon: LayoutGrid, onPress: () => router.push('/admin/courts') } as Tile]
+          : []),
         { key: 'goals', title: t('Doelen'), subtitle: t('Woordenlijst voor spelersdoelen'), icon: Target, onPress: () => router.push('/admin/goals') },
         // De clubkalender hoort bij de club en niet bij het systeem: het is hetzelfde
         // papier dat anders aan de muur van de kantine hangt.

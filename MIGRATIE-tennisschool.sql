@@ -182,3 +182,16 @@ create policy sick_leaves_select on sick_leaves for select
 drop policy if exists sick_leaves_write on sick_leaves;
 create policy sick_leaves_write on sick_leaves for all
   to authenticated using (is_admin()) with check (is_admin());
+
+
+-- ---------------------------------------------------------------------------
+-- Banen: schrijven is voortaan van de beheerder
+-- ---------------------------------------------------------------------------
+
+-- `courts_write` stond op `is_coach()`: elke trainer kon het uurtarief van een baan
+-- aanpassen. Dat tarief is wat een speler per uur betaalt — het is geld, en geld is van de
+-- beheerder. `courts_select` blijft ongemoeid: iedereen moet banen kunnen lezen, anders
+-- ziet een speler niet meer op welke baan hij staat en breekt het boeken van een les.
+drop policy if exists courts_write on courts;
+create policy courts_write on courts for all
+  to authenticated using (is_admin()) with check (is_admin());
