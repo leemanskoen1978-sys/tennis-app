@@ -1402,6 +1402,17 @@ describe('herimport', () => {
     ]);
   });
 
+  it('geeft een afgezegde komende les geen nieuwe trainer', () => {
+    // Een afgezegde les wordt nooit meer gegeven; er is dus ook geen trainer voor nodig. Zou ze
+    // hier meegaan, dan veranderde er iets aan een les die niet doorgaat.
+    const club = groepVan({ coach_id: SOFIE.id });
+    const afgezegd = boekingVan({ id: 'b-af', coach_id: SOFIE.id, status: 'cancelled' });
+    const uit = lessenUitGroep(
+      groepUit([WEEK_1], [club]), GEKOPPELD, LEDEN, [afgezegd], [], 60, NU,
+    );
+    expect(uit.trainerwissel).toBeNull();
+  });
+
   it('voert een speler af die niet meer in het bestand staat', () => {
     const club = groepVan({ roster: ['u-astor', 'u-clara'] });
     const verschil = groepRosterVerschil(club, ['u-astor']);
@@ -2256,6 +2267,137 @@ describe('heen en terug met de export van fase 4', () => {
     expect(plan.groepenBijgewerkt).toEqual([]);
     expect(plan.groepenOngewijzigd).toEqual([]);
     expect(plan.nieuweLessen).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Het scenario van de gebruiker (plan 05.1-03, taak 3)
+//
+// Dezelfde lijst, trainer X wordt trainer Y in de kolom `Coach`. Van bestand tot boeking, met de
+// twee grenzen erbij die deze fase belooft: het verleden verandert niet, en wie de les werkelijk
+// gaf blijft van hem.
+// ---------------------------------------------------------------------------
+
+/** De derde persoon: hij gaf één les in de plaats van de vaste trainer. */
+const JAN = userVan({ id: 'u-jan', name: 'Jan Vervoort', role: 'coach' });
+
+describe('dezelfde lijst, een andere coach', () => {
+  /**
+   * De agenda van de club: de drie komende lessen van de rondrit plus twee die al gegeven zijn.
+   * Alle vijf op Koen, en op twee ervan staat Jan als degene die de les werkelijk gaf.
+   */
+  function agendaVanDeClub(): Booking[] {
+    const komend = rondritBoekingen().map((b) => (
+      b.id === 'b-rondrit-1' ? { ...b, taught_by_id: JAN.id } : b
+    ));
+    const geweest = [19, 26].map((dag, i): Booking => ({
+      id: `b-geweest-${i}`,
+      player_id: RONDRIT_SPELERS[0].id,
+      participant_ids: RONDRIT_SPELERS.slice(1).map((s) => s.id),
+      coach_id: KOEN.id,
+      court_id: BAAN.id,
+      group_id: RONDRIT_GROEP.id,
+      start_time: new Date(2026, 7, dag, 17, 0).toISOString(),
+      end_time: new Date(2026, 7, dag, 18, 0).toISOString(),
+      status: 'completed',
+      payment_method: GROEPSLES_METHOD,
+      ...(dag === 26 ? { taught_by_id: JAN.id } : {}),
+    }));
+    return [...geweest, ...komend];
+  }
+
+  /** Precies hetzelfde blad, met alleen de kolom `Coach` vervangen door de tweede trainer. */
+  function metSofieAlsCoach(): string[][] {
+    const rijen = heenEnTerug(rondritBoekingen(), [RONDRIT_GROEP]);
+    const kolom = rijen[0].indexOf('Coach');
+    return rijen.map((rij, i) => (i === 0 ? rij : rij.map(
+      (cel, k) => (k === kolom ? 'Maes Sofie' : cel),
+    )));
+  }
+
+  const LEDENLIJST = [...RONDRIT_SPELERS, KOEN, SOFIE, JAN];
+  const planMetSofie = () => planImportLessen(
+    metSofieAlsCoach(), [RONDRIT_GROEP], LEDENLIJST, [BAAN], agendaVanDeClub(), {}, NU,
+  );
+
+  it('meldt één trainerwissel, met het aantal komende lessen erbij', () => {
+    // Het aantal staat in het plan en dus vóór het wegschrijven: de droogloop kan het tonen en de
+    // beheerder bevestigt het, in plaats van het achteraf te ontdekken (D-10).
+    const plan = planMetSofie();
+    expect(plan.trainerwissels).toHaveLength(1);
+    expect(plan.trainerwissels[0]).toEqual({
+      groep: 'Groep 8',
+      van: 'Koen Leemans',
+      naar: 'Sofie Maes',
+      trainerId: SOFIE.id,
+      aantal: 3,
+      boekingIds: ['b-rondrit-0', 'b-rondrit-1', 'b-rondrit-2'],
+    });
+  });
+
+  it('maakt er geen tweede groep van: een andere coach is een wijziging', () => {
+    // Dit is de bug van fase 5 die deze fase wegneemt. Toen zat de trainer in de sleutel van een
+    // lesgroep, dus was dezelfde groep met een andere coach ineens een nieuwe groep — de halve
+    // club verdubbeld. Nu is de trainer een eigenschap van de groep, en verandert er één veld.
+    const plan = planMetSofie();
+    expect(plan.groepenNieuw).toEqual([]);
+    expect(plan.groepenBijgewerkt).toHaveLength(1);
+    expect(plan.groepenBijgewerkt[0].groep.bestaand?.id).toBe(RONDRIT_GROEP.id);
+    expect(plan.groepenBijgewerkt[0].wijzigingen).toEqual({ coach_id: SOFIE.id });
+  });
+
+  it('schrijft precies die drie boekingen weg, en geen enkele uit het verleden', () => {
+    const uit = bouwImportWijziging(planMetSofie(), teller());
+    expect(uit.gewijzigdeBoekingen).toEqual([
+      { id: 'b-rondrit-0', patch: { coach_id: SOFIE.id } },
+      { id: 'b-rondrit-1', patch: { coach_id: SOFIE.id } },
+      { id: 'b-rondrit-2', patch: { coach_id: SOFIE.id } },
+    ]);
+    // De twee lessen van augustus staan er niet bij, en er komt ook geen les bij.
+    expect(uit.gewijzigdeBoekingen.map((b) => b.id).filter((id) => id.startsWith('b-geweest')))
+      .toEqual([]);
+    expect(uit.nieuweBoekingen).toEqual([]);
+  });
+
+  it('laat wie de les gaf van hem, en het verleden zoals het was', () => {
+    const uit = bouwImportWijziging(planMetSofie(), teller());
+    const patches = new Map(uit.gewijzigdeBoekingen.map((b) => [b.id, b.patch]));
+    // Toegepast zoals de provider het doet: spreiden en de patch erover, nooit vervangen.
+    const na = agendaVanDeClub().map((b) => {
+      const patch = patches.get(b.id);
+      return patch === undefined ? b : { ...b, ...patch };
+    });
+    const bij = (id: string) => na.find((b) => b.id === id)!;
+
+    // De les die Jan gaf is nu van Sofie als vaste trainer, maar Jan blijft degene die hem gaf —
+    // en dus degene die ervoor betaald wordt (lib/lesgever).
+    expect(bij('b-rondrit-1').coach_id).toBe(SOFIE.id);
+    expect(bij('b-rondrit-1').taught_by_id).toBe(JAN.id);
+    // De twee lessen van augustus zijn niet aangeraakt: dezelfde trainer, dezelfde tijd,
+    // dezelfde status, en ook daar staat Jan nog waar hij stond.
+    expect(bij('b-geweest-0')).toEqual(agendaVanDeClub()[0]);
+    expect(bij('b-geweest-1')).toEqual(agendaVanDeClub()[1]);
+    expect(bij('b-geweest-1').coach_id).toBe(KOEN.id);
+    expect(bij('b-geweest-1').taught_by_id).toBe(JAN.id);
+  });
+
+  it('wisselt niet nog een keer: dezelfde beurt erna levert nul wissels op', () => {
+    const uit = bouwImportWijziging(planMetSofie(), teller());
+    const patches = new Map(uit.gewijzigdeBoekingen.map((b) => [b.id, b.patch]));
+    const groepPatch = uit.gewijzigdeGroepen.find((g) => g.id === RONDRIT_GROEP.id)?.patch ?? {};
+    const na = agendaVanDeClub().map((b) => {
+      const patch = patches.get(b.id);
+      return patch === undefined ? b : { ...b, ...patch };
+    });
+
+    const tweedeKeer = planImportLessen(
+      metSofieAlsCoach(), [{ ...RONDRIT_GROEP, ...groepPatch }], LEDENLIJST, [BAAN], na, {}, NU,
+    );
+    expect(tweedeKeer.trainerwissels).toEqual([]);
+    expect(bouwImportWijziging(tweedeKeer, teller()).gewijzigdeBoekingen).toEqual([]);
+    // En er verdubbelt nog steeds niets.
+    expect(tweedeKeer.nieuweLessen).toEqual([]);
+    expect(tweedeKeer.groepenNieuw).toEqual([]);
   });
 });
 
