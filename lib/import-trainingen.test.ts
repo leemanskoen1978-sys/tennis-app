@@ -4,15 +4,17 @@ import { join } from 'path';
 import { GROEPSLES_METHOD } from './beurtenkaart';
 import { bladLessen, opzoektabellen } from './export-trainingen';
 import {
-  alsBezet, baanUitCellen, bestandAfgekeurdLessen, bouwImportWijziging, deelnemersVoorLes,
-  geweigerdeNieuweGroepen, groepenUitRegels, overgeslagenPerReden,
+  alsBezet, baanUitCellen, bestandAfgekeurdLessen, bestandsperiode, bouwImportWijziging,
+  deelnemersVoorLes, geweigerdeNieuweGroepen, groepenUitRegels, importWaarschuwingen,
+  ingrijpendeWijzigingen, overgeslagenPerReden,
   groepRosterVerschil, kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
   trainerwisselVoorGroep,
   NIEUWE_SPELER, planImportLessen, spelerSleutel,
   groepWijzigingen, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
-  type GeplandeGroep, type GeplandeLes, type GroepKoppeling, type ImportBoeking,
-  type ImportPlanLessen, type LesRegel, type OvergeslagenLes,
+  type Bestandsperiode, type GeplandeGroep, type GeplandeLes, type GroepKoppeling,
+  type ImportBoeking, type ImportPlanLessen, type IngrijpendeWijzigingen, type LesRegel,
+  type OvergeslagenLes,
 } from './import-trainingen';
 import { groepSleutel } from './lesgroepen';
 import type { Booking, Court, LesGroep, User } from './types';
@@ -2748,5 +2750,214 @@ describe('bouwImportWijziging', () => {
     const uit = bouwImportWijziging(planWissel(), teller());
     expect(uit.gewijzigdeBoekingen).toHaveLength(3);
     expect(uit.nieuweBoekingen).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// De rem op de vergissing (plan 05.1-05, taak 1)
+//
+// Drie afleidingen over een klaar plan, in de geest van `overgeslagenPerReden`: ze rekenen
+// niets opnieuw uit en het scherm toont ze alleen. `nu` komt overal als parameter binnen,
+// zodat geen enkele bewering hieronder van de klok van de machine afhangt.
+// ---------------------------------------------------------------------------
+
+describe('bestandsperiode', () => {
+  /** Een bestand dat over een heel seizoen loopt: 9 september 2026 tot en met 25 juni 2027. */
+  const SEIZOEN = [
+    regelVan({ datum: { jaar: 2026, maand: 9, dag: 9 } }),
+    regelVan({ datum: { jaar: 2027, maand: 1, dag: 13 } }),
+    regelVan({ datum: { jaar: 2027, maand: 6, dag: 25 } }),
+  ];
+
+  it('geeft de vroegste en de laatste dag van het bestand als dagsleutel', () => {
+    const periode = bestandsperiode(SEIZOEN, new Date(2027, 0, 1));
+    expect(periode?.van).toBe('2026-09-09');
+    expect(periode?.tot).toBe('2027-06-25');
+  });
+
+  it('geeft halverwege het seizoen ongeveer veertig procent verleden', () => {
+    // 9 september 2026 tot 1 januari 2027 is 114 dagen van de 290; dat is 0,39.
+    expect(bestandsperiode(SEIZOEN, new Date(2027, 0, 1))?.aandeelGeweest).toBeCloseTo(0.39, 2);
+  });
+
+  it('vindt de vroegste en de laatste dag ook als het bestand niet op volgorde staat', () => {
+    const doorelkaar = [SEIZOEN[2], SEIZOEN[0], SEIZOEN[1]];
+    expect(bestandsperiode(doorelkaar, new Date(2027, 0, 1)))
+      .toEqual(bestandsperiode(SEIZOEN, new Date(2027, 0, 1)));
+  });
+
+  it('geeft een gelezen op een dag ná de laatste les alles-is-geweest', () => {
+    expect(bestandsperiode(SEIZOEN, new Date(2027, 5, 26))?.aandeelGeweest).toBe(1);
+  });
+
+  it('geeft een gelezen op een dag vóór de eerste les niets-is-geweest', () => {
+    expect(bestandsperiode(SEIZOEN, new Date(2026, 7, 31))?.aandeelGeweest).toBe(0);
+  });
+
+  it('deelt niet door nul als het bestand over één dag gaat: vóór die dag nul', () => {
+    const eenDag = [regelVan({ datum: { jaar: 2026, maand: 9, dag: 9 } })];
+    const periode = bestandsperiode(eenDag, new Date(2026, 8, 8));
+    expect(periode).toEqual({ van: '2026-09-09', tot: '2026-09-09', aandeelGeweest: 0 });
+  });
+
+  it('deelt niet door nul als het bestand over één dag gaat: erna één', () => {
+    const eenDag = [regelVan({ datum: { jaar: 2026, maand: 9, dag: 9 } })];
+    expect(bestandsperiode(eenDag, new Date(2026, 8, 10))?.aandeelGeweest).toBe(1);
+  });
+
+  it('geeft null zonder regels: er is dan geen periode om iets over te zeggen', () => {
+    expect(bestandsperiode([], new Date(2027, 0, 1))).toBeNull();
+  });
+});
+
+// De groep zoals de club haar kent en de leerlingen erbij; de rijen hieronder noemen Koen.
+const ASTOR = userVan({ id: 'u-astor', name: 'Peferoen Astor' });
+const CLARA = userVan({ id: 'u-clara', name: 'Martens Clara' });
+const TOM = userVan({ id: 'u-tom', name: 'Peeters Tom' });
+
+const RIJEN_TWEE_WEKEN = [
+  KOP_VOLLEDIG,
+  volleRij('09/09/2026', '17:00', 'Groep 8', 'Peferoen Astor'),
+  volleRij('09/09/2026', '17:00', 'Groep 8', 'Martens Clara'),
+  volleRij('16/09/2026', '17:00', 'Groep 8', 'Peferoen Astor'),
+  volleRij('16/09/2026', '17:00', 'Groep 8', 'Martens Clara'),
+];
+
+describe('ingrijpendeWijzigingen', () => {
+  /** Drie komende lessen van de woensdaggroep, alle drie op Sofie; het bestand zegt Koen. */
+  function driekeerSofie(): ImportBoeking[] {
+    return [9, 16, 23].map((dag, i) => boekingVan({
+      id: `b-sofie-${i}`,
+      group_id: 'g-8',
+      coach_id: SOFIE.id,
+      start_time: new Date(2026, 8, dag, 17, 0).toISOString(),
+      end_time: new Date(2026, 8, dag, 18, 0).toISOString(),
+    }));
+  }
+
+  it('draagt de trainerwissel ongewijzigd door, met het aantal lessen erbij', () => {
+    const club = groepVan({
+      id: 'g-8', coach_id: SOFIE.id, court_id: BAAN.id, roster: ['u-astor', 'u-clara'],
+    });
+    const plan = planImportLessen(
+      RIJEN_TWEE_WEKEN, [club], [KOEN, SOFIE, ASTOR, CLARA], [BAAN], driekeerSofie(), {}, NU,
+    );
+    const ingrijpend = ingrijpendeWijzigingen(plan, [KOEN, SOFIE, ASTOR, CLARA]);
+    expect(ingrijpend.trainerwissels).toEqual(plan.trainerwissels);
+    expect(ingrijpend.aantalLessen).toBe(3);
+  });
+
+  it('noemt de groep en de naam van de speler die uit het roster zou vallen', () => {
+    const club = groepVan({
+      id: 'g-8', coach_id: KOEN.id, court_id: BAAN.id, roster: ['u-astor', 'u-clara', 'u-tom'],
+    });
+    const plan = planImportLessen(
+      RIJEN_TWEE_WEKEN, [club], [KOEN, ASTOR, CLARA, TOM], [BAAN], [], {}, NU,
+    );
+    const ingrijpend = ingrijpendeWijzigingen(plan, [KOEN, ASTOR, CLARA, TOM]);
+    expect(ingrijpend.spelersEruit).toEqual([
+      { groep: plan.groepenBijgewerkt[0].naam, namen: ['Peeters Tom'], ids: ['u-tom'] },
+    ]);
+  });
+
+  it('levert niets op als er alleen iemand bíj komt: erbij komen neemt niets weg', () => {
+    const club = groepVan({
+      id: 'g-8', coach_id: KOEN.id, court_id: BAAN.id, roster: ['u-astor'],
+    });
+    const plan = planImportLessen(RIJEN_TWEE_WEKEN, [club], [KOEN, ASTOR], [BAAN], [], {}, NU);
+    expect(plan.groepenBijgewerkt).toHaveLength(1);
+    const ingrijpend = ingrijpendeWijzigingen(plan, [KOEN, ASTOR]);
+    expect(ingrijpend.spelersEruit).toEqual([]);
+    expect(ingrijpend.aantalLessen).toBe(0);
+  });
+
+  it('levert bij een nieuwe groep nooit iets op: er is nog niets om terug te draaien', () => {
+    const plan = planImportLessen(RIJEN_TWEE_WEKEN, [], [KOEN], [BAAN], [], {}, NU);
+    expect(plan.groepenNieuw).toHaveLength(1);
+    const ingrijpend = ingrijpendeWijzigingen(plan, [KOEN]);
+    expect(ingrijpend).toEqual({ trainerwissels: [], spelersEruit: [], aantalLessen: 0 });
+  });
+
+  it('is leeg herkenbaar aan nul lessen en nul vertrekkers', () => {
+    const plan = planImportLessen(RIJEN_TWEE_WEKEN, [], [KOEN], [BAAN], [], {}, NU);
+    const ingrijpend = ingrijpendeWijzigingen(plan, [KOEN]);
+    expect(ingrijpend.aantalLessen === 0 && ingrijpend.spelersEruit.length === 0).toBe(true);
+  });
+
+  it('telt een les die uit het bestand verdween niet mee: dat is een melding, geen opdracht', () => {
+    const club = groepVan({
+      id: 'g-8', coach_id: KOEN.id, court_id: BAAN.id, roster: ['u-astor', 'u-clara'],
+    });
+    const weg = boekingVan({
+      id: 'b-weg',
+      group_id: 'g-8',
+      start_time: new Date(2026, 8, 23, 17, 0).toISOString(),
+      end_time: new Date(2026, 8, 23, 18, 0).toISOString(),
+    });
+    const plan = planImportLessen(
+      RIJEN_TWEE_WEKEN, [club], [KOEN, ASTOR, CLARA], [BAAN], [weg], {}, NU,
+    );
+    expect(plan.verdwenenUitBestand.map((v) => v.id)).toEqual(['b-weg']);
+    expect(ingrijpendeWijzigingen(plan, [KOEN, ASTOR, CLARA]))
+      .toEqual({ trainerwissels: [], spelersEruit: [], aantalLessen: 0 });
+  });
+});
+
+describe('importWaarschuwingen', () => {
+  const LEEG: IngrijpendeWijzigingen = { trainerwissels: [], spelersEruit: [], aantalLessen: 0 };
+  const IETS: IngrijpendeWijzigingen = {
+    trainerwissels: [],
+    spelersEruit: [{ groep: 'Woensdag 17:00 — Baan 1', namen: ['Peeters Tom'], ids: ['u-tom'] }],
+    aantalLessen: 0,
+  };
+  const VERLEDEN: Bestandsperiode = {
+    van: '2026-09-09', tot: '2027-06-25', aandeelGeweest: 0.6,
+  };
+  const TOEKOMST: Bestandsperiode = {
+    van: '2026-09-09', tot: '2027-06-25', aandeelGeweest: 0,
+  };
+  const VORIGE_KEER = '2026-11-04T09:30:00.000Z';
+
+  it('waarschuwt met de periode en een afgerond percentage als het grootste deel geweest is', () => {
+    const [waarschuwing] = importWaarschuwingen(VERLEDEN, LEEG, {});
+    expect(waarschuwing.soort).toBe('verleden');
+    expect(waarschuwing.vars).toEqual({ van: '2026-09-09', tot: '2027-06-25', percentage: 60 });
+    // De zin blijft een zin met plaatshouders, precies zoals `ImportFoutLessen.reden`.
+    expect(waarschuwing.reden).toContain('{percentage}');
+  });
+
+  it('waarschuwt niet over het verleden als het bestand nog moet beginnen', () => {
+    expect(importWaarschuwingen(TOEKOMST, LEEG, {})).toEqual([]);
+  });
+
+  it('waarschuwt niet over het verleden zonder periode', () => {
+    expect(importWaarschuwingen(null, LEEG, {})).toEqual([]);
+  });
+
+  it('meldt de vorige import als dit bestand iets zou terugdraaien, met de datum erbij', () => {
+    const soorten = importWaarschuwingen(TOEKOMST, IETS, {
+      laatste_trainingen_import: VORIGE_KEER,
+    });
+    expect(soorten.map((w) => w.soort)).toEqual(['sindsdien-gewijzigd']);
+    expect(soorten[0].vars).toEqual({ datum: dagSleutel(new Date(VORIGE_KEER)) });
+  });
+
+  it('meldt niets over een vorige import die er nooit was', () => {
+    expect(importWaarschuwingen(TOEKOMST, IETS, {})).toEqual([]);
+  });
+
+  it('meldt niets als er wél eerder ingelezen is maar dit bestand niets terugdraait', () => {
+    // Bewijs en geen vermoeden: er is geen wijzigingslogboek, dus "er is sindsdien iets in de
+    // app veranderd" valt niet uit een datum af te leiden. De melding hangt aan wat dit
+    // bestand werkelijk zou terugdraaien.
+    expect(importWaarschuwingen(TOEKOMST, LEEG, { laatste_trainingen_import: VORIGE_KEER }))
+      .toEqual([]);
+  });
+
+  it('geeft allebei de waarschuwingen als allebei de redenen gelden', () => {
+    const soorten = importWaarschuwingen(VERLEDEN, IETS, {
+      laatste_trainingen_import: VORIGE_KEER,
+    }).map((w) => w.soort);
+    expect(soorten).toEqual(['verleden', 'sindsdien-gewijzigd']);
   });
 });
