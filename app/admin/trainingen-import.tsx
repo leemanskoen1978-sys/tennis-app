@@ -333,7 +333,10 @@ function PlanInBeeld({
   const nietsNieuws = plan.groepenNieuw.length === 0
     && plan.groepenBijgewerkt.length === 0
     && plan.spelersNieuw.length === 0
-    && plan.nieuweLessen.length === 0;
+    && plan.nieuweLessen.length === 0
+    // Een bestand dat alleen een andere Coach noemt maakt niets nieuws aan en werkt toch iets
+    // bij: zonder deze regel staat de knop Importeren uit en is de trainerwissel onbereikbaar.
+    && plan.trainerwissels.length === 0;
   // Deze tien zinnen horen náást de tien nieuwe groepen te staan en niet erna. Zonder ze leest
   // een beheerder "tien nieuwe lesgroepen", drukt hij op Importeren en krijgt hij er nul.
   const geweigerd = geweigerdeNieuweGroepen(plan);
@@ -345,11 +348,12 @@ function PlanInBeeld({
         {bestandsnaam ? <Text style={styles.mededeling}>{bestandsnaam}</Text> : null}
         {uitkomst ? (
           <Text style={styles.telling}>
-            {t('{groepen} lesgroepen aangemaakt, {bijgewerkt} bijgewerkt, {spelers} spelers erbij, {lessen} lessen ingepland.', {
+            {t('{groepen} lesgroepen aangemaakt, {bijgewerkt} bijgewerkt, {spelers} spelers erbij, {lessen} lessen ingepland, {gewisseld} lessen kregen een andere trainer.', {
               groepen: uitkomst.nieuweGroepen,
               bijgewerkt: uitkomst.bijgewerkteGroepen,
               spelers: uitkomst.spelers,
               lessen: uitkomst.lessen,
+              gewisseld: uitkomst.bijgewerkteLessen,
             })}
           </Text>
         ) : (
@@ -423,6 +427,31 @@ function PlanInBeeld({
               : t('{n} nieuwe spelers', { n: plan.spelersNieuw.length })}
           </Text>
           <Text style={styles.regel}>{plan.spelersNieuw.map((s) => s.naam).join(', ')}</Text>
+        </Card>
+      ) : null}
+
+      {plan.trainerwissels.length > 0 ? (
+        <Card>
+          {/* De belofte van deze fase, en de reden dat ze zichtbaar is en niet slim (D-10): het
+              bestand noemt een andere Coach, en dat wordt een wijziging op bestaande lessen in
+              plaats van een tweede groep. Het aantal komt uit `plan.trainerwissels` — dezelfde
+              lijst die straks weggeschreven wordt — zodat wat hier staat hetzelfde is als wat er
+              gebeurt. Het scherm telt hier zelf niets. */}
+          <Text style={styles.waarschuwKop}>{t('Deze lesgroepen krijgen een andere trainer')}</Text>
+          {plan.trainerwissels.map((w) => (
+            <Text key={`${w.groep}-${w.trainerId}`} style={styles.waarschuwing}>
+              {w.van
+                ? t('{groep}: {aantal} komende lessen gaan van {van} naar {naar}.', {
+                  groep: w.groep, aantal: w.aantal, van: w.van, naar: w.naar,
+                })
+                : t('{groep}: {aantal} komende lessen krijgen {naar}.', {
+                  groep: w.groep, aantal: w.aantal, naar: w.naar,
+                })}
+            </Text>
+          ))}
+          <Text style={styles.mededeling}>
+            {t('Lessen die al geweest zijn veranderen niet, en wie een les werkelijk gaf blijft staan zoals het staat.')}
+          </Text>
         </Card>
       ) : null}
 
@@ -521,7 +550,7 @@ function PlanInBeeld({
         <Card>
           <Text style={styles.kop}>{t('Zeker weten?')}</Text>
           <Text style={styles.uitleg}>
-            {t('Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app.')}
+            {t('Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app, en krijgen de genoemde komende lessen hun nieuwe trainer.')}
           </Text>
           <Button label={t('Ja, nu importeren')} onPress={onImporteren} />
           <Button
