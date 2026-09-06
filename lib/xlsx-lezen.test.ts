@@ -16,6 +16,26 @@ import { buildXlsx, crc32, datumNaarSerie, kolomLetter, zip } from './xlsx';
 // gedeelde teksten. Daarom leest elke test hieronder de echte bytes uit de projectmap.
 // ---------------------------------------------------------------------------
 
+
+// ---------------------------------------------------------------------------
+// Het nagemaakte bestand, dat wél in de repository mag.
+//
+// `koen.xlsx` kan hier niet staan (echte kindernamen, publieke repo), en zonder bestand
+// zou de moeilijkste code van dit project -- de zelfgeschreven inflate en de zip-lezer --
+// op CI helemaal geen dekking meer hebben. Daarom staat er een klein, verzonnen bestand in
+// lib/__fixtures__/. Het is uit `koen.xlsx` afgeleid en houdt diens eigenaardigheden vast,
+// maar er komt geen echt mens in voor. Zie lib/__fixtures__/LEESMIJ.md.
+//
+// Deze tests draaien altijd, ook op CI.
+// ---------------------------------------------------------------------------
+
+const VOORBEELD_PAD = join(__dirname, '__fixtures__', 'lessen-voorbeeld.xlsx');
+
+function voorbeeldBytes(): Uint8Array {
+  const rauw = readFileSync(VOORBEELD_PAD);
+  return new Uint8Array(rauw.buffer, rauw.byteOffset, rauw.byteLength);
+}
+
 // ---------------------------------------------------------------------------
 // Het echte bestand is er niet altijd.
 //
@@ -373,5 +393,85 @@ describe('koen.xlsx — het echte bestand van de club', () => {
 
   alsKoenErIs('geeft twee keer achter elkaar hetzelfde resultaat', () => {
     expect(leesWerkmap(koenBytes())).toEqual(leesWerkmap(koenBytes()));
+  });
+});
+
+describe('lessen-voorbeeld.xlsx — het nagemaakte bestand', () => {
+  it('geeft dezelfde tien ingangen als een echte Excel-werkmap, in de volgorde van de map', () => {
+    expect(namen(voorbeeldBytes())).toEqual([
+      '[Content_Types].xml',
+      '_rels/.rels',
+      'xl/workbook.xml',
+      'xl/_rels/workbook.xml.rels',
+      'xl/worksheets/sheet1.xml',
+      'xl/theme/theme1.xml',
+      'xl/styles.xml',
+      'xl/sharedStrings.xml',
+      'docProps/core.xml',
+      'docProps/app.xml',
+    ]);
+  });
+
+  it('is ingepakt met methode 8 en niet opgeslagen — anders draait lib/inflate hier nooit', () => {
+    // De opslagmethode staat in elke lokale kop op +8. `buildXlsx` schrijft hier 0 (opgeslagen);
+    // Excel schrijft 8 (deflate). Werd dit bestand ooit "handig" heringepakt met methode 0, dan
+    // slaagt de rest van dit blok nog steeds en bewijst het niets meer over de uitpakker.
+    expect(voorbeeldBytes()[8]).toBe(8);
+  });
+
+  it('pakt [Content_Types].xml uit ondanks de 520 bytes extra veld in de lokale kop', () => {
+    // De valstrik uit koen.xlsx, met opzet meegenomen: de centrale map noemt hier extra-lengte
+    // 0, de lokale kop 520. Wie de centrale waarde gebruikt begint 520 bytes te vroeg.
+    const ingang = ingangVan(voorbeeldBytes(), '[Content_Types].xml');
+    expect(ingang.inhoud.length).toBe(1168);
+    expect(crc32(ingang.inhoud)).toBe(0x689dee62);
+  });
+
+  it('leest de gedeelde teksten, met index 0 als eerste tekst en niet als lege cel', () => {
+    const bladen = leesWerkmap(voorbeeldBytes());
+    expect(bladen).toHaveLength(1);
+    expect(bladen[0].naam).toBe('Sheet1');
+    // Cel A1 staat in het blad als `<v>0</v>`: de eerste gedeelde tekst, niet leeg.
+    expect(bladen[0].rijen[0][0]).toBe('Datum');
+  });
+
+  it('heeft dezelfde koprij als het echte bestand van de club', () => {
+    const bladen = leesWerkmap(voorbeeldBytes());
+    expect(bladen[0].rijen[0]).toEqual([
+      'Datum', 'Weekdag', 'Weeknr', 'Uur', 'Type les', 'Groep', 'Coach', 'Leerling', 'Locatie',
+      'Indoor/Outdoor',
+    ]);
+  });
+
+  it('heeft negen rijen: één koprij en acht gegevensrijen over twee groepen', () => {
+    const rijen = leesWerkmap(voorbeeldBytes())[0].rijen;
+    expect(rijen).toHaveLength(9);
+    expect(new Set(rijen.slice(1).map((r) => r[5]))).toEqual(new Set(['Groep 1', 'Groep 2']));
+    expect(new Set(rijen.slice(1).map((r) => r[7])).size).toBe(5);
+    expect([...new Set(rijen.slice(1).map((r) => r[6]))]).toEqual(['Vermeulen Sanne']);
+  });
+
+  it('leest de datum als serie en het uur als breuk, met de afrondingsval erin', () => {
+    const rijen = leesWerkmap(voorbeeldBytes())[0].rijen;
+    expect(serieNaarDatum(Number(rijen[1][0]))).toEqual({ jaar: 2026, maand: 9, dag: 9 });
+    // 0.58333333333333337 hoort 14:00 te worden en niet 13:59 of 13:00.
+    expect(rijen[1][3]).toBe('0.58333333333333337');
+    expect(fractieNaarTijd(Number(rijen[1][3]))).toEqual({ uur: 14, minuut: 0 });
+    expect(fractieNaarTijd(Number(rijen[8][3]))).toEqual({ uur: 17, minuut: 0 });
+  });
+
+  it('noemt geen enkele echte naam — dit bestand staat in een publieke repo', () => {
+    // Deze test is de rem op "even een echte rij erbij plakken". Komt hier ooit een naam uit
+    // koen.xlsx in terecht, dan valt de suite om in plaats van dat het stil gepubliceerd wordt.
+    const tekst = new TextDecoder().decode(voorbeeldBytes());
+    for (const naam of ['Leemans', 'GANTOISE', 'Clippele', 'Fasseur', 'Demoulin', 'Lardinoit']) {
+      expect(tekst).not.toContain(naam);
+    }
+    const bladen = leesWerkmap(voorbeeldBytes());
+    expect(JSON.stringify(bladen)).not.toContain('Leemans');
+  });
+
+  it('geeft twee keer achter elkaar hetzelfde resultaat', () => {
+    expect(leesWerkmap(voorbeeldBytes())).toEqual(leesWerkmap(voorbeeldBytes()));
   });
 });

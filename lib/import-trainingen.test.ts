@@ -210,6 +210,23 @@ describe('bestandAfgekeurdLessen', () => {
  * die regel doorbreken voor drie regels code. De prijs is deze kleine herhaling; de winst is dat
  * beide tests op zichzelf te lezen zijn.
  */
+
+// ---------------------------------------------------------------------------
+// Het nagemaakte bestand uit lib/__fixtures__, dat wél in de repository staat.
+//
+// `koen.xlsx` mag hier niet komen (echte kindernamen, publieke repo). Zonder bestand zou de
+// hele weg van bytes tot lesplan op CI ongedekt blijven. Dit kleine, verzonnen bestand is uit
+// koen.xlsx afgeleid, houdt diens Excel-eigenaardigheden vast en draait altijd. Het bewijst de
+// machinerie; koen.xlsx bewijst het hele seizoen, en alleen waar het bestand staat.
+// ---------------------------------------------------------------------------
+
+const VOORBEELD_PAD = join(__dirname, '__fixtures__', 'lessen-voorbeeld.xlsx');
+
+function voorbeeldBytes(): Uint8Array {
+  const rauw = readFileSync(VOORBEELD_PAD);
+  return new Uint8Array(rauw.buffer, rauw.byteOffset, rauw.byteLength);
+}
+
 // ---------------------------------------------------------------------------
 // Het echte bestand is er niet altijd.
 //
@@ -3082,5 +3099,66 @@ describe('importWaarschuwingen', () => {
       laatste_trainingen_import: VORIGE_KEER,
     }).map((w) => w.soort);
     expect(soorten).toEqual(['verleden', 'sindsdien-gewijzigd']);
+  });
+});
+// ---------------------------------------------------------------------------
+// lessen-voorbeeld.xlsx — dezelfde weg als koen.xlsx, maar met verzonnen mensen
+// ---------------------------------------------------------------------------
+
+describe('lessen-voorbeeld.xlsx — van bytes tot lesplan', () => {
+  const blad = kiesLessenBlad(leesWerkmap(voorbeeldBytes()))!;
+  const LEGE_CLUB = planImportLessen(blad.rijen, [], [], [], [], {}, NU);
+
+  it('vindt het lessenblad en leest de acht regels zonder fout of ruis', () => {
+    expect(blad.naam).toBe('Sheet1');
+    expect(LEGE_CLUB.regels).toHaveLength(8);
+    expect(LEGE_CLUB.fouten).toEqual([]);
+    // `Weekdag`, `Weeknr`, `Locatie` en `Indoor/Outdoor` horen genegeerd te worden, niet gemeld.
+    expect(LEGE_CLUB.nietHerkend).toEqual([]);
+    expect(LEGE_CLUB.dubbel).toEqual([]);
+  });
+
+  it('heeft dezelfde kolommen als het echte bestand, dus dit bewijst ook de kopregellezer', () => {
+    expect(blad.rijen[0]).toEqual([
+      'Datum', 'Weekdag', 'Weeknr', 'Uur', 'Type les', 'Groep', 'Coach', 'Leerling', 'Locatie',
+      'Indoor/Outdoor',
+    ]);
+    expect(blad.rijen[0]).not.toContain('Baan');
+    expect(blad.rijen[0]).not.toContain('Groep-ID');
+  });
+
+  it('maakt twee groepen, elk genoemd naar haar eigen moment', () => {
+    expect(LEGE_CLUB.groepenNieuw).toHaveLength(2);
+    expect(LEGE_CLUB.groepenNieuw.map((g) => g.naam)).toEqual(['Woensdag 14:00', 'Vrijdag 17:00']);
+    // De uurbreuk 0.58333333333333337 hoort 14:00 te worden en niet 13:00.
+    expect(LEGE_CLUB.groepenNieuw.map((g) => g.weekdag)).toEqual([3, 5]);
+    expect(LEGE_CLUB.groepenNieuw.map((g) => g.beginuur)).toEqual([14, 17]);
+    expect(LEGE_CLUB.groepenNieuw.map((g) => g.roster.length)).toEqual([3, 2]);
+  });
+
+  it('kent vijf verschillende leerlingen, allemaal nieuw voor de club', () => {
+    expect(LEGE_CLUB.spelersNieuw).toHaveLength(5);
+    expect(new Set(LEGE_CLUB.spelersNieuw.map((s) => s.naam)).size).toBe(5);
+  });
+
+  it('plant nul lessen in: er is geen trainersaccount en er is geen baan', () => {
+    // Net als bij koen.xlsx staat in `Indoor/Outdoor` het woord `Indoor` en geen terreinnummer,
+    // dus levert die kolom geen baan op. Geen baan, geen boeking (D-07).
+    expect(LEGE_CLUB.nieuweLessen).toEqual([]);
+  });
+
+  it('meldt uitsluitend de trainer en de baan, één keer per groep', () => {
+    expect(LEGE_CLUB.waarschuwingen).toHaveLength(4);
+    expect(LEGE_CLUB.waarschuwingen.filter((w) => w.reden.includes('trainer'))).toHaveLength(2);
+    expect(LEGE_CLUB.waarschuwingen.filter((w) => w.reden.includes('baan'))).toHaveLength(2);
+  });
+
+  it('verdubbelt niets als je hetzelfde bestand een tweede keer inleest', () => {
+    const na = toestandUitPlan(LEGE_CLUB);
+    const tweede = planImportLessen(blad.rijen, na.groepen, na.users, [], [], {}, NU);
+    expect(tweede.groepenNieuw).toEqual([]);
+    expect(tweede.spelersNieuw).toEqual([]);
+    expect(tweede.nieuweLessen).toEqual([]);
+    expect(tweede.groepenOngewijzigd).toHaveLength(2);
   });
 });
