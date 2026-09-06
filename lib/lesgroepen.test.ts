@@ -188,18 +188,42 @@ describe('planRosterChange', () => {
 });
 
 describe('groepSleutel', () => {
-  it('is de naam in kleine letters, de weekdag en het beginuur', () => {
-    expect(groepSleutel({ name: 'Groep 8', weekday: 2, start_hour: 18 })).toBe('groep 8|2|18');
+  it('is de weekdag, het beginuur en de baan', () => {
+    expect(groepSleutel({ weekday: 2, start_hour: 18, court_id: 'c-1' })).toBe('2|18|c-1');
   });
 
-  it('negeert spaties aan de randen van de naam', () => {
-    expect(groepSleutel({ name: '  Groep 8 ', weekday: 2, start_hour: 18 }))
-      .toBe(groepSleutel({ name: 'groep 8', weekday: 2, start_hour: 18 }));
+  it('geeft dezelfde sleutel of de baan nu ontbreekt of undefined is', () => {
+    expect(groepSleutel({ weekday: 3, start_hour: 17 }))
+      .toBe(groepSleutel({ weekday: 3, start_hour: 17, court_id: undefined }));
   });
 
-  it('scheidt twee groepen met dezelfde naam op een ander uur', () => {
-    expect(groepSleutel({ name: 'Groep 8', weekday: 2, start_hour: 18 }))
-      .not.toBe(groepSleutel({ name: 'Groep 8', weekday: 2, start_hour: 19 }));
+  it('telt de naam niet mee: twee namen op hetzelfde moment zijn dezelfde groep', () => {
+    // Dit is de kern van de wijziging. De kolom `Groep` uit het Tennis Vlaanderen-blad van de
+    // club is een administratief label dat op drie momenten met andere mensen terugkomt; hem
+    // meetellen maakte van één groep drie en van een trainerswissel een nieuwe groep.
+    const acht = { name: 'Groep 8', weekday: 2, start_hour: 18 };
+    const twaalf = { name: 'Groep 12', weekday: 2, start_hour: 18 };
+    expect(groepSleutel(acht)).toBe(groepSleutel(twaalf));
+  });
+
+  it('scheidt twee groepen op een andere dag of een ander uur', () => {
+    expect(groepSleutel({ weekday: 2, start_hour: 18 }))
+      .not.toBe(groepSleutel({ weekday: 2, start_hour: 19 }));
+    expect(groepSleutel({ weekday: 2, start_hour: 18 }))
+      .not.toBe(groepSleutel({ weekday: 4, start_hour: 18 }));
+  });
+
+  it('scheidt hetzelfde moment op twee banen, en een baan van geen baan', () => {
+    expect(groepSleutel({ weekday: 2, start_hour: 18, court_id: 'c-1' }))
+      .not.toBe(groepSleutel({ weekday: 2, start_hour: 18, court_id: 'c-2' }));
+    expect(groepSleutel({ weekday: 2, start_hour: 18, court_id: 'c-1' }))
+      .not.toBe(groepSleutel({ weekday: 2, start_hour: 18 }));
+  });
+
+  it('telt de beginminuut niet mee', () => {
+    const vol = { weekday: 2, start_hour: 18, start_minute: 0 };
+    const half = { weekday: 2, start_hour: 18, start_minute: 30 };
+    expect(groepSleutel(vol)).toBe(groepSleutel(half));
   });
 });
 
