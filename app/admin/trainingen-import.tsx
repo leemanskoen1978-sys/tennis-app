@@ -27,10 +27,11 @@ import { leesWerkmap } from '../../lib/xlsx-lezen';
 import {
   bestandAfgekeurdLessen, bestandsperiode, geweigerdeNieuweGroepen, importWaarschuwingen,
   ingrijpendeWijzigingen, kiesLessenBlad, overgeslagenPerReden,
-  planImportLessen, voorbeeldTrainingenXlsx,
+  planImportLessen, seizoenUitSettings, voorbeeldTrainingenXlsx,
   type GroepInPlan, type ImportPlanLessen, type ImportUitslagLessen,
   type ImportWaarschuwing, type IngrijpendeWijzigingen,
 } from '../../lib/import-trainingen';
+import { isWeekschema } from '../../lib/import-weekschema';
 import { botsingTekst } from '../../lib/botsingen';
 import { formatDayTime } from '../../lib/datetime';
 import { tennisColors } from '../../constants/tennis-colors';
@@ -123,6 +124,12 @@ function ImportInhoud(): React.JSX.Element {
   // De aparte bevestiging van wat deze import zou wegnemen of omzetten. Standaard uit, en dat
   // is de kern van IMP-16: wie doorklikt zonder te lezen doet niets onomkeerbaars.
   const [ingrijpendAan, setIngrijpendAan] = useState<boolean>(false);
+  /**
+   * Is het gekozen bestand het weekschema van de club? Alleen dan hoort het seizoen op het scherm:
+   * bij het sjabloon van de app staan de datums in het bestand zelf en zegt `bestandsperiode` al
+   * waar het over gaat.
+   */
+  const [weekschema, setWeekschema] = useState<boolean>(false);
   const [leesFout, setLeesFout] = useState<string | null>(null);
   const [bezig, setBezig] = useState<boolean>(importDraait);
   const [uitkomst, setUitkomst] = useState<ImportUitslagLessen | null>(null);
@@ -166,6 +173,11 @@ function ImportInhoud(): React.JSX.Element {
     };
   }, [plan, nu, users, settings]);
 
+  // Het seizoen hoort alleen bij het weekschema. Bij het sjabloon van de app staan de datums in
+  // het bestand zelf en zegt `bestandsperiode` al waar het over gaat; de regel er dan bij zetten
+  // zou een instelling tonen die niets met dat bestand te maken heeft.
+  const seizoen = weekschema ? seizoenUitSettings(settings) : null;
+
   if (bezig) {
     return (
       <Screen scroll={false}>
@@ -208,6 +220,7 @@ function ImportInhoud(): React.JSX.Element {
         return;
       }
       setLeesFout(null);
+      setWeekschema(blad.rijen.length > 0 && isWeekschema(blad.rijen[0]));
       const moment = new Date();
       setNu(moment);
       setPlan(planImportLessen(
@@ -334,6 +347,7 @@ function ImportInhoud(): React.JSX.Element {
       {plan !== null && !bestandAfgekeurdLessen(plan) && afleidingen !== null ? (
         <PlanInBeeld
           plan={plan}
+          seizoen={seizoen}
           waarschuwingen={afleidingen.waarschuwingen}
           ingrijpend={afleidingen.ingrijpend}
           ingrijpendAan={ingrijpendAan}
@@ -359,11 +373,17 @@ function ImportInhoud(): React.JSX.Element {
  * de lessen, dan wat de beheerder met de hand moet nakijken, en pas daarna wat er misging.
  */
 function PlanInBeeld({
-  plan, waarschuwingen, ingrijpend, ingrijpendAan, onIngrijpendWissel,
+  plan, seizoen, waarschuwingen, ingrijpend, ingrijpendAan, onIngrijpendWissel,
   bestandsnaam, uitkomst, mislukking, groepenKaart,
   onAnderBestand, onImporteren, onOpnieuwProberen,
 }: {
   plan: ImportPlanLessen;
+  /**
+   * Het seizoen waarop de lessen geplant zijn, of `null` als dit bestand zijn eigen datums
+   * meebrengt. Bij een weekschema staat er geen datum in het bestand en bepaalt dit getal
+   * hoeveel lessen elke groep krijgt — dan hoort het op het scherm.
+   */
+  seizoen: { van: string; tot: string } | null;
   waarschuwingen: ImportWaarschuwing[];
   ingrijpend: IngrijpendeWijzigingen;
   ingrijpendAan: boolean;
@@ -453,6 +473,17 @@ function PlanInBeeld({
                 lessen: plan.nieuweLessen.length,
               })}
             </Text>
+            {/* Bij een weekschema staat er geen enkele datum in het bestand: de lessen volgen uit
+                het seizoen in de clubinstellingen. Dat getal hoort de beheerder te kunnen natellen
+                vóór hij op toepassen drukt, want het bepaalt hoeveel lessen elke groep krijgt. */}
+            {seizoen ? (
+              <Text style={styles.telling}>
+                {t('Weekschema van de club — seizoen {van} t/m {tot}.', {
+                  van: seizoen.van,
+                  tot: seizoen.tot,
+                })}
+              </Text>
+            ) : null}
           </>
         )}
         <Text style={styles.mededeling}>
@@ -526,6 +557,23 @@ function PlanInBeeld({
               : t('{n} nieuwe spelers', { n: plan.spelersNieuw.length })}
           </Text>
           <Text style={styles.regel}>{plan.spelersNieuw.map((s) => s.naam).join(', ')}</Text>
+        </Card>
+      ) : null}
+
+      {/* Twaalf accounts aanmaken is geen detail, dus het staat naast de nieuwe spelers en niet
+          erin verstopt. De trainer krijgt een verzonnen adres en geen uurtarief; zijn login is
+          een aparte handeling (TRAINERS-LOGIN.sql) en geen gevolg van deze knop. */}
+      {plan.trainersNieuw.length > 0 ? (
+        <Card>
+          <Text style={styles.kop}>
+            {plan.trainersNieuw.length === 1
+              ? t('1 nieuwe trainer')
+              : t('{n} nieuwe trainers', { n: plan.trainersNieuw.length })}
+          </Text>
+          <Text style={styles.regel}>{plan.trainersNieuw.map((tr) => tr.naam).join(', ')}</Text>
+          <Text style={styles.mededeling}>
+            {t('Zij krijgen een account met een verzonnen e-mailadres. Een wachtwoord hoort daar niet bij; dat zet je apart.')}
+          </Text>
         </Card>
       ) : null}
 

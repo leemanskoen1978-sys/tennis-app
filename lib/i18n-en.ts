@@ -1032,6 +1032,26 @@ export const EN: Record<string, string> = {
   'Lesgroepen die niet veranderen': 'Lesson groups that do not change',
   '1 nieuwe speler': '1 new player',
   '{n} nieuwe spelers': '{n} new players',
+  '1 nieuwe trainer': '1 new coach',
+  '{n} nieuwe trainers': '{n} new coaches',
+  'Zij krijgen een account met een verzonnen e-mailadres. Een wachtwoord hoort daar niet bij; dat zet je apart.':
+    'They get an account with a made-up email address. A password is not part of that; you set those separately.',
+  'Weekschema van de club — seizoen {van} t/m {tot}.':
+    "The club's weekly schedule — season {van} through {tot}.",
+  'De koprij mist een verplichte kolom: Doelgroep, Groep, Weekdag, Uur, Terrein(en), Trainer(s) of Speler(s).':
+    'The header row is missing a required column: Doelgroep, Groep, Weekdag, Uur, Terrein(en), Trainer(s) or Speler(s).',
+  'Deze weekdag kon niet gelezen worden: {waarde}': 'This weekday could not be read: {waarde}',
+  'Geen trainer ingevuld.': 'No coach filled in.',
+  'Dit bestand is een weekschema zonder datums, en het seizoen van de club staat nog niet ingesteld.':
+    "This file is a weekly schedule without dates, and the club's season has not been set yet.",
+  'Deze groep staat op meerdere terreinen; ik zet haar op {baan}. De andere: {rest}.':
+    'This group is on several courts; I am putting it on {baan}. The others: {rest}.',
+  'Deze groep heeft meerdere trainers; ik zet {trainer} erop. De andere: {rest}.':
+    'This group has several coaches; I am assigning {trainer}. The others: {rest}.',
+  'Dit terrein kent de club niet: {baan}. De groep komt er wel, maar zonder lessen tot ze een baan heeft.':
+    'The club does not know this court: {baan}. The group is created, but without lessons until it has a court.',
+  'Er staan al meerdere trainers die {naam} kunnen zijn; koppel deze groep zelf.':
+    'There are already several coaches who could be {naam}; link this group yourself.',
   'Met de hand verzet of afgezegd; dit blijft zoals het staat':
     'Moved or cancelled by hand; this stays as it is',
   '{groep} op {dag}: staat op {bestaandeTijd}, het bestand zegt {tijdInBestand}.':
