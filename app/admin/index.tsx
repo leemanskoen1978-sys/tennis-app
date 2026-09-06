@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
-  Upload, Users, UserCog, BookOpen, CalendarOff, Clock, GraduationCap, FileSpreadsheet,
+  Upload, Users, UserCog, BookOpen, CalendarOff, GraduationCap, FileSpreadsheet,
   Thermometer, FileUp,
   type LucideIcon,
 } from 'lucide-react-native';
@@ -76,13 +76,11 @@ export default function Admin() {
           ? [{ key: 'courts', title: t('Banen'), subtitle: t('Namen en uurtarieven'), icon: LayoutGrid, onPress: () => router.push('/admin/courts') } as Tile]
           : []),
         { key: 'goals', title: t('Doelen'), subtitle: t('Woordenlijst voor spelersdoelen'), icon: Target, onPress: () => router.push('/admin/goals') },
-        // De clubkalender hoort bij de club en niet bij het systeem: het is hetzelfde
-        // papier dat anders aan de muur van de kantine hangt.
-        { key: 'vak', title: t('Clubkalender'), subtitle: vakantieSubtitel, icon: CalendarOff, onPress: () => router.push('/admin/vakanties') },
-        // Per trainer, want dát is waar een boekingstijd over gaat: de ene geeft 's avonds
-        // les en de andere op zaterdagochtend. De clubtijd in Instellingen is nog wat je
-        // krijgt zolang een trainer zelf niets invult.
-        { key: 'tijden', title: t('Boekingstijden'), subtitle: t('Per trainer, met afwijkende periodes'), icon: Clock, onPress: () => router.push('/admin/boekingstijden') },
+        // De gesloten dagen van de club en de uren per trainer beantwoorden samen één vraag —
+        // wanneer kan er les zijn — en staan daarom op één scherm. De kalender hoort bij de
+        // club en niet bij het systeem: het is hetzelfde papier dat anders aan de muur van de
+        // kantine hangt.
+        { key: 'kalender', title: t('Kalender'), subtitle: vakantieSubtitel, icon: CalendarOff, onPress: () => router.push('/admin/kalender') },
         { key: 'add', title: t('Speler toevoegen'), subtitle: t('Nieuw lid aanmaken'), icon: UserPlus, onPress: () => setAddOpen(true) },
         { key: 'import', title: t('Leden importeren'), subtitle: t('Uit een Excel-lijst'), icon: Upload, onPress: () => router.push('/admin/leden-import') },
         // Alleen voor een beheerder: hier zit het beheerdersvinkje, en hier verdwijnt een lid

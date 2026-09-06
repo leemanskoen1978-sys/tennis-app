@@ -205,7 +205,7 @@ export default function ProfileScreen(): React.JSX.Element {
           icon: Clock,
           title: t('Boekingstijden'),
           subtitle: t('Jouw uren, en afwijkende periodes'),
-          onPress: () => router.push('/admin/boekingstijden'),
+          onPress: () => router.push('/admin/kalender'),
         },
         {
           key: 'rep',

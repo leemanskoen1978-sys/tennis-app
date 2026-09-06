@@ -74,7 +74,9 @@ export const EN: Record<string, string> = {
   'Historiek': 'History',
   'Nog te komen': 'Upcoming',
   'Weekagenda': 'Week schedule',
-  // Beheer → Clubkalender: de dagen waarop de club geen les geeft (app/admin/vakanties).
+  // Beheer → Kalender: de gesloten dagen van de club én de uren per trainer, op één scherm
+  // (app/admin/kalender). 'Clubkalender' en 'Boekingstijden' zijn er de twee koppen van.
+  'Kalender': 'Calendar',
   'Clubkalender': 'Club calendar',
   'Nog geen vakanties ingevuld': 'No holidays entered yet',
   '1 periode zonder les': '1 period without lessons',

@@ -274,7 +274,7 @@ export function LidBewerken({
               icon={<Clock size={16} color={tennisColors.text} />}
               onPress={() => {
                 onClose();
-                router.push('/admin/boekingstijden');
+                router.push('/admin/kalender');
               }}
             />
           </View>

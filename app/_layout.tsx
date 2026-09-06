@@ -85,8 +85,9 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   { name: 'admin/reports', title: t('Rapport') },
   { name: 'admin/courts', title: t('Banen') },
   { name: 'admin/goals', title: t('Doelen') },
-  { name: 'admin/vakanties', title: t('Clubkalender') },
-  { name: 'admin/boekingstijden', title: t('Boekingstijden') },
+  // Eén scherm voor de vraag wanneer er les kan zijn: de gesloten dagen van de club en de
+  // uren per trainer stonden eerder als twee tegels naast elkaar hetzelfde te vertellen.
+  { name: 'admin/kalender', title: t('Kalender') },
   { name: 'admin/lesgroepen/index', title: t('Lesgroepen') },
   // Vooruit geregistreerd: het groepsscherm zelf komt later, en zonder deze regel krijgt het
   // straks geen kop.
