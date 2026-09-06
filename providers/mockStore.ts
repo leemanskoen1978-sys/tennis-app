@@ -3,7 +3,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {
   Beurtenkaart, Booking, Court, LesGroep, Lesson, Memo, OuderKind, PlayerGoal,
-  StudentProgress, User, Settings,
+  SickLeave, StudentProgress, User, Settings,
 } from '../lib/types';
 import {
   seedUsers, seedCourts, seedBookings, seedLessons, seedProgress, seedRelaties,
@@ -28,6 +28,8 @@ export interface StoreData {
   relaties: OuderKind[];
   /** De lesgroepen van de club, actief en gearchiveerd. Zie lib/types: LesGroep. */
   lesGroepen: LesGroep[];
+  /** De ziekmeldingen van de trainers, open én ingetrokken. Zie lib/types: SickLeave. */
+  sickLeaves: SickLeave[];
   settings: Settings;
   /** Which shipped lesson catalogues have already been added, so a deleted
    *  training stays deleted instead of reappearing on the next load. */
@@ -47,6 +49,8 @@ function freshSeed(): StoreData {
     relaties: [...seedRelaties],
     // Geen zaaigegevens: een club die begint heeft haar groepen nog niet ingedeeld.
     lesGroepen: [],
+    // Ook hier geen zaaigegevens: een club die begint heeft nog niemand ziek gemeld.
+    sickLeaves: [],
     settings: { ...defaultSettings },
     installed_catalogues: [],
   };
@@ -73,6 +77,10 @@ function withDefaults(data: StoreData): StoreData {
     relaties: data.relaties ?? [],
     // Een opslag van vóór de lesgroepen heeft dit veld niet.
     lesGroepen: data.lesGroepen ?? [],
+    // Een opslag van vóór de ziekmeldingen heeft dit veld niet. Zonder deze terugval leest
+    // elk scherm dat er straks over mapt `undefined` in plaats van een lege lijst, en dan
+    // crasht het bij de eerste `.map(...)` — voor iedereen die de app al gebruikte.
+    sickLeaves: data.sickLeaves ?? [],
     settings: { ...defaultSettings, ...data.settings },
   };
 }

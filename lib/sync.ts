@@ -15,13 +15,13 @@
 
 import type {
   Beurtenkaart, Booking, Court, LesGroep, Lesson, Memo, OuderKind, PlayerGoal, Settings,
-  StudentProgress, User,
+  SickLeave, StudentProgress, User,
 } from './types';
 
 /** De verzamelingen die als rijen in een tabel leven. */
 export type SyncTable =
   | 'users' | 'courts' | 'bookings' | 'lessons' | 'progress' | 'goals' | 'beurtenkaarten'
-  | 'memos' | 'relaties' | 'lesGroepen';
+  | 'memos' | 'relaties' | 'lesGroepen' | 'sickLeaves';
 
 /** Alles wat een rij moet hebben om bij te werken te zijn. */
 interface Row {
@@ -61,6 +61,8 @@ export interface SyncableStore {
   relaties: OuderKind[];
   /** De lesgroepen van de club, actief en gearchiveerd. Zie lib/types: LesGroep. */
   lesGroepen: LesGroep[];
+  /** De ziekmeldingen van de trainers, open én ingetrokken. Zie lib/types: SickLeave. */
+  sickLeaves: SickLeave[];
   settings: Settings;
   installed_catalogues?: string[];
 }
@@ -122,8 +124,10 @@ export function diffStores(
     beurtenkaarten: [], memos: [], relaties: [], settings: next.settings,
     // Ook de nieuwe verzamelingen horen hier leeg te staan: zonder `lesGroepen: []` leest de
     // eerste bewaaractie `before.lesGroepen` als undefined in plaats van als een lege lijst,
-    // en dan valt het verschil weg dat er nu wél een groep is.
+    // en dan valt het verschil weg dat er nu wél een groep is. Hetzelfde geldt voor
+    // `sickLeaves`: de allereerste ziekmelding zou anders stil nergens terechtkomen.
     lesGroepen: [],
+    sickLeaves: [],
     installed_catalogues: [],
   };
 
@@ -138,6 +142,7 @@ export function diffStores(
     changeFor('memos', before.memos, next.memos),
     changeFor('relaties', before.relaties, next.relaties),
     changeFor('lesGroepen', before.lesGroepen, next.lesGroepen),
+    changeFor('sickLeaves', before.sickLeaves, next.sickLeaves),
   ].filter((c) => c.upsert.length > 0 || c.remove.length > 0);
 
   const settings = previous === null || !sameRow(before.settings, next.settings)
