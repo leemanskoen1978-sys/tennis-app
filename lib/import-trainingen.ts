@@ -1843,6 +1843,17 @@ export interface ImportWijziging {
   nieuweGroepen: LesGroep[];
   gewijzigdeGroepen: GroepBijwerking[];
   nieuweBoekingen: Booking[];
+  /**
+   * De komende lessen die een andere trainer krijgen, met een patch die letterlijk niets anders
+   * kan bevatten dan `coach_id`.
+   *
+   * Die smalle typering is het punt en geen slordigheid. Een `Partial<Booking>` zou de deur
+   * openzetten voor een import die er ooit ook `taught_by_id`, `start_time` of `status` in legt,
+   * en dan zijn de twee beloften van deze fase — een les die iemand anders gaf blijft van hem, en
+   * wat geweest is blijft staan — een afspraak die iemand kan vergeten. Zo is het een fout die
+   * niet compileert.
+   */
+  gewijzigdeBoekingen: Array<{ id: string; patch: { coach_id: string } }>;
   /** Wat er van het plan niet weggeschreven wordt, met regelnummer en reden. */
   fouten: ImportFoutLessen[];
 }
@@ -1853,6 +1864,8 @@ export interface ImportUitslagLessen {
   nieuweGroepen: number;
   bijgewerkteGroepen: number;
   lessen: number;
+  /** De bestaande lessen die een andere trainer kregen; los geteld van de nieuwe lessen. */
+  bijgewerkteLessen: number;
   fouten: ImportFoutLessen[];
 }
 
@@ -1974,8 +1987,9 @@ export function geweigerdeNieuweGroepen(
  * niets uit `providers/` kennen, ook niet bij naam.)
  *
  * Wat hier NIET gebeurt: er wordt niets opnieuw uitgerekend. Welke lessen doorgaan, welke groep
- * bij welke bestaande groep hoort en wie er nieuw is, heeft `planImportLessen` al beslist en de
- * beheerder al gezien. Zou deze functie daar iets aan bijstellen, dan schreef ze iets anders weg
+ * bij welke bestaande groep hoort, wie er nieuw is en welke komende lessen van trainer wisselen,
+ * heeft `planImportLessen` al beslist en de beheerder al gezien — die laatste lijst mét het aantal
+ * erbij, want dat is wat de droogloop toont. Zou deze functie daar iets aan bijstellen, dan schreef ze iets anders weg
  * dan de droogloop toonde — en dan is die droogloop een belofte die niet nagekomen wordt (D-10).
  */
 export function bouwImportWijziging(
@@ -1987,6 +2001,7 @@ export function bouwImportWijziging(
     nieuweGroepen: [],
     gewijzigdeGroepen: [],
     nieuweBoekingen: [],
+    gewijzigdeBoekingen: [],
     fouten: [],
   };
 
@@ -2044,6 +2059,16 @@ export function bouwImportWijziging(
     // Niets bij te werken, maar haar lessen kunnen er wél bij komen: een groep die de club al
     // kent en waar dit bestand een week aan toevoegt.
     if (inPlan.groep.bestaand) idVanGroep.set(inPlan.groep, inPlan.groep.bestaand.id);
+  }
+
+  // 2b. De trainerwissels. Een boeking die al bestaat en alleen van trainer wisselt hangt nergens
+  //     van af — ze kon net zo goed eerst — maar ze hoort logisch bij de groep waarvan ze is, en
+  //     daarom staat ze hier: ná de groepen en vóór de lessen. Welke lessen wisselen staat al in
+  //     het plan dat de beheerder goedkeurde; er wordt hier niets herrekend.
+  for (const wissel of plan.trainerwissels) {
+    for (const id of wissel.boekingIds) {
+      uit.gewijzigdeBoekingen.push({ id, patch: { coach_id: wissel.trainerId } });
+    }
   }
 
   // 3. De lessen. Ze verwijzen naar de groep én naar haar spelers, dus ze kunnen pas nu.

@@ -1246,19 +1246,32 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
    * elke groep en elke les wordt op haar sleutel herkend en nooit blind toegevoegd. Dát is wat
    * IMP-09 hier betekent (D-21) — veilig opnieuw te draaien, niet één transactie — en het
    * importscherm zegt het in die woorden tegen de beheerder (plan 05-09).
+   *
+   * Sinds fase 05.1 werkt de import ook bestáánde boekingen bij, en wel op precies één punt:
+   * hun `coach_id`, en alleen die van lessen die nog moeten komen. Noemt het bestand een andere
+   * coach, dan volgen de komende lessen van die groep — anders zou de groep trainer Y zeggen en
+   * de agenda nog trainer X. Wat geweest is verandert nooit (`groupBookingsFrom` kijkt vanaf nu
+   * vooruit), `taught_by_id` wordt niet aangeraakt (wie de les werkelijk gaf bepaalt het loon), en
+   * er wordt nog steeds niets verwijderd: de patch gaat óver de bestaande boeking heen, ze
+   * vervangt hem niet.
    */
   const importeerTrainingen = useCallback(async (
     plan: ImportPlanLessen,
   ): Promise<ImportUitslagLessen> => {
     const store = storeRef.current;
     if (!store) {
-      return { spelers: 0, nieuweGroepen: 0, bijgewerkteGroepen: 0, lessen: 0, fouten: [] };
+      return {
+        spelers: 0, nieuweGroepen: 0, bijgewerkteGroepen: 0, lessen: 0, bijgewerkteLessen: 0,
+        fouten: [],
+      };
     }
 
     // De provider rekent zelf niets uit: welke rijen dit worden, staat al vast in het plan dat
     // de beheerder goedkeurde. Alleen de ids komen van hier.
     const wijziging = bouwImportWijziging(plan, newId);
     const patches = new Map(wijziging.gewijzigdeGroepen.map((g) => [g.id, g.patch]));
+    // Dezelfde vorm voor de boekingen: id naar patch, en die patch draagt alleen een `coach_id`.
+    const boekingPatches = new Map(wijziging.gewijzigdeBoekingen.map((b) => [b.id, b.patch]));
 
     await commit({
       ...store,
@@ -1271,8 +1284,16 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
         ...wijziging.nieuweGroepen,
       ],
       // Erbij, nooit eroverheen: een les die uit het bestand verdween staat in het plan als
-      // melding en wordt hier niet weggehaald (D-13).
-      bookings: [...store.bookings, ...wijziging.nieuweBoekingen],
+      // melding en wordt hier niet weggehaald (D-13). De trainerwissel gaat als patch óver de
+      // bestaande boeking heen — spreiden en de patch erover, nooit een nieuw object dat velden
+      // weglaat, want dan zou wie de les werkelijk gaf of wie erbij was stilletjes verdwijnen.
+      bookings: [
+        ...store.bookings.map((b) => {
+          const patch = boekingPatches.get(b.id);
+          return patch === undefined ? b : { ...b, ...patch };
+        }),
+        ...wijziging.nieuweBoekingen,
+      ],
     });
 
     return {
@@ -1280,6 +1301,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       nieuweGroepen: wijziging.nieuweGroepen.length,
       bijgewerkteGroepen: wijziging.gewijzigdeGroepen.length,
       lessen: wijziging.nieuweBoekingen.length,
+      bijgewerkteLessen: wijziging.gewijzigdeBoekingen.length,
       fouten: wijziging.fouten,
     };
   }, [commit]);
