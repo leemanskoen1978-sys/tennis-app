@@ -184,19 +184,100 @@ const VASTE_LITERALEN: Huffman = (() => {
 
 const VASTE_AFSTANDEN: Huffman = bouwHuffman(new Array<number>(30).fill(5));
 
+/**
+ * De volgorde waarin de codelengtes van de codelengteboom in de stroom staan.
+ *
+ * Deze volgorde komt letterlijk uit RFC 1951 en is niet af te leiden: hij zet de lengtes die
+ * het vaakst nul zijn achteraan, zodat een blok de staart mag weglaten. Wie hem op numerieke
+ * volgorde leest, bouwt een boom die er plausibel uitziet en alles verkeerd decodeert.
+ */
+const CODELENGTE_VOLGORDE = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
+
+/** Leest de twee bomen die een dynamisch blok vooraan zichzelf meestuurt. */
+function dynamischeBomen(lezer: Bitlezer): { literalen: Huffman; afstanden: Huffman } {
+  const hlit = lezer.bits(5) + 257;
+  const hdist = lezer.bits(5) + 1;
+  const hclen = lezer.bits(4) + 4;
+
+  // Eerst de boom waarmee de lengtes van de twee echte bomen gecodeerd zijn.
+  const codelengtes = new Array<number>(19).fill(0);
+  for (let i = 0; i < hclen; i++) {
+    codelengtes[CODELENGTE_VOLGORDE[i]] = lezer.bits(3);
+  }
+  const codeboom = bouwHuffman(codelengtes);
+
+  // Dan de lengtes zelf, met de drie herhaalcodes. Excel schrijft ze altijd; ze overslaan
+  // levert geen zeldzame fout op maar een boom die meteen nergens op slaat.
+  const lengtes = new Array<number>(hlit + hdist).fill(0);
+  let i = 0;
+  while (i < lengtes.length) {
+    const symbool = leesSymbool(lezer, codeboom);
+    if (symbool < 16) {
+      lengtes[i++] = symbool;
+      continue;
+    }
+    let waarde = 0;
+    let herhaal: number;
+    if (symbool === 16) {
+      if (i === 0) {
+        throw new Error('Het bestand herhaalt een codelengte die er nog niet is.');
+      }
+      waarde = lengtes[i - 1];
+      herhaal = 3 + lezer.bits(2);
+    } else if (symbool === 17) {
+      herhaal = 3 + lezer.bits(3);
+    } else {
+      herhaal = 11 + lezer.bits(7);
+    }
+    if (i + herhaal > lengtes.length) {
+      throw new Error('Een herhaalde codelengte loopt voorbij het einde van de lijst.');
+    }
+    for (let n = 0; n < herhaal; n++) {
+      lengtes[i++] = waarde;
+    }
+  }
+
+  // Zonder code voor 256 heeft het blok geen einde en zou de lus pas stoppen als de bits op
+  // zijn. Dat is geen geldig blok en het is het patroon van een misvormd bestand.
+  if (lengtes[256] === 0) {
+    throw new Error('Een blok in het bestand heeft geen einde-teken.');
+  }
+
+  return {
+    literalen: bouwHuffman(lengtes.slice(0, hlit)),
+    afstanden: bouwHuffman(lengtes.slice(hlit)),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // De uitvoer
 // ---------------------------------------------------------------------------
 
 /**
+ * De harde bovengrens op wat één ingang mag uitpakken.
+ *
+ * Waar dit tegen beschermt: een xlsx dat de beheerder ergens vandaan kreeg en dat stuk of
+ * kwaadwillend is. Een zip-bom is een paar kilobyte die zichzelf tot gigabytes uitpakt; het
+ * beheerscherm mag daar niet op vastlopen. Als ijkpunt voor "ruim genoeg": het grootste
+ * echte blad dat deze app leest, `xl/worksheets/sheet1.xml` van `koen.xlsx`, is uitgepakt
+ * 526.954 bytes. 64 MB is daar meer dan honderd keer zoveel en toch een grens.
+ */
+const MAX_UITVOER = 64 * 1024 * 1024;
+
+/**
  * Een buffer die meegroeit. Verdubbelen in plaats van per byte herallocieren; met een
  * verwachte lengte erbij begint hij meteen op maat en groeit hij nooit.
+ *
+ * `grens` is het punt waarop uitpakken een fout wordt in plaats van door te gaan.
  */
-function uitvoer(beginmaat: number) {
+function uitvoer(beginmaat: number, grens: number) {
   let bytes = new Uint8Array(Math.max(beginmaat, 64));
   let lengte = 0;
 
   function ruimte(extra: number): void {
+    if (lengte + extra > grens) {
+      throw new Error('Het bestand pakt meer uit dan het zegt te bevatten.');
+    }
     if (lengte + extra <= bytes.length) return;
     let nieuw = bytes.length;
     while (nieuw < lengte + extra) {
@@ -292,13 +373,17 @@ function huffmanBlok(lezer: Bitlezer, uit: Uitvoer, literalen: Huffman, afstande
  * Pakt een rauwe DEFLATE-stroom uit (RFC 1951, geen zlib-kop, geen gzip-kop).
  *
  * `verwachteLengte` is de uitgepakte maat zoals de zip-kop hem opgeeft: hij spaart het
- * meegroeien uit. Gaat er iets mis met de bytes zelf, dan is dat een stukgeslagen bestand en
- * geen bedrijfsregel — vandaar `throw` en geen uitkomsttype. Het scherm vangt hem verderop
- * op als één fout over het hele bestand.
+ * meegroeien uit én hij is meteen de bovengrens, want een ingang die meer uitpakt dan zijn
+ * eigen kop belooft is niet te vertrouwen. Zonder die maat geldt `MAX_UITVOER`.
+ *
+ * Gaat er iets mis met de bytes zelf, dan is dat een stukgeslagen bestand en geen
+ * bedrijfsregel — vandaar `throw` en geen uitkomsttype. Het scherm vangt hem verderop op als
+ * één fout over het hele bestand.
  */
 export function inflate(bytes: Uint8Array, verwachteLengte?: number): Uint8Array {
   const lezer = bitlezer(bytes);
-  const uit = uitvoer(verwachteLengte ?? 1024);
+  const grens = verwachteLengte !== undefined ? Math.min(verwachteLengte, MAX_UITVOER) : MAX_UITVOER;
+  const uit = uitvoer(verwachteLengte ?? 1024, grens);
 
   for (;;) {
     const laatste = lezer.eenBit();
@@ -308,7 +393,8 @@ export function inflate(bytes: Uint8Array, verwachteLengte?: number): Uint8Array
     } else if (bloksoort === 1) {
       huffmanBlok(lezer, uit, VASTE_LITERALEN, VASTE_AFSTANDEN);
     } else if (bloksoort === 2) {
-      throw new Error('Dit bestand gebruikt een bloksoort die nog niet gelezen kan worden.');
+      const bomen = dynamischeBomen(lezer);
+      huffmanBlok(lezer, uit, bomen.literalen, bomen.afstanden);
     } else {
       // Bloksoort 3 bestaat niet in RFC 1951 en is dus altijd een teken dat de bytes niet
       // zijn wat ze beweren.
