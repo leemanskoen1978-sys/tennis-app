@@ -5,10 +5,17 @@
 // dat staat er ook op het scherm bij, want dat is precies wat iemand verkeerd gokt.
 //
 // Zonder staffel werkt alles zoals vroeger: dan geldt het uurtarief voor elke groepsgrootte.
+//
+// De vorm van dit scherm: één keuzelijst met daaronder de baan die gekozen is. Eerder stond
+// er een altijd openstaand toevoegformulier met daarachter elke baan als volle kaart. Bij elf
+// banen was dat elf keer dezelfde vier opschriften, waarvan negen keer drie regels om te
+// zeggen dat er géén staffel is. Een baan wordt één keer gemaakt en daarna nooit meer, en er
+// wordt aan één baan tegelijk gerekend — dus staat het toevoegen achter een knop en de rest
+// achter de keuze.
 
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
-import { Plus, Trash2 } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react-native';
 
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
@@ -20,7 +27,7 @@ import { groupRateSteps } from '../../lib/payments';
 import { baanFout, type NieuweBaan } from '../../lib/banen';
 import { isAdmin } from '../../lib/rechten';
 import { formatEuro, parseEuro } from '../../lib/money';
-import { useT } from '../../lib/i18n';
+import { useT, type Translate } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, minTapTarget, webCursor } from '../../constants/theme';
 import type { Court, CourtGroupRate } from '../../lib/types';
@@ -33,11 +40,78 @@ function parsePlayers(text: string): number | undefined {
 }
 
 /**
- * Eén baan met zijn tarieven. De velden schrijven meteen weg zodra ze een bruikbare waarde
- * hebben: een aparte bewaarknop per baan zou betekenen dat de trainer een half ingevulde
- * staffel achter kan laten, en die rekent dan mee.
+ * Hoe een baan in de keuzelijst staat: "7 · Terrein 7 · Binnen".
+ *
+ * Het nummer staat vooraan omdat de club zo over haar banen praat ("baan 3"), en de ligging
+ * staat erbij omdat dat het enige is wat twee banen met bijna dezelfde naam uit elkaar houdt.
  */
-function CourtCard({ court }: { court: Court }): React.JSX.Element {
+function baanLabel(t: Translate, baan: Court): string {
+  return `${baan.number} · ${baan.name} · ${baan.indoor ? t('Binnen') : t('Buiten')}`;
+}
+
+/**
+ * Welke baan je aan het bijstellen bent.
+ *
+ * Waarom een uitklaplijst en geen rij chips, terwijl chips elders in Beheer wél de huisvorm
+ * zijn om een trainer of een baan te kiezen: die lijsten zijn kort. Elf chips met
+ * "7 · Terrein 7" erop vullen op een telefoon vier regels, en dan is het kiezen zelf weer het
+ * halve scherm — precies wat hier weg moest. Dichtgeklapt is dit één regel, hoeveel banen er
+ * ook bij komen.
+ *
+ * Bewust geen vrij tekstveld zoals OptionCombobox: er valt hier niets te typen dat geen baan
+ * is, en een baan bijmaken hoort in het formulier erboven en niet per ongeluk hier.
+ */
+function BaanKiezer({ banen, gekozen, onKies }: {
+  banen: Court[];
+  gekozen: Court;
+  onKies: (id: string) => void;
+}): React.JSX.Element {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <View>
+      <Text style={styles.label}>{t('Welke baan')}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('Baan kiezen, nu {baan}', { baan: baanLabel(t, gekozen) })}
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen((o) => !o)}
+        style={[styles.kiezer, webCursor]}
+      >
+        <Text style={styles.kiezerTekst} numberOfLines={1}>{baanLabel(t, gekozen)}</Text>
+        {open
+          ? <ChevronUp size={18} color={tennisColors.textMuted} />
+          : <ChevronDown size={18} color={tennisColors.textMuted} />}
+      </Pressable>
+
+      {open ? (
+        <View style={styles.lijst}>
+          {banen.map((baan) => (
+            <Pressable
+              key={baan.id}
+              accessibilityRole="button"
+              accessibilityLabel={baanLabel(t, baan)}
+              accessibilityState={{ selected: baan.id === gekozen.id }}
+              onPress={() => { onKies(baan.id); setOpen(false); }}
+              style={[styles.lijstRij, webCursor]}
+            >
+              <Text style={styles.lijstTekst} numberOfLines={1}>{baanLabel(t, baan)}</Text>
+              {baan.id === gekozen.id ? <Check size={16} color={tennisColors.primary} /> : null}
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * De tarieven van de gekozen baan. De velden schrijven meteen weg zodra ze een bruikbare
+ * waarde hebben: een aparte bewaarknop per baan zou betekenen dat de trainer een half
+ * ingevulde staffel achter kan laten, en die rekent dan mee.
+ */
+function BaanTarieven({ court }: { court: Court }): React.JSX.Element {
   const t = useT();
   const { updateCourt } = useSimpleData();
   // Wat er in de velden staat terwijl er getypt wordt. Zonder dit springt "4" tijdens het
@@ -76,7 +150,7 @@ function CourtCard({ court }: { court: Court }): React.JSX.Element {
   return (
     <Card>
       <View style={styles.row}>
-        <Text style={styles.name}>{court.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>{`${court.number} · ${court.name}`}</Text>
         <Badge
           label={court.indoor ? t('Binnen') : t('Buiten')}
           color={court.indoor ? tennisColors.courtFill : tennisColors.primaryFill}
@@ -199,6 +273,14 @@ function BanenInhoud(): React.JSX.Element {
   const [uurtarief, setUurtarief] = useState('');
   const [binnen, setBinnen] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
+  // Een baan maak je één keer en daarna nooit meer. Dichtgeklapt kost dat één knop; open
+  // stond het scherm een half venster lang in de weg van waar het echt over gaat.
+  const [formulierOpen, setFormulierOpen] = useState(false);
+  // Welke baan er onder de kiezer staat. `null` betekent: nog niet gekozen, en dan valt de
+  // keuze op de eerste baan terug. Niets tonen zou een scherm opleveren dat niets doet, en
+  // de laagste baan is de baan waar iemand toch begint.
+  const [gekozenId, setGekozenId] = useState<string | null>(null);
+  const gekozen = sorted.find((c) => c.id === gekozenId) ?? sorted[0];
 
   const voegToe = async (): Promise<void> => {
     const concept: NieuweBaan = { naam, nummer, uurtarief, indoor: binnen };
@@ -212,83 +294,113 @@ function BanenInhoud(): React.JSX.Element {
     setFout(null);
     const gemaakt = await addCourt(concept);
     // Alleen leegmaken als de baan er echt staat: mislukt het wegschrijven, dan blijft wat
-    // ingetypt was staan en hoeft niemand het opnieuw te typen.
+    // ingetypt was staan en hoeft niemand het opnieuw te typen. Om dezelfde reden klapt het
+    // formulier ook alleen dicht als de baan er is.
     if (!gemaakt) return;
     setNaam('');
     setNummer('');
     setUurtarief('');
     setBinnen(false);
+    setFormulierOpen(false);
+    // Meteen naar de verse baan: wie er net een maakte, wil er een tarief op zetten.
+    setGekozenId(gemaakt.id);
   };
 
   return (
     <Screen>
-      <Card>
-        <Text style={styles.name}>{t('Baan toevoegen')}</Text>
+      {formulierOpen ? (
+        <Card>
+          <Text style={styles.name}>{t('Baan toevoegen')}</Text>
 
-        <Text style={styles.label}>{t('Naam')}</Text>
-        <TextInput
-          style={styles.input}
-          value={naam}
-          onChangeText={setNaam}
-          placeholder={t('bv. Gravel 3')}
-          placeholderTextColor={tennisColors.textMuted}
-        />
+          <Text style={styles.label}>{t('Naam')}</Text>
+          <TextInput
+            style={styles.input}
+            value={naam}
+            onChangeText={setNaam}
+            placeholder={t('bv. Gravel 3')}
+            placeholderTextColor={tennisColors.textMuted}
+          />
 
-        <View style={styles.formRij}>
-          <View style={styles.veld}>
-            <Text style={styles.label}>{t('Nummer')}</Text>
-            <TextInput
-              style={styles.input}
-              value={nummer}
-              onChangeText={setNummer}
-              placeholder={t('bv. 3')}
-              placeholderTextColor={tennisColors.textMuted}
-              keyboardType="number-pad"
-            />
-          </View>
-          <View style={styles.veld}>
-            <Text style={styles.label}>{t('Uurtarief privéles')}</Text>
-            <View style={styles.field}>
-              <Text style={styles.euro}>€</Text>
+          <View style={styles.formRij}>
+            <View style={styles.veld}>
+              <Text style={styles.label}>{t('Nummer')}</Text>
               <TextInput
-                style={[styles.input, styles.groeit]}
-                value={uurtarief}
-                onChangeText={setUurtarief}
-                placeholder={t('bv. 30')}
+                style={styles.input}
+                value={nummer}
+                onChangeText={setNummer}
+                placeholder={t('bv. 3')}
                 placeholderTextColor={tennisColors.textMuted}
-                keyboardType="decimal-pad"
+                keyboardType="number-pad"
               />
             </View>
+            <View style={styles.veld}>
+              <Text style={styles.label}>{t('Uurtarief privéles')}</Text>
+              <View style={styles.field}>
+                <Text style={styles.euro}>€</Text>
+                <TextInput
+                  style={[styles.input, styles.groeit]}
+                  value={uurtarief}
+                  onChangeText={setUurtarief}
+                  placeholder={t('bv. 30')}
+                  placeholderTextColor={tennisColors.textMuted}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
           </View>
+
+          <Text style={styles.label}>{t('Ligging')}</Text>
+          <View style={styles.chipRij}>
+            <Chip label={t('Buiten')} selected={!binnen} onPress={() => setBinnen(false)} />
+            <Chip label={t('Binnen')} selected={binnen} onPress={() => setBinnen(true)} />
+          </View>
+
+          {fout ? <Text style={styles.fout}>{fout}</Text> : null}
+
+          <Button
+            label={t('Toevoegen')}
+            onPress={() => { void voegToe(); }}
+            icon={<Plus size={16} color={tennisColors.onFill} />}
+            style={styles.knop}
+          />
+          <Button
+            label={t('Annuleren')}
+            variant="secondary"
+            onPress={() => { setFormulierOpen(false); setFout(null); }}
+          />
+
+          <Text style={styles.help}>
+            {t('Een nieuwe baan begint zonder staffel: tot je er een instelt, geldt dit '
+              + 'uurtarief ook voor een groepsles.')}
+          </Text>
+        </Card>
+      ) : (
+        <View style={styles.addRow}>
+          <Button
+            label={t('Baan toevoegen')}
+            variant="secondary"
+            fullWidth={false}
+            icon={<Plus size={16} color={tennisColors.text} />}
+            onPress={() => setFormulierOpen(true)}
+          />
         </View>
+      )}
 
-        <Text style={styles.label}>{t('Ligging')}</Text>
-        <View style={styles.chipRij}>
-          <Chip label={t('Buiten')} selected={!binnen} onPress={() => setBinnen(false)} />
-          <Chip label={t('Binnen')} selected={binnen} onPress={() => setBinnen(true)} />
-        </View>
+      {/* Buiten het formulier, want het formulier staat er meestal niet: een mislukt tarief
+          zou anders zonder melding verdwijnen. */}
+      {error ? <Text style={styles.fout}>{error}</Text> : null}
 
-        {fout ? <Text style={styles.fout}>{fout}</Text> : null}
-        {error ? <Text style={styles.fout}>{error}</Text> : null}
-
-        <Button
-          label={t('Toevoegen')}
-          onPress={() => { void voegToe(); }}
-          icon={<Plus size={16} color={tennisColors.onFill} />}
-          style={styles.knop}
-        />
-
-        <Text style={styles.help}>
-          {t('Een nieuwe baan begint zonder staffel: tot je er een instelt, geldt dit '
-            + 'uurtarief ook voor een groepsles.')}
-        </Text>
-      </Card>
-
-      {sorted.length === 0 ? (
+      {gekozen === undefined ? (
         <Text style={styles.muted}>{t('Nog geen banen.')}</Text>
       ) : (
-        sorted.map((c) => <CourtCard key={c.id} court={c} />)
+        <>
+          <BaanKiezer banen={sorted} gekozen={gekozen} onKies={setGekozenId} />
+          {/* `key` op de baan: zo begint het getypte veld van de volgende baan leeg in
+              plaats van met het bedrag dat je bij de vorige aan het typen was. */}
+          <BaanTarieven key={gekozen.id} court={gekozen} />
+        </>
       )}
+
       <Text style={styles.help}>
         {t('Elk bedrag is het totaal voor de hele les, niet per speler: "tot 4 spelers € 45" '
           + 'betekent dat een les met vier spelers samen € 45 per uur kost. Een groepsles gaat '
@@ -302,7 +414,7 @@ function BanenInhoud(): React.JSX.Element {
 const styles = StyleSheet.create({
   muted: { color: tennisColors.textMuted, fontSize: 14 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  name: { ...typography.h3, color: tennisColors.text },
+  name: { ...typography.h3, color: tennisColors.text, flexShrink: 1 },
   label: {
     ...typography.label,
     color: tennisColors.textMuted,
@@ -347,4 +459,36 @@ const styles = StyleSheet.create({
   chipRij: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   knop: { marginTop: spacing.md, marginBottom: spacing.sm },
   fout: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.sm },
+  kiezer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: tennisColors.border,
+    borderRadius: radius.sm,
+    backgroundColor: tennisColors.surface,
+    paddingHorizontal: 12,
+    minHeight: minTapTarget,
+  },
+  // `flexShrink` en niet `flex`: op een smal scherm krimpt de naam en blijft het pijltje
+  // staan, in plaats van dat het pijltje van het scherm geduwd wordt.
+  kiezerTekst: { fontSize: 15, color: tennisColors.text, flexShrink: 1 },
+  lijst: {
+    borderWidth: 1,
+    borderColor: tennisColors.border,
+    borderRadius: radius.sm,
+    backgroundColor: tennisColors.surface,
+    marginTop: spacing.xs,
+    overflow: 'hidden',
+  },
+  lijstRij: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingHorizontal: 12,
+    minHeight: minTapTarget,
+  },
+  lijstTekst: { fontSize: 15, color: tennisColors.text, flexShrink: 1 },
 });

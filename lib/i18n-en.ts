@@ -1393,6 +1393,8 @@ export const EN: Record<string, string> = {
 
   // --- Beheer → Banen: een baan aanmaken (app/admin/courts, lib/banen) ---
   'Banen zijn alleen voor de beheerder.': 'Courts are for the administrator only.',
+  'Welke baan': 'Which court',
+  'Baan kiezen, nu {baan}': 'Choose a court, now {baan}',
   'Baan toevoegen': 'Add a court',
   'bv. Gravel 3': 'e.g. Clay 3',
   'Nummer': 'Number',
