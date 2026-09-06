@@ -107,6 +107,75 @@ function BaanKiezer({ banen, gekozen, onKies }: {
 }
 
 /**
+ * Alle banen onder elkaar, alleen om te lezen.
+ *
+ * De kiezer erboven maakt het scherm rustig, maar neemt één ding weg: het overzicht. Naast
+ * elkaar gezet valt een baan die op 55 staat terwijl de rest op 60 staat meteen op; achter
+ * een uitklaplijst moet je hem gaan zoeken. Vandaar deze lijst — en vandaar dat er geen
+ * invoervelden in staan: die maken er een tweede editor van, en dan is het scherm weer even
+ * log als vóór deze verbouwing.
+ *
+ * De staffel staat er als aantal stappen en niet uitgeschreven: "tot 2 spelers € 30, tot 4
+ * spelers € 45" past niet op een regel, en de vraag die deze lijst beantwoordt is "heeft
+ * deze baan er een", niet "wat staat erin". Dat laatste leest hij in het blok erboven.
+ *
+ * Tikken kiest de baan hierboven: dat is sneller dan de lijst openklappen, en het is meteen
+ * waarom een baan die opvalt ook aan te klikken is.
+ */
+function BanenOverzicht({ banen, gekozenId, onKies }: {
+  banen: Court[];
+  gekozenId: string;
+  onKies: (id: string) => void;
+}): React.JSX.Element {
+  const t = useT();
+  return (
+    <View>
+      <Text style={styles.label}>{t('Alle banen')}</Text>
+      <View style={styles.lijst}>
+        {banen.map((baan) => {
+          const stappen = groupRateSteps(baan).length;
+          const tarief = `€ ${formatEuro(baan.hourly_rate)}`;
+          const staffel = stappen === 0
+            ? ''
+            : stappen === 1 ? t('1 staffelstap') : t('{n} staffelstappen', { n: stappen });
+          return (
+            <Pressable
+              key={baan.id}
+              accessibilityRole="button"
+              // Uit stukken die al vertaald zijn: een schermlezer hoort nummer, naam,
+              // ligging, tarief en of er een staffel op staat — precies de regel zelf.
+              accessibilityLabel={
+                [baanLabel(t, baan), tarief, staffel].filter((deel) => deel !== '').join(' · ')
+              }
+              accessibilityState={{ selected: baan.id === gekozenId }}
+              onPress={() => onKies(baan.id)}
+              style={[
+                styles.lijstRij,
+                webCursor,
+                baan.id === gekozenId && styles.lijstRijGekozen,
+              ]}
+            >
+              <Text style={styles.overzichtNummer}>{baan.number}</Text>
+              <Text style={styles.overzichtNaam} numberOfLines={1}>{baan.name}</Text>
+              {/* Als er iets moet wijken op een smal scherm is het de ligging en niet het
+                  bedrag: het bedrag is waarvoor deze lijst bestaat. Vandaar een hogere
+                  `flexShrink` hier en een vaste breedte op het tarief. */}
+              <Text style={styles.overzichtLigging} numberOfLines={1}>
+                {baan.indoor ? t('Binnen') : t('Buiten')}
+              </Text>
+              {staffel !== '' ? (
+                <Text style={styles.overzichtStaffel} numberOfLines={1}>{staffel}</Text>
+              ) : null}
+              <Text style={styles.overzichtTarief}>{tarief}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+/**
  * De tarieven van de gekozen baan. De velden schrijven meteen weg zodra ze een bruikbare
  * waarde hebben: een aparte bewaarknop per baan zou betekenen dat de trainer een half
  * ingevulde staffel achter kan laten, en die rekent dan mee.
@@ -398,6 +467,7 @@ function BanenInhoud(): React.JSX.Element {
           {/* `key` op de baan: zo begint het getypte veld van de volgende baan leeg in
               plaats van met het bedrag dat je bij de vorige aan het typen was. */}
           <BaanTarieven key={gekozen.id} court={gekozen} />
+          <BanenOverzicht banen={sorted} gekozenId={gekozen.id} onKies={setGekozenId} />
         </>
       )}
 
@@ -491,4 +561,17 @@ const styles = StyleSheet.create({
     minHeight: minTapTarget,
   },
   lijstTekst: { fontSize: 15, color: tennisColors.text, flexShrink: 1 },
+  lijstRijGekozen: { backgroundColor: tennisColors.primaryTint },
+  // Vaste breedte op het nummer: zo staan de namen onder elkaar en lees je de lijst als een
+  // kolom in plaats van als elf losse regels.
+  overzichtNummer: {
+    width: 24,
+    fontSize: 15,
+    fontWeight: '700',
+    color: tennisColors.textMuted,
+  },
+  overzichtNaam: { flexGrow: 1, flexShrink: 1, fontSize: 15, color: tennisColors.text },
+  overzichtLigging: { flexShrink: 4, fontSize: 13, color: tennisColors.textMuted },
+  overzichtStaffel: { flexShrink: 2, fontSize: 13, color: tennisColors.textMuted },
+  overzichtTarief: { flexShrink: 0, fontSize: 15, color: tennisColors.text, fontWeight: '600' },
 });
