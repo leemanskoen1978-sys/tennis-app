@@ -20,7 +20,7 @@ komende lessen op het afvinkscherm, en de tegelpagina van zeventien naar elf teg
 
 ## Wat er nog moet
 
-### 1. Het tweede importformaat — de échte clubijst
+### 1. Het tweede importformaat — GEBOUWD op 6 september 2026
 
 De gebruiker leverde de volledige lijst van de club aan. Die heeft een **andere vorm** dan
 `koen.xlsx` en de importer kan hem niet lezen. Geanalyseerd, cijfers hard:
@@ -48,6 +48,62 @@ De gebruiker leverde de volledige lijst van de club aan. Die heeft een **andere 
 **Beslissing van de gebruiker: de groepsnaam komt er alleen bij als tiebreak**, niet standaard
 in de sleutel. Dus weekdag + uur + terrein, en de naam alleen op de momenten waar het anders
 botst. Zo blijft hernoemen werken voor de 187 groepen zonder botsing.
+
+**Wat er gebouwd is.** `lib/import-weekschema.ts` leest het clubformaat en vertaalt het naar
+`GeplandeGroep`; op dat punt haakt het in de bestaande pijplijn en kent niets erna nog een
+bestandsformaat. `planImportLessen` kiest de lezer. Het sjabloon van de app blijft werken.
+
+De formaatkeuze gaat over de **datum** en niet over de weekdag. Dat was de eerste opzet en die
+was fout: `koen.xlsx` heeft zélf een kolom `Weekdag` staan, naast `Weeknr`, `Locatie` en
+`Indoor/Outdoor`. Erop kiezen stuurde dat bestand naar de verkeerde lezer en liet alle 1398
+regels verdwijnen. De testsuite ving het.
+
+Beslissingen die erin verwerkt zitten:
+
+| Onderwerp | Wat het werd |
+| --- | --- |
+| Sleutel | weekdag + beginuur + baan-**ID**, met de groepsnaam alleen als tiebreak. Het ID en niet de baannaam: `groepSleutel` in lib/lesgroepen sleutelt bestaande groepen op `court_id`, en met "terrein 7" tegenover "c7" was er elk seizoen 192 keer een nieuwe groep bijgekomen. |
+| Seizoen | Uit de clubinstellingen (`season_start`/`season_end`), niet uit het bestand. Zonder ingesteld seizoen weigert de import het weekschema met een melding. |
+| Lesduur | Uit de kolom `Uur` (`16:00 - 17:00`), per groep bewaard in `lesson_groups.duration_minutes`. Leeg = de clubinstelling. |
+| Meerdere terreinen / trainers | De eerste wint, de rest in een waarschuwing. |
+| Regels zonder spelers | De groep komt er met een leeg rooster; geen lessen tot er iemand in zit. |
+| Trainers | Onbekende trainers wórden aangemaakt (rol `coach`, demo-adres). Dit draait D-07 om — zie hieronder. |
+
+**Twee dingen die onderweg gevonden zijn en de import zouden hebben laten stranden:**
+
+1. **`users.email` is `unique not null`.** De clublijst heeft geen e-mailkolom, dus zonder
+   ingreep zouden 550 leden een leeg adres krijgen en zou de tweede daarvan de hele import laten
+   stranden — halverwege, met leerlingen zonder groep als restant. Nooit opgevallen omdat
+   `koen.xlsx` wél adressen heeft; een bestaande test legde `email: ''` zelfs vast. Elk nieuw lid
+   krijgt nu een adres afgeleid van zijn naam op `example.com` (RFC 2606: dat domein kan nooit
+   post ontvangen).
+2. **Zonder trainer plant `lessenUitGroep` geen enkele les**, want `Booking.coach_id` is
+   verplicht. De clublijst noemt twaalf trainers die de club niet als account heeft — dat waren
+   192 groepen zonder één les. Op verzoek van de eigenaar worden ze nu aangemaakt. Van D-07
+   blijft overeind dat het niet stilletjes mag: de namen staan in de droogloop, ze krijgen geen
+   uurtarief, en hun login is een aparte handeling.
+
+**Twee SQL-bestanden die de gebruiker zelf draait:**
+
+- `SEIZOEN-EN-LESDUUR.sql` — vóór de import. Zet het seizoen (7 september 2026 t/m 30 juni 2027,
+  overgenomen uit de kalenderfoto: het groen begint in week 37 en eindigt op 30 juni) en voegt
+  `duration_minutes` toe aan `lesson_groups`. De dertien vakantieperiodes stonden er al en
+  kloppen; het wit in die kalender is geen vakantie maar buiten het seizoen, en dat verschil
+  stond nergens in de databank.
+- `TRAINERS-LOGIN.sql` — ná de import. Geeft de aangemaakte trainers een login met wachtwoord
+  `123`, mét de rij in `auth.identities` die Supabase nodig heeft (zonder die rij is het "Invalid
+  login credentials" ook al klopt het wachtwoord — de valkuil waar `leslie-login.sql` ook op
+  stuitte). Onderaan staat een uitgecommentarieerd blok dat de wachtwoorden ongeldig maakt zodra
+  de club er echt mee gaat werken.
+
+**Geverifieerd:** `npx tsc --noEmit` exit 0, `npx jest` 55 suites en 1678 tests groen (was 1591).
+
+Wat nog niet met de hand is doorlopen: de échte clublijst door de droogloop halen. Verwacht 192
+groepen, 550 spelers, 12 trainers, en botsingen op vijf momenten op Terrein 7 — die vijf zijn
+goed en horen in het rood te staan. Let op dat de dev-server op de productiedatabank praat.
+
+Het plan met alle vijftien taken staat in
+`docs/superpowers/plans/2026-09-06-importer-clubweekschema.md`.
 
 ### 2. Een terrein kan meerdere groepen dragen — GEBOUWD op 6 september 2026
 
