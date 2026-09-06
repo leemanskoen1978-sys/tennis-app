@@ -13,10 +13,12 @@
 
 import { GROEPSLES_METHOD } from './beurtenkaart';
 import { normalizeEmail } from './contact';
-import { actieveGroepen, groepSleutel } from './lesgroepen';
+import { actieveGroepen, groepSleutel, groupBookingsFrom } from './lesgroepen';
 import { botstMet } from './recurrence';
 import { normalizeName, zelfdeNaamOngeachtVolgorde, zoekOpNaam } from './students';
-import type { Booking, Court, LesGroep, PaymentMethod, Settings, User, Vakantie } from './types';
+import type {
+  Booking, BookingStatus, Court, LesGroep, PaymentMethod, Settings, User, Vakantie,
+} from './types';
 import { dagSleutel, vakantieOpMoment } from './vakanties';
 import { buildXlsx, type XlsxCel } from './xlsx';
 import { fractieNaarTijd, serieNaarDatum, type GelezenBlad } from './xlsx-lezen';
@@ -1059,12 +1061,45 @@ export function alsBezet(les: GeplandeLes, koppeling: GroepKoppeling): ImportBoe
   };
 }
 
+/**
+ * Eén dag waarop het bestand en de agenda het oneens zijn: er staat al een les van deze groep,
+ * maar op een ander uur of afgezegd.
+ *
+ * Genoeg om de beheerder te laten beslissen zonder zijn bestand ernaast te leggen: welke groep,
+ * welke dag, hoe laat de les nu staat, hoe laat het bestand hem zet, en of hij afgezegd is.
+ */
+export interface HandmatigeWijziging {
+  regel: number;
+  groep: string;
+  /** De lokale dag, als jjjj-mm-dd — dezelfde dagsleutel als een vakantie. */
+  dag: string;
+  /** Het beginuur zoals de les nu in de agenda staat, als HH:MM. */
+  bestaandeTijd: string;
+  /** Het beginuur dat het bestand voorstelt, als HH:MM. */
+  tijdInBestand: string;
+  status: BookingStatus;
+}
+
+/** Een komende les van de groep die niet meer in het bestand staat. Een melding, geen opdracht. */
+export interface VerdwenenLes {
+  id: string;
+  groep: string;
+  dag: string;
+  tijd: string;
+}
+
 /** Wat er met de lessen van één groep zou gebeuren. */
 export interface GroepLessen {
   /** De lessen die aangemaakt worden. */
   nieuweLessen: GeplandeLes[];
+  /** De boekingen die al precies goed staan: zelfde groep, zelfde dag, zelfde beginuur. */
+  ongewijzigd: string[];
   /** De lessen uit het bestand die niet doorgaan, met hun reden. */
   overgeslagen: OvergeslagenLes[];
+  /** De dagen waarop iemand met de hand ingreep. Het bestand overrulet die nooit (D-13). */
+  handmatigGewijzigd: HandmatigeWijziging[];
+  /** De komende lessen van de groep die het bestand niet meer kent. */
+  verdwenenUitBestand: VerdwenenLes[];
   /** Wat er ontbreekt om deze groep te kunnen plannen; komt uit `koppelingVoorGroep`. */
   meldingen: ImportFoutLessen[];
 }
@@ -1102,7 +1137,10 @@ export function lessenUitGroep(
 ): GroepLessen {
   const uit: GroepLessen = {
     nieuweLessen: [],
+    ongewijzigd: [],
     overgeslagen: [],
+    handmatigGewijzigd: [],
+    verdwenenUitBestand: [],
     meldingen: koppeling.meldingen,
   };
 
@@ -1125,6 +1163,29 @@ export function lessenUitGroep(
     if (!kandidaten.has(sleutel)) kandidaten.set(sleutel, { regel: r.regel, start, dag });
   }
 
+  // De lessen die deze groep vanaf nu al in de agenda heeft, afgezegde meegerekend: juist een
+  // afgezegde les moet gezien worden, want die mag niet stilzwijgend terugkomen. Vandaar
+  // `groupBookingsFrom` en niet `komendeLessen` — lees het verschil in lib/lesgroepen. Alles vanaf
+  // `nu` vooruit; wat geweest is komt in deze lijst niet voor en wordt dus ook nooit aangeraakt.
+  const vanGroep = groep.bestaand
+    ? groupBookingsFrom([...bestaandeBoekingen], groep.bestaand.id, nu)
+    : [];
+  // Twee kaarten, één keer opgebouwd: op sleutel voor "staat deze les er al precies zo", en op dag
+  // voor "staat er die dag iets ánders van deze groep". Een club met tienduizend lessen mag geen
+  // lijst-in-lijst worden (T-05-16).
+  const opSleutel = new Map<string, ImportBoeking>();
+  const opDag = new Map<string, ImportBoeking[]>();
+  for (const b of vanGroep) {
+    const wanneer = new Date(b.start_time);
+    const dag = dagSleutel(wanneer);
+    const sleutel = lesSleutel(identiteit, dag, wanneer.getHours(), wanneer.getMinutes());
+    if (!opSleutel.has(sleutel)) opSleutel.set(sleutel, b);
+    const opDieDag = opDag.get(dag);
+    if (opDieDag) opDieDag.push(b); else opDag.set(dag, [b]);
+  }
+  /** De boekingen die het bestand herkende; wat overblijft is uit het bestand verdwenen. */
+  const herkend = new Set<string>();
+
   const opTijd = [...kandidaten.entries()].sort((a, b) => a[1].start.getTime() - b[1].start.getTime());
   for (const [sleutel, kandidaat] of opTijd) {
     const { start, regel } = kandidaat;
@@ -1133,6 +1194,35 @@ export function lessenUitGroep(
     // hij wordt niet ingepland, niet bijgewerkt en niet verwijderd. Wat geweest is, blijft staan.
     if (start.getTime() < nu.getTime()) {
       uit.overgeslagen.push({ sleutel, start, reden: 'verleden', regel });
+      continue;
+    }
+
+    // Staat deze les er al precies zo? Dan verandert er niets (IMP-06). Dit is wat een tweede
+    // inleesbeurt van hetzelfde bestand niets laat verdubbelen.
+    const zelfde = opSleutel.get(sleutel);
+    if (zelfde && zelfde.status !== 'cancelled') {
+      uit.ongewijzigd.push(zelfde.id);
+      herkend.add(zelfde.id);
+      continue;
+    }
+
+    // Staat er die dag wél een les van deze groep, maar op een ander uur of afgezegd? Dan greep
+    // iemand met de hand in. Een les die met de hand verzet of afgezegd is, wordt niet
+    // stilzwijgend teruggezet: de droogloop meldt zulke botsingen apart en de beheerder beslist
+    // (D-13). Zonder deze stap zou een herimport een afzegging ongedaan maken, of er een tweede
+    // les op dezelfde dag naast zetten.
+    const opDieDag = opDag.get(kandidaat.dag) ?? [];
+    if (opDieDag.length > 0) {
+      const bestaandeLes = opDieDag[0];
+      uit.handmatigGewijzigd.push({
+        regel,
+        groep: groep.naam,
+        dag: kandidaat.dag,
+        bestaandeTijd: tijdTekst(new Date(bestaandeLes.start_time)),
+        tijdInBestand: tijdTekst(start),
+        status: bestaandeLes.status,
+      });
+      for (const b of opDieDag) herkend.add(b.id);
       continue;
     }
 
@@ -1164,7 +1254,53 @@ export function lessenUitGroep(
     uit.nieuweLessen.push({ sleutel, start, eind, groep, regel });
   }
 
+  // Wat de groep nog aan komende lessen heeft en het bestand niet kent, wordt gemeld en niet
+  // verwijderd. De import zegt het, de beheerder beslist: een bestand waarin per ongeluk de
+  // laatste maand ontbreekt zou anders een maand lessen van de club wissen. Afgezegde lessen
+  // blijven hier weg — die zijn hierboven al als handmatige wijziging gezien of gaan sowieso niet
+  // meer door.
+  for (const b of vanGroep) {
+    if (b.status === 'cancelled' || herkend.has(b.id)) continue;
+    const wanneer = new Date(b.start_time);
+    uit.verdwenenUitBestand.push({
+      id: b.id,
+      groep: groep.naam,
+      dag: dagSleutel(wanneer),
+      tijd: tijdTekst(wanneer),
+    });
+  }
+
   return uit;
+}
+
+/**
+ * Wat dit bestand aan een bestaande lesgroep verandert — alleen de velden die echt anders zijn.
+ *
+ * Alleen de échte verschillen, om dezelfde reden als `verschillen` in lib/import-leden: zou hier
+ * elk veld in staan, dan is bij een herimport ineens élke groep "bijgewerkt" en verzuipt de ene
+ * echte wijziging in de ruis. Naam, weekdag en beginuur staan er niet bij: die drie vormen de
+ * sleutel waarmee de groep herkend werd, dus ze zijn per definitie gelijk.
+ *
+ * Het seizoen wordt opgerekt en nooit ingekort. Een beheerder die alleen de maand januari
+ * opnieuw inleest, bedoelt niet dat het seizoen voortaan één maand duurt.
+ */
+export function groepWijzigingen(
+  bestaand: LesGroep,
+  groep: GeplandeGroep,
+  koppeling: GroepKoppeling,
+): Partial<Omit<LesGroep, 'id' | 'roster'>> {
+  const wijzigingen: Partial<Omit<LesGroep, 'id' | 'roster'>> = {};
+  if (groep.niveau && groep.niveau !== bestaand.level) wijzigingen.level = groep.niveau;
+  if (groep.beginminuut !== bestaand.start_minute) wijzigingen.start_minute = groep.beginminuut;
+  if (koppeling.trainer && koppeling.trainer.id !== bestaand.coach_id) {
+    wijzigingen.coach_id = koppeling.trainer.id;
+  }
+  if (koppeling.baan && koppeling.baan.id !== bestaand.court_id) {
+    wijzigingen.court_id = koppeling.baan.id;
+  }
+  if (groep.seizoenVan < bestaand.season_start) wijzigingen.season_start = groep.seizoenVan;
+  if (groep.seizoenTot > bestaand.season_end) wijzigingen.season_end = groep.seizoenTot;
+  return wijzigingen;
 }
 
 // ---------------------------------------------------------------------------
