@@ -1167,20 +1167,36 @@ describe('lessenUitGroep', () => {
     expect(uit.overgeslagen[0].vakantie).toBe('Herfstvakantie');
   });
 
-  it('meldt een les die botst met een bezette trainer en raakt de bestaande les niet aan', () => {
+  // Een overlap blokkeert nooit en waarschuwt altijd. Beide helften horen bewezen: de les
+  // wordt ingepland ÉN de botsing staat gemeld. Dit is de melding die het kleutertennis van
+  // deze club draagt — op vijf momenten staan twee of drie groepen samen op Terrein 7, en
+  // zolang een botsing de les tegenhield plande de import juist die vijf niet in.
+  it('plant een les die botst met een bezette trainer gewoon in, en meldt de botsing', () => {
     const groep = groepUit([regelVan()]);
     const bezet = boekingVan({ id: 'b-ander', group_id: 'g-ander', court_id: 'c9' });
     const uit = lessenUitGroep(groep, GEKOPPELD, LEDEN, [bezet], [], 60, NU);
-    expect(uit.nieuweLessen).toEqual([]);
-    expect(uit.overgeslagen.map((o) => o.reden)).toEqual(['bezet']);
+    // De les IS ingepland.
+    expect(uit.nieuweLessen).toHaveLength(1);
+    expect(uit.overgeslagen).toEqual([]);
+    // En de botsing IS gemeld, met de les waarmee het botst en de groep die erbij komt.
+    expect(uit.botsingen).toHaveLength(1);
+    expect(uit.botsingen[0].conflict.id).toBe('b-ander');
+    expect(uit.botsingen[0].groep).toBe(groep.naam);
+    // De bestaande les blijft precies staan waar hij staat; de import overschrijft nooit.
     expect(bezet.start_time).toBe(new Date(2026, 8, 9, 17, 0).toISOString());
   });
 
-  it('meldt ook een les die botst met een bezette baan', () => {
+  it('plant ook bij een bezette baan in, en meldt het', () => {
     const groep = groepUit([regelVan()]);
     const bezet = boekingVan({ id: 'b-ander', group_id: 'g-ander', coach_id: 'u-sofie' });
     const uit = lessenUitGroep(groep, GEKOPPELD, LEDEN, [bezet], [], 60, NU);
-    expect(uit.overgeslagen.map((o) => o.reden)).toEqual(['bezet']);
+    expect(uit.nieuweLessen).toHaveLength(1);
+    expect(uit.overgeslagen).toEqual([]);
+    expect(uit.botsingen.map((b) => b.conflict.id)).toEqual(['b-ander']);
+    // De trainer en de baan waarvoor de botsing gevonden werd komen mee, zodat het scherm
+    // "Terrein 7" of de naam van de trainer kan zeggen in plaats van een id.
+    expect(uit.botsingen[0].courtId).toBe(GEKOPPELD.baan?.id);
+    expect(uit.botsingen[0].coachId).toBe(GEKOPPELD.trainer?.id);
   });
 
   it('telt een les in een vakantie én in een bezet uur één keer, als vakantie', () => {
@@ -1188,19 +1204,29 @@ describe('lessenUitGroep', () => {
     const bezet = boekingVan({ id: 'b-ander', group_id: 'g-ander' });
     const herfst = { id: 'v1', naam: 'Herfstvakantie', van: '2026-09-07', tot: '2026-09-13' };
     const uit = lessenUitGroep(groep, GEKOPPELD, LEDEN, [bezet], [herfst], 60, NU);
+    // DE GRENS VAN DEZE FASE: de vakantie blokkeert nog steeds. Alleen de overlapregel is
+    // verzacht, en de les gaat dus níét door — is de club dicht, dan doet de botsing er niet
+    // meer toe en wordt ze ook niet apart gemeld.
     expect(uit.overgeslagen).toHaveLength(1);
     expect(uit.overgeslagen[0].reden).toBe('vakantie');
+    expect(uit.nieuweLessen).toEqual([]);
+    expect(uit.botsingen).toEqual([]);
   });
 
-  it('laat het bestand ook met zichzelf botsen: de tweede groep op hetzelfde uur gaat niet door', () => {
+  it('laat het bestand met zichzelf botsen: de tweede groep gaat door én wordt gemeld', () => {
+    // Precies het geval van deze club: twee groepen in hetzelfde bestand op hetzelfde uur en
+    // dezelfde baan. Ze komen er allebei, en de tweede meldt zich.
     const eerste = groepUit([regelVan({ groep: 'Groep 8' })]);
     const tweede = groepUit([regelVan({ regel: 20, groep: 'Groep 12', leerling: 'Bertrem Mila' })]);
     const uitEerste = lessenUitGroep(eerste, GEKOPPELD, LEDEN, [], [], 60, NU);
     expect(uitEerste.nieuweLessen).toHaveLength(1);
+    expect(uitEerste.botsingen).toEqual([]);
     const reeds = uitEerste.nieuweLessen.map((l) => alsBezet(l, GEKOPPELD));
     const uitTweede = lessenUitGroep(tweede, GEKOPPELD, LEDEN, reeds, [], 60, NU);
-    expect(uitTweede.nieuweLessen).toEqual([]);
-    expect(uitTweede.overgeslagen.map((o) => o.reden)).toEqual(['bezet']);
+    expect(uitTweede.nieuweLessen).toHaveLength(1);
+    expect(uitTweede.overgeslagen).toEqual([]);
+    expect(uitTweede.botsingen).toHaveLength(1);
+    expect(uitTweede.botsingen[0].conflict.id).toBe(reeds[0].id);
   });
 
   it('plant geen les zonder trainer, en meldt het één keer', () => {
@@ -1578,7 +1604,7 @@ describe('planImportLessen', () => {
 
   it('geeft een plan met alles erin wat de droogloop moet tonen', () => {
     expect(Object.keys(plan()).sort()).toEqual([
-      'dubbel', 'fouten', 'groepenBijgewerkt', 'groepenNieuw', 'groepenOngewijzigd',
+      'botsingen', 'dubbel', 'fouten', 'groepenBijgewerkt', 'groepenNieuw', 'groepenOngewijzigd',
       'handmatigGewijzigd', 'nietHerkend', 'nieuweLessen', 'ongewijzigdeLessen', 'overgeslagen',
       'regels', 'spelersNieuw', 'trainerwissels', 'verdwenenUitBestand', 'waarschuwingen',
     ]);
@@ -1622,9 +1648,15 @@ describe('planImportLessen', () => {
     expect(uit.groepenNieuw).toHaveLength(2);
     expect(uit.groepenNieuw.map((g) => g.naam))
       .toEqual(['Woensdag 17:00 — Baan 1', 'Woensdag 17:00 — Baan 2']);
-    // Eén les gaat door; de tweede niet, want dezelfde trainer kan niet op twee banen tegelijk.
-    expect(uit.nieuweLessen).toHaveLength(1);
-    expect(uit.overgeslagen.map((o) => o.reden)).toEqual(['bezet']);
+    // Allebei de lessen gaan door. Dat dezelfde trainer op twee banen tegelijk staat is bij
+    // deze club geen fout maar de gewone gang van zaken — op Terrein 7 draait Devries Ann
+    // blauw en rood naast elkaar. Vroeger verdween de tweede les hier stilzwijgend.
+    expect(uit.nieuweLessen).toHaveLength(2);
+    expect(uit.overgeslagen).toEqual([]);
+    // Maar stil gebeurt het niet: de tweede meldt zich, met de eerste erbij.
+    expect(uit.botsingen).toHaveLength(1);
+    expect(uit.botsingen[0].groep).toBe('Woensdag 17:00 — Baan 2');
+    expect(uit.botsingen[0].conflict.coach_id).toBe('u-koen');
     // En de splitsing gebeurt niet stil: één zin over dat ene moment.
     expect(uit.waarschuwingen.filter((w) => w.reden.includes('meer dan één baan'))).toHaveLength(1);
   });
@@ -1639,8 +1671,10 @@ describe('planImportLessen', () => {
     const uit = planImportLessen(RIJEN, [], [KOEN], [BAAN], [], {
       vakanties: [{ id: 'v1', naam: 'Herfstvakantie', van: '2026-09-14', tot: '2026-09-20' }],
     }, NU);
+    // De vakantie blokkeert nog steeds wél: alleen de overlapregel is verzacht.
     expect(uit.nieuweLessen).toHaveLength(1);
     expect(uit.overgeslagen.map((o) => [o.reden, o.vakantie])).toEqual([['vakantie', 'Herfstvakantie']]);
+    expect(uit.botsingen).toEqual([]);
   });
 
   it('verandert niets als hetzelfde bestand een tweede keer binnenkomt', () => {
@@ -2489,19 +2523,21 @@ function teller(): (voorvoegsel: string) => string {
 }
 
 describe('overgeslagenPerReden', () => {
-  const les = (reden: 'vakantie' | 'bezet' | 'verleden'): OvergeslagenLes => ({
+  // `bezet` is hier geen reden meer: een overlap slaat geen les meer over, ze meldt zich in
+  // `plan.botsingen`. Wat overblijft zijn de twee redenen die écht blokkeren.
+  const les = (reden: 'vakantie' | 'verleden'): OvergeslagenLes => ({
     sleutel: `s-${reden}`, start: NU, reden, regel: 2,
   });
 
   it('telt nul op elke reden als er niets is overgeslagen', () => {
     expect(overgeslagenPerReden({ overgeslagen: [] }))
-      .toEqual({ vakantie: 0, bezet: 0, verleden: 0 });
+      .toEqual({ vakantie: 0, verleden: 0 });
   });
 
   it('telt per reden, zodat het scherm aantallen kan tonen in plaats van regels', () => {
     expect(overgeslagenPerReden({
-      overgeslagen: [les('vakantie'), les('bezet'), les('vakantie'), les('verleden')],
-    })).toEqual({ vakantie: 2, bezet: 1, verleden: 1 });
+      overgeslagen: [les('vakantie'), les('verleden'), les('vakantie'), les('verleden')],
+    })).toEqual({ vakantie: 2, verleden: 2 });
   });
 });
 

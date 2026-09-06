@@ -101,9 +101,19 @@ export const EN: Record<string, string> = {
     '{vakantie}: the club gives no lessons on this day.',
   '{lessen} vallen in een vakantie en gaan niet door: {dagen}.':
     '{lessen} fall in a holiday and will not happen: {dagen}.',
-  '{lessen} overgeslagen, de trainer was dan al bezet.':
-    '{lessen} skipped, the coach was already busy then.',
   '{lessen} vielen in een vakantie.': '{lessen} fell in a holiday.',
+  // --- een overlap in woorden (lib/botsingen) ----------------------------
+  // Een overlap blokkeert nooit en waarschuwt altijd; deze zinnen zeggen wáármee het botst.
+  'een andere trainer': 'another coach',
+  'een ander terrein': 'another court',
+  '{baan}: daar staat al een les op {wanneer}.':
+    '{baan}: a lesson is already scheduled there on {wanneer}.',
+  '{trainer} geeft dan al een andere les op {wanneer}.':
+    '{trainer} is already teaching another lesson then, on {wanneer}.',
+  '{trainer} staat dan al op {baan}, op {wanneer}.':
+    '{trainer} is already on {baan} then, on {wanneer}.',
+  'Let op: {lessen} staan tegelijk met een andere les.':
+    'Note: {lessen} run at the same time as another lesson.',
   // Beheer → Leden en het bewerkblad erachter (app/admin/leden, components/LidBewerken).
   'Leden': 'Members',
   'Gegevens, type account en beheerders': 'Details, account type and administrators',
@@ -683,10 +693,12 @@ export const EN: Record<string, string> = {
   'Vul beide datums in als dd/mm/jjjj.': 'Enter both dates as dd/mm/yyyy.',
   'Een reeks gaat tot {n} lessen; wat daarna komt valt erbuiten.':
     'A series runs up to {n} lessons; anything beyond that falls outside it.',
-  'Geen enkel moment van deze reeks is nog vrij; er valt niets te boeken.':
-    'Not a single slot of this series is free; there is nothing to book.',
-  '{lessen} overgeslagen omdat de trainer dan al bezet is: {dagen}.':
-    '{lessen} skipped because the coach is already busy then: {dagen}.',
+  'Elk moment van deze reeks valt in een periode dat de club dicht is.':
+    'Every slot of this series falls in a period when the club is closed.',
+  '{lessen} komen tegelijk met een andere les te staan: {dagen}.':
+    '{lessen} will run at the same time as another lesson: {dagen}.',
+  'Deze les komt tegelijk met een andere te staan. {wat}':
+    'This lesson will run at the same time as another one. {wat}',
   '{frequentie} tot en met {dag} · {lessen}': '{frequentie} up to and including {dag} · {lessen}',
   'een wekelijkse reeks': 'a weekly series',
   'een tweewekelijkse reeks': 'a fortnightly series',
@@ -1003,9 +1015,12 @@ export const EN: Record<string, string> = {
     + '{lessen} lessons scheduled, {gewisseld} lessons got a different coach.',
   '{n} lessen staan al goed en blijven zoals ze zijn.':
     '{n} lessons are already correct and stay as they are.',
-  '{vakantie} vallen in een clubvakantie, {bezet} botsen met een bezette trainer of baan, {verleden} zijn al geweest.':
-    '{vakantie} fall in a club holiday, {bezet} clash with a busy coach or court, '
-    + '{verleden} have already taken place.',
+  '{vakantie} vallen in een clubvakantie, {verleden} zijn al geweest.':
+    '{vakantie} fall in a club holiday, {verleden} have already taken place.',
+  '{n} lessen komen tegelijk met een andere les te staan. Ze worden ingepland; kijk ze na.':
+    '{n} lessons will run at the same time as another lesson. They will be scheduled; '
+    + 'please check them.',
+  '{groep} op {dag}: {wat}': '{groep} on {dag}: {wat}',
   'Deze lesgroepen worden niet aangemaakt': 'These lesson groups will not be created',
   '{n} van de nieuwe lesgroepen hierboven komen er nu niet, en hun lessen dus ook niet.':
     '{n} of the new lesson groups above will not be created now, and neither will their lessons.',
@@ -1314,8 +1329,7 @@ export const EN: Record<string, string> = {
   '{lessen} van vandaag en later verzetten mee. De lessen die al geweest zijn blijven staan waar ze stonden.':
     '{lessen} of today and later move along. The lessons that have already been taught stay '
     + 'where they were.',
-  '{lessen} blijven staan: de trainer of de baan is dan al bezet: {dagen}.':
-    '{lessen} stay put: the coach or the court is already taken then: {dagen}.',
+
   '{lessen} zouden in een vakantie vallen en blijven staan: {dagen}.':
     '{lessen} would fall in a holiday and stay put: {dagen}.',
   '{lessen} zouden hierdoor in het verleden komen te staan en blijven staan: {dagen}.':

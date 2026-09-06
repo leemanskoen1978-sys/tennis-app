@@ -31,6 +31,8 @@ import {
   type GroepInPlan, type ImportPlanLessen, type ImportUitslagLessen,
   type ImportWaarschuwing, type IngrijpendeWijzigingen,
 } from '../../lib/import-trainingen';
+import { botsingTekst } from '../../lib/botsingen';
+import { formatDayTime } from '../../lib/datetime';
 import { tennisColors } from '../../constants/tennis-colors';
 import { minTapTarget, radius, spacing, typography, webCursor } from '../../constants/theme';
 
@@ -71,6 +73,16 @@ function wisLaatsteUitslag(): void {
   laatsteUitslag = null;
   laatsteMislukking = null;
 }
+
+/**
+ * Hoeveel botsingen de droogloop uitschrijft voordat ze op een aantal overgaat.
+ *
+ * De echte clubijst heeft er vijf, allemaal kleutertennis op Terrein 7, en die horen alle vijf
+ * leesbaar te zijn. Een verkeerd bestand kan er honderden opleveren, en dan is een lijst van
+ * honderden regels precies het scherm dat niemand meer leest (D-09). Twintig is ruim boven het
+ * echte geval en klein genoeg om te blijven overzien.
+ */
+const BOTSINGEN_GETOOND = 20;
 
 export default function TrainingenImport(): React.JSX.Element {
   const t = useT();
@@ -365,10 +377,27 @@ function PlanInBeeld({
   onOpnieuwProberen: () => void;
 }): React.JSX.Element {
   const t = useT();
+  // De namen achter de ids in een botsing. Uit de opslag en niet uit het plan: het plan kent
+  // alleen ids, en een melding met een id erin is voor de beheerder onleesbaar.
+  const { users, courts } = useSimpleData();
   // De bevestiging staat hier en niet in de provider: er wordt pas iets weggeschreven nadat de
   // beheerder deze droogloop gezien heeft én daarna nog een keer uitdrukkelijk ja zegt.
   const [bevestigen, setBevestigen] = useState<boolean>(false);
   const overgeslagen = overgeslagenPerReden(plan);
+  // Eén regel per botsende les: welke groep waar bovenop komt. Niet ontdubbeld op de andere
+  // les zoals in het boekingsvenster — daar is het twaalf keer dezelfde week van één reeks,
+  // hier is het per groep een ander verhaal en wil de beheerder ze allemaal zien. Wel
+  // afgekapt: de droogloop toont aantallen en geen 1400 regels (D-09).
+  const botsingRegels = plan.botsingen.slice(0, BOTSINGEN_GETOOND).map((b) => t(
+    '{groep} op {dag}: {wat}',
+    {
+      groep: b.groep,
+      dag: formatDayTime(b.start.toISOString()),
+      wat: botsingTekst(b.conflict, { coachId: b.coachId, courtId: b.courtId }, {
+        trainers: users, banen: courts,
+      }),
+    },
+  ));
   const nietsNieuws = plan.groepenNieuw.length === 0
     && plan.groepenBijgewerkt.length === 0
     && plan.spelersNieuw.length === 0
@@ -430,12 +459,29 @@ function PlanInBeeld({
           {t('{n} lessen staan al goed en blijven zoals ze zijn.', { n: plan.ongewijzigdeLessen.length })}
         </Text>
         <Text style={styles.mededeling}>
-          {t('{vakantie} vallen in een clubvakantie, {bezet} botsen met een bezette trainer of baan, {verleden} zijn al geweest.', {
+          {t('{vakantie} vallen in een clubvakantie, {verleden} zijn al geweest.', {
             vakantie: overgeslagen.vakantie,
-            bezet: overgeslagen.bezet,
             verleden: overgeslagen.verleden,
           })}
         </Text>
+        {/* De overlappende lessen worden WEL ingepland — een overlap blokkeert nooit en
+            waarschuwt altijd — en staan daarom niet bij de overgeslagen lessen maar hier, in
+            het rood. Dit is de melding die het kleutertennis van deze club draagt: op Terrein 7
+            staan blauw en rood samen op een halve baan, en vroeger plande de import juist die
+            momenten niet in. Nu gaan ze door, en ziet de beheerder vóór het importeren met
+            welke les ze samenvallen — kleutertennis of een echte vergissing. */}
+        {plan.botsingen.length > 0 ? (
+          <>
+            <Text style={styles.fout}>
+              {t('{n} lessen komen tegelijk met een andere les te staan. Ze worden ingepland; kijk ze na.', {
+                n: plan.botsingen.length,
+              })}
+            </Text>
+            {botsingRegels.map((regel) => (
+              <Text key={regel} style={styles.fout}>{regel}</Text>
+            ))}
+          </>
+        ) : null}
         {plan.nietHerkend.length > 0 ? (
           <Text style={styles.mededeling}>
             {t('Deze kolommen herken ik niet en komen niet mee: {koppen}', { koppen: plan.nietHerkend.join(', ') })}

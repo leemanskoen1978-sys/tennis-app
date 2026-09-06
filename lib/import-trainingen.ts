@@ -14,7 +14,7 @@
 import { GROEPSLES_METHOD } from './beurtenkaart';
 import { normalizeEmail } from './contact';
 import { actieveGroepen, groepSleutel, groupBookingsFrom, lesGroepFout } from './lesgroepen';
-import { botstMet } from './recurrence';
+import { botstMet, type BezetBoeking } from './recurrence';
 import { normalizeName, zelfdeNaamOngeachtVolgorde, zoekOpNaam } from './students';
 import type {
   Booking, BookingStatus, Court, LesGroep, PaymentMethod, Settings, User, Vakantie,
@@ -1178,18 +1178,45 @@ export interface GeplandeLes {
 /**
  * Een les uit het bestand die niet ingepland wordt, met de reden.
  *
- * De woorden zijn letterlijk overgenomen: `vakantie` en `bezet` uit `OvergeslagenReden` in
- * lib/recurrence, `verleden` uit `GeblokkeerdeLes` in lib/lesgroepen. Drie vocabulaires voor
- * hetzelfde zou de schermen laten uiteenlopen — dezelfde melding zou dan in Reserveren anders
- * heten dan in de import.
+ * De woorden zijn letterlijk overgenomen: `vakantie` uit `OvergeslagenReden` in lib/recurrence,
+ * `verleden` uit `GeblokkeerdeLes` in lib/lesgroepen. Drie vocabulaires voor hetzelfde zou de
+ * schermen laten uiteenlopen — dezelfde melding zou dan in Reserveren anders heten dan in de
+ * import. `bezet` hoorde hier tot 6 september 2026 ook bij en is uit alle drie verdwenen: een
+ * overlap slaat geen les meer over, ze meldt zich (zie `BotsendeLes` hieronder).
  */
 export interface OvergeslagenLes {
   sleutel: string;
   start: Date;
-  reden: 'vakantie' | 'bezet' | 'verleden';
+  reden: 'vakantie' | 'verleden';
   /** De naam van de vakantie, als dat de reden was. */
   vakantie?: string;
   regel: number;
+}
+
+/**
+ * Een les die het bestand gewoon inplant, maar die overlapt met een les die er al staat.
+ *
+ * DIT IS DE MELDING DIE DE IMPORT VAN DEZE CLUB MOGELIJK MAAKT. Op vijf momenten in de echte
+ * clubijst staan twee of drie kleutergroepen tegelijk op Terrein 7 — blauw en rood hebben elk
+ * maar een halve baan nodig — en op vier daarvan draait dezelfde trainer er twee naast elkaar.
+ * Zolang een botsing de les tegenhield, plande de import juist die vijf momenten niet in en
+ * verdwenen precies de kinderlessen. Nu gaan ze door en staat de overlap in de droogloop in
+ * het rood, zodat de beheerder ziet of het kleutertennis is of een echte vergissing.
+ *
+ * `groep` staat erbij en niet alleen het regelnummer: de droogloop toont aantallen en namen,
+ * geen 1400 regels (D-09), en "Terrein 7 om 14:00" zegt niets zonder te weten wélke groep.
+ */
+export interface BotsendeLes {
+  sleutel: string;
+  start: Date;
+  regel: number;
+  /** De naam van de groep die hier ingepland wordt. */
+  groep: string;
+  /** De bestaande les waarmee dit moment overlapt. */
+  conflict: BezetBoeking;
+  /** De trainer en de baan waarvoor de botsing gevonden werd; lib/botsingen maakt er een zin van. */
+  coachId: string;
+  courtId: string;
 }
 
 /** Wat er van een geplande les naar de boeking gaat: wie betaalt, wie meedoet, en hoe. */
@@ -1342,6 +1369,11 @@ export interface GroepLessen {
   ongewijzigd: string[];
   /** De lessen uit het bestand die niet doorgaan, met hun reden. */
   overgeslagen: OvergeslagenLes[];
+  /**
+   * De lessen uit `nieuweLessen` die overlappen met een bestaande les. Ze staan er dus twéé
+   * keer in: hier als waarschuwing, en in `nieuweLessen` omdat ze aangemaakt worden.
+   */
+  botsingen: BotsendeLes[];
   /** De dagen waarop iemand met de hand ingreep. Het bestand overrulet die nooit (D-13). */
   handmatigGewijzigd: HandmatigeWijziging[];
   /** De komende lessen van de groep die het bestand niet meer kent. */
@@ -1388,6 +1420,7 @@ export function lessenUitGroep(
     nieuweLessen: [],
     ongewijzigd: [],
     overgeslagen: [],
+    botsingen: [],
     handmatigGewijzigd: [],
     verdwenenUitBestand: [],
     meldingen: koppeling.meldingen,
@@ -1501,11 +1534,16 @@ export function lessenUitGroep(
     }
 
     // De enige botsingsregel van de app; hier komt geen tweede versie van (lees het commentaar
-    // bij `botstMet`). Een bezette trainer of een bezette baan wordt gemeld en nooit stil
-    // overschreven: de bestaande les blijft precies staan waar hij staat.
-    if (botstMet(slot, bezet, { coachId: trainer.id, courtId: baan.id }) !== null) {
-      uit.overgeslagen.push({ sleutel, start, reden: 'bezet', regel });
-      continue;
+    // bij `botstMet`). Een bezette trainer of een bezette baan houdt de les niet meer tegen —
+    // dit is precies het kleutertennis op Terrein 7, waar blauw en rood samen op een halve
+    // baan staan en dezelfde trainer er twee groepen naast elkaar draait. De les wordt
+    // ingepland én gemeld; de bestaande les blijft nog steeds precies staan waar hij staat.
+    const conflict = botstMet(slot, bezet, { coachId: trainer.id, courtId: baan.id });
+    if (conflict) {
+      uit.botsingen.push({
+        sleutel, start, regel, groep: groep.naam, conflict,
+        coachId: trainer.id, courtId: baan.id,
+      });
     }
 
     uit.nieuweLessen.push({ sleutel, start, eind, groep, regel });
@@ -1659,6 +1697,12 @@ export interface ImportPlanLessen {
   /** De ids van de boekingen die al precies goed staan. */
   ongewijzigdeLessen: string[];
   overgeslagen: OvergeslagenLes[];
+  /**
+   * De lessen die ingepland worden maar overlappen met een les die er al staat. Ze staan óók
+   * in `nieuweLessen`: dit is een waarschuwing, geen weigering. De droogloop toont ze in het
+   * rood — een import die dit zwijgend doorlaat maakt dubbele boekingen aan.
+   */
+  botsingen: BotsendeLes[];
   handmatigGewijzigd: HandmatigeWijziging[];
   verdwenenUitBestand: VerdwenenLes[];
   /**
@@ -1714,6 +1758,7 @@ export function planImportLessen(
     nieuweLessen: [],
     ongewijzigdeLessen: [],
     overgeslagen: [],
+    botsingen: [],
     handmatigGewijzigd: [],
     verdwenenUitBestand: [],
     trainerwissels: [],
@@ -1805,6 +1850,7 @@ export function planImportLessen(
     plan.nieuweLessen.push(...lessen.nieuweLessen);
     plan.ongewijzigdeLessen.push(...lessen.ongewijzigd);
     plan.overgeslagen.push(...lessen.overgeslagen);
+    plan.botsingen.push(...lessen.botsingen);
     plan.handmatigGewijzigd.push(...lessen.handmatigGewijzigd);
     plan.verdwenenUitBestand.push(...lessen.verdwenenUitBestand);
     if (lessen.trainerwissel) plan.trainerwissels.push(lessen.trainerwissel);
@@ -1924,8 +1970,6 @@ function groepUitPlan(inPlan: GroepInPlan, roster: string[]): Omit<LesGroep, 'id
 export interface OvergeslagenTelling {
   /** Ze vallen in een clubvakantie. */
   vakantie: number;
-  /** De trainer of de baan staat op dat uur al bezet. */
-  bezet: number;
   /** Ze zijn al geweest; wat geweest is blijft staan zoals het was. */
   verleden: number;
 }
@@ -1940,7 +1984,7 @@ export interface OvergeslagenTelling {
 export function overgeslagenPerReden(
   plan: Pick<ImportPlanLessen, 'overgeslagen'>,
 ): OvergeslagenTelling {
-  const telling: OvergeslagenTelling = { vakantie: 0, bezet: 0, verleden: 0 };
+  const telling: OvergeslagenTelling = { vakantie: 0, verleden: 0 };
   for (const les of plan.overgeslagen) telling[les.reden] += 1;
   return telling;
 }
