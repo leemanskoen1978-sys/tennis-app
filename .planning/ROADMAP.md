@@ -177,13 +177,14 @@ Plans:
   6. Een trainerswissel op komende lessen en een speler die uit een roster verdwijnt worden apart bevestigd, los van de rest van de import (IMP-16).
   7. Een bestand dat grotendeels over het verleden gaat, of een app die sinds de vorige import gewijzigd is, levert bovenaan de droogloop een waarschuwing met de periode van het bestand erbij (IMP-17).
   8. `npx tsc --noEmit`, `npm test` en `npx expo export --platform web` slagen.
-**Plans**: 4 plans in 4 waves
+**Plans**: 5 plans in 5 waves
 
 Plans:
 - [ ] 05.1-01-PLAN.md — De baankolom: Indoor/Outdoor draagt het terrein, de woorden zelf betekenen geen baan (wave 1)
 - [ ] 05.1-02-PLAN.md — De sleutel en de naam: weekdag + beginuur + baan, en een groep die naar haar moment heet (wave 2)
 - [ ] 05.1-03-PLAN.md — De trainerswissel: de komende lessen krijgen de nieuwe trainer, taught_by_id en het verleden ongemoeid (wave 3)
 - [ ] 05.1-04-PLAN.md — De droogloop op het scherm, de Engelse teksten, en met eigen ogen nalopen (wave 4, checkpoint)
+- [ ] 05.1-05-PLAN.md — De rem: wat weggenomen of omgezet wordt apart bevestigd, met de periode van het bestand bovenaan (wave 5, checkpoint)
 
 ## Progress
 
