@@ -144,6 +144,35 @@ goed en horen in het rood te staan. Let op dat de dev-server op de productiedata
 Het plan met alle vijftien taken staat in
 `docs/superpowers/plans/2026-09-06-importer-clubweekschema.md`.
 
+### 1a. De clublijst staat in de databank — 6 september 2026
+
+De import is gedraaid op de productiedatabank. Wat er nu in staat:
+
+| | |
+| --- | --- |
+| Lesgroepen | 193 |
+| Spelers | 555 (510 nieuw, 45 stonden er al) |
+| Trainers | 13 (10 nieuw, 3 stonden er al) |
+| Lessen vanaf 7 september 2026 | 6396 |
+
+**6396 en niet 6461.** Het verschil van 65 zijn de lessen van twee groepen zonder spelers —
+"Privéles - Groep 18" (zondag 15:00) en "GTTA - Groep 57" (zaterdag 16:00). Een groepsles zonder
+deelnemer kan niet bestaan: `Booking.player_id` is verplicht. De groepen staan er wel; zet er
+spelers in en lees het bestand opnieuw, dan komen hun lessen er alsnog bij.
+
+**Wat er vooraf opgeruimd moest worden.** In de agenda stonden 325 lessen uit de eerste import
+(`koen.xlsx`), allemaal op één trainer en allemaal **zonder lesgroep** — dat bestand is ingelezen
+voordat `lesson_groups` bestond, dus er viel niets te koppelen. Diezelfde lessen zitten ook in de
+clublijst, en sinds een overlap niet meer blokkeert zou de import ze een tweede keer inplannen.
+De droogloop verried het: 301 overlappingen tegen een lege club, 626 tegen deze — precies 325
+meer. Ze zijn verwijderd met `CLUBLIJST-OPRUIMEN.sql` en kwamen via de clublijst terug, nu mét
+hun lesgroep en deelnemers.
+
+Let op bij een volgende keer: **de app houdt de lessen in het geheugen.** Wie met SQL opruimt
+terwijl de tab openstaat, ziet de droogloop nog met de oude cijfers rekenen. Hard herladen.
+
+Wat nog niet gebeurd is: `TRAINERS-LOGIN.sql` draaien voor de logins van de tien nieuwe trainers.
+
 ### 2. Een terrein kan meerdere groepen dragen — GEBOUWD op 6 september 2026
 
 De gebruiker: *"op 1 terrein kunnen idd verschillende groepen staan. Blauw en rood
