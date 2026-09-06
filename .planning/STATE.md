@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 05-08-PLAN.md (de uitvoerder: het goedgekeurde plan als rijen, en die rijen in één opslag; fase 5 plan 8, buiten de volgorde van fase 3 om)"
-last_updated: "2026-09-06T06:30:00.000Z"
+stopped_at: "Completed 05-09-PLAN.md (het importscherm: de droogloop in groepen en aantallen, de bevestiging, en eerlijk over een halve mislukking; taak 3 is een checkpoint voor de gebruiker)"
+last_updated: "2026-09-06T07:30:00.000Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 36
-  completed_plans: 31
+  completed_plans: 32
   percent: 33
 ---
 
@@ -35,11 +35,12 @@ Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draa
 Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
 de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
 
-Fase 5 staat op plan 8 van 10: het wegschrijven staat (05-08) — één opslag voor het hele plan,
-en eerlijk over wat een halve mislukking betekent. Rest: het importscherm (05-09) en de
-handmatige controle (05-10).
+Fase 5 staat op plan 9 van 10: het importscherm staat (05-09) — de droogloop in groepen en
+aantallen, een uitdrukkelijke bevestiging, en op het scherm zelf wat een halve mislukking
+betekent. Rest: de handmatige controle (05-10). Taak 3 van 05-09 is óók een handmatige
+controle: het scherm met eigen ogen nalopen op de mock-opslag, met `.env` uitgezet.
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -86,6 +87,7 @@ Progress: [█████████░] 86%
 | Phase 03 P07 | ~40 min | 3 tasks | 4 files |
 | Phase 05-excel-import-van-trainingen P01 | 35min | 2 tasks | 2 files |
 | Phase 05-excel-import-van-trainingen P07 | ~35min | 2 tasks | 1 files |
+| Phase 05-excel-import-van-trainingen P09 | ~55min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -99,6 +101,11 @@ confirmed as phases ship).
   wat een halve mislukking overlaat en waarom opnieuw inlezen dat rechtzet.
 - `lib/sync.ts` schrijft `lesGroepen` nu vóór `bookings`: `bookings.group_id` verwijst naar
   `lesson_groups(id)`, dus wat verwezen wordt gaat eerst.
+- De droogloop toont de lesgroepen die `lesGroepFout` weigert náást de aantallen, uit dezelfde
+  bron als de uitvoerder (`geweigerdeNieuweGroepen`): tien nieuwe groepen beloven en er nul
+  geven is precies wat een droogloop hoort te voorkomen.
+- Op het importscherm staat "veilig opnieuw te draaien" en nergens "atomisch" of "in één
+  transactie" — de app kan die belofte niet nakomen (D-21).
 - Roadmap: lesgroepen first (foundation for all else), "wie gaf de les écht" second and small
   (must precede substitution UI), sick-leave/substitute worklist third (Core Value), export
   fourth (decided before import, carries the round-trippable group identifier), import last.
@@ -230,6 +237,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T03:15:00.000Z
-Stopped at: Completed 05-05-PLAN.md (lesgroepen afgeleid op de sleutel naam+dag+uur, spelers aangemaakt, trainer en baan alleen opgezocht; fase 5 plan 5, buiten de volgorde van fase 3 om)
+Last session: 2026-09-06T07:30:00.000Z
+Stopped at: Completed 05-09-PLAN.md (het importscherm; taak 3 is een handmatige controle die bij de gebruiker ligt)
 Resume file: None
