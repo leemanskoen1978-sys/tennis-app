@@ -33,17 +33,21 @@ import { useLocalSearchParams } from 'expo-router';
 
 import { Screen } from '../../../components/ui/Screen';
 import { Card } from '../../../components/ui/Card';
+import { Chip } from '../../../components/ui/Chip';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { useSimpleData } from '../../../providers/SimpleDataProvider';
 import { formatDay, formatTimeRange } from '../../../lib/datetime';
 import { groupSize, groupSizeLabel } from '../../../lib/groups';
 import { periodeTekst } from '../../../lib/vakanties';
+import { vervangersVoor } from '../../../lib/vervanger';
+import { coachesOf } from '../../../lib/hub';
 import { lessenVoorZiekmelding, openZiekmeldingen, zoektVervanger } from '../../../lib/ziekmelding';
 import { isAdmin } from '../../../lib/rechten';
 import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
 import { spacing, typography } from '../../../constants/theme';
+import type { VervangerReden } from '../../../lib/vervanger';
 import type { Booking } from '../../../lib/types';
 
 /**
@@ -108,6 +112,23 @@ export default function WerklijstScreen(): React.JSX.Element {
     courts.find((c) => c.id === baanId)?.name ?? t('Onbekend terrein');
 
   /**
+   * Waarom een collega dit uur niet kan, als zin die de beheerder kan navertellen. Een
+   * `Record` over alle redenen en geen `switch` met een `default`: komt er ooit een reden bij,
+   * dan is dat hier een typefout die niemand kan overslaan, in plaats van een lege regel op
+   * het scherm waar de beheerder de reden verwacht.
+   */
+  const redenZin: Record<VervangerReden, string> = {
+    // 'kan' staat hier alleen om de lijst volledig te houden; wie kan, staat in de andere
+    // groep en heeft geen uitleg nodig.
+    kan: t('kan invallen'),
+    eigen_les: t('geeft dan zelf al les'),
+    buiten_uren: t('geeft dan geen les'),
+    afwijkende_periode: t('is die periode afwezig'),
+    clubvakantie: t('de club is dan dicht'),
+    zelf_ziek: t('is zelf ziek gemeld'),
+  };
+
+  /**
    * De groep als de les aan een lesgroep hangt, anders de naam van de speler. Dezelfde
    * opzoeking als op het lesdetailblad; een tweede manier om een groepsnaam af te leiden zou
    * op termijn een andere naam gaan tonen voor dezelfde les.
@@ -153,6 +174,25 @@ export default function WerklijstScreen(): React.JSX.Element {
 
       {rijen.map((booking) => {
         const toestand = toestandVan(booking);
+        // De kandidaten zijn de collega's, zonder de trainer van de les zelf: hij vervangt
+        // zichzelf niet, en dat is de vraagstelling en geen stille filtering. Wie hierna wél
+        // of niet kan, wordt door niemand weggelaten — dat is het verschil met de regel
+        // hieronder, waar iedereen zichtbaar blijft.
+        const kandidaten = coachesOf(users).filter((u) => u.id !== booking.coach_id);
+        // Alleen voor de regel die openstaat. Beschikbaarheid wordt hier niet uitgerekend:
+        // `vervangersVoor` stelt de vijf vragen, in een vaste volgorde, met een test eromheen.
+        const uitkomsten = kiezerVoor === booking.id
+          ? vervangersVoor(
+            kandidaten,
+            { start_time: booking.start_time, end_time: booking.end_time },
+            bookings,
+            settings.vakanties ?? [],
+            openMeldingen,
+            settings.booking_end_time,
+          )
+          : [];
+        const kunnen = uitkomsten.filter((u) => u.reden === 'kan');
+        const kunnenNiet = uitkomsten.filter((u) => u.reden !== 'kan');
         return (
           <Card key={booking.id}>
             {/* De vijf gegevens van D-04 op twee regels: datum en uur, dan baan, groep of
@@ -230,6 +270,59 @@ export default function WerklijstScreen(): React.JSX.Element {
             {kiezerVoor === booking.id ? (
               <View style={styles.kiezer}>
                 <Text style={styles.label}>{t('Wie kan deze les overnemen?')}</Text>
+
+                {uitkomsten.length === 0 ? (
+                  <Text style={styles.muted}>{t('Er is geen andere trainer om uit te kiezen.')}</Text>
+                ) : null}
+
+                {uitkomsten.length > 0 ? (
+                  <>
+                    <Text style={styles.groepKop}>{t('Kan invallen')}</Text>
+                    {kunnen.length === 0 ? (
+                      <Text style={styles.muted}>{t('Geen enkele collega kan dit uur.')}</Text>
+                    ) : (
+                      <View style={styles.chipRij}>
+                        {kunnen.map((u) => (
+                          <Chip
+                            key={u.coach.id}
+                            label={u.coach.name}
+                            selected={booking.taught_by_id === u.coach.id}
+                            onPress={() => {
+                              void setTaughtBy(booking.id, u.coach.id);
+                              setKiezerVoor(null);
+                            }}
+                          />
+                        ))}
+                      </View>
+                    )}
+                  </>
+                ) : null}
+
+                {/* Wie niet kan blijft staan, mét zijn reden, en blijft aanklikbaar. De
+                    reflex is om deze knoppen uit te schakelen, en precies dat mag niet: de
+                    beheerder mag bewust afwijken — hij belt een collega die eigenlijk vrij
+                    was, en die zegt ja. Dat kan alleen als de knop er is. Een lijst waar
+                    iemand zonder uitleg uit verdwijnt, is een lijst waarin de beheerder gaat
+                    twijfelen of de app het wel goed ziet, en dan belt hij toch maar zelf de
+                    hele club rond (D-09). */}
+                {kunnenNiet.length > 0 ? (
+                  <View style={styles.kanNiet}>
+                    <Text style={styles.groepKop}>{t('Kan niet, tenzij je het toch wil')}</Text>
+                    {kunnenNiet.map((u) => (
+                      <View key={u.coach.id} style={styles.kanNietRij}>
+                        <Chip
+                          label={u.coach.name}
+                          selected={booking.taught_by_id === u.coach.id}
+                          onPress={() => {
+                            void setTaughtBy(booking.id, u.coach.id);
+                            setKiezerVoor(null);
+                          }}
+                        />
+                        <Text style={styles.onder}>{redenZin[u.reden]}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
               </View>
             ) : null}
           </Card>
@@ -251,4 +344,9 @@ const styles = StyleSheet.create({
   knopRij: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   knop: { marginTop: spacing.md },
   kiezer: { marginTop: spacing.md, gap: spacing.xs },
+  groepKop: { ...typography.label, color: tennisColors.textMuted, marginTop: spacing.sm },
+  chipRij: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
+  // Gedempt, maar niet weg en niet uitgeschakeld: de namen blijven leesbaar en aanklikbaar.
+  kanNiet: { opacity: 0.7, gap: spacing.xs },
+  kanNietRij: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
 });
