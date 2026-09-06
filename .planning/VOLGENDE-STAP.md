@@ -76,10 +76,33 @@ zaterdag 10:00   wit/Multimove Gr4 (Lasoen)  | blauw Gr3 (Devries)  | rood Gr7 (
 Merk op dat dezelfde trainer (Devries Ann) twee groepen tegelijk draait. De trainerbotsing is
 dus óók geen harde fout bij kleutertennis.
 
-Nog te beslissen met de gebruiker: een baan die weet hoeveel groepen erop passen (een veld op
-`Court`, standaard 1, Terrein 7 hoger), of de terreinbotsing tot waarschuwing degraderen die
-je kan aanvaarden. Het eerste is eerlijker, het tweede is minder werk. De trainerbotsing
-vraagt een eigen antwoord.
+**BESLIST door de gebruiker, 6 september 2026 — en het is één regel voor allebei:**
+
+> Een overlap **blokkeert nooit** en **waarschuwt altijd**. Het mag, maar het moet in het rood
+> staan.
+
+Dat geldt voor de trainer die twee groepen tegelijk draait ("Devries Ann" is bovendien een
+voorlopige naam, dus dezelfde naam kan twee keer op hetzelfde moment voorkomen — dat mag) én
+voor twee groepen op één terrein (blauw en rood hebben elk maar een halve baan nodig).
+
+Geen capaciteit per baan dus, geen veld op `Court`. Gewoon: laat het door en toon het.
+
+**Waar dit vandaag nog blokkeert en dus om moet:**
+
+| Plek | Nu | Wordt |
+| --- | --- | --- |
+| `addBooking` in `providers/SimpleDataProvider.tsx` | weigert de boeking bij overlap | boekt, met de waarschuwing zichtbaar |
+| `planSeries` in `lib/recurrence.ts` | slaat botsende momenten over | plant ze in, gemarkeerd |
+| `planGroepWijziging` in `lib/lesgroepen.ts` | les blijft staan, reden `'bezet'` | verzet mee, gemarkeerd |
+| `lessenUitGroep` in `lib/import-trainingen.ts` | plant de les niet in | plant in, in de droogloop in het rood |
+| `kanVervangen` in `lib/vervanger.ts` | reden `eigen_les` | ongewijzigd — die lijst toont niet-beschikbaren al mét reden en laat je toch kiezen |
+
+`botstMet` zelf blijft wat het is: de ene plek die zegt óf er overlap is. Alleen wat de
+aanroepers ermee doen verandert — van weigeren naar melden. Let op dat de vakantieregel wél
+blokkerend blijft: een les op een dag dat de club dicht is, hoort niet ingepland te worden.
+
+Dit is een gedragsverandering in het plannen van lessen, en lessen raken geld. Verdient een
+eigen fase met tests per aanroeper, niet een snelle ingreep.
 
 ### 3. De doorlichting van de hele app
 
