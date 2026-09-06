@@ -49,19 +49,20 @@ De gebruiker leverde de volledige lijst van de club aan. Die heeft een **andere 
 in de sleutel. Dus weekdag + uur + terrein, en de naam alleen op de momenten waar het anders
 botst. Zo blijft hernoemen werken voor de 187 groepen zonder botsing.
 
-### 2. Een terrein kan meerdere groepen dragen — DIT BLOKKEERT DE IMPORT
+### 2. Een terrein kan meerdere groepen dragen — GEBOUWD op 6 september 2026
 
 De gebruiker: *"op 1 terrein kunnen idd verschillende groepen staan. Blauw en rood
 bijvoorbeeld hebben maar een half terrein nodig."*
 
 De app gaat vandaag uit van één groep per terrein. `botstMet` in `lib/recurrence.ts` — de ene
 regel voor "is dat uur bezet", en met opzet de enige — meldt een botsing zodra twee lessen op
-hetzelfde terrein overlappen. Gevolg:
+hetzelfde terrein overlappen. Het probleem zat niet in die regel maar in wat de aanroepers
+ermee deden — zij weigerden. Gevolg, zolang dat zo was:
 
-- De import zou op die vijf momenten weigeren in te plannen ("Terrein 7 is bezet"), en dat is
+- De import weigerde op die vijf momenten in te plannen ("Terrein 7 is bezet"), en dat is
   precies het kleutertennis.
-- Het vervangersvoorstel meldt een trainer bezet die op een halve baan staat.
-- `planGroepWijziging` blokkeert een verzetting op valse gronden.
+- Het vervangersvoorstel meldde een trainer bezet die op een halve baan staat.
+- `planGroepWijziging` blokkeerde een verzetting op valse gronden.
 
 De vijf plekken, alle vijf Terrein 7:
 
@@ -87,9 +88,9 @@ voor twee groepen op één terrein (blauw en rood hebben elk maar een halve baan
 
 Geen capaciteit per baan dus, geen veld op `Court`. Gewoon: laat het door en toon het.
 
-**Waar dit vandaag nog blokkeert en dus om moet:**
+**Wat er per aanroeper gebeurd is** (commits `a075cae`, `3bde515`, `9bcb200`, `867e475`):
 
-| Plek | Nu | Wordt |
+| Plek | Was | Is nu |
 | --- | --- | --- |
 | `addBooking` in `providers/SimpleDataProvider.tsx` | weigert de boeking bij overlap | boekt, met de waarschuwing zichtbaar |
 | `planSeries` in `lib/recurrence.ts` | slaat botsende momenten over | plant ze in, gemarkeerd |
@@ -101,8 +102,21 @@ Geen capaciteit per baan dus, geen veld op `Court`. Gewoon: laat het door en too
 aanroepers ermee doen verandert — van weigeren naar melden. Let op dat de vakantieregel wél
 blokkerend blijft: een les op een dag dat de club dicht is, hoort niet ingepland te worden.
 
-Dit is een gedragsverandering in het plannen van lessen, en lessen raken geld. Verdient een
-eigen fase met tests per aanroeper, niet een snelle ingreep.
+Er is één module bijgekomen: `lib/botsingen.ts`, die van een gevonden botsing één zin maakt
+("Devries Ann staat dan al op Terrein 7, op woensdag 14:00–15:00"). Vier schermen gebruiken
+dezelfde formulering — het boekingsvenster, de droogloop van de import, de voorvertoning van
+een groepsverzetting en de reeks. Die module vergelijkt zelf géén tijdvakken en mag dat nooit
+gaan doen; `botstMet` blijft de enige plek in de codebase die twee tijdvakken tegen elkaar
+legt.
+
+De knop in het boekingsvenster gaat nog wél op slot als een reeks nul bruikbare lessen
+oplevert. Dat kan sinds deze wijziging alleen nog door vakantie, niet meer door overlap.
+
+**Geverifieerd op 6 september 2026:** `npx tsc --noEmit` exit 0, `npx jest` 54 suites en 1591
+tests groen (was 1574; zeventien tests bijgekomen, waaronder `lib/botsingen.test.ts`).
+
+Wat nog niet met de hand in de browser is doorlopen: de vijf momenten op Terrein 7 daadwerkelijk
+zien verschijnen na een import, en de rode melding in het boekingsvenster bij een echte overlap.
 
 ### 3. De doorlichting van de hele app
 
@@ -197,5 +211,6 @@ leek onverantwoord om 550 spelers in te lezen voor het prijsmodel vaststond. Dat
 weg. De ingelezen lessen krijgen `payment_method: 'invoice'` — de bestaande regel dat een
 groepsles altijd op factuur gaat — en verder is het bedrag niemands zorg binnen de app.
 
-**De import wordt daarmee alleen nog geblokkeerd door punt 2 hierboven:** een terrein dat
-meerdere groepen draagt. Dat blijft staan en is nog niet gebouwd.
+Punt 2 hierboven — een terrein dat meerdere groepen draagt — is diezelfde dag gebouwd.
+**Daarmee is de import op niets meer geblokkeerd.** Wat er nog rest is punt 1: de importer
+leert het tweede bestandsformaat lezen, één regel per groep met de spelers komma-gescheiden.
