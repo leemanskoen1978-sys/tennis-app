@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 03-03-PLAN.md (sick_leaves-tabel in het schema)
-last_updated: "2026-09-05T23:53:28.089Z"
-last_activity: 2026-09-05
+last_updated: "2026-09-06T00:02:31.820Z"
+last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 36
-  completed_plans: 19
+  completed_plans: 20
   percent: 33
 ---
 
@@ -27,15 +27,15 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 ## Current Position
 
 Phase: 3 of 6 (Ziekmelding en vervangerswerklijst)
-Plan: 3 of 8 af (03-02-PLAN.md — SickLeave, zoektVervanger en lessenVoorZiekmelding, met de zomertijd-fixture)
+Plan: 4 of 8 af (03-02-PLAN.md — SickLeave, zoektVervanger en lessenVoorZiekmelding, met de zomertijd-fixture)
 Status: Ready to execute
-Last activity: 2026-09-05
+Last activity: 2026-09-06
 
 Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draaiende app.
 Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
 de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
 
-Progress: [█████░░░░░] 53%
+Progress: [██████░░░░] 56%
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: [█████░░░░░] 53%
 | Phase 04 P05 | ~20min | 2 tasks | 4 files |
 | Phase 03-ziekmelding P02 | ~40min | 3 tasks | 4 files |
 | Phase 03 P03 | 15min | 2 tasks | 1 files |
+| Phase 03 P04 | ~35min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,14 @@ confirmed as phases ship).
 - Roadmap: lesgroepen first (foundation for all else), "wie gaf de les écht" second and small
   (must precede substitution UI), sick-leave/substitute worklist third (Core Value), export
   fourth (decided before import, carries the round-trippable group identifier), import last.
+
+- [Phase 03-ziekmelding]: `vervangersVoor` filtert nooit — er komen er even veel uit als
+  er kandidaten in gingen, elk met `'kan'` of met de reden die nee zei (D-09). Sorteren of
+  filteren gebeurt hooguit in het scherm, als presentatie.
+
+- [Phase 03-ziekmelding]: `ziekOp` staat apart in lib/ziekmelding, zodat `zoektVervanger`
+  en `kanVervangen` dezelfde periodevergelijking gebruiken en er geen vierde kopie van
+  `van <= dag <= tot` bij komt.
 
 - [Phase 01-lesgroepen]: `lesson_groups` wordt geladen met `selectAllOptioneel`, niet met
   `selectAll` — de migratie uit plan 02 is nog niet gedraaid, en een club zonder die tabel
@@ -178,6 +187,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-05T23:53:28.084Z
+Last session: 2026-09-06T00:00:52.546Z
 Stopped at: Completed 03-03-PLAN.md (sick_leaves-tabel in het schema)
 Resume file: None
