@@ -15,6 +15,7 @@
 // supabase-schema.sql — die regels staan daar en niet alleen in de schermen.
 
 import { Platform } from 'react-native';
+import { alleRijen } from '../lib/paginering';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, supabaseUrl } from '../lib/supabase';
 import { sessieSleutel } from '../lib/supabase-config';
@@ -68,10 +69,50 @@ function clean<T>(row: Row, drop: string[] = []): T {
  */
 const HOUSEKEEPING = ['created_at', 'auth_id'];
 
-async function selectAll<T>(table: string, drop: string[] = HOUSEKEEPING): Promise<T[]> {
-  const { data, error } = await supabase.from(table).select('*');
-  if (error) throw new Error(`${table}: ${error.message}`);
-  return (data ?? []).map((row) => clean<T>(row as Row, drop));
+/**
+ * Eén tabel volledig ophalen, in stukken.
+ *
+ * WAAROM IN STUKKEN. PostgREST geeft nooit meer dan duizend rijen per verzoek terug, zonder
+ * foutmelding en zonder waarschuwing. Een `select('*')` op 6396 lessen leverde er dus 1000 op en
+ * de app zag er geen probleem in — een trainer keek naar een lege agenda terwijl zijn lessen er
+ * gewoon stonden. Tot de import van de tennisschool stonden er 325 lessen in de databank en is
+ * het nooit opgevallen. Zie `lib/paginering` voor de lus en de tests eromheen.
+ *
+ * SORTEREN MOET, EN OP DE SLEUTEL. Zonder `order` mag Postgres de rijen in elke volgorde
+ * teruggeven, en dan kan dezelfde rij in twee stukken zitten terwijl een andere in geen van
+ * beide belandt. Vandaar `sleutel`: `id` voor bijna elke tabel, `coach_id` voor `coach_rates`,
+ * die er geen `id` heeft.
+ */
+async function haalTabel<T>(
+  table: string,
+  drop: string[],
+  sleutel: string,
+  optioneel: boolean,
+): Promise<T[]> {
+  const rijen = await alleRijen<Row>(async (van, tot) => {
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .order(sleutel, { ascending: true })
+      .range(van, tot);
+    if (error) {
+      if (optioneel && tabelBestaatNiet(error)) {
+        console.warn(`${table}: tabel bestaat nog niet — draai supabase-schema.sql.`);
+        return [];
+      }
+      throw new Error(`${table}: ${error.message}`);
+    }
+    return (data ?? []) as Row[];
+  });
+  return rijen.map((row) => clean<T>(row, drop));
+}
+
+async function selectAll<T>(
+  table: string,
+  drop: string[] = HOUSEKEEPING,
+  sleutel = 'id',
+): Promise<T[]> {
+  return haalTabel<T>(table, drop, sleutel, false);
 }
 
 /**
@@ -94,16 +135,12 @@ function tabelBestaatNiet(error: { code?: string; message?: string }): boolean {
  * Alleen "die tabel bestaat niet" wordt hier geslikt. Een fout in de rechten of in de
  * verbinding komt gewoon naar boven, want dat is een fout die iemand hoort te zien.
  */
-async function selectAllOptioneel<T>(table: string, drop: string[] = HOUSEKEEPING): Promise<T[]> {
-  const { data, error } = await supabase.from(table).select('*');
-  if (error) {
-    if (tabelBestaatNiet(error)) {
-      console.warn(`${table}: tabel bestaat nog niet — draai supabase-schema.sql.`);
-      return [];
-    }
-    throw new Error(`${table}: ${error.message}`);
-  }
-  return (data ?? []).map((row) => clean<T>(row as Row, drop));
+async function selectAllOptioneel<T>(
+  table: string,
+  drop: string[] = HOUSEKEEPING,
+  sleutel = 'id',
+): Promise<T[]> {
+  return haalTabel<T>(table, drop, sleutel, true);
 }
 
 /** Eén rij uit `coach_rates`. Geen `id`: de trainer ís de sleutel. */
@@ -154,7 +191,7 @@ export async function loadFromSupabase(): Promise<StoreData> {
     // app gewoon te laden met nog geen enkele groep en geen enkele ziekmelding, en niet te
     // weigeren op te starten.
     selectAllOptioneel<OuderKind>('ouder_kind', ['auth_id']),
-    selectAllOptioneel<RateRow>('coach_rates', ['auth_id', 'updated_at']),
+    selectAllOptioneel<RateRow>('coach_rates', ['auth_id', 'updated_at'], 'coach_id'),
     selectAllOptioneel<LesGroep>('lesson_groups'),
     selectAllOptioneel<SickLeave>('sick_leaves'),
   ]);
