@@ -175,7 +175,13 @@ Plans:
   4. Staat er een `Groep-ID` in het bestand, dan mogen naam, dag, uur, trainer en baan allemaal wijzigen op de bestaande groep (IMP-14).
   5. Het terreinnummer wordt gelezen uit `Baan` én uit `Indoor/Outdoor`; de woorden `Indoor` en `Outdoor` zelf betekenen "geen baan" (IMP-15).
   6. `npx tsc --noEmit`, `npm test` en `npx expo export --platform web` slagen.
-**Plans**: TBD
+**Plans**: 4 plans in 4 waves
+
+Plans:
+- [ ] 05.1-01-PLAN.md — De baankolom: Indoor/Outdoor draagt het terrein, de woorden zelf betekenen geen baan (wave 1)
+- [ ] 05.1-02-PLAN.md — De sleutel en de naam: weekdag + beginuur + baan, en een groep die naar haar moment heet (wave 2)
+- [ ] 05.1-03-PLAN.md — De trainerswissel: de komende lessen krijgen de nieuwe trainer, taught_by_id en het verleden ongemoeid (wave 3)
+- [ ] 05.1-04-PLAN.md — De droogloop op het scherm, de Engelse teksten, en met eigen ogen nalopen (wave 4, checkpoint)
 
 ## Progress
 
