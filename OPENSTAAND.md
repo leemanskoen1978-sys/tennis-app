@@ -16,6 +16,12 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 
 Deze regels zijn met de gebruiker vastgelegd en zitten in de code met tests eromheen.
 
+**Waarover ze gaan.** Over de lessen die in de app geboekt worden. De lesreeksen van de
+tennisschool worden extern gefactureerd — de club rekent daar per lesvolger per seizoen per
+lessoort, en de app houdt daar bewust geen rekening mee (beslist op 6 september 2026, zie
+`.planning/VOLGENDE-STAP.md` punt 4). Het uurtarief van de baan hieronder is het tarief van
+een los geboekte les: € 60/uur.
+
 | Onderwerp | Regel |
 | --- | --- |
 | Betaalveld | Eén veld `payment_method` met zes waarden: `open`, `cash`, `invoice`, `qr`, `beurtenkaart`, `sponsor`. `open` = nog niets afgesproken en voedt de werklijst in Beheer → Betalingen. |

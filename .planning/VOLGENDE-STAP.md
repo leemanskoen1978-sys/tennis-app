@@ -131,57 +131,71 @@ verzonnen namen, met een test die bewaakt dat er geen echte naam in terechtkomt.
 
 ---
 
-## 4. HET PRIJSMODEL KLOPT NIET — belangrijkste vondst, 6 september 2026
+## 4. HET PRIJSMODEL — uitgezocht en afgesloten, 6 september 2026
 
-De gebruiker leverde het tarievenblad van de club aan. **De club rekent per lesvolger, per
-seizoen (30 lesweken), per lessoort.** Een vast bedrag per speler:
+Eerder op deze dag stond hier dat het prijsmodel van de club niet op dat van de app past, met
+vier openstaande ontwerpvragen. **Dat is uitgepraat en het antwoord is: hier hoeft niets aan
+gebouwd te worden.**
 
-| Aanbod | Per lesvolger, 30 lesweken | Per speler per les |
+### Wat de club heeft, zijn twee modellen naast elkaar
+
+De gebruiker: *"de tarieven dat ik je net doorstuurde dat is het totaal bedrag voor een
+lessereeks in de winter. wanneer je een prive les boekt apart betaal je 60 euro."*
+
+| | Wat | Bedrag hangt aan |
 | --- | --- | --- |
-| Kidstennis wit | € 450 | € 15,00 |
-| Kidstennis blauw | € 500 | € 16,67 |
-| Kidstennis rood | € 500 | € 16,67 |
-| Kidstennis oranje | € 575 | € 19,17 |
-| Kidstennis groen | € 600 | € 20,00 |
-| Tienertennis | € 600 | € 20,00 |
-| Tienertennis voor starters | € 600 | € 20,00 |
-| Groepslessen voor volwassenen | € 600 | € 20,00 |
-| Groepslessen voor (her)starters | € 600 | € 20,00 |
-| Duoles | € 1.150 | € 38,33 |
-| Groepsles 3 spelers | € 800 | € 26,67 |
-| Privéles | € 2.000 | € 66,67 |
+| **A. Lesreeks** | winter, ~30 weken, vaste plaats in een lesgroep | de **lessoort**, per lesvolger, voor de hele reeks (wit € 450 … privé € 2.000) |
+| **B. Losse les** | iemand boekt zelf een uur | de **baan**, per uur — € 60 |
 
-**De app rekent iets anders.** `bookingPrice` in `lib/payments.ts` neemt het uurtarief van de
-**baan** naar rato van de duur, met `Court.group_rates` als staffel op groepsgrootte. Dat
-staat als vaste afspraak in `OPENSTAAND.md` en er zitten tests omheen.
+Het tarievenblad van de club, model A, per lesvolger voor 30 lesweken:
 
-Die twee modellen zijn niet hetzelfde en te herleiden is er niets:
+| Aanbod | Per lesvolger, 30 lesweken |
+| --- | --- |
+| Kidstennis wit | € 450 |
+| Kidstennis blauw | € 500 |
+| Kidstennis rood | € 500 |
+| Kidstennis oranje | € 575 |
+| Kidstennis groen | € 600 |
+| Tienertennis | € 600 |
+| Tienertennis voor starters | € 600 |
+| Groepslessen voor volwassenen | € 600 |
+| Groepslessen voor (her)starters | € 600 |
+| Duoles | € 1.150 |
+| Groepsles 3 spelers | € 800 |
+| Privéles | € 2.000 |
 
-- De prijs hangt bij de club aan de **lessoort**, bij de app aan de **baan**. De app heeft
-  geen prijsveld op een lessoort of op een lesgroep.
-- Een duoles brengt bij de club méér op dan een privéles (2 × € 1.150 = € 2.300 tegen
-  € 2.000). Geen enkele staffel op een baan levert dat op, want een staffel gaat naar beneden
-  naarmate de groep groter wordt.
-- Beheer → Rapport toont dus niet de omzet van deze club. Het telt baanuren.
-- De € 60/uur die op terrein 1 t/m 11 gezet is, speelt in het echte model geen rol.
+Merk op dat een duoles de club méér opbrengt dan een privéles (2 × € 1.150 tegen € 2.000).
+Geen enkele staffel op een baan levert dat op — een staffel gaat naar beneden naarmate de
+groep groeit. Model A is dus echt niet te herleiden uit model B, en dat hoeft nu ook niet.
 
-**Wat de gebruiker al besliste:** alles op `invoice`. Dat past bij de bestaande regel dat een
-groepsles altijd op factuur gaat.
+Daarmee vervalt de conclusie dat `bookingPrice` in `lib/payments.ts` fout stond. Het is model
+B, en het klopt: de € 60/uur op terrein 1 t/m 11 ís de losse privéles. Het kende model A niet,
+en dat hoeft ook niet.
 
-**Wat nog open staat, en het is een ontwerpvraag, geen detail:**
+### De beslissing
 
-1. Blijft de prijs per les (seizoensprijs ÷ 30, per speler) of wordt het een seizoensbijdrage
-   per speler die los van de losse lessen staat? Het eerste past in het bestaande model met
-   één nieuw prijsveld; het tweede is eerlijker tegenover hoe de club werkelijk factureert en
-   maakt "een speler stapt in januari in" oplosbaar.
-2. Waar hangt het bedrag? Voorstel: op de **lesgroep** (die kent haar niveau al) of op een
-   nieuwe tabel lessoort→prijs. Niet op de baan.
-3. Wat gebeurt er met `bookingPrice`, `totalRevenue` en Beheer → Rapport? Die zijn vandaag
-   correct voor het baanmodel en fout voor dit. De geldregels in `OPENSTAAND.md` moeten
-   navenant herschreven worden — dat zijn afspraken die tot nu toe als vast golden.
-4. `payment_split`: bij een vast bedrag per lesvolger is 'separate' het enige dat klopt, want
-   iedereen betaalt zijn eigen seizoensprijs. Te bevestigen.
+> **De betalingen gebeuren steeds extern. De app hoeft er geen rekening mee te houden.**
 
-**Niets hiervan is gebouwd.** Er is bewust niet aan begonnen: het raakt vastgelegde
-geldregels en 550 facturen. Dit hoort vóór de lessen ingelezen worden, want elke boeking
-draagt een betaalwijze en een bedrag.
+Gevolgen, en het zijn er vooral geen:
+
+- **Geen prijsveld op de lessoort of de lesgroep.** Geen nieuwe tabel lessoort→prijs.
+- **Geen seizoensbijdrage per speler.** De vraag "per les of per seizoen" is niet aan de app.
+- **`bookingPrice`, `totalRevenue` en Beheer → Rapport blijven zoals ze zijn.** Ze werken,
+  ze zijn getest, en ze gelden voor de losse boekingen waar het baanmodel wél het echte model
+  is. De gebruiker koos hier bewust voor laten staan en niet uitbreiden, boven weghalen.
+- **De geldregels in `OPENSTAAND.md` blijven ongewijzigd.** Ze golden als vast, en ze blijven
+  vast. Er is alleen een regel bijgekomen die zegt waarover ze gaan: losse boekingen.
+- **`payment_split` hoeft niet herzien.** Geen vast bedrag per lesvolger in de app, dus geen
+  reden om 'separate' af te dwingen.
+- Het tarievenblad van de club is **documentatie**, geen invoer. Het staat hierboven bewaard
+  zodat een volgend gesprek niet opnieuw gaat rekenen.
+
+### Wat dit deblokkeert
+
+De import van de clublijst wachtte hier mede op: elke boeking draagt een betaalwijze, en het
+leek onverantwoord om 550 spelers in te lezen voor het prijsmodel vaststond. Dat bezwaar is
+weg. De ingelezen lessen krijgen `payment_method: 'invoice'` — de bestaande regel dat een
+groepsles altijd op factuur gaat — en verder is het bedrag niemands zorg binnen de app.
+
+**De import wordt daarmee alleen nog geblokkeerd door punt 2 hierboven:** een terrein dat
+meerdere groepen draagt. Dat blijft staan en is nog niet gebouwd.
