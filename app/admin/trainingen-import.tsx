@@ -11,8 +11,8 @@
 // beleefde grens en niet de echte — die staat in de policies van supabase-schema.sql
 // (`lesson_groups_write` is `is_admin()`), precies zoals lib/rechten.ts uitlegt.
 
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
@@ -25,12 +25,14 @@ import { kanBestandKiezen, kiesBinairBestand } from '../../lib/bestand';
 import { shareXlsx, xlsxWordtOndersteund } from '../../lib/share';
 import { leesWerkmap } from '../../lib/xlsx-lezen';
 import {
-  bestandAfgekeurdLessen, geweigerdeNieuweGroepen, kiesLessenBlad, overgeslagenPerReden,
+  bestandAfgekeurdLessen, bestandsperiode, geweigerdeNieuweGroepen, importWaarschuwingen,
+  ingrijpendeWijzigingen, kiesLessenBlad, overgeslagenPerReden,
   planImportLessen, voorbeeldTrainingenXlsx,
   type GroepInPlan, type ImportPlanLessen, type ImportUitslagLessen,
+  type ImportWaarschuwing, type IngrijpendeWijzigingen,
 } from '../../lib/import-trainingen';
 import { tennisColors } from '../../constants/tennis-colors';
-import { spacing, typography } from '../../constants/theme';
+import { minTapTarget, radius, spacing, typography, webCursor } from '../../constants/theme';
 
 // Overleeft, anders dan React-state, een her-mount van dit scherm. Bij een ledenlijst is dat
 // netjes; hier is het noodzaak. Eén bestand levert 42 spelers, tien groepen en 325 lessen op, en
@@ -102,6 +104,13 @@ function ImportInhoud(): React.JSX.Element {
   // zonder de beheerder zijn bestand nog eens te laten zoeken.
   const [bytes, setBytes] = useState<Uint8Array | null>(null);
   const [plan, setPlan] = useState<ImportPlanLessen | null>(null);
+  // Hetzelfde moment als waarmee het plan gerekend is. De banner hieronder gebruikt precies
+  // deze waarde, zodat "wat is er al geweest" en "welke lessen komen er nog" het over dezelfde
+  // seconde hebben en niet over twee klokslagen die net uit elkaar liggen.
+  const [nu, setNu] = useState<Date>(() => new Date());
+  // De aparte bevestiging van wat deze import zou wegnemen of omzetten. Standaard uit, en dat
+  // is de kern van IMP-16: wie doorklikt zonder te lezen doet niets onomkeerbaars.
+  const [ingrijpendAan, setIngrijpendAan] = useState<boolean>(false);
   const [leesFout, setLeesFout] = useState<string | null>(null);
   const [bezig, setBezig] = useState<boolean>(importDraait);
   const [uitkomst, setUitkomst] = useState<ImportUitslagLessen | null>(null);
@@ -132,6 +141,19 @@ function ImportInhoud(): React.JSX.Element {
     return () => { importLuisteraars.delete(onGebeurtenis); };
   }, []);
 
+  // Het scherm rekent niets uit: de periode, wat er teruggedraaid zou worden en de zinnen die
+  // daarbij horen komen alle drie uit lib/import-trainingen. Hier wordt alleen bewaard wat er
+  // uitkwam, zodat het niet bij elke toetsaanslag opnieuw over 1400 regels loopt.
+  const afleidingen = useMemo(() => {
+    if (plan === null) return null;
+    const periode = bestandsperiode(plan.regels, nu);
+    const ingrijpend = ingrijpendeWijzigingen(plan, users);
+    return {
+      ingrijpend,
+      waarschuwingen: importWaarschuwingen(periode, ingrijpend, settings),
+    };
+  }, [plan, nu, users, settings]);
+
   if (bezig) {
     return (
       <Screen scroll={false}>
@@ -147,6 +169,7 @@ function ImportInhoud(): React.JSX.Element {
 
   const opnieuw = (): void => {
     wisLaatsteUitslag();
+    setIngrijpendAan(false);
     setBestandsnaam('');
     setBytes(null);
     setPlan(null);
@@ -157,6 +180,8 @@ function ImportInhoud(): React.JSX.Element {
 
   const toonPlan = (naam: string, inhoud: Uint8Array): void => {
     wisLaatsteUitslag();
+    // Een ander bestand is een andere afweging: het vinkje begint elke keer opnieuw uit.
+    setIngrijpendAan(false);
     setBestandsnaam(naam);
     setBytes(inhoud);
     setUitkomst(null);
@@ -171,8 +196,10 @@ function ImportInhoud(): React.JSX.Element {
         return;
       }
       setLeesFout(null);
+      const moment = new Date();
+      setNu(moment);
       setPlan(planImportLessen(
-        blad.rijen, lesGroepen, users, courts, bookings, settings, new Date(),
+        blad.rijen, lesGroepen, users, courts, bookings, settings, moment,
       ));
     } catch {
       setPlan(null);
@@ -197,9 +224,10 @@ function ImportInhoud(): React.JSX.Element {
     setBezig(true);
     setMislukking(null);
     try {
-      // De keuze reist mee vanaf hier; het vinkje dat hem zet komt in taak 3 van dit plan.
-      // Standaard uit: wie doorklikt zonder te lezen doet niets onomkeerbaars (IMP-16).
-      meldImportKlaar(await importeerTrainingen(plan, { ingrijpend: false }));
+      // De keuze van het vinkje reist mee tot in de opbouwer: staat het uit, dan blijft de
+      // trainer op de komende lessen staan en blijft een speler die het bestand niet meer
+      // kent gewoon in het roster.
+      meldImportKlaar(await importeerTrainingen(plan, { ingrijpend: ingrijpendAan }));
     } catch (e) {
       // `commit` zet de lokale opslag terug en gooit de fout door, maar wat er al bij Supabase
       // stond blijft daar staan. Er wordt hier dus niet gezegd dat er niets gebeurd is — het
@@ -291,9 +319,13 @@ function ImportInhoud(): React.JSX.Element {
         </>
       ) : null}
 
-      {plan !== null && !bestandAfgekeurdLessen(plan) ? (
+      {plan !== null && !bestandAfgekeurdLessen(plan) && afleidingen !== null ? (
         <PlanInBeeld
           plan={plan}
+          waarschuwingen={afleidingen.waarschuwingen}
+          ingrijpend={afleidingen.ingrijpend}
+          ingrijpendAan={ingrijpendAan}
+          onIngrijpendWissel={() => setIngrijpendAan((aan) => !aan)}
           bestandsnaam={bestandsnaam}
           uitkomst={uitkomst}
           mislukking={mislukking}
@@ -315,10 +347,15 @@ function ImportInhoud(): React.JSX.Element {
  * de lessen, dan wat de beheerder met de hand moet nakijken, en pas daarna wat er misging.
  */
 function PlanInBeeld({
-  plan, bestandsnaam, uitkomst, mislukking, groepenKaart,
+  plan, waarschuwingen, ingrijpend, ingrijpendAan, onIngrijpendWissel,
+  bestandsnaam, uitkomst, mislukking, groepenKaart,
   onAnderBestand, onImporteren, onOpnieuwProberen,
 }: {
   plan: ImportPlanLessen;
+  waarschuwingen: ImportWaarschuwing[];
+  ingrijpend: IngrijpendeWijzigingen;
+  ingrijpendAan: boolean;
+  onIngrijpendWissel: () => void;
   bestandsnaam: string;
   uitkomst: ImportUitslagLessen | null;
   mislukking: string | null;
@@ -343,8 +380,22 @@ function PlanInBeeld({
   // een beheerder "tien nieuwe lesgroepen", drukt hij op Importeren en krijgt hij er nul.
   const geweigerd = geweigerdeNieuweGroepen(plan);
 
+  /** Neemt deze import iets weg of zet ze iets om? Dan hoort daar een eigen ja op te komen. */
+  const neemtIetsWeg = ingrijpend.aantalLessen > 0 || ingrijpend.spelersEruit.length > 0;
+
   return (
     <>
+      {waarschuwingen.length > 0 && !uitkomst ? (
+        <Card>
+          {/* Bovenaan en niet onderaan: dit is het eerste wat iemand hoort te zien als hij het
+              bestand van vórig seizoen te pakken heeft (D-15, D-17). De zinnen en het
+              percentage komen uit `importWaarschuwingen`; hier wordt niets uitgerekend. */}
+          {waarschuwingen.map((w) => (
+            <Text key={w.soort} style={styles.fout}>{t(w.reden, w.vars)}</Text>
+          ))}
+        </Card>
+      ) : null}
+
       <Card>
         <Text style={styles.kop}>{uitkomst ? t('Resultaat') : t('Dit gaat er gebeuren')}</Text>
         {bestandsnaam ? <Text style={styles.mededeling}>{bestandsnaam}</Text> : null}
@@ -457,6 +508,45 @@ function PlanInBeeld({
         </Card>
       ) : null}
 
+      {neemtIetsWeg && !uitkomst ? (
+        <Card>
+          {/* De rem staat alleen hier, en dat is met opzet (D-16). Wat deze import zou
+              wegnemen of omzetten krijgt een eigen ja; de rest van de import — nieuwe groepen,
+              nieuwe spelers, nieuwe lessen — gaat door zonder extra klik. Een rem die overal
+              staat is een rem die niemand meer leest. Wat hier staat komt uit dezelfde lijst
+              die straks weggeschreven wordt; het scherm plakt hooguit namen aan elkaar. */}
+          <Text style={styles.foutKop}>{t('Dit neemt iets weg — bevestig apart')}</Text>
+          {ingrijpend.trainerwissels.map((w) => (
+            <Text key={`iw-${w.groep}-${w.trainerId}`} style={styles.fout}>
+              {t('{groep}: {aantal} komende lessen gaan naar {naar}.', {
+                groep: w.groep, aantal: w.aantal, naar: w.naar,
+              })}
+            </Text>
+          ))}
+          {ingrijpend.spelersEruit.map((g) => (
+            <Text key={`ie-${g.groep}`} style={styles.fout}>
+              {t('{groep}: {namen} gaan uit het roster.', {
+                groep: g.groep, namen: g.namen.join(', '),
+              })}
+            </Text>
+          ))}
+          <Text style={styles.uitleg}>
+            {t('Een importbestand is een foto van het moment waarop het gemaakt is. Een ouder bestand zet terug wat je daarna in de app wijzigde. Laat dit uit als je alleen lessen wil bijladen.')}
+          </Text>
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: ingrijpendAan }}
+            onPress={onIngrijpendWissel}
+            style={styles.vinkjeRij}
+          >
+            <Text style={[styles.vinkje, ingrijpendAan ? styles.vinkjeAan : null]}>
+              {ingrijpendAan ? '✓' : ''}
+            </Text>
+            <Text style={styles.vinkjeTekst}>{t('Ja, pas ook deze wijzigingen toe')}</Text>
+          </Pressable>
+        </Card>
+      ) : null}
+
       {plan.handmatigGewijzigd.length > 0 ? (
         <Card>
           {/* Hierover beslist de beheerder zelf (IMP-08). Het bestand overrulet een les die met
@@ -552,7 +642,9 @@ function PlanInBeeld({
         <Card>
           <Text style={styles.kop}>{t('Zeker weten?')}</Text>
           <Text style={styles.uitleg}>
-            {t('Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app, en krijgen de genoemde komende lessen hun nieuwe trainer.')}
+            {ingrijpendAan
+              ? t('Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app, en veranderen ook de lessen en de roosters die hierboven genoemd staan.')
+              : t('Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app. Wat er weggenomen of omgezet zou worden, blijft met rust.')}
           </Text>
           <Button label={t('Ja, nu importeren')} onPress={onImporteren} />
           <Button
@@ -599,6 +691,26 @@ const styles = StyleSheet.create({
   mededeling: { fontSize: 14, color: tennisColors.textMuted, marginBottom: spacing.sm },
   waarschuwKop: { ...typography.h3, color: tennisColors.text },
   waarschuwing: { fontSize: 14, color: tennisColors.textMuted, marginTop: spacing.xs },
+  vinkjeRij: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: minTapTarget,
+    ...webCursor,
+  },
+  vinkje: {
+    width: 24,
+    height: 24,
+    lineHeight: 24,
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: tennisColors.border,
+    borderRadius: radius.sm,
+    marginRight: spacing.sm,
+    color: tennisColors.onFill,
+    fontSize: 16,
+  },
+  vinkjeAan: { backgroundColor: tennisColors.primaryFill, borderColor: tennisColors.primaryFill },
+  vinkjeTekst: { fontSize: 14, color: tennisColors.text, flexShrink: 1 },
   foutKop: { ...typography.h3, color: tennisColors.danger },
   fout: { fontSize: 14, color: tennisColors.danger, marginTop: spacing.xs },
 });

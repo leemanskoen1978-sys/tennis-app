@@ -1014,6 +1014,20 @@ export const EN: Record<string, string> = {
   'Lessen die al geweest zijn veranderen niet, en wie een les werkelijk gaf blijft staan zoals het staat.':
     'Lessons that have already taken place do not change, and who actually gave a lesson stays '
     + 'as it is.',
+  // --- de waarschuwing bovenaan en de aparte bevestiging (IMP-16, IMP-17) ---
+  'Dit bestand gaat over {van} tot {tot}, en {percentage}% daarvan is al geweest.':
+    'This file covers {van} to {tot}, and {percentage}% of that has already passed.',
+  'Je las al eerder een seizoen in op {datum}. Dit bestand draait terug wat je daarna in de app wijzigde — kijk hieronder na wat dat precies is.':
+    'You already imported a season on {datum}. This file reverts what you changed in the app '
+    + 'afterwards — check below what exactly that is.',
+  'Dit neemt iets weg — bevestig apart': 'This takes something away — confirm separately',
+  '{groep}: {aantal} komende lessen gaan naar {naar}.':
+    '{groep}: {aantal} upcoming lessons go to {naar}.',
+  '{groep}: {namen} gaan uit het roster.': '{groep}: {namen} leave the roster.',
+  'Een importbestand is een foto van het moment waarop het gemaakt is. Een ouder bestand zet terug wat je daarna in de app wijzigde. Laat dit uit als je alleen lessen wil bijladen.':
+    'An import file is a photograph of the moment it was made. An older file puts back what you '
+    + 'changed in the app afterwards. Leave this off if you only want to add lessons.',
+  'Ja, pas ook deze wijzigingen toe': 'Yes, apply these changes as well',
   'Deze lessen staan in de app maar niet meer in het bestand':
     'These lessons are in the app but no longer in the file',
   'Ze blijven staan; een import haalt nooit iets weg.':
@@ -1029,9 +1043,12 @@ export const EN: Record<string, string> = {
     + 'the same file again finishes the job. So it is safe to re-run, but it is not an import '
     + 'that rolls itself back in one go.',
   'Zeker weten?': 'Are you sure?',
-  'Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app, en krijgen de genoemde komende lessen hun nieuwe trainer.':
+  'Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app, en veranderen ook de lessen en de roosters die hierboven genoemd staan.':
     'After this the players, lesson groups and lessons above are really in the app, and the '
-    + 'upcoming lessons named above get their new coach.',
+    + 'lessons and rosters named above change along with them.',
+  'Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app. Wat er weggenomen of omgezet zou worden, blijft met rust.':
+    'After this the players, lesson groups and lessons above are really in the app. Whatever '
+    + 'would be taken away or switched over is left alone.',
   'Ja, nu importeren': 'Yes, import now',
   'Nee, toch niet': 'No, never mind',
   'Dit is niet weggeschreven': 'This was not saved',

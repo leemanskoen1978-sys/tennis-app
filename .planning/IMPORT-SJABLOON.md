@@ -152,6 +152,12 @@ bepaalt het loon. Lessen die al geweest zijn veranderen nooit.
 - Een les die met de hand verzet of afgezegd is, wordt niet stilzwijgend teruggezet. De
   droogloop meldt zulke botsingen apart en de beheerder beslist (IMP-08).
 
+**Waarom de app hier remt.** Een importbestand is een foto van het moment waarop het gemaakt
+is: lees je het maanden later opnieuw in, dan duwt die foto zich over de werkelijkheid heen —
+de trainer die je in januari op het groepsscherm wisselde staat er weer af, en het kind dat je
+er toen bij zette is er weer uit. Daarom staat de rem alleen op wat wegneemt of omzet en niet op
+de rest: de app beschermt tegen de vergissing, niet tegen de bedoeling.
+
 ## De droogloop
 
 Vóór er iets wegschrijft, in samenvatting en niet in regels:
@@ -160,7 +166,16 @@ Vóór er iets wegschrijft, in samenvatting en niet in regels:
 - spelers: hoeveel nieuw, met hun namen;
 - lessen: hoeveel er ingepland worden, hoeveel er in een clubvakantie vallen en dus overgeslagen
   worden, hoeveel er botsen met een bezette trainer of baan;
-- wat niet gelezen kon worden, met regelnummer en reden.
+- wat niet gelezen kon worden, met regelnummer en reden;
+- bovenaan, vóór alle aantallen: een waarschuwing als het bestand grotendeels over het verleden
+  gaat, met de periode van het bestand en het percentage daarvan dat al geweest is erbij — en,
+  als er al eerder een seizoen ingelezen is én dit bestand iets zou terugdraaien, de datum van
+  die vorige import (IMP-17);
+- een apart bevestigingsblok voor wat deze import van bestaande gegevens zou wegnemen of
+  omzetten: een andere trainer op komende lessen, en een speler die uit een roster verdwijnt.
+  Met de groepen, de aantallen en de namen erbij, en met een vinkje dat standaard uit staat. De
+  rest van de import — nieuwe groepen, nieuwe spelers, nieuwe lessen — gaat gewoon door zonder
+  dat vinkje (IMP-16).
 
 Zelfde belofte als `lib/import-leden.ts`: het plan is te zien vóór er iets vastligt, en het
 plan wordt in `lib/` uitgerekend zonder databank en zonder scherm, zodat het te testen is.
