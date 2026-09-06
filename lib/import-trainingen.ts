@@ -11,6 +11,8 @@
 // dezelfde kolomtabel van de andere kant bekeken, en die twee uit elkaar laten lopen zou
 // betekenen dat de app haar eigen voorbeeldbestand niet meer leest.
 
+import { fractieNaarTijd, serieNaarDatum, type GelezenBlad } from './xlsx-lezen';
+
 /** Waar staat welke kolom? De index per veld; ontbrekende optionele kolommen staan er niet in. */
 export interface KolommenLessen {
   datum: number;
@@ -203,4 +205,224 @@ export function bestandAfgekeurdLessen(
     && uitkomst.fouten.length === 1
     && uitkomst.fouten[0].regel === 1
   );
+}
+
+// ---------------------------------------------------------------------------
+// Van rauwe tekst naar regels met betekenis
+// ---------------------------------------------------------------------------
+
+/** Hoeveel dagen die maand echt heeft. Februari volgt de schrikkelregel van de kalender. */
+function dagenInMaand(jaar: number, maand: number): number {
+  if (maand === 2) {
+    const schrikkel = (jaar % 4 === 0 && jaar % 100 !== 0) || jaar % 400 === 0;
+    return schrikkel ? 29 : 28;
+  }
+  return [4, 6, 9, 11].includes(maand) ? 30 : 31;
+}
+
+/**
+ * De datum uit één cel, als kale jaar-, maand- en dagvelden.
+ *
+ * Twee vormen, omdat er twee bronnen zijn: Excel bewaart een datum als serienummer (`46274`),
+ * maar een beheerder die de kolom als tekst opmaakt of het sjabloon met de hand invult, typt
+ * `09/09/2026`. Beide moeten kunnen, anders hangt het van de celopmaak af of een bestand
+ * binnenkomt.
+ *
+ * De dag staat vóór de maand: dat is wat Nederlandse Excel schrijft en wat de club typt. Er is
+ * geen manier om `03/12/2026` zonder die afspraak te lezen, en de afspraak van het land waarin
+ * de club staat is de enige die niet elke keer anders uitvalt.
+ *
+ * Kale getallen en geen `Date`, om dezelfde reden als `serieNaarDatum` (D-15): een `Date` sleept
+ * een tijdzone mee, en een avondles staat dan zomaar op de dag ervoor. En er wordt uitgerekend
+ * of de dag in die maand bestáát, in plaats van hem aan een `Date` te voeren die 31 februari
+ * stilzwijgend 3 maart maakt — precies het soort verschuiving dat een heel seizoen scheeftrekt
+ * zonder foutmelding.
+ */
+export function leesDatumCel(waarde: string): { jaar: number; maand: number; dag: number } | null {
+  const schoon = waarde.trim();
+  if (!schoon) return null;
+
+  if (/^\d+(\.\d+)?$/.test(schoon)) {
+    const serie = Number(schoon);
+    // Serie 0 is de verzonnen dag 0 januari 1900; alles daaronder of erboven valt buiten elke
+    // kalender waarin een tennisles kan staan.
+    if (serie < 1 || serie > 2_958_465) return null;
+    return serieNaarDatum(serie);
+  }
+
+  const treffer = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(schoon);
+  if (!treffer) return null;
+  const dag = Number(treffer[1]);
+  const maand = Number(treffer[2]);
+  const jaar = Number(treffer[3]);
+  if (maand < 1 || maand > 12) return null;
+  if (dag < 1 || dag > dagenInMaand(jaar, maand)) return null;
+  return { jaar, maand, dag };
+}
+
+/**
+ * Het beginuur uit één cel, als klokuur en minuut.
+ *
+ * Ook hier twee vormen, en die zijn hier niet theoretisch: Excel bewaart een tijdstip als het
+ * deel van de dag dat verstreken is (`0.625`), terwijl de export van fase 4 het uur juist als
+ * tekst `HH:MM` wegschrijft. Kon deze functie er maar één, dan zou de app haar eigen export niet
+ * terug kunnen lezen (EXP-07) of het bestand van de club niet kunnen openen.
+ *
+ * De omrekening van de breuk komt uit `fractieNaarTijd` en wordt hier niet overgedaan: die kent
+ * de valkuil van D-20 (`0.58333333333333337 × 24 = 13.999...`, en `Math.floor` daarvan is 13).
+ * Eén plek die dat weet, is één plek waar het goed staat.
+ */
+export function leesUurCel(waarde: string): { uur: number; minuut: number } | null {
+  const schoon = waarde.trim();
+  if (!schoon) return null;
+
+  let tijd: { uur: number; minuut: number } | null = null;
+  // Een tijdbreuk begint altijd met een nul of met de punt zelf, want ze is kleiner dan één dag.
+  // Dat onderscheid is nodig omdat `HH.MM` er ook uitziet als een kommagetal: `09.30` is half
+  // tien en niet 9,3 dagen. Andersom blijft `0.625` een breuk en geen "nul uur en 625" — dat is
+  // wat Excel zelf in de cel zet, en de breuk wint dus in dat ene twijfelgeval.
+  if (/^0*\.\d+$/.test(schoon)) {
+    tijd = fractieNaarTijd(Number(schoon));
+  } else {
+    const treffer = /^(\d{1,2})[:.](\d{2})$/.exec(schoon);
+    if (!treffer) return null;
+    tijd = { uur: Number(treffer[1]), minuut: Number(treffer[2]) };
+  }
+
+  if (tijd.uur < 0 || tijd.uur > 23 || tijd.minuut < 0 || tijd.minuut > 59) return null;
+  return tijd;
+}
+
+/**
+ * Het blad met de lessen erin.
+ *
+ * De export van fase 4 schrijft meerdere bladen en `Lessen` is het enige met lessen erin; het
+ * bestand van de club heeft één blad dat gewoon `Sheet1` heet. Daarom eerst op naam zoeken en
+ * anders het eerste blad nemen: een import die alleen een blad `Lessen` accepteert, weigert het
+ * bestand waarvoor deze hele fase gebouwd is.
+ */
+export function kiesLessenBlad(bladen: readonly GelezenBlad[]): GelezenBlad | null {
+  return bladen.find((b) => b.naam.trim().toLowerCase() === 'lessen') ?? bladen[0] ?? null;
+}
+
+/**
+ * Eén regel uit het bestand, waarvan elk veld een betekenis heeft. Eén regel is één les × één
+ * leerling (D-01): een groepsles van zes staat er als zes regels met dezelfde datum en hetzelfde
+ * uur.
+ *
+ * De tekstvelden zijn getrimd en een ontbrekende optionele kolom wordt een lege tekst en geen
+ * `undefined`. Dat scheelt de rest van de fase een vraagteken per veld: "geen kolom Baan" en
+ * "kolom Baan, cel leeg" betekenen voor de import allebei hetzelfde — deze les krijgt geen baan.
+ */
+export interface LesRegel {
+  /** Het regelnummer zoals de beheerder het in Excel ziet: de koprij is regel 1. */
+  regel: number;
+  datum: { jaar: number; maand: number; dag: number };
+  uur: { uur: number; minuut: number };
+  groep: string;
+  groepId: string;
+  typeLes: string;
+  coach: string;
+  leerling: string;
+  emailLeerling: string;
+  baan: string;
+}
+
+export interface GelezenLessen {
+  regels: LesRegel[];
+  fouten: ImportFoutLessen[];
+  nietHerkend: string[];
+  dubbel: string[];
+}
+
+/**
+ * Het hele blad, van rauwe teksten naar regels met betekenis. Schrijft niets weg en kijkt naar
+ * niets buiten dit bestand: of de coach bestaat en welke groep dit wordt, is de volgende stap.
+ *
+ * De volgorde waarin een rij beoordeeld wordt, is met opzet dezelfde als in `planImport`: een
+ * lege rij is geen fout, en een rij die op één veld sneuvelt krijgt er geen tweede melding
+ * bovenop. Eén regel in het bestand hoort tot precies één mededeling te leiden, anders wordt een
+ * lijst van 1400 regels een lijst van 3000 meldingen die niemand meer naloopt.
+ */
+export function leesLesRegels(rijen: ReadonlyArray<readonly string[]>): GelezenLessen {
+  const uitkomst: GelezenLessen = { regels: [], fouten: [], nietHerkend: [], dubbel: [] };
+  if (rijen.length === 0) {
+    uitkomst.fouten.push({ regel: 1, reden: 'Dit bestand is leeg.' });
+    return uitkomst;
+  }
+
+  // Eerst overnemen, dán pas afhaken: juist als de koprij niet deugt, heeft de beheerder die
+  // lijstjes nodig — dat is het geval waarin hij zijn bestand moet aanpassen.
+  const kop = leesKopregelLessen(rijen[0]);
+  uitkomst.nietHerkend = kop.nietHerkend;
+  uitkomst.dubbel = kop.dubbel;
+  const { kolommen } = kop;
+  if (!kolommen) {
+    uitkomst.fouten.push({
+      regel: 1,
+      reden: 'De koprij mist een verplichte kolom: Datum, Uur, Groep, Coach of Leerling.',
+    });
+    return uitkomst;
+  }
+
+  for (let i = 1; i < rijen.length; i++) {
+    const rij = rijen[i];
+    const regel = i + 1;
+    const cel = (index: number | undefined): string =>
+      index === undefined ? '' : (rij[index] ?? '').trim();
+
+    // Een rij waarvan alle cellen leeg zijn, is geen vergissing: er staat weleens een lege
+    // scheidingsregel tussen twee groepen, en een blad van Excel houdt zijn laatste rijen nog
+    // een tijdje vast nadat je ze gewist hebt. Zo'n regel slaan we stil over.
+    if (rij.every((c) => !c || !c.trim())) continue;
+
+    const datumCel = cel(kolommen.datum);
+    if (!datumCel) { uitkomst.fouten.push({ regel, reden: 'Geen datum ingevuld.' }); continue; }
+    const datum = leesDatumCel(datumCel);
+    if (!datum) {
+      uitkomst.fouten.push({
+        regel,
+        reden: 'Deze datum kon niet gelezen worden: {waarde}',
+        vars: { waarde: datumCel },
+      });
+      continue;
+    }
+
+    const uurCel = cel(kolommen.uur);
+    if (!uurCel) { uitkomst.fouten.push({ regel, reden: 'Geen uur ingevuld.' }); continue; }
+    const uur = leesUurCel(uurCel);
+    if (!uur) {
+      uitkomst.fouten.push({
+        regel,
+        reden: 'Dit uur kon niet gelezen worden: {waarde}',
+        vars: { waarde: uurCel },
+      });
+      continue;
+    }
+
+    // De coach wordt hier alleen op leeg gecontroleerd, niet op bestaan: of deze naam een
+    // trainer van de club is, weet dit bestand niet (D-07) en dat hoort bij het plan.
+    const coach = cel(kolommen.coach);
+    if (!coach) { uitkomst.fouten.push({ regel, reden: 'Geen coach ingevuld.' }); continue; }
+    const leerling = cel(kolommen.leerling);
+    if (!leerling) { uitkomst.fouten.push({ regel, reden: 'Geen leerling ingevuld.' }); continue; }
+
+    // Een lege `Groep` is uitdrukkelijk géén fout: dat is een gewone privéles
+    // (IMPORT-SJABLOON). Er wordt dan geen lesgroep van gemaakt en er wordt er ook geen aan
+    // gekoppeld.
+    uitkomst.regels.push({
+      regel,
+      datum,
+      uur,
+      groep: cel(kolommen.groep),
+      groepId: cel(kolommen.groepId),
+      typeLes: cel(kolommen.typeLes),
+      coach,
+      leerling,
+      emailLeerling: cel(kolommen.emailLeerling),
+      baan: cel(kolommen.baan),
+    });
+  }
+
+  return uitkomst;
 }
