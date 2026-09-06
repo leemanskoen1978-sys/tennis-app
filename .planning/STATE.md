@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 05-07-PLAN.md (de acceptatie: koen.xlsx van bytes tot plan, twee en drie keer inlezen, en de export van fase 4 weer inlezen; fase 5 plan 7, buiten de volgorde van fase 3 om)"
-last_updated: "2026-09-06T05:15:00.000Z"
+stopped_at: "Completed 05-08-PLAN.md (de uitvoerder: het goedgekeurde plan als rijen, en die rijen in één opslag; fase 5 plan 8, buiten de volgorde van fase 3 om)"
+last_updated: "2026-09-06T06:30:00.000Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 36
-  completed_plans: 30
-  percent: 34
+  completed_plans: 31
+  percent: 33
 ---
 
 # Project State
@@ -35,10 +35,11 @@ Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draa
 Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
 de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
 
-Fase 5 staat op plan 7 van 10: de acceptatie op het echte bestand van de club is gehaald (05-07).
-Rest: de uitvoerder (05-08), het importscherm (05-09) en de handmatige controle (05-10).
+Fase 5 staat op plan 8 van 10: het wegschrijven staat (05-08) — één opslag voor het hele plan,
+en eerlijk over wat een halve mislukking betekent. Rest: het importscherm (05-09) en de
+handmatige controle (05-10).
 
-Progress: [████████░░] 81%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -93,6 +94,11 @@ Progress: [████████░░] 81%
 Decisions are logged in PROJECT.md Key Decisions table (all currently "Pending" — to be
 confirmed as phases ship).
 
+- IMP-09 betekent "veilig opnieuw te draaien" en niet "één transactie" (D-21): het hele
+  importplan gaat in één `commit` weg, en het commentaar in `importeerTrainingen` zegt eerlijk
+  wat een halve mislukking overlaat en waarom opnieuw inlezen dat rechtzet.
+- `lib/sync.ts` schrijft `lesGroepen` nu vóór `bookings`: `bookings.group_id` verwijst naar
+  `lesson_groups(id)`, dus wat verwezen wordt gaat eerst.
 - Roadmap: lesgroepen first (foundation for all else), "wie gaf de les écht" second and small
   (must precede substitution UI), sick-leave/substitute worklist third (Core Value), export
   fourth (decided before import, carries the round-trippable group identifier), import last.
