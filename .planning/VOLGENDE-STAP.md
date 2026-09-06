@@ -171,6 +171,18 @@ hun lesgroep en deelnemers.
 Let op bij een volgende keer: **de app houdt de lessen in het geheugen.** Wie met SQL opruimt
 terwijl de tab openstaat, ziet de droogloop nog met de oude cijfers rekenen. Hard herladen.
 
+**En één bug die de import blootlegde: de app haalde per tabel maar 1000 rijen op.** PostgREST
+geeft nooit meer terug per verzoek, zonder foutmelding en zonder waarschuwing. Met 6396 lessen
+kreeg de app er 1000 en keek een trainer naar een lege agenda terwijl zijn tien groepen en 335
+lessen gewoon in de databank stonden. Bevestigd op het scherm: "996 geplande lessen" — 1000
+opgehaald, waarvan vier van vóór het seizoen.
+
+Dat gold voor élke tabel en niet alleen voor `bookings`; tot vandaag stonden er 325 lessen en 45
+spelers in en bleef het onzichtbaar. Opgelost in `lib/paginering` (ophalen in stukken tot de
+tabel op is, met tests) en `providers/supabaseStore.ts`, dat nu ook op de sleutel sorteert —
+zonder `order` mag Postgres elke volgorde geven en kan een rij in twee stukken zitten terwijl een
+andere nergens in belandt. Na de reparatie: 6396 geplande lessen op het scherm.
+
 Wat nog niet gebeurd is: `TRAINERS-LOGIN.sql` draaien voor de logins van de tien nieuwe trainers.
 
 ### 2. Een terrein kan meerdere groepen dragen — GEBOUWD op 6 september 2026
