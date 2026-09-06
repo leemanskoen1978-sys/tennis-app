@@ -19,7 +19,14 @@
 -- ---------------------------------------------------------------------------
 --
 -- September '26 begint met 1 t/m 6 ongekleurd; week 37 start groen op maandag 7 september.
--- Juni '27 eindigt groen op woensdag 30 juni. Dat zijn de twee dagen hieronder.
+-- Het groen eindigt op zondag 6 juni '27; 7 t/m 30 juni is wit, net als de eerste week van
+-- september. Dat zijn de twee dagen hieronder.
+--
+-- LET OP: hier stond eerst 2027-06-30, en dat was fout — een verkeerde lezing van diezelfde
+-- foto. Het kostte vier weken te veel in de agenda, 660 lessen. Wie dit bestand al met de oude
+-- datum gedraaid heeft, zet het recht met SEIZOEN-EINDIGT-6-JUNI.sql. De rekensom die het
+-- uitwijst: met 6 juni komen dinsdag tot en met zaterdag allemaal op precies dertig lesweken
+-- uit, het getal van het tarievenblad; met 30 juni geen enkele dag.
 --
 -- Alleen deze twee sleutels worden gezet, niet het hele object: de vakanties, de lesduur, het
 -- thema en de taal blijven staan zoals ze zijn. Dezelfde aanpak als in KALENDER-2026-2027.sql.
@@ -31,7 +38,7 @@ on conflict (id) do nothing;
 update club_settings
 set value = value
       || jsonb_build_object('season_start', '2026-09-07')
-      || jsonb_build_object('season_end',   '2027-06-30'),
+      || jsonb_build_object('season_end',   '2027-06-06'),
     updated_at = now()
 where id = 'club';
 
