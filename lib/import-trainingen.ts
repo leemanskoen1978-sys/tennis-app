@@ -11,6 +11,10 @@
 // dezelfde kolomtabel van de andere kant bekeken, en die twee uit elkaar laten lopen zou
 // betekenen dat de app haar eigen voorbeeldbestand niet meer leest.
 
+import { actieveGroepen, groepSleutel } from './lesgroepen';
+import { normalizeName } from './students';
+import type { LesGroep } from './types';
+import { dagSleutel } from './vakanties';
 import { buildXlsx, type XlsxCel } from './xlsx';
 import { fractieNaarTijd, serieNaarDatum, type GelezenBlad } from './xlsx-lezen';
 
@@ -426,6 +430,276 @@ export function leesLesRegels(rijen: ReadonlyArray<readonly string[]>): GelezenL
   }
 
   return uitkomst;
+}
+
+// ---------------------------------------------------------------------------
+// Van regels naar lesgroepen (IMP-03)
+// ---------------------------------------------------------------------------
+
+/**
+ * Een lesgroep zoals hij uit het bestand volgt, nog zonder één ding weggeschreven te zijn.
+ *
+ * De namen van de leerlingen staan er als tekst in en niet als gebruiker-ids: wie van hen de
+ * club al kent, beslist `spelersUitRegels` hieronder, en dat is bewust een aparte stap — deze
+ * functie hoeft de ledenlijst niet te kennen om te weten welke groepen er in het bestand zitten.
+ */
+export interface GeplandeGroep {
+  /** De afgeleide sleutel van de eerste regel: `naam|weekdag|beginuur`, uit `groepSleutel`. */
+  sleutel: string;
+  /** De bestaande groep die dit blijkt te zijn, of `null` als dit een nieuwe groep is. */
+  bestaand: LesGroep | null;
+  naam: string;
+  niveau: string;
+  /** 0-6 met zondag = 0, dezelfde telling als `LesGroep.weekday`. */
+  weekdag: number;
+  beginuur: number;
+  beginminuut: number;
+  /** De naam zoals hij in de kolom `Coach` stond; opzoeken doet `zoekTrainer`. */
+  coachNaam: string;
+  /** De naam of het nummer zoals het in de kolom `Baan` stond; leeg als er geen kolom was. */
+  baanNaam: string;
+  seizoenVan: string;
+  seizoenTot: string;
+  leerlingNamen: string[];
+  regels: LesRegel[];
+}
+
+/** Wat er onderweg per groep verzameld wordt; `GeplandeGroep` is hiervan de uitkomst. */
+interface GroepEmmer {
+  sleutel: string;
+  bestaand: LesGroep | null;
+  naam: string;
+  weekdag: number;
+  beginuur: number;
+  beginminuut: number;
+  seizoenVan: string;
+  seizoenTot: string;
+  regels: LesRegel[];
+  leerlingNamen: string[];
+  /** De namen die al in `leerlingNamen` staan, genormaliseerd — zo blijft dedupliceren goedkoop. */
+  gezien: Set<string>;
+  typen: Array<{ waarde: string; regel: number }>;
+  coaches: Array<{ waarde: string; regel: number }>;
+  banen: Array<{ waarde: string; regel: number }>;
+}
+
+/**
+ * De waarde die het vaakst voorkomt, en de eerste regel die daarvan afwijkt.
+ *
+ * Lege waarden horen er niet in: een cel die niemand invulde is geen tweede mening. Zou een
+ * lege `Type les` meetellen, dan kreeg elke groep waarin één regel dat vakje leeg liet een
+ * waarschuwing over een verschil dat er niet is.
+ *
+ * Bij een gelijkspel wint de waarde die het eerst in het bestand stond: een `Map` bewaart de
+ * volgorde waarin sleutels erin kwamen, dus dat volgt vanzelf uit de lus hieronder.
+ */
+function meestVoorkomend(waarden: ReadonlyArray<{ waarde: string; regel: number }>): {
+  gekozen: string;
+  afwijking: { regel: number; andere: string } | null;
+} {
+  const telling = new Map<string, number>();
+  for (const { waarde } of waarden) telling.set(waarde, (telling.get(waarde) ?? 0) + 1);
+  let gekozen = '';
+  let beste = 0;
+  telling.forEach((aantal, waarde) => {
+    if (aantal > beste) { gekozen = waarde; beste = aantal; }
+  });
+  const afwijkend = waarden.find((w) => w.waarde !== gekozen);
+  return {
+    gekozen,
+    afwijking: afwijkend ? { regel: afwijkend.regel, andere: afwijkend.waarde } : null,
+  };
+}
+
+/**
+ * Welke lesgroepen zitten er in dit bestand, en welke daarvan kent de club al?
+ *
+ * Dit is de kern van de hele fase. De sleutel waarop regels samengevoegd worden is `Groep` +
+ * weekdag + beginuur (D-02), en die sleutel komt uit `groepSleutel` in `lib/lesgroepen.ts` —
+ * lees het doc-commentaar daar: die functie is precies hiervoor geschreven. Een tweede, net iets
+ * andere sleutel hier naast zetten is exact de fout die deze fase probeert te vermijden: dan
+ * herkent de import morgen een groep die de app zelf wél herkent, of andersom.
+ *
+ * Waarom niet de groepsnaam alleen: in `koen.xlsx` staat "Groep 8" op drie momenten met drie
+ * volledig verschillende rosters — zes kinderen op woensdag 17u, vier andere op vrijdag 17u,
+ * twee volwassenen op vrijdag 19u, nul overlap. Het nummer is een administratief label dat
+ * hergebruikt wordt, geen groep mensen; matchen op de naam zou daar één groep van twaalf van
+ * maken.
+ *
+ * De sleutel telt de beginminuut NIET mee. Twee groepen met dezelfde naam op hetzelfde uur maar
+ * met een andere minuut vallen dus samen. Dat is aanvaard en geen vergissing: dit is de
+ * bestaande sleutel van de app, en een club die twee groepen met dezelfde naam op 17:00 en 17:15
+ * plant heeft een groter probleem dan een import.
+ *
+ * Staat er een `Groep-ID` in het bestand en hoort dat bij een bestaande, niet-gearchiveerde
+ * groep, dan wint dat van de sleutel (D-03): zo blijft een groep herkenbaar ook als haar naam of
+ * haar uur veranderd is. Een `Groep-ID` dat nergens bij hoort — een export van vorig seizoen —
+ * levert een waarschuwing op en valt terug op de sleutel, want dat mag een import niet blokkeren.
+ */
+export function groepenUitRegels(
+  regels: readonly LesRegel[],
+  bestaande: readonly LesGroep[],
+): { groepen: GeplandeGroep[]; waarschuwingen: ImportFoutLessen[] } {
+  const waarschuwingen: ImportFoutLessen[] = [];
+
+  // Gearchiveerde groepen tellen niet mee bij het herkennen: archiveren was een bewuste daad van
+  // de club, en een import die zo'n groep weer tot leven wekt maakt die daad ongedaan zonder het
+  // te vragen. Er komt dan gewoon een nieuwe groep bij.
+  const actief = actieveGroepen([...bestaande]);
+  const opId = new Map<string, LesGroep>(actief.map((g) => [g.id, g]));
+  const opSleutel = new Map<string, LesGroep>();
+  for (const g of actief) {
+    // De eerste wint: twee actieve groepen met dezelfde sleutel mag (zie `lesGroepFout`), en
+    // welke van de twee we dan kiezen is niet aan de import om stil te veranderen.
+    if (!opSleutel.has(groepSleutel(g))) opSleutel.set(groepSleutel(g), g);
+  }
+
+  const emmers = new Map<string, GroepEmmer>();
+  const gemeldeIds = new Set<string>();
+
+  for (const r of regels) {
+    const naam = r.groep.trim();
+    // Een regel zonder groep is een privéles (IMPORT-SJABLOON): geen groep, geen roster, en
+    // uitdrukkelijk ook geen waarschuwing.
+    if (!naam) continue;
+
+    // De weekdag uit lokale velden, dezelfde telling als `LesGroep.weekday` (zondag = 0). Nooit
+    // een datum in wereldtijd opbouwen en nooit een ISO-tekst laten parsen: in een westelijke
+    // tijdzone schuift de les dan een dag op, en daarmee de hele groepssleutel.
+    const dag = new Date(r.datum.jaar, r.datum.maand - 1, r.datum.dag);
+    const sleutel = groepSleutel({ name: naam, weekday: dag.getDay(), start_hour: r.uur.uur });
+
+    let bestaand: LesGroep | null = null;
+    if (r.groepId) {
+      bestaand = opId.get(r.groepId) ?? null;
+      if (!bestaand && !gemeldeIds.has(r.groepId)) {
+        gemeldeIds.add(r.groepId);
+        waarschuwingen.push({
+          regel: r.regel,
+          reden: 'Deze groep heeft een Groep-ID dat ik niet ken: {waarde}. Ik zoek de groep op naam, dag en uur.',
+          vars: { waarde: r.groepId },
+        });
+      }
+    }
+    if (!bestaand) bestaand = opSleutel.get(sleutel) ?? null;
+
+    // De emmer draagt het id van de bestaande groep als we die kennen: zo vallen regels mét en
+    // regels zónder `Groep-ID` van dezelfde groep in dezelfde emmer, in plaats van in twee.
+    const emmerSleutel = bestaand ? `id:${bestaand.id}` : sleutel;
+    const dagTekst = dagSleutel(dag);
+    let emmer = emmers.get(emmerSleutel);
+    if (!emmer) {
+      // De eerste regel bepaalt naam, dag en uur. Binnen een sleutel-emmer zijn die drie per
+      // definitie gelijk; alleen een emmer die op `Groep-ID` samenviel kan er meerdere hebben,
+      // en dan is de eerste regel van het bestand het minst willekeurige antwoord.
+      emmer = {
+        sleutel,
+        bestaand,
+        naam,
+        weekdag: dag.getDay(),
+        beginuur: r.uur.uur,
+        beginminuut: r.uur.minuut,
+        seizoenVan: dagTekst,
+        seizoenTot: dagTekst,
+        regels: [],
+        leerlingNamen: [],
+        gezien: new Set<string>(),
+        typen: [],
+        coaches: [],
+        banen: [],
+      };
+      emmers.set(emmerSleutel, emmer);
+    }
+
+    emmer.regels.push(r);
+    if (dagTekst < emmer.seizoenVan) emmer.seizoenVan = dagTekst;
+    if (dagTekst > emmer.seizoenTot) emmer.seizoenTot = dagTekst;
+
+    const leerling = r.leerling.trim();
+    const gezien = normalizeName(leerling);
+    if (leerling && !emmer.gezien.has(gezien)) {
+      emmer.gezien.add(gezien);
+      emmer.leerlingNamen.push(leerling);
+    }
+    if (r.typeLes.trim()) emmer.typen.push({ waarde: r.typeLes.trim(), regel: r.regel });
+    if (r.coach.trim()) emmer.coaches.push({ waarde: r.coach.trim(), regel: r.regel });
+    if (r.baan.trim()) emmer.banen.push({ waarde: r.baan.trim(), regel: r.regel });
+  }
+
+  const groepen: GeplandeGroep[] = [];
+  emmers.forEach((emmer) => {
+    const niveau = meestVoorkomend(emmer.typen);
+    const coach = meestVoorkomend(emmer.coaches);
+    // De baan krijgt geen waarschuwing bij verschil: welke baan een les krijgt is een planning
+    // die per week mag wisselen, terwijl het niveau en de trainer eigenschappen van de groep
+    // zelf zijn. Wat er ontbreekt om te kunnen plannen, meldt `koppelingVoorGroep`.
+    const baan = meestVoorkomend(emmer.banen);
+
+    if (niveau.afwijking) {
+      waarschuwingen.push({
+        regel: niveau.afwijking.regel,
+        reden: 'De groep {groep} heeft meer dan één Type les: {gekozen} en {andere}. Ik neem {gekozen}.',
+        vars: { groep: emmer.naam, gekozen: niveau.gekozen, andere: niveau.afwijking.andere },
+      });
+    }
+    if (coach.afwijking) {
+      waarschuwingen.push({
+        regel: coach.afwijking.regel,
+        reden: 'De groep {groep} heeft meer dan één coach: {gekozen} en {andere}. Ik neem {gekozen}.',
+        vars: { groep: emmer.naam, gekozen: coach.gekozen, andere: coach.afwijking.andere },
+      });
+    }
+
+    groepen.push({
+      sleutel: emmer.sleutel,
+      bestaand: emmer.bestaand,
+      naam: emmer.naam,
+      niveau: niveau.gekozen,
+      weekdag: emmer.weekdag,
+      beginuur: emmer.beginuur,
+      beginminuut: emmer.beginminuut,
+      coachNaam: coach.gekozen,
+      baanNaam: baan.gekozen,
+      seizoenVan: emmer.seizoenVan,
+      seizoenTot: emmer.seizoenTot,
+      leerlingNamen: emmer.leerlingNamen,
+      regels: emmer.regels,
+    });
+  });
+
+  return { groepen, waarschuwingen };
+}
+
+/** Wat er met een lesgroep zou gebeuren: er is er nog geen, hij blijft zoals hij is, of hij wijzigt. */
+export type GroepStatus = 'nieuw' | 'ongewijzigd' | 'bijgewerkt';
+
+/** Wie er bij een bestaande groep bij komt en wie eraf gaat, als gebruiker-ids. */
+export interface GroepRosterVerschil {
+  status: GroepStatus;
+  toegevoegd: string[];
+  verwijderd: string[];
+}
+
+/**
+ * Verandert deze groep, en zo ja voor wie?
+ *
+ * Ids en geen namen, want een roster is een lijst gebruikers (`LesGroep.roster`): het omzetten
+ * van de namen uit het bestand naar ids gebeurt met `spelersUitRegels`, en pas daarna valt deze
+ * vraag te beantwoorden. De volgorde doet er niet toe — een roster is een verzameling mensen en
+ * geen rangschikking, dus twee dezelfde namen in een andere volgorde is géén wijziging die de
+ * beheerder wil zien.
+ */
+export function groepRosterVerschil(
+  bestaand: LesGroep | null,
+  roster: readonly string[],
+): GroepRosterVerschil {
+  if (!bestaand) return { status: 'nieuw', toegevoegd: [...roster], verwijderd: [] };
+  const was = new Set(bestaand.roster);
+  const wordt = new Set(roster);
+  const toegevoegd = [...wordt].filter((id) => !was.has(id));
+  const verwijderd = [...was].filter((id) => !wordt.has(id));
+  const status = toegevoegd.length === 0 && verwijderd.length === 0 ? 'ongewijzigd' : 'bijgewerkt';
+  return { status, toegevoegd, verwijderd };
 }
 
 // ---------------------------------------------------------------------------
