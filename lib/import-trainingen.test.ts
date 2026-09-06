@@ -4,7 +4,7 @@ import { join } from 'path';
 import { GROEPSLES_METHOD } from './beurtenkaart';
 import { bladLessen, opzoektabellen } from './export-trainingen';
 import {
-  alsBezet, bestandAfgekeurdLessen, bouwImportWijziging, deelnemersVoorLes,
+  alsBezet, baanUitCellen, bestandAfgekeurdLessen, bouwImportWijziging, deelnemersVoorLes,
   geweigerdeNieuweGroepen, groepenUitRegels, overgeslagenPerReden,
   groepRosterVerschil, kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
@@ -80,6 +80,26 @@ describe('leesKopregelLessen', () => {
     expect(kop.dubbel).toEqual([]);
   });
 
+  it('herkent Indoor/Outdoor als tweede baankolom', () => {
+    const kop = leesKopregelLessen(['Datum', 'Uur', 'Groep', 'Coach', 'Leerling', 'Indoor/Outdoor']);
+    expect(kop.kolommen?.baanAlt).toBe(5);
+    expect(kop.kolommen?.baan).toBeUndefined();
+    expect(kop.nietHerkend).toEqual([]);
+    expect(kop.dubbel).toEqual([]);
+  });
+
+  it('leest Baan en Indoor/Outdoor als twee kolommen en meldt de tweede niet als dubbel', () => {
+    // De eigen export schrijft ze allebei. Zouden ze op hetzelfde veld mikken, dan opende élke
+    // herimport van een eigen exportbestand met "deze kolom staat er twee keer".
+    const kop = leesKopregelLessen([
+      'Datum', 'Uur', 'Groep', 'Coach', 'Leerling', 'Baan', 'Indoor/Outdoor',
+    ]);
+    expect(kop.kolommen?.baan).toBe(5);
+    expect(kop.kolommen?.baanAlt).toBe(6);
+    expect(kop.dubbel).toEqual([]);
+    expect(kop.nietHerkend).toEqual([]);
+  });
+
   it('meldt een echt onbekende kop, letterlijk, en keurt het bestand er niet om af', () => {
     const kop = leesKopregelLessen(['Datum', 'Uur', 'Groep', 'Coach', 'Leerling', ' Opmerking ']);
     expect(kop.nietHerkend).toEqual(['Opmerking']);
@@ -112,6 +132,42 @@ describe('leesKopregelLessen', () => {
     expect(kop.kolommen).toBeNull();
     expect(kop.nietHerkend).toEqual(['Lesbegeleider']);
     expect(kop.dubbel).toEqual(['Datum']);
+  });
+});
+
+describe('baanUitCellen', () => {
+  it('leest het terreinnummer uit de tweede kolom als Baan er niet is', () => {
+    expect(baanUitCellen('', '3')).toBe('3');
+  });
+
+  it('houdt de woorden Indoor en Outdoor voor de oude betekenis en dus voor geen baan', () => {
+    // Dit is de hele reden dat deze functie bestaat: op alle 1398 regels van koen.xlsx staat
+    // letterlijk `Indoor`. Zonder deze uitzondering kreeg elke groep een verzonnen baan die de
+    // club niet heeft.
+    expect(baanUitCellen('', 'Indoor')).toBe('');
+    expect(baanUitCellen('', 'Outdoor')).toBe('');
+  });
+
+  it('trekt zich daarbij niets aan van hoofdletters of spaties eromheen', () => {
+    expect(baanUitCellen('', '  outdoor ')).toBe('');
+    expect(baanUitCellen('', ' INDOOR')).toBe('');
+  });
+
+  it('laat Baan winnen als beide kolommen gevuld zijn', () => {
+    // De eigen export schrijft de échte baannaam in `Baan` en gebruikt `Indoor/Outdoor` alleen
+    // nog voor het woord; die rondrit mag dus nooit op de tweede kolom uitkomen.
+    expect(baanUitCellen('Baan 2', 'Indoor')).toBe('Baan 2');
+    expect(baanUitCellen('Baan 2', '5')).toBe('Baan 2');
+  });
+
+  it('geeft een lege tekst als geen van beide kolommen iets zegt', () => {
+    expect(baanUitCellen('', '')).toBe('');
+    expect(baanUitCellen('  ', '   ')).toBe('');
+  });
+
+  it('trimt wat het teruggeeft', () => {
+    expect(baanUitCellen(' Baan 2 ', '')).toBe('Baan 2');
+    expect(baanUitCellen('', ' 3 ')).toBe('3');
   });
 });
 
