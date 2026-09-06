@@ -1408,6 +1408,11 @@ export const EN: Record<string, string> = {
   '{n} lopende ziekmeldingen': '{n} sick leaves running',
   'Werklijst openen': 'Open work list',
   'Ingetrokken': 'Withdrawn',
+  'Definitief verwijderen': 'Delete for good',
+  'Toch niet': 'Never mind',
+  'Deze ziekmelding wordt verwijderd. De lessen blijven staan; een vervanger die je al koos ook.':
+    'This sick note will be deleted. The lessons stay, and so does any stand-in you already picked.',
+  'De ziekteperiode eindigt voor ze begint.': 'The sick leave ends before it starts.',
   'Onbekende trainer': 'Unknown coach',
 
   // --- Beheer → Ziekmelding: de werklijst (app/admin/ziekmelding/[id]) ---

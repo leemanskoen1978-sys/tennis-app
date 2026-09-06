@@ -263,11 +263,11 @@ interface DataShape {
     reden?: string,
   ) => Promise<SickLeave | null>;
   /**
-   * De melding intrekken: hij telt niet meer mee, maar blijft terug te zien.
+   * De melding verwijderen. Weg is weg: de rij verdwijnt uit de databank.
    *
    * Dit raakt geen enkele boeking, en dat is geen vergetelheid — zie de actie zelf.
    */
-  trekZiekmeldingIn: (id: string) => Promise<void>;
+  verwijderZiekmelding: (id: string) => Promise<void>;
   addLesson: (l: Omit<Lesson, 'id'>) => Promise<void>;
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
@@ -1356,23 +1356,26 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     return aangemaakt;
   }, [commit]);
 
-  // Uitsluitend dit ene veld, en met opzet geen enkele boeking erbij. Er valt namelijk
-  // niets terug te zetten: `coach_id` is bij het zoeken van een vervanger nooit
-  // overschreven (D-02), en "deze les zoekt nog een vervanger" staat nergens als kolom maar
-  // wordt afgeleid door `zoektVervanger` (D-16). Zodra deze melding niet meer als open
-  // telt, is dat antwoord vanzelf overal nee. Wie hier alsnog "even netjes opruimt" met een
-  // map over de boekingen, draait de lessen terug waar de beheerder al een vervanger op
-  // gezet heeft — precies wat D-02 verbiedt.
-  const trekZiekmeldingIn = useCallback(async (id: string): Promise<void> => {
+  // Uitsluitend de rij zelf, en met opzet geen enkele boeking erbij. Er valt namelijk niets
+  // terug te zetten: `coach_id` is bij het zoeken van een vervanger nooit overschreven
+  // (D-02), en "deze les zoekt nog een vervanger" staat nergens als kolom maar wordt
+  // afgeleid door `zoektVervanger` (D-16). Zodra deze melding weg is, is dat antwoord
+  // vanzelf overal nee. Wie hier alsnog "even netjes opruimt" met een map over de boekingen,
+  // draait de lessen terug waar de beheerder al een vervanger op gezet heeft — precies wat
+  // D-02 verbiedt.
+  //
+  // VERWIJDEREN EN NIET MEER INTREKKEN. Tot 6 september 2026 zette deze actie `retracted_at`
+  // en bleef de rij staan, zodat de club kon terugzien dat er iemand ziek gemeld was. De
+  // eigenaar heeft dat omgedraaid: een melding die er niet had horen te staan, hoort ook niet
+  // in een archief te blijven hangen. `retracted_at` bestaat nog en `openZiekmeldingen`
+  // filtert er nog op — zonder die filter zouden de meldingen die vroeger ingetrokken zijn
+  // ineens weer als lopend verschijnen.
+  const verwijderZiekmelding = useCallback(async (id: string): Promise<void> => {
     const store = storeRef.current;
     if (!store) return;
-    const melding = store.sickLeaves.find((z) => z.id === id);
-    if (!melding) return;
     await commit({
       ...store,
-      sickLeaves: store.sickLeaves.map((z) => (
-        z.id === id ? { ...z, retracted_at: nowISO() } : z
-      )),
+      sickLeaves: store.sickLeaves.filter((z) => z.id !== id),
     });
   }, [commit]);
 
@@ -1554,7 +1557,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     archiveLesGroep,
     importeerTrainingen,
     meldZiek,
-    trekZiekmeldingIn,
+    verwijderZiekmelding,
     addLesson,
     updateLesson,
     deleteLesson,
@@ -1579,7 +1582,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
     vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster,
     archiveLesGroep, importeerTrainingen,
-    meldZiek, trekZiekmeldingIn, addLesson,
+    meldZiek, verwijderZiekmelding, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
     addMemo, deleteMemo, werkMemoUit,
     saveGoal, deleteGoal, saveSettings, emergencyCleanup,

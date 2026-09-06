@@ -46,7 +46,7 @@ export default function ZiekmeldingScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
   const {
-    currentUser, users, sickLeaves, meldZiek, trekZiekmeldingIn, error,
+    currentUser, users, sickLeaves, meldZiek, verwijderZiekmelding, error,
   } = useSimpleData();
 
   // `null` betekent: nog niets gekozen. `ziekmeldingFout` zegt er dan zelf iets over, in
@@ -60,15 +60,26 @@ export default function ZiekmeldingScreen(): React.JSX.Element {
   const trainers = useMemo(() => coachesOf(users), [users]);
 
   // Welke melding nog meetelt, beslist `openZiekmeldingen` en niemand anders — dit scherm
-  // leest zelf nergens of een melding ingetrokken is. De rest is per definitie het archief.
-  const { lopend, ingetrokken } = useMemo(() => {
-    const open = openZiekmeldingen(sickLeaves);
-    const openIds = new Set(open.map((z) => z.id));
-    return {
-      lopend: [...open].sort(nieuwsteEerst),
-      ingetrokken: sickLeaves.filter((z) => !openIds.has(z.id)).sort(nieuwsteEerst),
-    };
-  }, [sickLeaves]);
+  // leest zelf nergens of een melding ingetrokken is.
+  //
+  // Er is geen archief meer. Sinds 6 september 2026 wordt een melding verwijderd in plaats van
+  // ingetrokken, dus er kan er geen meer bij komen. Wat er nog aan ingetrokken meldingen in de
+  // databank staat, valt hier weg — `openZiekmeldingen` laat ze eruit. Ze weer tonen zou een
+  // lijst opleveren die alleen maar krimpt en nooit meer groeit.
+  const lopend = useMemo(
+    () => [...openZiekmeldingen(sickLeaves)].sort(nieuwsteEerst),
+    [sickLeaves],
+  );
+
+  /**
+   * Welke melding er om een bevestiging vraagt, of `null`.
+   *
+   * Verwijderen is onomkeerbaar en intrekken was dat niet: die knop mocht daarom in één klik.
+   * Eén misklik in een lijst wist hier een melding die nog nodig was, en er is geen weg terug —
+   * vandaar de tweede klik. De vraag staat per melding en niet als één scherm-brede toestand,
+   * zodat de knop van de ene melding nooit de andere kan raken.
+   */
+  const [teVerwijderen, setTeVerwijderen] = useState<string | null>(null);
 
   // De grens staat hier, en niet alleen op de tegel in Beheer: een verborgen tegel is geen
   // toegangscontrole, want een trainer kan de link gewoon intikken (TOEG-01). De databank
@@ -218,41 +229,50 @@ export default function ZiekmeldingScreen(): React.JSX.Element {
               {z.reden ? <Text style={styles.onder}>{z.reden}</Text> : null}
             </View>
           </View>
-          <View style={styles.knopRij}>
-            <Button
-              label={t('Werklijst openen')}
-              onPress={() => router.push(`/admin/ziekmelding/${z.id}`)}
-              fullWidth={false}
-              style={styles.knop}
-            />
-            {/* Intrekken is één knop en geen bevestigingsvraag: de melding blijft bestaan en
-                is zo weer opnieuw te maken. Er gaat niets verloren. */}
-            <Button
-              label={t('Intrekken')}
-              variant="secondary"
-              onPress={() => { void trekZiekmeldingIn(z.id); }}
-              fullWidth={false}
-              style={styles.knop}
-            />
-          </View>
+          {teVerwijderen === z.id ? (
+            <>
+              <Text style={styles.waarschuwing}>
+                {t('Deze ziekmelding wordt verwijderd. De lessen blijven staan; een vervanger die je al koos ook.')}
+              </Text>
+              <View style={styles.knopRij}>
+                <Button
+                  label={t('Definitief verwijderen')}
+                  variant="danger"
+                  onPress={() => {
+                    setTeVerwijderen(null);
+                    void verwijderZiekmelding(z.id);
+                  }}
+                  fullWidth={false}
+                  style={styles.knop}
+                />
+                <Button
+                  label={t('Toch niet')}
+                  variant="secondary"
+                  onPress={() => setTeVerwijderen(null)}
+                  fullWidth={false}
+                  style={styles.knop}
+                />
+              </View>
+            </>
+          ) : (
+            <View style={styles.knopRij}>
+              <Button
+                label={t('Werklijst openen')}
+                onPress={() => router.push(`/admin/ziekmelding/${z.id}`)}
+                fullWidth={false}
+                style={styles.knop}
+              />
+              <Button
+                label={t('Verwijderen')}
+                variant="secondary"
+                onPress={() => setTeVerwijderen(z.id)}
+                fullWidth={false}
+                style={styles.knop}
+              />
+            </View>
+          )}
         </Card>
       ))}
-
-      {/* Ingetrokken meldingen verdwijnen niet. Dat is de hele reden dat een melding wordt
-          ingetrokken en niet verwijderd: de club hoort te kunnen terugzien dat er die week
-          een trainer ziek gemeld is geweest, ook als het achteraf loos alarm was. */}
-      {ingetrokken.length > 0 ? (
-        <View style={styles.archief}>
-          <Text style={styles.archiefKop}>{t('Ingetrokken')}</Text>
-          {ingetrokken.map((z) => (
-            <Card key={z.id}>
-              <Text style={styles.archiefNaam}>{naamVanTrainer(z.coach_id)}</Text>
-              <Text style={styles.onder}>{periodeVan(z)}</Text>
-              {z.reden ? <Text style={styles.onder}>{z.reden}</Text> : null}
-            </Card>
-          ))}
-        </View>
-      ) : null}
 
       {/* Het invulveld verwacht dd/mm/jjjj, net als de clubkalender — één schrijfwijze in de
           hele app. */}
@@ -288,12 +308,12 @@ const styles = StyleSheet.create({
   rijTekst: { flexShrink: 1, flexGrow: 1 },
   naam: { ...typography.h3, color: tennisColors.text },
   onder: { fontSize: 13, color: tennisColors.textMuted },
-  archief: { gap: spacing.md, opacity: 0.7 },
-  archiefKop: {
-    ...typography.label,
-    color: tennisColors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  // De zin bij de bevestiging. In de kleur van een waarschuwing en niet van een fout: er is
+  // niets misgegaan, er staat iets op het punt te gebeuren.
+  waarschuwing: {
+    ...typography.body,
+    color: tennisColors.danger,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
-  archiefNaam: { ...typography.body, fontWeight: '600', color: tennisColors.text },
 });

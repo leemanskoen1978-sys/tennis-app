@@ -31,15 +31,27 @@ export type ZiekmeldingBoeking = Pick<Booking, 'id' | 'coach_id' | 'taught_by_id
  * nog aan het typen is, dus een half ingevulde datum is geen fout maar "nog niet af" —
  * dezelfde afspraak als `vakantieFout` in lib/vakanties.
  *
- * Een omgekeerd ingevulde periode (tot vóór van) is met opzet géén fout: wie de twee
- * omdraait bedoelt de dagen ertussen, en de lezers hieronder draaien de grenzen om in plaats
- * van te klagen — precies zoals `vakantieOpDag` dat doet.
+ * EEN OMGEKEERDE PERIODE WORDT GEWEIGERD, EN DAT WAS NIET ALTIJD ZO. Tot 6 september 2026 was
+ * het met opzet géén fout: "wie de twee omdraait bedoelt de dagen ertussen", en `dektDag`
+ * hieronder draaide ze om. Dat pakte slecht uit. De eigenaar vulde september 2026 tot augustus
+ * 2026 in; dat werd gelezen als augustus tot september, een venster dat al voorbij was, en hij
+ * kreeg een lege werklijst zonder één woord uitleg. Stil corrigeren is alleen behulpzaam als de
+ * gebruiker kan zien dát er gecorrigeerd is.
+ *
+ * Bovendien sprak de app zichzelf tegen: `lesGroepFout` in lib/lesgroepen weigert precies
+ * dezelfde vergissing wél. Nu heten ze allebei hetzelfde.
+ *
+ * De volgorde van de controles telt. Eerst of de datums leesbaar zijn, pas daarna of ze goed om
+ * staan: wie tijdens het typen te horen krijgt dat zijn periode verkeerd om staat, leest een
+ * verwijt over een veld dat hij nog aan het invullen is.
  */
 export function ziekmeldingFout(coachId: string, van: string, tot: string): string | null {
   if (coachId.trim().length === 0) return t('Kies wie er ziek is.');
   if (parseDag(van) === null || parseDag(tot) === null) {
     return t('Vul beide dagen in als dd/mm/jjjj.');
   }
+  // Eén dag ziek mag: dan is `tot` gelijk aan `van` en eindigt er niets te vroeg.
+  if (tot < van) return t('De ziekteperiode eindigt voor ze begint.');
   return null;
 }
 
@@ -59,9 +71,14 @@ export function openZiekmeldingen(alle: SickLeave[]): SickLeave[] {
 
 /**
  * Valt deze dag in de ziekteperiode? Beide grenzen tellen mee: ziek van 1 tot en met 5 maart
- * betekent ook op 1 en op 5 geen les. Een omgekeerd ingevulde periode wordt gelezen als de
- * dagen ertussen, dezelfde afspraak als `vakantieOpDag` in lib/vakanties — een ziekmelding
- * die niets tegenhoudt omdat iemand twee velden omdraaide zou pas echt verwarrend zijn.
+ * betekent ook op 1 en op 5 geen les.
+ *
+ * DE OMDRAAIING HIERONDER IS EEN VANGNET EN GEEN BEDOELD GEDRAG. Sinds 6 september 2026 weigert
+ * `ziekmeldingFout` een periode die eindigt voor ze begint, dus er komt er geen nieuwe meer
+ * binnen. Maar er staan er al: de databank van de club bevat er minstens één, van vóór die
+ * controle. Zou deze lezer de omdraaiing verliezen, dan dekt zo'n rij ineens geen enkele dag
+ * meer en verandert er stilzwijgend iets aan wat er in de agenda staat. Weghalen kan pas als die
+ * rijen weg zijn, en dat is een beslissing van de club en niet van deze functie.
  */
 function dektDag(periode: Pick<SickLeave, 'van' | 'tot'>, dag: string): boolean {
   const [van, tot] = periode.van <= periode.tot

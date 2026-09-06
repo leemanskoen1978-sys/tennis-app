@@ -30,10 +30,24 @@ describe('ziekmeldingFout', () => {
     expect(ziekmeldingFout('c-1', '2027-03-01', '2027-03-01')).toBeNull();
   });
 
-  it('laat een omgekeerd ingevulde periode staan', () => {
-    // Dezelfde afspraak als `vakantieOpDag`: wie van en tot omdraait bedoelt de dagen
-    // ertussen, en daarover klagen helpt niemand vooruit.
-    expect(ziekmeldingFout('c-1', '2027-03-05', '2027-03-01')).toBeNull();
+  it('weigert een periode die eindigt voor ze begint', () => {
+    // Tot 6 september 2026 werd dit stil omgedraaid. Dat kostte de eigenaar een lege
+    // werklijst zonder uitleg: hij vulde september 2026 tot augustus 2026 in, wat gelezen
+    // werd als augustus tot september — een venster dat al voorbij was. `lesGroepFout`
+    // weigert precies hetzelfde al, dus de app sprak zichzelf ook nog eens tegen.
+    expect(ziekmeldingFout('c-1', '2027-03-05', '2027-03-01')).not.toBeNull();
+    expect(ziekmeldingFout('c-1', '2026-09-01', '2026-08-31')).not.toBeNull();
+  });
+
+  it('klaagt niet over een periode van één dag: die eindigt niet voor ze begint', () => {
+    expect(ziekmeldingFout('c-1', '2027-03-01', '2027-03-01')).toBeNull();
+  });
+
+  it('klaagt eerst over de datum zelf en pas daarna over de volgorde', () => {
+    // Half getypt is "nog niet af" en geen omgekeerde periode. Wie tijdens het typen te
+    // horen krijgt dat zijn periode verkeerd om staat, leest een verwijt over iets wat hij
+    // nog aan het invullen is.
+    expect(ziekmeldingFout('c-1', '05/03', '2027-03-01')).not.toBeNull();
   });
 });
 
