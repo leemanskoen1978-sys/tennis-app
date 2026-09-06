@@ -245,3 +245,110 @@ describe('fractieNaarTijd', () => {
     expect(fractieNaarTijd(0.5104166666666666)).toEqual({ uur: 12, minuut: 15 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// De poort van D-19.
+//
+// Alles wat verder in deze fase gebouwd wordt — het herkennen van groepen, het koppelen van
+// leerlingen, het inplannen van een seizoen — leunt op deze lezer. Is hij ergens subtiel
+// fout, dan is die fout onzichtbaar tot er een seizoen scheef in de agenda staat en een ouder
+// belt. Daarom worden hier bekende waarden uit het échte bestand van de club vastgepind, en
+// geen eigenschappen van een voorbeeld dat we zelf in elkaar hebben gezet.
+//
+// Het bestand wordt één keer gelezen voor deze hele groep tests: 527 kB uitpakken per test
+// maakt de suite traag zonder iets extra's te bewijzen.
+// ---------------------------------------------------------------------------
+
+describe('koen.xlsx — het echte bestand van de club', () => {
+  const DAGEN = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+
+  let rijen: string[][];
+  let gegevens: string[][];
+
+  beforeAll(() => {
+    const bladen = leesWerkmap(koenBytes());
+    rijen = bladen[0].rijen;
+    gegevens = rijen.slice(1);
+  });
+
+  /** De weekdag van een rij, uit de datumkolom en met lokale datumvelden (D-15). */
+  function weekdagVan(rij: string[]): string {
+    const { jaar, maand, dag } = serieNaarDatum(Number(rij[0]));
+    return DAGEN[new Date(jaar, maand - 1, dag).getDay()];
+  }
+
+  it('bevat precies één blad, met de naam Sheet1', () => {
+    const bladen = leesWerkmap(koenBytes());
+    expect(bladen).toHaveLength(1);
+    expect(bladen[0].naam).toBe('Sheet1');
+  });
+
+  it('heeft 1399 rijen: één koprij en 1398 gegevensrijen', () => {
+    expect(rijen).toHaveLength(1399);
+    expect(gegevens).toHaveLength(1398);
+  });
+
+  it('heeft de koprij die de club gewend is', () => {
+    expect(rijen[0]).toEqual([
+      'Datum', 'Weekdag', 'Weeknr', 'Uur', 'Type les', 'Groep', 'Coach', 'Leerling', 'Locatie',
+      'Indoor/Outdoor',
+    ]);
+  });
+
+  it('leest de eerste gegevensrij letterlijk terug', () => {
+    expect(rijen[1]).toEqual([
+      '46274', 'woensdag', '37', '0.58333333333333337', 'Duoles', 'Groep 4', 'Leemans Koen',
+      'de Clippele Antoine', 'GANTOISE', 'Indoor',
+    ]);
+  });
+
+  it('heeft in elke gegevensrij tien gevulde cellen — er zit geen gat in dit bestand', () => {
+    for (const rij of gegevens) {
+      expect(rij).toHaveLength(10);
+      expect(rij.filter((c) => c === '')).toEqual([]);
+    }
+  });
+
+  it('loopt van 9 september 2026 tot en met 25 juni 2027', () => {
+    const dagen = gegevens.map((rij) => serieNaarDatum(Number(rij[0])));
+    const eerste = Math.min(...gegevens.map((rij) => Number(rij[0])));
+    const laatste = Math.max(...gegevens.map((rij) => Number(rij[0])));
+    expect(serieNaarDatum(eerste)).toEqual({ jaar: 2026, maand: 9, dag: 9 });
+    expect(serieNaarDatum(laatste)).toEqual({ jaar: 2027, maand: 6, dag: 25 });
+    for (const d of dagen) {
+      expect(d.jaar === 2026 || d.jaar === 2027).toBe(true);
+    }
+  });
+
+  it('kent zeven verschillende groepen', () => {
+    const groepen = new Set(gegevens.map((rij) => rij[5]));
+    expect(groepen.size).toBe(7);
+    expect(groepen.has('Groep 8')).toBe(true);
+  });
+
+  it('zet Groep 8 op drie momenten in de week — daarom is de naam alleen geen sleutel', () => {
+    // D-02: "Groep 8" bestaat drie keer, op drie verschillende dag/uur-combinaties. Wie de
+    // groep op naam alleen samenneemt, gooit drie lesgroepen op één hoop.
+    const momenten = new Set(
+      gegevens
+        .filter((rij) => rij[5] === 'Groep 8')
+        .map((rij) => {
+          const { uur, minuut } = fractieNaarTijd(Number(rij[3]));
+          return `${weekdagVan(rij)}|${uur}:${String(minuut).padStart(2, '0')}`;
+        }),
+    );
+    expect([...momenten].sort()).toEqual(['vrijdag|17:00', 'vrijdag|19:00', 'woensdag|17:00']);
+  });
+
+  it('heeft maar één coach: Leemans Koen', () => {
+    expect([...new Set(gegevens.map((rij) => rij[6]))]).toEqual(['Leemans Koen']);
+  });
+
+  it('noemt 42 verschillende leerlingen', () => {
+    expect(new Set(gegevens.map((rij) => rij[7])).size).toBe(42);
+  });
+
+  it('geeft twee keer achter elkaar hetzelfde resultaat', () => {
+    expect(leesWerkmap(koenBytes())).toEqual(leesWerkmap(koenBytes()));
+  });
+});
