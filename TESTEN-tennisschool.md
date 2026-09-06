@@ -102,10 +102,16 @@ voorbeeldgegevens.
       er geen trainer aan hangt. Dat hoort er te staan.
 - [ ] Geef `Leemans Koen` een traineraccount in Beheer → Leden (rol trainer). Kies
       `koen.xlsx` opnieuw. Nu horen de tien groepen er wél te komen, met hun rosters.
-- [ ] **De lessen komen nog steeds niet** — en dat klopt: `koen.xlsx` heeft geen kolom
-      `Baan`, en een les kan niet bestaan zonder baan. De droogloop zegt dat per groep. Wil
-      je de lessen ook: zet een baan op elke groep in Beheer → Lesgroepen, of voeg een kolom
-      `Baan` toe aan het bestand en lees het opnieuw in.
+- [ ] **De lessen komen nog steeds niet** — en dat klopt: in `koen.xlsx` staat overal
+      `Indoor` in plaats van een terreinnummer, en een les kan niet bestaan zonder baan. De
+      droogloop zegt dat per groep.
+
+      Wil je de lessen ook, dan is dit de weg:
+      1. Vervang in het bestand `Indoor` door `10` op de woensdagregels en `8` op de
+         vrijdagregels. De kolom mag `Indoor/Outdoor` blijven heten — de app leest hem als
+         baan zodra er een nummer in staat.
+      2. Zorg dat er in Beheer → Banen banen met nummer 8 en 10 bestaan.
+      3. Lees het bestand opnieuw in. Nu horen de tien groepen hun lessen te krijgen.
 - [ ] Lees `koen.xlsx` daarna nóg een keer in. Verwacht: nul nieuwe groepen, nul nieuwe
       spelers, nul nieuwe lessen. Dat is de belofte "veilig opnieuw te draaien", met eigen ogen.
 - [ ] Exporteer een periode (punt 4) en lees dat bestand meteen weer in. Verwacht: alles
