@@ -11,6 +11,7 @@
 // dezelfde kolomtabel van de andere kant bekeken, en die twee uit elkaar laten lopen zou
 // betekenen dat de app haar eigen voorbeeldbestand niet meer leest.
 
+import { buildXlsx, type XlsxCel } from './xlsx';
 import { fractieNaarTijd, serieNaarDatum, type GelezenBlad } from './xlsx-lezen';
 
 /** Waar staat welke kolom? De index per veld; ontbrekende optionele kolommen staan er niet in. */
@@ -425,4 +426,71 @@ export function leesLesRegels(rijen: ReadonlyArray<readonly string[]>): GelezenL
   }
 
   return uitkomst;
+}
+
+// ---------------------------------------------------------------------------
+// Het sjabloon om te downloaden (IMP-01)
+// ---------------------------------------------------------------------------
+
+/**
+ * De koppen van het sjabloon, letterlijk zoals `.planning/IMPORT-SJABLOON.md` en de export van
+ * fase 4 ze spellen. Vijf verplichte en vier optionele; de vier die alleen de leesbaarheid
+ * dienen (`Weekdag`, `Weeknr`, `Locatie`, `Indoor/Outdoor`) staan er niet in — wie ze toevoegt
+ * krijgt er geen klacht over, maar een leeg sjabloon hoeft niet te vragen wat het zelf niet
+ * gebruikt.
+ */
+const KOPPEN_SJABLOON = [
+  'Datum', 'Uur', 'Type les', 'Groep', 'Groep-ID', 'Coach', 'Leerling', 'E-mail leerling', 'Baan',
+] as const;
+
+/** Iets ruimere kolommen dan Excel zelf kiest; een naam mag niet half achter zijn buur vallen. */
+const BREEDTES_SJABLOON = [12, 8, 14, 14, 14, 22, 22, 26, 10] as const;
+
+/**
+ * Het lege sjabloon dat een beheerder kan downloaden (IMP-01).
+ *
+ * Twee regels en niet één, om dezelfde reden als `voorbeeldLedenCsv` in `lib/import-leden.ts`:
+ * alleen naast een gevulde cel is te zien dat een lege cel gewoon mag. De tweede regel heeft
+ * geen baan en geen e-mailadres, en komt er toch gewoon door.
+ *
+ * De twee regels vertellen bovendien de vorm van het bestand: dezelfde datum, hetzelfde uur en
+ * dezelfde groep met twee verschillende leerlingen — één regel per les × leerling (D-01). Die
+ * vorm uitleggen in het bestand zelf werkt beter dan in een handleiding die niemand opent naast
+ * zijn Excel.
+ *
+ * De koppen gaan niet door `t()`, terwijl bijna alle andere tekst in deze app dat wel doet: dit
+ * is een bestandsformaat en geen schermtekst, en de import leest deze koprij zelf terug. Een
+ * beheerder die de app op Engels heeft staan zou anders een sjabloon downloaden dat zijn eigen
+ * import niet meer herkent. Dezelfde keuze als bij de export van fase 4.
+ *
+ * Er is geen kolom voor de lesduur, en dat is opzet: de duur is een clubinstelling van zestig
+ * minuten (D-05, IMP-11). Een kolom die op elke regel hetzelfde hoort te zijn, is een kolom die
+ * op regel 700 verkeerd ingevuld wordt.
+ */
+export function voorbeeldTrainingenXlsx(): Uint8Array {
+  // Een datum in de toekomst, met lokale velden gebouwd (D-15): geen `Date.parse` van een tekst,
+  // want dat leest een `2027-09-08` als UTC en zet de les in een westelijke tijdzone een dag
+  // terug.
+  const datum = new Date(2027, 8, 8);
+  const rij = (leerling: string, email: string, baan: string): XlsxCel[] => [
+    { soort: 'datum', waarde: datum },
+    { soort: 'tekst', waarde: '17:00' },
+    { soort: 'tekst', waarde: 'Groepsles' },
+    { soort: 'tekst', waarde: 'Groep 4' },
+    { soort: 'tekst', waarde: '' },
+    { soort: 'tekst', waarde: 'Sofie Maes' },
+    { soort: 'tekst', waarde: leerling },
+    { soort: 'tekst', waarde: email },
+    { soort: 'tekst', waarde: baan },
+  ];
+
+  return buildXlsx({
+    naam: 'Lessen',
+    koppen: KOPPEN_SJABLOON,
+    breedtes: BREEDTES_SJABLOON,
+    rijen: [
+      rij('Jonas Peeters', 'jonas@voorbeeld.be', 'Baan 1'),
+      rij('Emma Willems', '', ''),
+    ],
+  });
 }
