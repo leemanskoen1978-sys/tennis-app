@@ -1205,4 +1205,31 @@ export const EN: Record<string, string> = {
     'How long a lesson lasts. This applies to lessons you schedule from now on; lessons that '
     + 'are already in the schedule keep their own hour.',
   '{n} min': '{n} min',
+
+  // --- Beheer → Ziekmelding: een trainer ziek melden en de meldingen terugzien
+  //     (app/admin/ziekmelding) ---
+  'Ziekmelding': 'Sick leave',
+  'Werklijst': 'Work list',
+  'Werklijst en vervangers': 'Work list and substitutes',
+  'Ziekmeldingen zijn alleen voor de beheerder.': 'Sick leave is for the administrator only.',
+  'Meld hier een trainer ziek over een periode van dag tot en met dag.':
+    'Report a coach sick here, over a period from day to day.',
+  'Je komt daarna meteen op de werklijst van die melding: elke les die eronder valt, met wie hem kan overnemen.':
+    'You then land straight on the work list for that report: every lesson it covers, with who '
+    + 'can take it over.',
+  'De app verwittigt niemand — bellen en appen blijft mensenwerk.':
+    'The app notifies no one — calling and texting stays a job for people.',
+  'Wie is er ziek?': 'Who is sick?',
+  'Ziek van': 'Sick from',
+  'Reden (mag leeg)': 'Reason (may be blank)',
+  'bv. griep': 'e.g. flu',
+  'Ziek melden': 'Report sick',
+  'De ziekmelding is niet bewaard. Probeer het zo nog eens.':
+    'The sick leave was not saved. Please try again in a moment.',
+  'Er loopt op dit moment geen enkele ziekmelding.': 'No sick leave is running right now.',
+  '1 lopende ziekmelding': '1 sick leave running',
+  '{n} lopende ziekmeldingen': '{n} sick leaves running',
+  'Werklijst openen': 'Open work list',
+  'Ingetrokken': 'Withdrawn',
+  'Onbekende trainer': 'Unknown coach',
 };

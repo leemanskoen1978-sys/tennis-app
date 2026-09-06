@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import {
   CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
   Upload, Users, UserCog, BookOpen, CalendarOff, Clock, GraduationCap, FileSpreadsheet,
+  Thermometer,
   type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
@@ -86,6 +87,13 @@ export default function Admin() {
         // bewaking — het scherm zelf en de policies op lesson_groups doen dat werk.
         ...(isAdmin(currentUser)
           ? [{ key: 'lesgroepen', title: t('Lesgroepen'), subtitle: t('Naam, niveau, rooster en spelers'), icon: GraduationCap, onPress: () => router.push('/admin/lesgroepen') } as Tile]
+          : []),
+        // Een zieke trainer is een zaak van de club en niet van de trainer zelf: hij meldt
+        // zich in deze versie niet zelf ziek (D-12). Dat de tegel hier wegblijft voor een
+        // gewone trainer is wellevendheid en geen bewaking — het scherm zelf en de policies
+        // op sick_leaves doen dat werk.
+        ...(isAdmin(currentUser)
+          ? [{ key: 'ziekmelding', title: t('Ziekmelding'), subtitle: t('Werklijst en vervangers'), icon: Thermometer, onPress: () => router.push('/admin/ziekmelding') } as Tile]
           : []),
         ...(isAdmin(currentUser)
           ? [{ key: 'leden', title: t('Leden'), subtitle: t('Gegevens, type account en beheerders'), icon: UserCog, onPress: () => router.push('/admin/leden') } as Tile]

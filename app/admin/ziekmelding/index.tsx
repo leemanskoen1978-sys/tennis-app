@@ -53,7 +53,7 @@ export default function ZiekmeldingScreen(): React.JSX.Element {
   // plaats van dat het scherm stilzwijgend de eerste trainer in de lijst invult.
   const [trainerId, setTrainerId] = useState<string | null>(null);
   const [van, setVan] = useState('');
-  const [tot, setTot] = useState('');
+  const [totDag, setTotDag] = useState('');
   const [reden, setReden] = useState('');
   const [fout, setFout] = useState<string | null>(null);
 
@@ -86,19 +86,21 @@ export default function ZiekmeldingScreen(): React.JSX.Element {
 
   const meldAan = async (): Promise<void> => {
     const vanDatum = parseDayInput(van);
-    const totDatum = parseDayInput(tot);
+    const totDatum = parseDayInput(totDag);
     // Een half getypte datum wordt een lege sleutel; `ziekmeldingFout` maakt daar de ene
     // melding van die overal in de app hetzelfde luidt. Hier staat met opzet geen tweede
     // versie van diezelfde regel.
-    const vanDag = vanDatum ? dagSleutel(vanDatum) : '';
-    const totDag = totDatum ? dagSleutel(totDatum) : '';
-    const melding = ziekmeldingFout(trainerId ?? '', vanDag, totDag);
+    const vanSleutel = vanDatum ? dagSleutel(vanDatum) : '';
+    const totSleutel = totDatum ? dagSleutel(totDatum) : '';
+    const melding = ziekmeldingFout(trainerId ?? '', vanSleutel, totSleutel);
     if (melding) {
       setFout(melding);
       return;
     }
     setFout(null);
-    const nieuw = await meldZiek(trainerId ?? '', vanDag, totDag, reden.trim() || undefined);
+    const nieuw = await meldZiek(
+      trainerId ?? '', vanSleutel, totSleutel, reden.trim() || undefined,
+    );
     // Geen rij terug: er is niets bewaard. Doorgaan zou een werklijst openen van een melding
     // die niet bestaat — een leeg scherm dat eruitziet alsof er geen enkele les geraakt is,
     // en dat is de gevaarlijkste vorm van stil verdwijnen.
@@ -108,7 +110,7 @@ export default function ZiekmeldingScreen(): React.JSX.Element {
     }
     setTrainerId(null);
     setVan('');
-    setTot('');
+    setTotDag('');
     setReden('');
     // Meteen door naar de werklijst, zonder tussenscherm. Het fasedoel is "binnen een
     // minuut": een overzicht dat de beheerder eerst nog moet aanklikken kost precies die
@@ -120,10 +122,17 @@ export default function ZiekmeldingScreen(): React.JSX.Element {
 
   return (
     <Screen>
+      {/* Elke zin apart, en niet aan elkaar geplakt: een vertaalsleutel die over drie regels
+          loopt is in lib/i18n-en niet terug te vinden, en dan blijft de zin er Engels uitzien
+          terwijl hij Nederlands is. */}
       <Text style={styles.uitleg}>
-        {t('Meld hier een trainer ziek over een periode. Je komt daarna meteen op de werklijst '
-          + 'van die melding: elke les die eronder valt, met wie hem kan overnemen. De app '
-          + 'verwittigt niemand — bellen en appen blijft mensenwerk.')}
+        {t('Meld hier een trainer ziek over een periode van dag tot en met dag.')}
+      </Text>
+      <Text style={styles.uitleg}>
+        {t('Je komt daarna meteen op de werklijst van die melding: elke les die eronder valt, met wie hem kan overnemen.')}
+      </Text>
+      <Text style={styles.uitleg}>
+        {t('De app verwittigt niemand — bellen en appen blijft mensenwerk.')}
       </Text>
 
       <Card>
@@ -155,8 +164,8 @@ export default function ZiekmeldingScreen(): React.JSX.Element {
             <Text style={styles.label}>{t('Tot en met')}</Text>
             <TextInput
               style={styles.input}
-              value={tot}
-              onChangeText={setTot}
+              value={totDag}
+              onChangeText={setTotDag}
               placeholder={t('dd/mm/jjjj')}
               placeholderTextColor={tennisColors.textMuted}
               inputMode="numeric"
