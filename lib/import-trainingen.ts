@@ -953,6 +953,44 @@ export interface GeplandeSpeler {
   bestaand: User | null;
 }
 
+/**
+ * Het domein voor een verzonnen adres. `example.com` is bij RFC 2606 gereserveerd en kan nooit
+ * post ontvangen: er gaat met zekerheid geen mail naar een echt persoon die toevallig zo heet.
+ * Een eigen domein zou dat niet garanderen.
+ */
+const DEMO_DOMEIN = 'example.com';
+
+/**
+ * Een verzonnen, uniek e-mailadres voor iemand waarvan het bestand er geen geeft.
+ *
+ * WAAROM DIT MOET BESTAAN. `users.email` is in supabase-schema.sql `unique not null`. De
+ * clublijst heeft geen e-mailkolom, dus zonder dit zouden 550 leden allemaal een leeg adres
+ * krijgen en zou de tweede daarvan de hele import laten stranden op die unieke sleutel —
+ * halverwege, met leerlingen zonder groep als restant. Een leeg adres is hier dus geen "nog niet
+ * ingevuld" maar een bom. Dat het nooit opviel komt doordat `koen.xlsx` wél adressen heeft.
+ *
+ * Het adres is afgeleid van de naam en niet van een toevalsgetal: zo is het te lezen, en ziet de
+ * beheerder in Beheer → Leden meteen dat het verzonnen is en van wie.
+ *
+ * `bezet` gaat erin en wordt hier niet bijgewerkt: de aanroeper houdt die lijst bij, want alleen
+ * die weet welke adressen er in dezelfde importbeurt al uitgedeeld zijn.
+ */
+export function demoAdres(naam: string, bezet: ReadonlySet<string>): string {
+  const stam = naam
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '.')
+    .replace(/^\.+|\.+$/g, '');
+  const basis = stam || 'lid';
+  let adres = `${basis}@${DEMO_DOMEIN}`;
+  let n = 1;
+  while (bezet.has(adres)) {
+    n += 1;
+    adres = `${basis}${n}@${DEMO_DOMEIN}`;
+  }
+  return adres;
+}
+
 /** Wat er onderweg per leerling verzameld wordt. */
 interface SpelerEmmer {
   naam: string;
@@ -1004,6 +1042,12 @@ export function spelersUitRegels(
 
   const spelers: GeplandeSpeler[] = [];
   const waarschuwingen: ImportFoutLessen[] = [];
+  // De adressen die al vergeven zijn: die van de leden die de club kent, plus die van de leden
+  // die deze importbeurt zelf aanmaakt. Eén verzameling voor allebei, want een verzonnen adres
+  // mag niet botsen met een echt adres én niet met een verzonnen adres van drie regels eerder.
+  const bezetteAdressen = new Set(
+    users.map((u) => u.email.trim().toLowerCase()).filter(Boolean),
+  );
   emmers.forEach((emmer) => {
     const bestaand = zoekOpNaam(users, emmer.naam);
     if (!bestaand) {
@@ -1019,7 +1063,14 @@ export function spelersUitRegels(
         return;
       }
     }
-    spelers.push({ naam: emmer.naam, email: emmer.email, bestaand });
+    // Een nieuw lid zonder adres krijgt er een verzonnen. Zie `demoAdres` voor waarom dat geen
+    // luxe is: een leeg adres kan niet, want `users.email` is uniek én verplicht. Een bestáánd
+    // lid raken we niet aan — dat heeft er al een, en dat is misschien wel zijn echte.
+    const email = bestaand
+      ? emmer.email
+      : emmer.email || demoAdres(emmer.naam, bezetteAdressen);
+    if (!bestaand) bezetteAdressen.add(email.toLowerCase());
+    spelers.push({ naam: emmer.naam, email, bestaand });
   });
 
   return { spelers, waarschuwingen };

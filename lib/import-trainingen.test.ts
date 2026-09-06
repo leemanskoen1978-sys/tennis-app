@@ -9,7 +9,7 @@ import {
   ingrijpendeWijzigingen, overgeslagenPerReden,
   groepRosterVerschil, kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
-  seizoenUitSettings,
+  seizoenUitSettings, demoAdres, spelersUitRegels as leesSpelers,
   trainerwisselVoorGroep,
   NIEUWE_SPELER, planImportLessen, spelerSleutel,
   groepWijzigingen, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
@@ -1102,6 +1102,70 @@ describe('lesduurVan', () => {
 
   it('duurt zestig minuten als de instelling er niet is', () => {
     expect(lesduurVan({})).toBe(60);
+  });
+});
+
+describe('demoAdres', () => {
+  it('maakt een adres uit de naam', () => {
+    expect(demoAdres('Jan Jansen', new Set())).toBe('jan.jansen@example.com');
+  });
+
+  it('haalt accenten, streepjes en dubbele spaties weg', () => {
+    expect(demoAdres('Émile  Van der Meer-Ruys', new Set()))
+      .toBe('emile.van.der.meer.ruys@example.com');
+  });
+
+  it('telt door bij een naamgenoot, zodat het adres uniek blijft', () => {
+    const bezet = new Set(['jan.jansen@example.com']);
+    expect(demoAdres('Jan Jansen', bezet)).toBe('jan.jansen2@example.com');
+    bezet.add('jan.jansen2@example.com');
+    expect(demoAdres('Jan Jansen', bezet)).toBe('jan.jansen3@example.com');
+  });
+
+  it('valt terug op een naamloos adres als er van de naam niets overblijft', () => {
+    expect(demoAdres('???', new Set())).toBe('lid@example.com');
+  });
+});
+
+describe('spelers zonder e-mailkolom', () => {
+  const zonderMail = (naam: string, regel: number) => ({
+    regel, leerling: naam, emailLeerling: '',
+  });
+
+  it('geeft elk nieuw lid een eigen adres, zodat de unieke sleutel niet botst', () => {
+    const { spelers } = leesSpelers(
+      [zonderMail('Jan Jansen', 2), zonderMail('Piet Peeters', 3), zonderMail('Marie Maes', 4)],
+      [],
+    );
+    const adressen = spelers.map((sp) => sp.email);
+    expect(new Set(adressen).size).toBe(3);
+    expect(adressen.every((a) => a.endsWith('@example.com'))).toBe(true);
+  });
+
+  it('verzint geen adres voor een leerling die de club al kent', () => {
+    const { spelers } = leesSpelers(
+      [zonderMail('Jan Jansen', 2)],
+      [{ id: 'u1', name: 'Jan Jansen', email: 'jan@echt.be', role: 'player' }],
+    );
+    expect(spelers[0].bestaand?.id).toBe('u1');
+    expect(spelers[0].email).toBe('');
+  });
+
+  it('botst niet met een adres dat de club al kent', () => {
+    const { spelers } = leesSpelers(
+      [zonderMail('Jan Jansen', 2)],
+      [{ id: 'u1', name: 'Iemand Anders', email: 'jan.jansen@example.com', role: 'player' }],
+    );
+    expect(spelers[0].bestaand).toBeNull();
+    expect(spelers[0].email).toBe('jan.jansen2@example.com');
+  });
+
+  it('houdt het adres uit het bestand als dat er wél is', () => {
+    const { spelers } = leesSpelers(
+      [{ regel: 2, leerling: 'Jan Jansen', emailLeerling: 'jan@echt.be' }],
+      [],
+    );
+    expect(spelers[0].email).toBe('jan@echt.be');
   });
 });
 
@@ -2622,9 +2686,12 @@ describe('bouwImportWijziging', () => {
 
   it('maakt van elke onbekende leerling één lid, met een voorspelbaar id en zonder lege sleutels', () => {
     const uit = bouwImportWijziging(planNieuw(), teller(), { ingrijpend: true });
+    // Het adres is verzonnen omdat dit bestand er geen geeft. Tot 6 september 2026 stond hier
+    // `email: ''`, en dat had de import op de tweede leerling laten stranden: `users.email` is
+    // `unique not null`. Zie `demoAdres`.
     expect(uit.nieuweUsers).toEqual([
-      { id: 'u-1', name: 'Peferoen Astor', email: '', role: 'player' },
-      { id: 'u-2', name: 'Martens Clara', email: '', role: 'player' },
+      { id: 'u-1', name: 'Peferoen Astor', email: 'peferoen.astor@example.com', role: 'player' },
+      { id: 'u-2', name: 'Martens Clara', email: 'martens.clara@example.com', role: 'player' },
     ]);
   });
 
