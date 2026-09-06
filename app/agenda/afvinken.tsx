@@ -11,6 +11,12 @@
 //
 // De les zoekt het scherm zelf op (zie lib/afvinken): wie eerst een datum en een uur moet
 // aanwijzen, vinkt sneller zelf af.
+//
+// Onder de namen staan wél de eerstvolgende lessen, aantikbaar om er al een af te vinken.
+// Ze staan er ONDER en niet boven, met opzet: een kind dat op zijn eigen naam tikt komt daar
+// niet bij, en het scherm opent nog altijd op de groep die nu voor de trainer staat. Toont
+// het scherm zo'n les van later, dan staat de dag in de titel en ligt er een weg terug naar
+// de les van nu — anders vinkt de trainer de verkeerde groep af.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
@@ -20,12 +26,13 @@ import { Check, X, Circle, ArrowLeft } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Chip } from '../../components/ui/Chip';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { lessenNu } from '../../lib/afvinken';
+import { komendeLessen, lessenNu, toonDagErbij } from '../../lib/afvinken';
 import {
   aanwezigheidRegel, aanwezigheidVan, volgendeStand, type Aanwezigheid,
 } from '../../lib/aanwezigheid';
-import { lessonPlayerIds } from '../../lib/groups';
-import { formatTimeRange } from '../../lib/datetime';
+import { groupSize, groupSizeLabel, lessonPlayerIds } from '../../lib/groups';
+import { formatDayTimeRange, formatTimeRange } from '../../lib/datetime';
+import type { Booking } from '../../lib/types';
 import { isCoach } from '../../lib/rechten';
 import { tennisColors } from '../../constants/tennis-colors';
 import { radius, spacing, typography, minTapTarget, webCursor, noSelect } from '../../constants/theme';
@@ -44,7 +51,8 @@ export default function AfvinkenScreen(): React.JSX.Element {
     return () => clearInterval(timer);
   }, []);
 
-  // Welke les de trainer koos toen er meer dan één tegelijk liep. Leeg = de eerste.
+  // Welke les de trainer koos: één van de lessen die nu lopen, of één uit het lijstje van
+  // straks. Eén keuze voor allebei, want het is dezelfde vraag — welke les staat er boven.
   const [gekozen, setGekozen] = useState<string | null>(null);
 
   const coach = isCoach(currentUser);
@@ -52,10 +60,21 @@ export default function AfvinkenScreen(): React.JSX.Element {
     () => (coach && currentUser ? lessenNu(bookings, currentUser.id, now) : []),
     [coach, currentUser, bookings, now],
   );
+  const komend = useMemo(
+    () => (coach && currentUser ? komendeLessen(bookings, currentUser.id, now) : []),
+    [coach, currentUser, bookings, now],
+  );
 
-  // Verdwijnt de gekozen les uit de lijst (ze is voorbij, of geannuleerd), dan valt het
-  // scherm terug op de eerste die er nog is in plaats van leeg te blijven staan.
-  const les = lessen.find((b) => b.id === gekozen) ?? lessen[0] ?? null;
+  // Verdwijnt de gekozen les uit beide lijsten (ze is voorbij, of geannuleerd), dan valt het
+  // scherm terug op de eerste die nú loopt in plaats van leeg te blijven staan. Terugvallen
+  // op een les van morgen doet het nooit: dit scherm gaat over het uur dat bezig is.
+  const les = lessen.find((b) => b.id === gekozen)
+    ?? komend.find((b) => b.id === gekozen)
+    ?? lessen[0] ?? null;
+
+  // Staat er een les van later boven? Dan moet het scherm dat zeggen, want de namen eronder
+  // zien er precies hetzelfde uit als die van de groep die nu voor de trainer staat.
+  const vanLater = les !== null && !lessen.some((b) => b.id === les.id);
 
   const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
   const courtName = (id: string): string =>
@@ -103,8 +122,26 @@ export default function AfvinkenScreen(): React.JSX.Element {
             </View>
           ) : null}
 
-          <Text style={styles.titel}>{formatTimeRange(les.start_time, les.end_time)}</Text>
+          <Text style={styles.titel}>
+            {vanLater
+              ? formatDayTimeRange(les.start_time, les.end_time)
+              : formatTimeRange(les.start_time, les.end_time)}
+          </Text>
           <Text style={styles.onder}>{courtName(les.court_id)}</Text>
+
+          {/* Vinkt de trainer vooruit af, dan staat het er met zoveel woorden. Zonder deze
+              regel verschilt dit scherm van dat van de groep die nu op de baan staat in
+              precies één ding: het uur bovenaan — en daar kijkt niemand naar terwijl acht
+              kinderen op de gsm wachten. */}
+          {vanLater ? (
+            <View style={styles.laterBlok}>
+              <Text style={styles.laterTekst}>{t('Dit is niet de les die nu bezig is.')}</Text>
+              {lessen.length > 0 ? (
+                <Chip label={t('Terug naar de les van nu')} onPress={() => setGekozen(null)} />
+              ) : null}
+            </View>
+          ) : null}
+
           <Text style={styles.telling}>{aanwezigheidRegel(les)}</Text>
 
           {spelers.map(({ id, naam }) => {
@@ -155,6 +192,38 @@ export default function AfvinkenScreen(): React.JSX.Element {
         </>
       )}
 
+      {/* Onder de namen én onder de uitleg: de trainer scrolt hier pas naartoe als hij het
+          scherm terugkrijgt, en een kind komt er niet toe. */}
+      {komend.length > 0 ? (
+        <View style={styles.komendBlok}>
+          <Text style={styles.komendKop}>{t('Hierna')}</Text>
+          {komend.map((b) => (
+            <Pressable
+              key={b.id}
+              onPress={() => setGekozen(b.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`${lesWanneer(b, now)}, ${courtName(b.court_id)}, ${groupSizeLabel(groupSize(b))}`}
+              accessibilityState={{ selected: b.id === les?.id }}
+              style={({ pressed }) => [
+                styles.komendRij,
+                b.id === les?.id && styles.komendRijGekozen,
+                webCursor,
+                noSelect,
+                pressed && styles.gedrukt,
+              ]}
+            >
+              <Text style={[styles.komendTijd, noSelect]}>{lesWanneer(b, now)}</Text>
+              <Text style={[styles.komendOnder, noSelect]} numberOfLines={1}>
+                {`${courtName(b.court_id)} · ${groupSizeLabel(groupSize(b))}`}
+              </Text>
+            </Pressable>
+          ))}
+          <Text style={styles.uitleg}>
+            {t('Tik een les aan om er nu al iemand van af te vinken.')}
+          </Text>
+        </View>
+      ) : null}
+
       {error ? <Text style={styles.fout}>{error}</Text> : null}
     </Screen>
   );
@@ -181,6 +250,18 @@ function Terug({ label, onPress }: { label: string; onPress: () => void }): Reac
       <Text style={[styles.terugTekst, noSelect]}>{label}</Text>
     </Pressable>
   );
+}
+
+/**
+ * Wanneer deze les is, in de kortste vorm die niet verkeerd te lezen valt.
+ *
+ * Vandaag alleen het uur; anders de dag erbij. Zie `toonDagErbij` in lib/afvinken waarom:
+ * een kale "18:00" onder dit scherm leest als "straks".
+ */
+function lesWanneer(b: Booking, now: Date): string {
+  return toonDagErbij(b.start_time, now)
+    ? formatDayTimeRange(b.start_time, b.end_time)
+    : formatTimeRange(b.start_time, b.end_time);
 }
 
 /** Wat er rechts op de rij staat, en wat een schermlezer voorleest. */
@@ -223,6 +304,30 @@ const styles = StyleSheet.create({
   naamOpVulling: { color: tennisColors.onFill },
   stand: { fontSize: 13, color: tennisColors.textMuted },
   uitleg: { fontSize: 13, color: tennisColors.textMuted, fontStyle: 'italic', marginTop: spacing.md },
+  laterBlok: {
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  laterTekst: { ...typography.label, color: tennisColors.warning },
+  // Een streep boven het lijstje: hieronder gaat het niet meer over de groep die voor je
+  // staat. Ruim eronder, zodat de laatste naam en de eerste les niet één blok lijken.
+  komendBlok: {
+    marginTop: spacing.xl, paddingTop: spacing.lg,
+    borderTopWidth: 1, borderTopColor: tennisColors.border,
+  },
+  komendKop: { ...typography.label, color: tennisColors.textMuted, marginBottom: spacing.xs },
+  // Lager dan een naamrij van 64: dit tikt de trainer zelf aan, met het scherm in zijn hand.
+  komendRij: {
+    minHeight: minTapTarget, justifyContent: 'center',
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, marginTop: spacing.sm,
+    borderRadius: radius.lg, borderWidth: 1,
+    backgroundColor: tennisColors.surface, borderColor: tennisColors.border,
+  },
+  komendRijGekozen: {
+    backgroundColor: tennisColors.primaryTint, borderColor: tennisColors.primary,
+  },
+  komendTijd: { ...typography.h3, color: tennisColors.text },
+  komendOnder: { fontSize: 13, color: tennisColors.textMuted },
   leeg: { ...typography.body, color: tennisColors.textMuted, marginTop: spacing.sm },
   fout: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.md },
   terug: {

@@ -715,6 +715,11 @@ export const EN: Record<string, string> = {
   'Tik op je naam: één keer voor aanwezig, nog eens voor afwezig, nog eens om hem leeg te maken.':
     'Tap your name: once for present, again for absent, again to clear it.',
   'Terug naar de agenda': 'Back to the schedule',
+  'Hierna': 'Up next',
+  'Tik een les aan om er nu al iemand van af te vinken.':
+    'Tap a lesson to tick someone off for it ahead of time.',
+  'Dit is niet de les die nu bezig is.': 'This is not the lesson running right now.',
+  'Terug naar de les van nu': 'Back to the lesson happening now',
 
   // --- boekingstijden per trainer -----------------------------------------
   'Boekingstijden': 'Booking hours',
