@@ -166,7 +166,7 @@ Plans:
 **Mode:** mvp
 **Goal**: De import herkent een lesgroep aan haar moment en haar terrein in plaats van aan een groepsnaam uit een ander systeem, zodat een trainerswissel een wijziging is en geen nieuwe groep.
 **Depends on**: Phase 5
-**Requirements**: IMP-03, IMP-10, IMP-12, IMP-13, IMP-14, IMP-15
+**Requirements**: IMP-03, IMP-10, IMP-12, IMP-13, IMP-14, IMP-15, IMP-16, IMP-17
 **Inserted**: 2026-09-06, na fase 5, op aangeven van de gebruiker. De kolom `Groep` in de planning van de club komt uit het Tennis Vlaanderen-systeem en betekent daar iets anders: hetzelfde nummer staat op momenten met totaal verschillende spelers. Hem in de sleutel meenemen maakte van één groep drie, en van een trainerswissel een nieuwe groep in plaats van een wijziging. Het terreinnummer komt in de plaats, in de kolom die nu `Indoor/Outdoor` heet.
 **Success Criteria** (what must be TRUE):
   1. De sleutel van een lesgroep is weekdag + beginuur + baan; de kolom `Groep` doet niet mee aan het matchen (IMP-03).
@@ -174,7 +174,9 @@ Plans:
   3. Hetzelfde bestand opnieuw inlezen met een andere naam in de kolom `Coach` werkt de komende lessen van die groep bij naar die trainer, meldt vooraf om hoeveel lessen het gaat, laat `taught_by_id` ongemoeid en raakt geen enkele les uit het verleden (IMP-13).
   4. Staat er een `Groep-ID` in het bestand, dan mogen naam, dag, uur, trainer en baan allemaal wijzigen op de bestaande groep (IMP-14).
   5. Het terreinnummer wordt gelezen uit `Baan` én uit `Indoor/Outdoor`; de woorden `Indoor` en `Outdoor` zelf betekenen "geen baan" (IMP-15).
-  6. `npx tsc --noEmit`, `npm test` en `npx expo export --platform web` slagen.
+  6. Een trainerswissel op komende lessen en een speler die uit een roster verdwijnt worden apart bevestigd, los van de rest van de import (IMP-16).
+  7. Een bestand dat grotendeels over het verleden gaat, of een app die sinds de vorige import gewijzigd is, levert bovenaan de droogloop een waarschuwing met de periode van het bestand erbij (IMP-17).
+  8. `npx tsc --noEmit`, `npm test` en `npx expo export --platform web` slagen.
 **Plans**: 4 plans in 4 waves
 
 Plans:

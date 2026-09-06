@@ -88,6 +88,13 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 - [ ] **IMP-14**: Staat er een `Groep-ID` in het bestand, dan wint dat van de afgeleide
       sleutel en mag álles wijzigen: naam, dag, uur, trainer en baan worden bijgewerkt op de
       bestaande groep in plaats van een nieuwe aan te maken.
+- [ ] **IMP-16**: Wat de import van bestaande gegevens zou wégnemen of omzetten — een andere
+      trainer op komende lessen, of een speler die uit een roster verdwijnt — wordt apart
+      bevestigd, los van de rest van de import. De rest gaat gewoon door.
+- [ ] **IMP-17**: Gaat een bestand grotendeels over lessen die al geweest zijn, of is er sinds
+      de vorige import in de app gewijzigd, dan staat dat bovenaan de droogloop met de periode
+      van het bestand erbij. Een oud bestand opnieuw inlezen mag de agenda niet ongemerkt
+      terugzetten.
 - [ ] **IMP-15**: Het terreinnummer wordt gelezen uit de kolom `Baan` of uit de kolom
       `Indoor/Outdoor` — de planning van de club draagt het in die tweede, omdat het Tennis
       Vlaanderen-blad die kop gebruikt. Staat er `Indoor` of `Outdoor` in plaats van een
@@ -191,6 +198,8 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | IMP-13 | Phase 5.1 | Pending |
 | IMP-14 | Phase 5.1 | Pending |
 | IMP-15 | Phase 5.1 | Pending |
+| IMP-16 | Phase 5.1 | Pending |
+| IMP-17 | Phase 5.1 | Pending |
 | TOEG-01 | Phase 1 | In Progress |
 | TOEG-02 | Phase 1 | Pending |
 | TOEG-03 | Phase 1 | Complete |
@@ -230,8 +239,8 @@ Het hele scherm van de app draagt de grens dus. Wat rest is plan 07: de RLS-kant
 nalopen. Pas als die controle gedaan is, is de requirement waar — de app is niet de bewaker.
 
 **Coverage:**
-- v1 requirements: 42 total
-- Mapped to phases: 42
+- v1 requirements: 44 total
+- Mapped to phases: 44
 - Unmapped: 0 ✓
 
 ---
