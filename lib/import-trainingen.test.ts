@@ -2,11 +2,13 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 import {
-  bestandAfgekeurdLessen, groepenUitRegels, groepRosterVerschil, kiesLessenBlad, leesDatumCel,
-  leesKopregelLessen, leesLesRegels, leesUurCel, voorbeeldTrainingenXlsx, type LesRegel,
+  bestandAfgekeurdLessen, groepenUitRegels, groepRosterVerschil, kiesLessenBlad,
+  koppelingVoorGroep, leesDatumCel, leesKopregelLessen, leesLesRegels, leesUurCel,
+  nieuwLidUitSpeler, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
+  type LesRegel,
 } from './import-trainingen';
 import { groepSleutel } from './lesgroepen';
-import type { LesGroep } from './types';
+import type { Court, LesGroep, User } from './types';
 import { datumNaarSerie } from './xlsx';
 import { leesWerkmap } from './xlsx-lezen';
 
@@ -642,5 +644,190 @@ describe('groepRosterVerschil', () => {
     expect(groepRosterVerschil(groepVan({ roster: ['u1', 'u2'] }), ['u2', 'u3'])).toEqual({
       status: 'bijgewerkt', toegevoegd: ['u3'], verwijderd: ['u1'],
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spelers, trainers en banen (IMP-04)
+// ---------------------------------------------------------------------------
+
+/** Een lid van de club, met alleen het veld dat de test wil zeggen. */
+function userVan(over: Partial<User> = {}): User {
+  return { id: 'u1', name: 'Koen Leemans', email: 'koen@voorbeeld.be', role: 'player', ...over };
+}
+
+/** Een baan van de club, met alleen het veld dat de test wil zeggen. */
+function baanVan(over: Partial<Court> = {}): Court {
+  return { id: 'c1', name: 'Baan 1', number: 1, indoor: false, hourly_rate: 20, ...over };
+}
+
+describe('zoekTrainer', () => {
+  const koen = userVan({ id: 'u-koen', name: 'Koen Leemans', role: 'coach' });
+
+  it('vindt "Koen Leemans" als het bestand "Leemans Koen" schrijft', () => {
+    expect(zoekTrainer([koen], 'Leemans Koen')).toBe(koen);
+  });
+
+  it('kijkt alleen naar trainers, niet naar spelers met dezelfde naam', () => {
+    const speler = userVan({ id: 'u-speler', name: 'Koen Leemans', role: 'player' });
+    expect(zoekTrainer([speler], 'Leemans Koen')).toBeNull();
+    expect(zoekTrainer([speler, koen], 'Leemans Koen')).toBe(koen);
+  });
+
+  it('kiest niet tussen twee trainers die allebei passen', () => {
+    const tweede = userVan({ id: 'u-2', name: 'Leemans Koen', role: 'coach' });
+    expect(zoekTrainer([koen, tweede], 'Koen Leemans')).toBeNull();
+  });
+
+  it('vindt niemand bij een lege naam', () => {
+    expect(zoekTrainer([koen], '  ')).toBeNull();
+  });
+});
+
+describe('zoekBaan', () => {
+  const banen = [baanVan(), baanVan({ id: 'c2', name: 'Terras', number: 2 })];
+
+  it('vindt een baan op naam, ongeacht hoofdletters en spaties', () => {
+    expect(zoekBaan(banen, ' baan 1 ')?.id).toBe('c1');
+  });
+
+  it('vindt een baan op nummer', () => {
+    expect(zoekBaan(banen, '2')?.id).toBe('c2');
+  });
+
+  it('vindt niets bij een lege of onbekende waarde', () => {
+    expect(zoekBaan(banen, '')).toBeNull();
+    expect(zoekBaan(banen, 'Baan 7')).toBeNull();
+    expect(zoekBaan(banen, '7')).toBeNull();
+  });
+});
+
+describe('spelersUitRegels', () => {
+  it('herkent een leerling die exact zo in de ledenlijst staat', () => {
+    const antoine = userVan({ id: 'u-a', name: 'Antoine de Clippele' });
+    const uitkomst = spelersUitRegels([regelVan({ leerling: 'Antoine de Clippele' })], [antoine]);
+    expect(uitkomst.spelers).toEqual([{ naam: 'Antoine de Clippele', email: '', bestaand: antoine }]);
+    expect(uitkomst.waarschuwingen).toEqual([]);
+  });
+
+  it('herkent "de Clippele Antoine" als de bestaande Antoine de Clippele', () => {
+    const antoine = userVan({ id: 'u-a', name: 'Antoine de Clippele' });
+    const uitkomst = spelersUitRegels([regelVan({ leerling: 'de Clippele Antoine' })], [antoine]);
+    expect(uitkomst.spelers[0].bestaand).toBe(antoine);
+  });
+
+  it('zet een onbekende leerling met zijn genormaliseerde adres in het plan', () => {
+    const uitkomst = spelersUitRegels(
+      [regelVan({ leerling: 'Peferoen Astor', emailLeerling: '  Astor@Club.BE ' })],
+      [],
+    );
+    expect(uitkomst.spelers).toEqual([
+      { naam: 'Peferoen Astor', email: 'astor@club.be', bestaand: null },
+    ]);
+  });
+
+  it('maakt van dezelfde onbekende leerling op honderd regels één nieuw lid', () => {
+    const regels = Array.from({ length: 100 }, (_, i) => regelVan({
+      regel: i + 2,
+      leerling: i % 2 === 0 ? 'Peferoen Astor' : ' peferoen astor ',
+    }));
+    const uitkomst = spelersUitRegels(regels, []);
+    expect(uitkomst.spelers).toHaveLength(1);
+    expect(uitkomst.spelers[0].naam).toBe('Peferoen Astor');
+  });
+
+  it('neemt het eerste adres dat ingevuld is', () => {
+    const uitkomst = spelersUitRegels([
+      regelVan({ regel: 2, emailLeerling: '' }),
+      regelVan({ regel: 3, emailLeerling: 'astor@club.be' }),
+    ], []);
+    expect(uitkomst.spelers[0].email).toBe('astor@club.be');
+  });
+
+  it('koppelt niets als twee leden op dezelfde naam passen, en meldt het', () => {
+    const een = userVan({ id: 'u-1', name: 'Koen Leemans' });
+    const twee = userVan({ id: 'u-2', name: 'Leemans Koen' });
+    const uitkomst = spelersUitRegels([regelVan({ regel: 7, leerling: 'Koen Leemans' })], [een, twee]);
+    // Niet in het plan: hem als nieuw lid opnemen zou een derde Koen Leemans opleveren, en dat
+    // is erger dan hem overslaan met een melding waar de beheerder iets mee kan.
+    expect(uitkomst.spelers).toEqual([]);
+    expect(uitkomst.waarschuwingen).toHaveLength(1);
+    expect(uitkomst.waarschuwingen[0].regel).toBe(7);
+    expect(uitkomst.waarschuwingen[0].vars).toMatchObject({ naam: 'Koen Leemans' });
+  });
+
+  it('levert op koen.xlsx met een lege ledenlijst 42 nieuwe spelers zonder dubbels', () => {
+    const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
+    const { regels } = leesLesRegels(blad.rijen);
+    const uitkomst = spelersUitRegels(regels, []);
+    expect(uitkomst.spelers).toHaveLength(42);
+    expect(uitkomst.spelers.every((s) => s.bestaand === null)).toBe(true);
+    expect(uitkomst.waarschuwingen).toEqual([]);
+    expect(new Set(uitkomst.spelers.map((s) => s.naam)).size).toBe(42);
+  });
+});
+
+describe('nieuwLidUitSpeler', () => {
+  it('bouwt een speler zoals de ledenimport een lid bouwt', () => {
+    const lid = nieuwLidUitSpeler({ naam: 'Peferoen Astor', email: 'astor@club.be', bestaand: null });
+    expect(lid).toEqual({ name: 'Peferoen Astor', email: 'astor@club.be', role: 'player' });
+    // Geen sleutel met `undefined` erin: dat is het verschil tussen "niet ingevuld" en
+    // "leeggemaakt", precies zoals in lib/import-leden.ts.
+    expect(Object.keys(lid).sort()).toEqual(['email', 'name', 'role']);
+  });
+});
+
+describe('koppelingVoorGroep', () => {
+  const [groep] = groepenUitRegels([regelVan({ coach: 'Leemans Koen', baan: 'Baan 1' })], []).groepen;
+  const koen = userVan({ id: 'u-koen', name: 'Koen Leemans', role: 'coach' });
+
+  it('vindt de trainer en de baan zonder één melding', () => {
+    const koppeling = koppelingVoorGroep(groep, [koen], [baanVan()]);
+    expect(koppeling.trainer).toBe(koen);
+    expect(koppeling.baan?.id).toBe('c1');
+    expect(koppeling.meldingen).toEqual([]);
+  });
+
+  it('meldt een onbekende trainer één keer per groep, met zijn naam erin', () => {
+    const koppeling = koppelingVoorGroep(groep, [], [baanVan()]);
+    expect(koppeling.trainer).toBeNull();
+    expect(koppeling.meldingen).toHaveLength(1);
+    expect(koppeling.meldingen[0].regel).toBe(groep.regels[0].regel);
+    expect(koppeling.meldingen[0].vars).toMatchObject({ naam: 'Leemans Koen', groep: 'Groep 8' });
+  });
+
+  it('meldt een onbekende baan één keer per groep', () => {
+    const koppeling = koppelingVoorGroep(groep, [koen], []);
+    expect(koppeling.baan).toBeNull();
+    expect(koppeling.meldingen).toHaveLength(1);
+    expect(koppeling.meldingen[0].vars).toMatchObject({ waarde: 'Baan 1' });
+  });
+
+  it('meldt bij een lege Baan dat er geen baan opgegeven is en niet dat de naam fout is', () => {
+    const [zonder] = groepenUitRegels([regelVan({ baan: '' })], []).groepen;
+    const koppeling = koppelingVoorGroep(zonder, [koen], [baanVan()]);
+    expect(koppeling.baan).toBeNull();
+    expect(koppeling.meldingen).toHaveLength(1);
+    expect(koppeling.meldingen[0].vars).toEqual({ groep: 'Groep 8' });
+  });
+
+  it('geeft op koen.xlsx twintig meldingen en niet veertienhonderd', () => {
+    // Tien groepen × (geen trainersaccount + geen kolom Baan). Eén melding per groep is het
+    // verschil tussen een droogloop en een muur: per regel zouden dit er 2796 zijn.
+    const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
+    const { regels } = leesLesRegels(blad.rijen);
+    const groepen = groepenUitRegels(regels, []).groepen;
+    const meldingen = groepen.flatMap((g) => koppelingVoorGroep(g, [], []).meldingen);
+    expect(groepen).toHaveLength(10);
+    expect(meldingen).toHaveLength(20);
+    expect(meldingen.filter((m) => m.vars?.naam === 'Leemans Koen')).toHaveLength(10);
+  });
+
+  it('maakt geen trainer aan als er geen is — de groep gaat door, de lessen niet', () => {
+    const koppeling = koppelingVoorGroep(groep, [], []);
+    expect(koppeling.trainer).toBeNull();
+    expect(koppeling.baan).toBeNull();
+    // De groep zelf blijft gewoon bestaan, mét haar roster: `LesGroep.coach_id` mag leeg zijn.
+    expect(groep.leerlingNamen).toEqual(['Peferoen Astor']);
   });
 });
