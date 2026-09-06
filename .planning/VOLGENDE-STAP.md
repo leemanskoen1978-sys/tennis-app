@@ -96,7 +96,38 @@ Beslissingen die erin verwerkt zitten:
   stuitte). Onderaan staat een uitgecommentarieerd blok dat de wachtwoorden ongeldig maakt zodra
   de club er echt mee gaat werken.
 
-**Geverifieerd:** `npx tsc --noEmit` exit 0, `npx jest` 55 suites en 1678 tests groen (was 1591).
+**Droogloop op de échte clublijst, 6 september 2026.** Het bestand staat in `~/Downloads/
+Lesgroepen.xlsx` en niet in de repository. Uitkomst: 193 groepen, 12 trainers, 552 spelers,
+6461 lessen, 1732 overgeslagen wegens vakantie, 301 gemelde overlappingen, **nul fouten**. De
+duren kloppen: 189 × 60 minuten, 2 × 30, 2 × 90. Elke groep krijgt lessen (32 tot 35, mediaan 33).
+
+Die droogloop haalde er drie dingen uit die op verzonnen testgegevens niet te zien waren:
+
+1. **De koprij staat op rij 3.** Rij 1 is een titel ("Aanbod: Tennis - Jaarcyclus 2026 - 2027"),
+   rij 2 is leeg. De lezer keek alleen naar rij 1 en meldde "de koprij mist een verplichte kolom"
+   over een bestand dat helemaal in orde is. `vindKopregelWeekschema` zoekt hem nu in de eerste
+   tien rijen.
+2. **Er is een tweede blad**, `groepsleden`, met 669 regels: per lid per groep, mét
+   `E-mailadres` en `Gsm-nummer`. Dat wordt er nu bij gelezen, dus geen enkele speler krijgt nog
+   een verzonnen adres. Het rooster komt er uitdrukkelijk níét uit — dat blijft de kolom
+   `Speler(s)` van het eerste blad, want twee bronnen voor hetzelfde rooster is twee antwoorden.
+3. **552 spelers staan op 451 adressen**: gezinnen delen het adres van een ouder, en
+   `users.email` is `unique not null`. De import zou op het tweede kind van elk gezin gestrand
+   zijn. `uniekAdres` maakt er plus-adressering van (`ouder+2@gmail.com`) — uniek in de databank,
+   en de post komt nog steeds bij de ouder aan.
+
+Na die drie: **552 spelers, 552 verschillende adressen, alle 552 met telefoonnummer, nul
+verzonnen.**
+
+Twee dingen die de gebruiker zelf moet beoordelen en die de app niet kan zien:
+
+- **Zaterdag 10:00 op Terrein 8 is een zesde botsend moment**, naast de vijf op Terrein 7 die al
+  bekend waren. Twee halve banen, of een fout in de clubplanning?
+- **De club rekent 30 lesweken, de kalender geeft er 33.** Voor de app maakt het niets uit —
+  betalen gebeurt extern — maar de agenda toont straks ~33 lessen per groep waar de factuur er
+  30 noemt.
+
+**Geverifieerd:** `npx tsc --noEmit` exit 0, `npx jest` 56 suites en 1703 tests groen (was 1591).
 
 Wat nog niet met de hand is doorlopen: de échte clublijst door de droogloop halen. Verwacht 192
 groepen, 550 spelers, 12 trainers, en botsingen op vijf momenten op Terrein 7 — die vijf zijn
