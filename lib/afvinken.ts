@@ -5,8 +5,14 @@
 // het sneller geweest om de namen zelf af te vinken.
 //
 // De grenzen staan hier en niet in het scherm, zodat ze te lezen en te testen zijn.
+//
+// Wie een les geeft wordt hier nooit zelf uitgerekend: dat vraagt dit bestand aan
+// `lesgeverId` (lib/lesgever), de enige plek die die vraag beantwoordt. Stond hier een eigen
+// `b.coach_id`, dan opende een vervanger dit scherm op niets terwijl de afwezige trainer de
+// les nog zag staan — en dan vinkt niemand af.
 
 import type { Booking } from './types';
+import { lesgeverId } from './lesgever';
 
 /**
  * Hoe lang vóór het uur een les al meetelt. De kinderen staan er vóór het uur begint, en
@@ -22,16 +28,19 @@ export const VOOR_MS = 15 * 60_000;
 export const NA_MS = 30 * 60_000;
 
 /**
- * De lessen van deze trainer die nu aan de beurt zijn, op tijd oplopend.
+ * De lessen van deze lesgever die nu aan de beurt zijn, op tijd oplopend.
  *
  * Geannuleerde lessen vallen weg: die gaan niet door, dus er valt niemand af te vinken.
  * Meestal is dit er precies één; staan er twee groepen tegelijk op de baan, dan kiest de
  * trainer op het scherm zelf welke.
+ *
+ * "Van deze lesgever" gaat over wie hem werkelijk geeft en niet over wiens agenda hij staat:
+ * een vervanger staat met die groep op de baan en moet ze dus kunnen afvinken.
  */
-export function lessenNu(bookings: Booking[], coachId: string, now: Date): Booking[] {
+export function lessenNu(bookings: Booking[], lesgever: string, now: Date): Booking[] {
   const t = now.getTime();
   return bookings
-    .filter((b) => b.coach_id === coachId && b.status !== 'cancelled')
+    .filter((b) => lesgeverId(b) === lesgever && b.status !== 'cancelled')
     .filter((b) => {
       const start = new Date(b.start_time).getTime();
       const eind = new Date(b.end_time).getTime();

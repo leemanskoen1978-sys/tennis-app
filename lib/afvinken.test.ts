@@ -36,6 +36,12 @@ describe('lessenNu', () => {
     expect(lessenNu(lessen, 'koen', op(0)).map((b) => b.id)).toEqual(['b1']);
   });
 
+  it('shows the lesson to the stand-in who gives it, not to the absent coach', () => {
+    const vervangen = [les('b1', start, { taught_by_id: 'leslie' })];
+    expect(lessenNu(vervangen, 'leslie', op(0)).map((b) => b.id)).toEqual(['b1']);
+    expect(lessenNu(vervangen, 'koen', op(0))).toEqual([]);
+  });
+
   it('leaves out a cancelled lesson', () => {
     expect(lessenNu([les('b1', start, { status: 'cancelled' })], 'koen', op(0))).toEqual([]);
   });
