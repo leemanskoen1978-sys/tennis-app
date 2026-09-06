@@ -81,7 +81,7 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 - [ ] **IMP-12**: Een nieuwe lesgroep krijgt een naam uit haar moment (`Woensdag 17:00`, of
       `Woensdag 17:00 — baan 3` als er een baan is). Die naam is daarna met de hand te
       wijzigen en wordt door een herimport zonder `Groep-ID` nooit overschreven.
-- [ ] **IMP-13**: De trainer is een eigenschap van de groep, geen deel van de sleutel. Noemt
+- [x] **IMP-13**: De trainer is een eigenschap van de groep, geen deel van de sleutel. Noemt
       het bestand een andere trainer, dan krijgen de komende lessen van die groep die trainer,
       en meldt de droogloop vooraf om hoeveel lessen het gaat. `taught_by_id` — wie de les
       werkelijk gaf — blijft ongemoeid, en lessen die al geweest zijn veranderen nooit.
@@ -195,7 +195,7 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | IMP-10 | Phase 5 | Pending |
 | IMP-11 | Phase 5 | Pending |
 | IMP-12 | Phase 5.1 | Pending |
-| IMP-13 | Phase 5.1 | Pending |
+| IMP-13 | Phase 5.1 | Complete |
 | IMP-14 | Phase 5.1 | Pending |
 | IMP-15 | Phase 5.1 | Pending |
 | IMP-16 | Phase 5.1 | Pending |

@@ -180,9 +180,9 @@ Plans:
 **Plans**: 5 plans in 5 waves
 
 Plans:
-- [ ] 05.1-01-PLAN.md — De baankolom: Indoor/Outdoor draagt het terrein, de woorden zelf betekenen geen baan (wave 1)
-- [ ] 05.1-02-PLAN.md — De sleutel en de naam: weekdag + beginuur + baan, en een groep die naar haar moment heet (wave 2)
-- [ ] 05.1-03-PLAN.md — De trainerswissel: de komende lessen krijgen de nieuwe trainer, taught_by_id en het verleden ongemoeid (wave 3)
+- [x] 05.1-01-PLAN.md — De baankolom: Indoor/Outdoor draagt het terrein, de woorden zelf betekenen geen baan (wave 1)
+- [x] 05.1-02-PLAN.md — De sleutel en de naam: weekdag + beginuur + baan, en een groep die naar haar moment heet (wave 2)
+- [x] 05.1-03-PLAN.md — De trainerswissel: de komende lessen krijgen de nieuwe trainer, taught_by_id en het verleden ongemoeid (wave 3)
 - [ ] 05.1-04-PLAN.md — De droogloop op het scherm, de Engelse teksten, en met eigen ogen nalopen (wave 4, checkpoint)
 - [ ] 05.1-05-PLAN.md — De rem: wat weggenomen of omgezet wordt apart bevestigd, met de periode van het bestand bovenaan (wave 5, checkpoint)
 
