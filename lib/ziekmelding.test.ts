@@ -1,4 +1,7 @@
-import { lessenVoorZiekmelding, openZiekmeldingen, ziekOp, ziekmeldingFout, zoektVervanger } from './ziekmelding';
+import {
+  lessenVoorZiekmelding, openZiekmeldingen, vervangersNaVerwijdering, ziekOp, ziekmeldingFout,
+  zoektVervanger,
+} from './ziekmelding';
 import type { Booking, SickLeave, Vakantie } from './types';
 
 const basis: SickLeave = {
@@ -285,5 +288,52 @@ describe('ziekOp', () => {
   it('leest een omgekeerd ingevulde periode als de dagen ertussen', () => {
     expect(ziekOp('c-1', '2027-03-03', [ziek({ van: '2027-03-05', tot: '2027-03-01' })]))
       .toBe(true);
+  });
+});
+
+describe('vervangersNaVerwijdering', () => {
+  const NU = new Date(2027, 2, 1, 8, 0);
+  const melding = { coach_id: 'c-1', van: '2027-03-01', tot: '2027-03-05' };
+  const b = (over: Partial<Booking> = {}): Booking => ({
+    id: 'b1', player_id: 'p1', coach_id: 'c-1', court_id: 'baan-1',
+    start_time: new Date(2027, 2, 3, 17).toISOString(),
+    end_time: new Date(2027, 2, 3, 18).toISOString(),
+    status: 'confirmed', payment_method: 'open', taught_by_id: 'c-2', ...over,
+  });
+
+  it('haalt de vervanger weg op een komende les binnen de periode', () => {
+    expect(vervangersNaVerwijdering(melding, [b()], NU)).toEqual(['b1']);
+  });
+
+  it('laat een les zonder vervanger met rust', () => {
+    expect(vervangersNaVerwijdering(melding, [b({ taught_by_id: undefined })], NU)).toEqual([]);
+  });
+
+  it('laat een les van een andere trainer met rust', () => {
+    expect(vervangersNaVerwijdering(melding, [b({ coach_id: 'c-9' })], NU)).toEqual([]);
+  });
+
+  it('laat een les buiten de periode met rust', () => {
+    const buiten = b({ start_time: new Date(2027, 2, 9, 17).toISOString() });
+    expect(vervangersNaVerwijdering(melding, [buiten], NU)).toEqual([]);
+  });
+
+  it('laat een les die al geweest is met rust: die is echt door hem gegeven', () => {
+    // Wat geweest is blijft staan zoals het was — en aan `taught_by_id` hangt het loon.
+    const geweest = b({ start_time: new Date(2027, 1, 28, 17).toISOString() });
+    expect(vervangersNaVerwijdering(melding, [geweest], NU)).toEqual([]);
+  });
+
+  it('pakt ook een afgezegde les: de vervanger hoort er evengoed niet te blijven staan', () => {
+    expect(vervangersNaVerwijdering(melding, [b({ status: 'cancelled' })], NU)).toEqual(['b1']);
+  });
+
+  it('leest een omgekeerd ingevulde periode zoals de rest van de app', () => {
+    const omgekeerd = { coach_id: 'c-1', van: '2027-03-05', tot: '2027-03-01' };
+    expect(vervangersNaVerwijdering(omgekeerd, [b()], NU)).toEqual(['b1']);
+  });
+
+  it('geeft een lege lijst zonder boekingen', () => {
+    expect(vervangersNaVerwijdering(melding, [], NU)).toEqual([]);
   });
 });

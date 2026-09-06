@@ -27,6 +27,7 @@ import { isGroupLesson } from '../lib/groups';
 import { bouwImportWijziging } from '../lib/import-trainingen';
 import type { ImportKeuze, ImportPlanLessen, ImportUitslagLessen } from '../lib/import-trainingen';
 import { zetAanwezigheid, magAanwezigheidZetten, type Aanwezigheid } from '../lib/aanwezigheid';
+import { vervangersNaVerwijdering } from '../lib/ziekmelding';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
 import { botstMet, planSeries, type OvergeslagenSlot, type RecurrenceRule } from '../lib/recurrence';
@@ -1400,9 +1401,20 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const verwijderZiekmelding = useCallback(async (id: string): Promise<void> => {
     const store = storeRef.current;
     if (!store) return;
+    const melding = store.sickLeaves.find((z) => z.id === id);
+    if (!melding) return;
+    // De vervangers die uit déze melding volgden gaan mee weg. Welke dat zijn beslist
+    // `vervangersNaVerwijdering` en niet deze provider: daar staat de periodevraag, de regel dat
+    // wat geweest is blijft staan, en de reden waarom de afgezegde lessen er (nog) niet in
+    // zitten. In één commit met het verwijderen zelf, zodat er geen tussenstand bestaat waarin
+    // de melding weg is en de vervanger nog op de les staat.
+    const losTeKoppelen = new Set(vervangersNaVerwijdering(melding, store.bookings, new Date()));
     await commit({
       ...store,
       sickLeaves: store.sickLeaves.filter((z) => z.id !== id),
+      bookings: losTeKoppelen.size === 0 ? store.bookings : store.bookings.map((b) => (
+        losTeKoppelen.has(b.id) ? { ...b, taught_by_id: undefined } : b
+      )),
     });
   }, [commit]);
 

@@ -1410,8 +1410,8 @@ export const EN: Record<string, string> = {
   'Ingetrokken': 'Withdrawn',
   'Definitief verwijderen': 'Delete for good',
   'Toch niet': 'Never mind',
-  'Deze ziekmelding wordt verwijderd. De lessen blijven staan; een vervanger die je al koos ook.':
-    'This sick note will be deleted. The lessons stay, and so does any stand-in you already picked.',
+  'Deze ziekmelding wordt verwijderd. De vervangers die eruit volgden gaan mee weg, voor zover die lessen nog moeten komen. Afgezegde lessen blijven afgezegd.':
+    'This sick note will be deleted. Any stand-ins it caused go with it, for lessons still to come. Cancelled lessons stay cancelled.',
   'De ziekteperiode eindigt voor ze begint.': 'The sick leave ends before it starts.',
   'Alles in één keer': 'All at once',
   'Kies een datum uit de kalender': 'Pick a date from the calendar',

@@ -168,3 +168,59 @@ export function lessenVoorZiekmelding<T extends ZiekmeldingBoeking>(
     // tekst verkeerd, en de volgorde van de werklijst is wat de beheerder afwerkt.
     .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time));
 }
+
+/** De velden die `vervangersNaVerwijdering` van een boeking leest. */
+export type HerstelBoeking = Pick<
+  Booking, 'id' | 'coach_id' | 'taught_by_id' | 'start_time' | 'status'
+>;
+
+/**
+ * Welke lessen hun vervanger kwijtraken als deze ziekmelding verwijderd wordt.
+ *
+ * WAAROM DIT MOET. Tot 6 september 2026 raakte het intrekken van een ziekmelding geen enkele
+ * boeking, en dat was juist: intrekken liet de melding bestaan, dus wat eruit volgde bleef ook
+ * kloppen. Verwijderen zegt iets anders — dit had hier nooit moeten staan — en dan horen de
+ * gevolgen ook niet te blijven hangen. De eigenaar liep er op zijn eigen agenda tegenaan: hij
+ * meldde zich bij het testen ziek, gaf een les aan een collega, verwijderde de melding, en de
+ * collega bleef erop staan.
+ *
+ * Het is bovendien niet vrijblijvend: `taught_by_id` bepaalt wie er betaald wordt. Een vervanger
+ * die blijft hangen van een weggegooide ziekmelding geeft een collega loon voor een les die de
+ * vaste trainer zelf geeft.
+ *
+ * ALLEEN WAT NOG MOET KOMEN. Wat geweest is blijft staan zoals het was — dezelfde regel als bij
+ * de import en bij `planGroepWijziging`. Een les die vorige maand door een vervanger gegeven is,
+ * ís door hem gegeven; een knop van vandaag hoort dat niet te herschrijven, en het loon dat
+ * eraan hangt al helemaal niet.
+ *
+ * ALLEEN DE LESSEN VAN DE ZIEKE TRAINER, BINNEN ZIJN PERIODE. Buiten die periode raakte de
+ * melding niets en valt er niets terug te draaien.
+ *
+ * WAAROM DE AFGEZEGDE LESSEN HIER NIET IN ZITTEN, terwijl de eigenaar daar wél om vroeg. Een les
+ * kan vanaf de werklijst afgezegd zijn omdat er geen vervanger was, maar net zo goed doordat de
+ * speler zelf ziek was. In de databank zien die twee er identiek uit: `status: 'cancelled'` en
+ * verder niets — geen wie, geen waarom. Ze allebei terugzetten zou een les hervatten die de
+ * speler had afgezegd. Dat vraagt een veld dat bijhoudt wélke ziekmelding een les afzegde, en
+ * dat is een aparte stap met een migratie. De vervanger heeft dat probleem niet: `taught_by_id`
+ * wordt uitsluitend vanaf de werklijst gezet.
+ */
+export function vervangersNaVerwijdering(
+  melding: Pick<SickLeave, 'coach_id' | 'van' | 'tot'>,
+  boekingen: readonly HerstelBoeking[],
+  nu: Date,
+): string[] {
+  const periode: OpenZiekmelding[] = [{ ...melding }];
+  const uit: string[] = [];
+  for (const b of boekingen) {
+    if (!b.taught_by_id) continue;
+    if (b.coach_id !== melding.coach_id) continue;
+    const start = new Date(b.start_time);
+    if (Number.isNaN(start.getTime()) || start.getTime() < nu.getTime()) continue;
+    // Dezelfde periodevraag als overal, inclusief de omdraaiing voor oude rijen die verkeerd om
+    // staan. Een tweede vergelijking hier zou precies de kopie zijn waar `ziekOp` tegen
+    // waarschuwt.
+    if (!ziekOp(melding.coach_id, dagSleutel(start), periode)) continue;
+    uit.push(b.id);
+  }
+  return uit;
+}

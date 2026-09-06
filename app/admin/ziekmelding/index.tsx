@@ -225,7 +225,7 @@ export default function ZiekmeldingScreen(): React.JSX.Element {
           {teVerwijderen === z.id ? (
             <>
               <Text style={styles.waarschuwing}>
-                {t('Deze ziekmelding wordt verwijderd. De lessen blijven staan; een vervanger die je al koos ook.')}
+                {t('Deze ziekmelding wordt verwijderd. De vervangers die eruit volgden gaan mee weg, voor zover die lessen nog moeten komen. Afgezegde lessen blijven afgezegd.')}
               </Text>
               <View style={styles.knopRij}>
                 <Button
