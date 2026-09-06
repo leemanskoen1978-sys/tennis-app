@@ -557,7 +557,7 @@ describe('groepenUitRegels', () => {
       regelVan({ regel: 2, leerling: 'Peferoen Astor' }),
       regelVan({ regel: 3, leerling: 'Martens Clara' }),
       regelVan({ regel: 4, datum: { jaar: 2026, maand: 9, dag: 16 }, leerling: 'Peferoen Astor' }),
-    ], []);
+    ], [], []);
     expect(uitkomst.groepen).toHaveLength(1);
     expect(uitkomst.groepen[0].leerlingNamen).toEqual(['Peferoen Astor', 'Martens Clara']);
     expect(uitkomst.groepen[0].regels).toHaveLength(3);
@@ -565,8 +565,8 @@ describe('groepenUitRegels', () => {
   });
 
   it('gebruikt de sleutel van lib/lesgroepen en geen eigen versie', () => {
-    const [groep] = groepenUitRegels([regelVan()], []).groepen;
-    expect(groep.sleutel).toBe(groepSleutel({ name: 'Groep 8', weekday: 3, start_hour: 17 }));
+    const [groep] = groepenUitRegels([regelVan()], [], []).groepen;
+    expect(groep.sleutel).toBe(groepSleutel({ weekday: 3, start_hour: 17, court_id: undefined }));
     expect(groep.weekdag).toBe(3);
     expect(groep.beginuur).toBe(17);
     expect(groep.beginminuut).toBe(0);
@@ -577,15 +577,78 @@ describe('groepenUitRegels', () => {
       regelVan({ regel: 2, leerling: 'Peferoen Astor' }),
       regelVan({ regel: 3, datum: { jaar: 2026, maand: 9, dag: 11 }, leerling: 'Bertrem Mila' }),
       regelVan({ regel: 4, datum: { jaar: 2026, maand: 9, dag: 11 }, uur: { uur: 19, minuut: 0 }, leerling: 'Malcolm Eric' }),
-    ], []);
+    ], [], []);
     expect(uitkomst.groepen).toHaveLength(3);
     expect(uitkomst.groepen.map((g) => g.leerlingNamen)).toEqual([
       ['Peferoen Astor'], ['Bertrem Mila'], ['Malcolm Eric'],
     ]);
   });
 
+  it('voegt twee verschillende waarden in Groep op hetzelfde moment samen tot één groep', () => {
+    // De kern van deze fase. `Groep` komt bij deze club uit het Tennis Vlaanderen-systeem en is
+    // een administratief label; hetzelfde moment is hetzelfde uur op dezelfde baan, en dus
+    // dezelfde groep.
+    const uitkomst = groepenUitRegels([
+      regelVan({ regel: 2, groep: 'Groep 8', leerling: 'Peferoen Astor' }),
+      regelVan({ regel: 3, groep: 'Groep 12', leerling: 'Martens Clara' }),
+    ], [], []);
+    expect(uitkomst.groepen).toHaveLength(1);
+    expect(uitkomst.groepen[0].leerlingNamen).toEqual(['Peferoen Astor', 'Martens Clara']);
+    expect(uitkomst.waarschuwingen).toEqual([]);
+  });
+
+  it('noemt een nieuwe groep naar haar moment, met de baan erachter als die er is', () => {
+    const zonder = groepenUitRegels([regelVan({ groep: 'Groep 8' })], [], []).groepen[0];
+    expect(zonder.naam).toBe('Woensdag 17:00');
+
+    const opDrie = groepenUitRegels([regelVan({ baan: '3' })], [], []).groepen[0];
+    expect(opDrie.naam).toBe('Woensdag 17:00 — baan 3');
+
+    const center = groepenUitRegels([regelVan({ baan: 'Centercourt' })], [], []).groepen[0];
+    expect(center.naam).toBe('Woensdag 17:00 — Centercourt');
+  });
+
+  it('toont in de naam de echte begintijd, ook al telt de minuut niet mee in de sleutel', () => {
+    const [groep] = groepenUitRegels([regelVan({ uur: { uur: 17, minuut: 30 } })], [], []).groepen;
+    expect(groep.naam).toBe('Woensdag 17:30');
+  });
+
+  it('laat een bestaande groep haar eigen naam houden, wat de kolom Groep ook zegt', () => {
+    // D-05: een herimport zonder `Groep-ID` overschrijft nooit een naam die de beheerder zelf
+    // op het groepsscherm gaf.
+    const bestaand = groepVan({ name: 'De woensdagploeg' });
+    const [groep] = groepenUitRegels([regelVan({ groep: 'Groep 99' })], [bestaand], []).groepen;
+    expect(groep.bestaand).toBe(bestaand);
+    expect(groep.naam).toBe('De woensdagploeg');
+  });
+
+  it('laat de kolom Groep wél de naam bepalen bij een Groep-ID', () => {
+    const bestaand = groepVan({ id: 'g-42', name: 'De woensdagploeg' });
+    const [groep] = groepenUitRegels(
+      [regelVan({ groepId: 'g-42', groep: 'De gevorderden' })], [bestaand], [],
+    ).groepen;
+    expect(groep.viaGroepId).toBe(true);
+    expect(groep.naam).toBe('De gevorderden');
+  });
+
+  it('scheidt hetzelfde moment op twee banen, met één zin erover en niet één per regel', () => {
+    const banen = [baanVan(), baanVan({ id: 'c2', name: 'Baan 2', number: 2 })];
+    const uitkomst = groepenUitRegels([
+      regelVan({ regel: 2, baan: 'Baan 1', leerling: 'Peferoen Astor' }),
+      regelVan({ regel: 3, baan: 'Baan 2', leerling: 'Martens Clara' }),
+      regelVan({ regel: 4, baan: 'Baan 2', leerling: 'Bertrem Mila' }),
+    ], [], banen);
+
+    expect(uitkomst.groepen).toHaveLength(2);
+    expect(uitkomst.groepen.map((g) => g.naam))
+      .toEqual(['Woensdag 17:00 — Baan 1', 'Woensdag 17:00 — Baan 2']);
+    expect(uitkomst.waarschuwingen).toHaveLength(1);
+    expect(uitkomst.waarschuwingen[0].reden).toContain('meer dan één baan');
+    expect(uitkomst.waarschuwingen[0].vars).toEqual({ dag: 'Woensdag', uur: '17:00' });
+  });
+
   it('maakt van een regel zonder groep geen groep — dat is een privéles', () => {
-    const uitkomst = groepenUitRegels([regelVan({ groep: '' }), regelVan({ regel: 3, groep: '   ' })], []);
+    const uitkomst = groepenUitRegels([regelVan({ groep: '' }), regelVan({ regel: 3, groep: '   ' })], [], []);
     expect(uitkomst.groepen).toEqual([]);
     expect(uitkomst.waarschuwingen).toEqual([]);
   });
@@ -595,7 +658,7 @@ describe('groepenUitRegels', () => {
       regelVan({ regel: 2, datum: { jaar: 2026, maand: 10, dag: 7 } }),
       regelVan({ regel: 3, datum: { jaar: 2026, maand: 9, dag: 9 } }),
       regelVan({ regel: 4, datum: { jaar: 2027, maand: 6, dag: 23 } }),
-    ], []).groepen;
+    ], [], []).groepen;
     expect(groep.seizoenVan).toBe('2026-09-09');
     expect(groep.seizoenTot).toBe('2027-06-23');
   });
@@ -605,7 +668,7 @@ describe('groepenUitRegels', () => {
       regelVan({ regel: 2, typeLes: 'Oranje' }),
       regelVan({ regel: 3, typeLes: 'Groen' }),
       regelVan({ regel: 4, typeLes: 'Oranje' }),
-    ], []);
+    ], [], []);
     expect(uitkomst.groepen[0].niveau).toBe('Oranje');
     expect(uitkomst.waarschuwingen).toHaveLength(1);
     expect(uitkomst.waarschuwingen[0].regel).toBe(3);
@@ -616,7 +679,7 @@ describe('groepenUitRegels', () => {
     const uitkomst = groepenUitRegels([
       regelVan({ regel: 2, typeLes: 'Oranje' }),
       regelVan({ regel: 3, typeLes: '' }),
-    ], []);
+    ], [], []);
     expect(uitkomst.groepen[0].niveau).toBe('Oranje');
     expect(uitkomst.waarschuwingen).toEqual([]);
   });
@@ -626,7 +689,7 @@ describe('groepenUitRegels', () => {
       regelVan({ regel: 2, coach: 'Leemans Koen' }),
       regelVan({ regel: 3, coach: 'Maes Sofie' }),
       regelVan({ regel: 4, coach: 'Leemans Koen' }),
-    ], []);
+    ], [], []);
     expect(uitkomst.groepen[0].coachNaam).toBe('Leemans Koen');
     expect(uitkomst.waarschuwingen).toHaveLength(1);
     expect(uitkomst.waarschuwingen[0].regel).toBe(3);
@@ -635,7 +698,7 @@ describe('groepenUitRegels', () => {
 
   it('herkent een bestaande groep op de sleutel', () => {
     const bestaand = groepVan();
-    const [groep] = groepenUitRegels([regelVan()], [bestaand]).groepen;
+    const [groep] = groepenUitRegels([regelVan()], [bestaand], []).groepen;
     expect(groep.bestaand).toBe(bestaand);
   });
 
@@ -644,7 +707,7 @@ describe('groepenUitRegels', () => {
     const uitkomst = groepenUitRegels([
       regelVan({ regel: 2, groepId: 'g-42', groep: 'Groep 9', uur: { uur: 18, minuut: 0 } }),
       regelVan({ regel: 3, groepId: 'g-42', groep: 'Groep 9', uur: { uur: 18, minuut: 0 }, leerling: 'Martens Clara' }),
-    ], [bestaand]);
+    ], [bestaand], []);
     expect(uitkomst.groepen).toHaveLength(1);
     expect(uitkomst.groepen[0].bestaand).toBe(bestaand);
     expect(uitkomst.groepen[0].naam).toBe('Groep 9');
@@ -656,7 +719,7 @@ describe('groepenUitRegels', () => {
     const uitkomst = groepenUitRegels([
       regelVan({ regel: 2, groepId: 'g-42', leerling: 'Peferoen Astor' }),
       regelVan({ regel: 3, groepId: 'g-42', uur: { uur: 19, minuut: 0 }, leerling: 'Martens Clara' }),
-    ], [bestaand]);
+    ], [bestaand], []);
     expect(uitkomst.groepen).toHaveLength(1);
     expect(uitkomst.groepen[0].leerlingNamen).toEqual(['Peferoen Astor', 'Martens Clara']);
   });
@@ -665,49 +728,59 @@ describe('groepenUitRegels', () => {
     const uitkomst = groepenUitRegels([
       regelVan({ regel: 2, groepId: 'van-vorig-seizoen' }),
       regelVan({ regel: 3, groepId: 'van-vorig-seizoen', leerling: 'Martens Clara' }),
-    ], [groepVan()]);
+    ], [groepVan()], []);
     expect(uitkomst.groepen).toHaveLength(1);
-    expect(uitkomst.groepen[0].sleutel).toBe(groepSleutel({ name: 'Groep 8', weekday: 3, start_hour: 17 }));
+    expect(uitkomst.groepen[0].sleutel).toBe(groepSleutel({ weekday: 3, start_hour: 17, court_id: undefined }));
     expect(uitkomst.waarschuwingen).toHaveLength(1);
     expect(uitkomst.waarschuwingen[0].regel).toBe(2);
     expect(uitkomst.waarschuwingen[0].vars).toMatchObject({ waarde: 'van-vorig-seizoen' });
   });
 
   it('herkent een gearchiveerde groep niet — archiveren was een bewuste daad', () => {
-    const uitkomst = groepenUitRegels([regelVan()], [groepVan({ archived: true })]);
+    const uitkomst = groepenUitRegels([regelVan()], [groepVan({ archived: true })], []);
     expect(uitkomst.groepen[0].bestaand).toBeNull();
   });
 
   it('herkent ook een gearchiveerde groep niet op haar Groep-ID', () => {
-    const uitkomst = groepenUitRegels([regelVan({ groepId: 'g-8-woensdag' })], [groepVan({ archived: true })]);
+    const uitkomst = groepenUitRegels([regelVan({ groepId: 'g-8-woensdag' })], [groepVan({ archived: true })], []);
     expect(uitkomst.groepen[0].bestaand).toBeNull();
     expect(uitkomst.waarschuwingen).toHaveLength(1);
   });
 
-  it('levert op koen.xlsx tien groepen met zeven namen', () => {
-    // Tien en niet zeven: "Groep 8" staat op drie momenten en "Groep 12" op twee. IMP-10 en de
-    // ROADMAP zeggen "zeven lesgroepen" en tellen daarmee de groepsnámen; de sleutel van D-02
-    // telt de groepen. Allebei staan ze hier, zodat de volgende lezer weet dat dit klopt.
+  it('levert op koen.xlsx tien groepen met tien namen, elk naar haar eigen moment', () => {
+    // Tien momenten, dus tien groepen en tien namen. De kolom `Groep` van dit bestand kent er
+    // maar zeven verschillende, want "Groep 8" staat op drie momenten en "Groep 12" op twee —
+    // en juist daarom doet die kolom niet meer mee aan het benoemen.
     const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
     const { regels } = leesLesRegels(blad.rijen);
-    const uitkomst = groepenUitRegels(regels, []);
+    const uitkomst = groepenUitRegels(regels, [], []);
     expect(uitkomst.groepen).toHaveLength(10);
-    expect(new Set(uitkomst.groepen.map((g) => g.naam)).size).toBe(7);
+    const namen = uitkomst.groepen.map((g) => g.naam);
+    expect(new Set(namen).size).toBe(10);
+    expect(namen.filter((n) => n.startsWith('Groep '))).toEqual([]);
+    expect(namen).toContain('Woensdag 17:00');
     expect(uitkomst.groepen.every((g) => g.coachNaam === 'Leemans Koen')).toBe(true);
     expect(uitkomst.groepen.every((g) => g.bestaand === null)).toBe(true);
   });
 
-  it('maakt van "Groep 8" drie groepen met zes, vier en twee spelers en nul overlap', () => {
+  it('houdt de drie momenten die "Groep 8" heetten uit elkaar: zes, vier en twee spelers', () => {
+    // Dit was de test die bewees dat de naam mét dag en uur drie groepen opleverde. Hij bewijst
+    // nu hetzelfde over dag en uur alléén: de club heeft hier één administratief label op drie
+    // momenten met twaalf verschillende mensen en nul overlap gezet. Zouden die drie samenvallen,
+    // dan zat er één groep van twaalf in de app.
     const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
     const { regels } = leesLesRegels(blad.rijen);
-    const acht = groepenUitRegels(regels, []).groepen.filter((g) => g.naam === 'Groep 8');
+    const alle = groepenUitRegels(regels, [], []).groepen;
+    const momenten: Array<[number, number]> = [[3, 17], [5, 17], [5, 19]];
+    const acht = momenten.map(([weekdag, beginuur]) =>
+      alle.find((g) => g.weekdag === weekdag && g.beginuur === beginuur)!);
+
     expect(acht.map((g) => [g.weekdag, g.beginuur, g.leerlingNamen.length])).toEqual([
       [3, 17, 6], [5, 17, 4], [5, 19, 2],
     ]);
-    const alle = acht.flatMap((g) => g.leerlingNamen);
-    // Nul overlap: twaalf regels, twaalf verschillende mensen. Matchen op de naam alleen zou
-    // hier één groep van twaalf van maken — dat is waarom de sleutel de dag en het uur meetelt.
-    expect(new Set(alle).size).toBe(12);
+    expect(acht.map((g) => g.naam))
+      .toEqual(['Woensdag 17:00', 'Vrijdag 17:00', 'Vrijdag 19:00']);
+    expect(new Set(acht.flatMap((g) => g.leerlingNamen)).size).toBe(12);
     expect(acht[0].seizoenVan).toBe('2026-09-09');
     expect(acht[0].seizoenTot).toBe('2027-06-23');
   });
@@ -864,7 +937,7 @@ describe('nieuwLidUitSpeler', () => {
 });
 
 describe('koppelingVoorGroep', () => {
-  const [groep] = groepenUitRegels([regelVan({ coach: 'Leemans Koen', baan: 'Baan 1' })], []).groepen;
+  const [groep] = groepenUitRegels([regelVan({ coach: 'Leemans Koen', baan: 'Baan 1' })], [], []).groepen;
   const koen = userVan({ id: 'u-koen', name: 'Koen Leemans', role: 'coach' });
 
   it('vindt de trainer en de baan zonder één melding', () => {
@@ -879,7 +952,8 @@ describe('koppelingVoorGroep', () => {
     expect(koppeling.trainer).toBeNull();
     expect(koppeling.meldingen).toHaveLength(1);
     expect(koppeling.meldingen[0].regel).toBe(groep.regels[0].regel);
-    expect(koppeling.meldingen[0].vars).toMatchObject({ naam: 'Leemans Koen', groep: 'Groep 8' });
+    expect(koppeling.meldingen[0].vars)
+      .toMatchObject({ naam: 'Leemans Koen', groep: 'Woensdag 17:00 — Baan 1' });
   });
 
   it('meldt een onbekende baan één keer per groep', () => {
@@ -890,11 +964,11 @@ describe('koppelingVoorGroep', () => {
   });
 
   it('meldt bij een lege Baan dat er geen baan opgegeven is en niet dat de naam fout is', () => {
-    const [zonder] = groepenUitRegels([regelVan({ baan: '' })], []).groepen;
+    const [zonder] = groepenUitRegels([regelVan({ baan: '' })], [], []).groepen;
     const koppeling = koppelingVoorGroep(zonder, [koen], [baanVan()]);
     expect(koppeling.baan).toBeNull();
     expect(koppeling.meldingen).toHaveLength(1);
-    expect(koppeling.meldingen[0].vars).toEqual({ groep: 'Groep 8' });
+    expect(koppeling.meldingen[0].vars).toEqual({ groep: 'Woensdag 17:00' });
   });
 
   it('geeft op koen.xlsx twintig meldingen en niet veertienhonderd', () => {
@@ -902,7 +976,7 @@ describe('koppelingVoorGroep', () => {
     // verschil tussen een droogloop en een muur: per regel zouden dit er 2796 zijn.
     const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
     const { regels } = leesLesRegels(blad.rijen);
-    const groepen = groepenUitRegels(regels, []).groepen;
+    const groepen = groepenUitRegels(regels, [], []).groepen;
     const meldingen = groepen.flatMap((g) => koppelingVoorGroep(g, [], []).meldingen);
     expect(groepen).toHaveLength(10);
     expect(meldingen).toHaveLength(20);
@@ -939,13 +1013,15 @@ function boekingVan(over: Partial<ImportBoeking> = {}): ImportBoeking {
 /** De trainer, de baan en het moment waar de rest van deze tests vanuit gaat. */
 const KOEN = userVan({ id: 'u-koen', name: 'Koen Leemans', role: 'coach' });
 const BAAN = baanVan();
+/** Een tweede terrein: sinds de sleutel de baan meetelt is dat het enige dat twee groepen op hetzelfde uur uit elkaar houdt. */
+const BAAN_2 = baanVan({ id: 'c2', name: 'Baan 2', number: 2 });
 const GEKOPPELD: GroepKoppeling = { trainer: KOEN, baan: BAAN, meldingen: [] };
 /** Ruim vóór 9 september 2026: alles uit deze tests ligt dus in de toekomst. */
 const NU = new Date(2026, 8, 1);
 
 /** De ene groep die uit deze regels volgt. */
 function groepUit(regels: LesRegel[], bestaande: LesGroep[] = []): GeplandeGroep {
-  return groepenUitRegels(regels, bestaande).groepen[0];
+  return groepenUitRegels(regels, bestaande, []).groepen[0];
 }
 
 describe('lesSleutel', () => {
@@ -1320,7 +1396,9 @@ describe('planImportLessen', () => {
     expect(uit.groepenBijgewerkt).toEqual([]);
     expect(uit.groepenOngewijzigd).toEqual([]);
     expect(uit.groepenNieuw[0]).toMatchObject({
-      naam: 'Groep 8',
+      // Geen 'Groep 8' meer: de kolom `Groep` benoemt niet, het moment doet dat. `Baan 1` is
+      // geen getal, dus hij komt ongewijzigd achter het em-streepje.
+      naam: 'Woensdag 17:00 — Baan 1',
       weekdag: 3,
       beginuur: 17,
       trainerNaam: 'Koen Leemans',
@@ -1338,15 +1416,23 @@ describe('planImportLessen', () => {
   });
 
   it('laat het bestand met zichzelf botsen: twee groepen op hetzelfde uur bij dezelfde trainer', () => {
+    // Twee groepen op hetzelfde uur zijn sinds deze fase twee groepen op twee bánen: dezelfde
+    // dag, hetzelfde uur en dezelfde baan is per definitie één groep. Twee namen in de kolom
+    // `Groep` maken geen verschil meer, twee terreinen wel.
     const uit = planImportLessen([
       KOP_MET_BAAN,
-      rij('09/09/2026', '17:00', 'Groep 8', 'Peferoen Astor'),
-      rij('09/09/2026', '17:00', 'Groep 12', 'Bertrem Mila'),
-    ], [], [KOEN], [BAAN], [], {}, NU);
+      ['09/09/2026', '17:00', 'Groep 8', 'Leemans Koen', 'Peferoen Astor', 'Baan 1'],
+      ['09/09/2026', '17:00', 'Groep 12', 'Leemans Koen', 'Bertrem Mila', 'Baan 2'],
+    ], [], [KOEN], [BAAN, BAAN_2], [], {}, NU);
 
     expect(uit.groepenNieuw).toHaveLength(2);
+    expect(uit.groepenNieuw.map((g) => g.naam))
+      .toEqual(['Woensdag 17:00 — Baan 1', 'Woensdag 17:00 — Baan 2']);
+    // Eén les gaat door; de tweede niet, want dezelfde trainer kan niet op twee banen tegelijk.
     expect(uit.nieuweLessen).toHaveLength(1);
     expect(uit.overgeslagen.map((o) => o.reden)).toEqual(['bezet']);
+    // En de splitsing gebeurt niet stil: één zin over dat ene moment.
+    expect(uit.waarschuwingen.filter((w) => w.reden.includes('meer dan één baan'))).toHaveLength(1);
   });
 
   it('neemt de lesduur uit de clubinstelling', () => {
@@ -1469,8 +1555,8 @@ describe('zomer- en wintertijd', () => {
     // gekoppeld meegegeven, zodat de test over de datums gaat en niet over de koppeling.
     const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
     const { regels } = leesLesRegels(blad.rijen);
-    const groepen = groepenUitRegels(regels, []).groepen;
-    const acht = groepen.find((g) => g.naam === 'Groep 8' && g.weekdag === 3 && g.beginuur === 17)!;
+    const groepen = groepenUitRegels(regels, [], []).groepen;
+    const acht = groepen.find((g) => g.weekdag === 3 && g.beginuur === 17)!;
     const uit = lessenUitGroep(acht, GEKOPPELD, [], [], 60, NU);
 
     expect(uit.nieuweLessen.length).toBeGreaterThan(30);
@@ -1508,26 +1594,30 @@ interface VerwachteGroep {
 }
 
 /**
- * De tien groepen van `koen.xlsx`, met zeven verschillende namen: "Groep 8" staat op drie
- * dag/uur-combinaties en "Groep 12" op twee, elk met andere spelers. Het nummer is een
- * administratief label dat de club hergebruikt, geen groep mensen — daarom telt de sleutel van
- * D-02 de weekdag en het beginuur mee.
+ * De tien groepen van `koen.xlsx`, elk genoemd naar haar moment. In de kolom `Groep` van dit
+ * bestand staan maar zeven verschillende waarden: "Groep 8" staat op drie dag/uur-combinaties en
+ * "Groep 12" op twee, elk met andere spelers. Het nummer is een administratief label dat de club
+ * hergebruikt, geen groep mensen — daarom doet die kolom niet mee aan de sleutel en niet aan de
+ * naam, en heet elke groep hier naar de weekdag en het uur waarop ze lesheeft.
+ *
+ * Dit bestand heeft geen bruikbare baan (de kolom `Indoor/Outdoor` zegt overal "Indoor"), dus er
+ * staat geen terrein achter de namen.
  *
  * `Groep 12` van vrijdag 18:00 heeft `Type les` = `Privéles` én een gevulde `Groep`: dat is
  * hier een niveau-etiket en geen privéles in de zin van `.planning/IMPORT-SJABLOON.md` (dáár
  * gaat het over een lége `Groep`). Er hoort dus geen uitzondering op te staan.
  */
 const KOEN_GROEPEN: VerwachteGroep[] = [
-  { naam: 'Groep 4', weekdag: 3, beginuur: 14, spelers: 2, lesmomenten: 33, niveau: 'Duoles' },
-  { naam: 'Groep 12', weekdag: 3, beginuur: 15, spelers: 4, lesmomenten: 33, niveau: 'Tienertennis geel' },
-  { naam: 'Groep 13', weekdag: 3, beginuur: 16, spelers: 6, lesmomenten: 33, niveau: 'Oranje' },
-  { naam: 'Groep 8', weekdag: 3, beginuur: 17, spelers: 6, lesmomenten: 33, niveau: 'Kidstennis oranje' },
-  { naam: 'Groep 26', weekdag: 3, beginuur: 18, spelers: 4, lesmomenten: 33, niveau: 'Tienertennis geel' },
-  { naam: 'Groep 31', weekdag: 5, beginuur: 16, spelers: 5, lesmomenten: 32, niveau: 'Tienertennis geel' },
-  { naam: 'Groep 8', weekdag: 5, beginuur: 17, spelers: 4, lesmomenten: 32, niveau: 'Tienertennis geel' },
-  { naam: 'Groep 12', weekdag: 5, beginuur: 18, spelers: 4, lesmomenten: 32, niveau: 'Privéles' },
-  { naam: 'Groep 8', weekdag: 5, beginuur: 19, spelers: 2, lesmomenten: 32, niveau: 'Duoles' },
-  { naam: 'Groep 3', weekdag: 5, beginuur: 20, spelers: 6, lesmomenten: 32, niveau: 'Volwassenen - (her)starters' },
+  { naam: 'Woensdag 14:00', weekdag: 3, beginuur: 14, spelers: 2, lesmomenten: 33, niveau: 'Duoles' },
+  { naam: 'Woensdag 15:00', weekdag: 3, beginuur: 15, spelers: 4, lesmomenten: 33, niveau: 'Tienertennis geel' },
+  { naam: 'Woensdag 16:00', weekdag: 3, beginuur: 16, spelers: 6, lesmomenten: 33, niveau: 'Oranje' },
+  { naam: 'Woensdag 17:00', weekdag: 3, beginuur: 17, spelers: 6, lesmomenten: 33, niveau: 'Kidstennis oranje' },
+  { naam: 'Woensdag 18:00', weekdag: 3, beginuur: 18, spelers: 4, lesmomenten: 33, niveau: 'Tienertennis geel' },
+  { naam: 'Vrijdag 16:00', weekdag: 5, beginuur: 16, spelers: 5, lesmomenten: 32, niveau: 'Tienertennis geel' },
+  { naam: 'Vrijdag 17:00', weekdag: 5, beginuur: 17, spelers: 4, lesmomenten: 32, niveau: 'Tienertennis geel' },
+  { naam: 'Vrijdag 18:00', weekdag: 5, beginuur: 18, spelers: 4, lesmomenten: 32, niveau: 'Privéles' },
+  { naam: 'Vrijdag 19:00', weekdag: 5, beginuur: 19, spelers: 2, lesmomenten: 32, niveau: 'Duoles' },
+  { naam: 'Vrijdag 20:00', weekdag: 5, beginuur: 20, spelers: 6, lesmomenten: 32, niveau: 'Volwassenen - (her)starters' },
 ];
 
 /** Vijf woensdaggroepen × 33 plus vijf vrijdaggroepen × 32 = 325 lesmomenten. */
@@ -1587,11 +1677,30 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(LEGE_CLUB.regels.every((r) => r.baan === '')).toBe(true);
   });
 
-  it('levert tien nieuwe lesgroepen op, met zeven verschillende namen', () => {
+  it('levert tien nieuwe lesgroepen op, met tien verschillende namen', () => {
     expect(LEGE_CLUB.groepenNieuw).toHaveLength(10);
     expect(LEGE_CLUB.groepenBijgewerkt).toEqual([]);
     expect(LEGE_CLUB.groepenOngewijzigd).toEqual([]);
-    expect(new Set(LEGE_CLUB.groepenNieuw.map((g) => g.naam)).size).toBe(7);
+    const namen = LEGE_CLUB.groepenNieuw.map((g) => g.naam);
+    expect(new Set(namen).size).toBe(10);
+    // Geen enkele naam komt nog uit de kolom `Groep` van dit bestand.
+    expect(namen.filter((n) => n.startsWith('Groep '))).toEqual([]);
+  });
+
+  it('houdt zich aan de belofte van deze fase: tien groepen, 42 spelers, dezelfde rosters', () => {
+    // Hard constraint 7 van de fase, letterlijk. Alleen de namen veranderden; als hier een ander
+    // getal beweegt is dat een bevinding over de import en niet over deze test.
+    expect(LEGE_CLUB.groepenNieuw).toHaveLength(10);
+    expect(LEGE_CLUB.spelersNieuw).toHaveLength(42);
+    // 43 plaatsen in tien rosters, 42 verschillende mensen: één leerling zit in twee groepen.
+    const plaatsen = LEGE_CLUB.groepenNieuw.flatMap((g) => g.roster);
+    expect(plaatsen).toHaveLength(43);
+    expect(new Set(plaatsen).size).toBe(42);
+    const woensdag17 = LEGE_CLUB.groepenNieuw
+      .find((g) => g.weekdag === 3 && g.beginuur === 17)!;
+    expect(woensdag17.naam).toBe('Woensdag 17:00');
+    expect(woensdag17.aantalSpelers).toBe(6);
+    expect(woensdag17.groep.regels[0].groep).toBe('Groep 8');
   });
 
   it('geeft elke groep uit de tabel haar eigen dag, uur, roster, lesmomenten en niveau', () => {
@@ -1625,12 +1734,16 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(new Set(LEGE_CLUB.spelersNieuw.map((s) => s.naam)).size).toBe(42);
   });
 
-  it('houdt de drie groepen die "Groep 8" heten volledig uit elkaar', () => {
-    const acht = LEGE_CLUB.groepenNieuw.filter((g) => g.naam === 'Groep 8');
+  it('houdt de drie momenten die "Groep 8" heetten volledig uit elkaar', () => {
+    const acht = ([[3, 17], [5, 17], [5, 19]] as Array<[number, number]>).map(([dag, uur]) =>
+      LEGE_CLUB.groepenNieuw.find((g) => g.weekdag === dag && g.beginuur === uur)!);
     expect(acht.map((g) => [g.weekdag, g.beginuur, g.aantalSpelers]))
       .toEqual([[3, 17, 6], [5, 17, 4], [5, 19, 2]]);
-    // Twaalf plaatsen, twaalf verschillende mensen: nul overlap. Matchen op de groepsnaam
-    // alleen zou hier één groep van twaalf van maken.
+    expect(acht.map((g) => g.naam))
+      .toEqual(['Woensdag 17:00', 'Vrijdag 17:00', 'Vrijdag 19:00']);
+    // In het bestand heten ze alle drie "Groep 8"; twaalf plaatsen, twaalf verschillende mensen,
+    // nul overlap. Op die naam matchen zou hier één groep van twaalf van maken.
+    expect(new Set(acht.map((g) => g.groep.regels[0].groep))).toEqual(new Set(['Groep 8']));
     const samen = acht.flatMap((g) => g.roster);
     expect(samen).toHaveLength(12);
     expect(new Set(samen).size).toBe(12);
@@ -2032,9 +2145,9 @@ describe('geweigerdeNieuweGroepen', () => {
       planImportLessen(RIJEN, [], [], [BAAN], [], {}, NU),
     );
     expect(geweigerd).toHaveLength(1);
-    expect(geweigerd[0].inPlan.naam).toBe('Groep 8');
+    expect(geweigerd[0].inPlan.naam).toBe('Woensdag 17:00 — Baan 1');
     expect(geweigerd[0].fout.regel).toBe(2);
-    expect(geweigerd[0].fout.vars).toMatchObject({ groep: 'Groep 8' });
+    expect(geweigerd[0].fout.vars).toMatchObject({ groep: 'Woensdag 17:00 — Baan 1' });
   });
 
   it('zegt hetzelfde als wat de uitvoerder straks weigert — één bron, geen twee verhalen', () => {
@@ -2076,7 +2189,8 @@ describe('bouwImportWijziging', () => {
     const uit = bouwImportWijziging(planNieuw(), teller());
     expect(uit.nieuweGroepen).toEqual([{
       id: 'lg-1',
-      name: 'Groep 8',
+      // De naam van een nieuwe groep komt van haar moment en niet uit de kolom `Groep`.
+      name: 'Woensdag 17:00 — Baan 1',
       level: 'Kidstennis oranje',
       weekday: 3,
       start_hour: 17,
@@ -2148,7 +2262,7 @@ describe('bouwImportWijziging', () => {
     expect(uit.nieuweGroepen).toEqual([]);
     expect(uit.nieuweBoekingen).toEqual([]);
     expect(uit.fouten).toHaveLength(1);
-    expect(uit.fouten[0].vars).toMatchObject({ groep: 'Groep 8' });
+    expect(uit.fouten[0].vars).toMatchObject({ groep: 'Woensdag 17:00 — Baan 1' });
     // De spelers gaan wél door: die staan los van de groep en zijn bij een volgende inleesbeurt
     // gewoon herkend. Dat is de volgorde die een halve import herstelbaar houdt (D-21).
     expect(uit.nieuweUsers).toHaveLength(2);

@@ -487,20 +487,26 @@ export function leesLesRegels(rijen: ReadonlyArray<readonly string[]>): GelezenL
  * functie hoeft de ledenlijst niet te kennen om te weten welke groepen er in het bestand zitten.
  */
 export interface GeplandeGroep {
-  /** De afgeleide sleutel van de eerste regel: `naam|weekdag|beginuur`, uit `groepSleutel`. */
+  /** De afgeleide sleutel van de eerste regel: `weekdag|beginuur|baan`, uit `groepSleutel`. */
   sleutel: string;
   /** De bestaande groep die dit blijkt te zijn, of `null` als dit een nieuwe groep is. */
   bestaand: LesGroep | null;
   /**
    * Is `bestaand` gevonden via de kolom `Groep-ID` in plaats van via de afgeleide sleutel?
    *
-   * Dit verschil is niet cosmetisch. Bij een sleutelmatch zijn naam, weekdag en beginuur per
-   * definitie gelijk aan die van de bestaande groep — daar valt niets aan bij te werken. Bij een
-   * `Groep-ID`-match mógen ze juist verschillen: dáárvoor bestaat die kolom. Zonder dit vlaggetje
+   * Dit verschil is niet cosmetisch. Bij een sleutelmatch zijn weekdag, beginuur en baan per
+   * definitie gelijk aan die van de bestaande groep, en neemt `groepenUitRegels` haar naam
+   * ongewijzigd over — daar valt niets aan bij te werken. Bij een `Groep-ID`-match mag dat alle
+   * vijf verschillen: dáárvoor bestaat die kolom. Zonder dit vlaggetje
    * kan `groepWijzigingen` die twee gevallen niet uit elkaar houden, en dat was precies de bug:
    * een groep die in de export hernoemd werd kwam terug als "ongewijzigd" en hield haar oude naam.
    */
   viaGroepId: boolean;
+  /**
+   * De naam die deze groep hoort te krijgen of te houden. Niet zomaar de cel `Groep`: die doet
+   * sinds deze fase niet meer mee aan het matchen én niet meer aan het benoemen. Zie
+   * `groepenUitRegels` voor de drie regels die deze naam bepalen.
+   */
   naam: string;
   niveau: string;
   /** 0-6 met zondag = 0, dezelfde telling als `LesGroep.weekday`. */
@@ -523,6 +529,9 @@ interface GroepEmmer {
   bestaand: LesGroep | null;
   /** Waar staat `true` zodra één regel van deze groep haar via `Groep-ID` aanwees. */
   viaGroepId: boolean;
+  /** De ruwe waarde uit de kolom `Groep` van de eerste regel; alleen bruikbaar bij een `Groep-ID`. */
+  naamUitBestand: string;
+  /** De uitkomst van de drie naamregels, pas ingevuld in de afsluitende lus. */
   naam: string;
   weekdag: number;
   beginuur: number;
@@ -567,33 +576,90 @@ function meestVoorkomend(waarden: ReadonlyArray<{ waarde: string; regel: number 
 }
 
 /**
+ * De Nederlandse weekdagnamen, zondag = 0 — dezelfde telling als `LesGroep.weekday` en als
+ * `Date#getDay`. Bewust niet `DAY_LABELS` uit lib/slots: dat zijn afkortingen voor op het
+ * scherm, en die gaan door `t()`.
+ */
+const WEEKDAGNAMEN = [
+  'Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag',
+] as const;
+
+/**
+ * Hoe een nieuwe lesgroep gaat heten: naar het moment waarop ze lesheeft. `Woensdag 17:00`, of
+ * `Woensdag 17:00 — baan 3` als er een baan bij hoort.
+ *
+ * WAAROM DEZE NAAM NIET DOOR `t()` GAAT. Een groepsnaam wordt opgeslagen en daarna door de
+ * beheerder bewerkt: het is inhoud van de club, geen schermtekst. Zou hij vertaald worden, dan
+ * zou dezelfde groep anders heten afhankelijk van wie hem aanmaakte, en zou de beheerder die hem
+ * hernoemt tegen een tekst aankijken die morgen weer terugspringt. Om dezelfde reden zijn de
+ * koppen van de export in fase 4 Nederlands en niet vertaald, en om dezelfde reden is
+ * `DAY_LABELS` uit lib/slots hier niet bruikbaar: die afkortingen zijn er voor het scherm.
+ *
+ * De minuut staat er wél in, ook al telt hij niet mee in `groepSleutel`: de naam hoort de echte
+ * begintijd te tonen. Een groep van 17:30 heet `Woensdag 17:30`.
+ *
+ * Is de baannaam alleen cijfers, dan wordt het `— baan 3`; anders komt de tekst ongewijzigd
+ * achter het em-streepje, zoals `.planning/IMPORT-SJABLOON.md` het spelt.
+ */
+export function groepsnaamUitMoment(
+  weekdag: number,
+  beginuur: number,
+  beginminuut: number,
+  baanNaam: string,
+): string {
+  const dag = WEEKDAGNAMEN[weekdag] ?? '';
+  const tijd = `${String(beginuur).padStart(2, '0')}:${String(beginminuut).padStart(2, '0')}`;
+  const moment = `${dag} ${tijd}`.trim();
+  const baan = baanNaam.trim();
+  if (!baan) return moment;
+  return `${moment} — ${/^\d+$/.test(baan) ? `baan ${baan}` : baan}`;
+}
+
+/**
  * Welke lesgroepen zitten er in dit bestand, en welke daarvan kent de club al?
  *
- * Dit is de kern van de hele fase. De sleutel waarop regels samengevoegd worden is `Groep` +
- * weekdag + beginuur (D-02), en die sleutel komt uit `groepSleutel` in `lib/lesgroepen.ts` —
- * lees het doc-commentaar daar: die functie is precies hiervoor geschreven. Een tweede, net iets
- * andere sleutel hier naast zetten is exact de fout die deze fase probeert te vermijden: dan
- * herkent de import morgen een groep die de app zelf wél herkent, of andersom.
+ * Dit is de kern van de hele fase. De sleutel waarop regels samengevoegd worden is het moment:
+ * weekdag + beginuur + baan. Die sleutel komt uit `groepSleutel` in `lib/lesgroepen.ts` — lees
+ * het doc-commentaar daar, want daar staat waarom de kolom `Groep` er niet meer in zit. Een
+ * tweede, net iets andere sleutel hier naast zetten is exact de fout die deze fase vermijdt: dan
+ * herkent de import morgen een groep die de app zelf niet herkent, of andersom.
  *
- * Waarom niet de groepsnaam alleen: in `koen.xlsx` staat "Groep 8" op drie momenten met drie
- * volledig verschillende rosters — zes kinderen op woensdag 17u, vier andere op vrijdag 17u,
- * twee volwassenen op vrijdag 19u, nul overlap. Het nummer is een administratief label dat
- * hergebruikt wordt, geen groep mensen; matchen op de naam zou daar één groep van twaalf van
- * maken.
+ * DE KOLOM `GROEP` DOET NIET MEER MEE — niet aan het matchen en niet aan het benoemen. Bij deze
+ * club komt die kolom uit het Tennis Vlaanderen-systeem: in `koen.xlsx` staat "Groep 8" op drie
+ * momenten met twaalf verschillende mensen en nul overlap. Wat de kolom nog wél draagt is het
+ * onderscheid groepsles/privéles: een lége `Groep` is een privéles (IMPORT-SJABLOON), en daar
+ * ontstaat geen lesgroep uit.
  *
- * De sleutel telt de beginminuut NIET mee. Twee groepen met dezelfde naam op hetzelfde uur maar
- * met een andere minuut vallen dus samen. Dat is aanvaard en geen vergissing: dit is de
- * bestaande sleutel van de app, en een club die twee groepen met dezelfde naam op 17:00 en 17:15
- * plant heeft een groter probleem dan een import.
+ * DE BAAN WORDT PER REGEL GELEZEN. Dat heeft een gevolg dat een lezer anders pas in productie
+ * ontdekt: een bestand dat dezelfde groep de ene week op baan 1 en de andere week op baan 2 zet,
+ * valt uiteen in twee lesgroepen. Dat is inherent aan een afgeleide sleutel, en de weg eruit is
+ * de kolom `Groep-ID` — precies zoals `.planning/IMPORT-SJABLOON.md` beschrijft. Om te
+ * voorkomen dat het stil gebeurt komt er één waarschuwing per moment dat op verschillende banen
+ * blijkt te staan. Eén zin per moment, nooit één per regel: 1398 regels mogen geen muur opleveren (D-09).
+ * Bij deze club liggen de banen per groep vast (woensdag terrein 10, vrijdag terrein 8), dus dit
+ * is een vangnet dat in de praktijk niet hoort af te gaan.
+ *
+ * De sleutel telt de beginminuut NIET mee. Twee groepen op hetzelfde uur maar met een andere
+ * minuut vallen dus samen. Dat is de bestaande, aanvaarde grofheid van de sleutel van de app.
+ *
+ * DE NAAM VAN EEN GROEP volgt uit drie regels, in deze volgorde (D-04, D-05, D-06):
+ * 1. Is de groep via `Groep-ID` herkend en is de kolom `Groep` gevuld, dan ís dat de naam. Het
+ *    bestand komt dan uit de export van deze app, dus hernoemen hoort te werken. Is die kolom
+ *    leeg, dan blijft de bestaande naam staan in plaats van leeggemaakt te worden.
+ * 2. Anders, bij een bestaande groep: haar eigen naam. Een herimport zonder `Groep-ID`
+ *    overschrijft nooit de naam die de beheerder op het groepsscherm gaf.
+ * 3. Anders: `groepsnaamUitMoment` — `Woensdag 17:00`, of met de baan erachter.
  *
  * Staat er een `Groep-ID` in het bestand en hoort dat bij een bestaande, niet-gearchiveerde
- * groep, dan wint dat van de sleutel (D-03): zo blijft een groep herkenbaar ook als haar naam of
- * haar uur veranderd is. Een `Groep-ID` dat nergens bij hoort — een export van vorig seizoen —
- * levert een waarschuwing op en valt terug op de sleutel, want dat mag een import niet blokkeren.
+ * groep, dan wint dat van de sleutel (D-03): zo blijft een groep herkenbaar ook als haar naam,
+ * haar uur of haar baan veranderd is. Een `Groep-ID` dat nergens bij hoort — een export van
+ * vorig seizoen — levert een waarschuwing op en valt terug op de sleutel, want dat mag een
+ * import niet blokkeren.
  */
 export function groepenUitRegels(
   regels: readonly LesRegel[],
   bestaande: readonly LesGroep[],
+  courts: readonly Court[],
 ): { groepen: GeplandeGroep[]; waarschuwingen: ImportFoutLessen[] } {
   const waarschuwingen: ImportFoutLessen[] = [];
 
@@ -611,18 +677,46 @@ export function groepenUitRegels(
 
   const emmers = new Map<string, GroepEmmer>();
   const gemeldeIds = new Set<string>();
+  // Per `weekdag|beginuur`: welke banen kwamen daar voorbij? Meer dan één is de stille splitsing
+  // waar het doc-commentaar hierboven over gaat, en die krijgt straks één zin.
+  const momenten = new Map<string, {
+    weekdag: number; beginuur: number; beginminuut: number; regel: number; banen: Set<string>;
+  }>();
 
   for (const r of regels) {
-    const naam = r.groep.trim();
     // Een regel zonder groep is een privéles (IMPORT-SJABLOON): geen groep, geen roster, en
-    // uitdrukkelijk ook geen waarschuwing.
-    if (!naam) continue;
+    // uitdrukkelijk ook geen waarschuwing. Dit is het enige waarvoor de kolom `Groep` nog telt —
+    // matchen en benoemen doet ze niet meer.
+    const naamUitBestand = r.groep.trim();
+    if (!naamUitBestand) continue;
 
     // De weekdag uit lokale velden, dezelfde telling als `LesGroep.weekday` (zondag = 0). Nooit
     // een datum in wereldtijd opbouwen en nooit een ISO-tekst laten parsen: in een westelijke
     // tijdzone schuift de les dan een dag op, en daarmee de hele groepssleutel.
     const dag = new Date(r.datum.jaar, r.datum.maand - 1, r.datum.dag);
-    const sleutel = groepSleutel({ name: naam, weekday: dag.getDay(), start_hour: r.uur.uur });
+    // De baan van déze regel, en niet die van de groep: de sleutel is afgeleid van wat er op de
+    // regel staat. Een baan die de club niet kent telt als "geen baan" — `koppelingVoorGroep`
+    // meldt dat verderop, en één onbekende naam hoort de groepen niet uit elkaar te trekken.
+    const baanVanRegel = zoekBaan(courts, r.baan);
+    const sleutel = groepSleutel({
+      weekday: dag.getDay(), start_hour: r.uur.uur, court_id: baanVanRegel?.id,
+    });
+
+    const momentSleutel = `${dag.getDay()}|${r.uur.uur}`;
+    let moment = momenten.get(momentSleutel);
+    if (!moment) {
+      moment = {
+        weekdag: dag.getDay(),
+        beginuur: r.uur.uur,
+        // De minuut van de eerste regel van dit moment; hij dient alleen om de melding een
+        // herkenbare tijd te geven en niet om iets uit elkaar te houden.
+        beginminuut: r.uur.minuut,
+        regel: r.regel,
+        banen: new Set<string>(),
+      };
+      momenten.set(momentSleutel, moment);
+    }
+    moment.banen.add(baanVanRegel?.id ?? '');
 
     let bestaand: LesGroep | null = null;
     let viaGroepId = false;
@@ -646,14 +740,18 @@ export function groepenUitRegels(
     const dagTekst = dagSleutel(dag);
     let emmer = emmers.get(emmerSleutel);
     if (!emmer) {
-      // De eerste regel bepaalt naam, dag en uur. Binnen een sleutel-emmer zijn die drie per
-      // definitie gelijk; alleen een emmer die op `Groep-ID` samenviel kan er meerdere hebben,
-      // en dan is de eerste regel van het bestand het minst willekeurige antwoord.
+      // De eerste regel bepaalt dag, uur en de ruwe naam uit het bestand. Binnen een
+      // sleutel-emmer zijn dag en uur per definitie gelijk; alleen een emmer die op `Groep-ID`
+      // samenviel kan er meerdere hebben, en dan is de eerste regel van het bestand het minst
+      // willekeurige antwoord.
       emmer = {
         sleutel,
         bestaand,
         viaGroepId,
-        naam,
+        naamUitBestand,
+        // De naam volgt pas in de afsluitende lus: daar is de baan van de groep bekend, en daar
+        // pas is te zeggen of regel 1, 2 of 3 van de naamregels geldt.
+        naam: '',
         weekdag: dag.getDay(),
         beginuur: r.uur.uur,
         beginminuut: r.uur.minuut,
@@ -689,6 +787,18 @@ export function groepenUitRegels(
     if (r.baan.trim()) emmer.banen.push({ waarde: r.baan.trim(), regel: r.regel });
   }
 
+  // Eén zin per moment dat op verschillende banen staat, en pas hier: tijdens de lus is nog niet
+  // bekend of er een tweede baan komt.
+  momenten.forEach((moment) => {
+    if (moment.banen.size < 2) return;
+    const tijd = `${String(moment.beginuur).padStart(2, '0')}:${String(moment.beginminuut).padStart(2, '0')}`;
+    waarschuwingen.push({
+      regel: moment.regel,
+      reden: 'Op {dag} om {uur} staan lessen op meer dan één baan; ik houd ze uit elkaar als aparte lesgroepen.',
+      vars: { dag: WEEKDAGNAMEN[moment.weekdag] ?? '', uur: tijd },
+    });
+  });
+
   const groepen: GeplandeGroep[] = [];
   emmers.forEach((emmer) => {
     const niveau = meestVoorkomend(emmer.typen);
@@ -697,6 +807,15 @@ export function groepenUitRegels(
     // die per week mag wisselen, terwijl het niveau en de trainer eigenschappen van de groep
     // zelf zijn. Wat er ontbreekt om te kunnen plannen, meldt `koppelingVoorGroep`.
     const baan = meestVoorkomend(emmer.banen);
+
+    // De drie naamregels van D-04, D-05 en D-06; de onderbouwing staat in het doc-commentaar
+    // hierboven. Let op de volgorde: `Groep-ID` wint, daarna de bestaande naam, en pas als er
+    // niets van dat al bestond heet de groep naar haar moment.
+    emmer.naam = emmer.viaGroepId && emmer.naamUitBestand
+      ? emmer.naamUitBestand
+      : emmer.bestaand
+        ? emmer.bestaand.name
+        : groepsnaamUitMoment(emmer.weekdag, emmer.beginuur, emmer.beginminuut, baan.gekozen);
 
     if (niveau.afwijking) {
       waarschuwingen.push({
@@ -1340,9 +1459,18 @@ export function lessenUitGroep(
  * echte wijziging in de ruis.
  *
  * Naam, weekdag en beginuur tellen alleen mee bij een match op `Groep-ID` (`groep.viaGroepId`).
- * Bij een sleutelmatch vórmen die drie de sleutel waarmee de groep herkend werd en zijn ze per
- * definitie gelijk — meevergelijken zou daar alleen ruis opleveren. Bij een `Groep-ID`-match is
- * het net omgekeerd: dáár mógen ze verschillen, want dat is precies waarvoor die kolom bestaat
+ * Voor weekdag en beginuur is de reden onveranderd: die twee vórmen samen met de baan de sleutel
+ * waarmee de groep herkend werd, dus bij een sleutelmatch zijn ze per definitie gelijk.
+ *
+ * Voor de naam is de reden sinds deze fase een andere, en dat is het makkelijk te missen stuk.
+ * De naam zit niet meer in de sleutel, dus hij zóú kunnen verschillen — maar hij doet dat niet,
+ * omdat `groepenUitRegels` bij een sleutelmatch bewust de naam van de bestáánde groep overneemt
+ * (D-05: een herimport zonder `Groep-ID` overschrijft nooit een naam die de beheerder zelf gaf).
+ * Meevergelijken zou hier dus nooit een verschil vinden, en zou de indruk wekken dat de kolom
+ * `Groep` een naam kan opdringen. Dat kan ze niet — behalve met een `Groep-ID` erbij.
+ *
+ * Bij een `Groep-ID`-match is het namelijk net omgekeerd: dáár mogen naam, dag, uur, trainer en
+ * baan allemaal verschillen, want dat is precies waarvoor die kolom bestaat
  * (`.planning/IMPORT-SJABLOON.md`, D-03). De bug die dit voorkomt: een beheerder hernoemt een
  * groep in het geëxporteerde blad, stuurt het terug, en de import meldt "ongewijzigd" — de groep
  * wordt netjes herkend en houdt haar oude naam. Dan is IMP-07 een lege belofte.
@@ -1510,7 +1638,7 @@ export function planImportLessen(
   };
   if (gelezen.regels.length === 0) return plan;
 
-  const uitGroepen = groepenUitRegels(gelezen.regels, bestaandeGroepen);
+  const uitGroepen = groepenUitRegels(gelezen.regels, bestaandeGroepen, courts);
   plan.waarschuwingen.push(...uitGroepen.waarschuwingen);
 
   const uitSpelers = spelersUitRegels(gelezen.regels, users);
