@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 05-05-PLAN.md (lesgroepen afgeleid op de sleutel naam+dag+uur, spelers aangemaakt, trainer en baan alleen opgezocht; fase 5 plan 5, buiten de volgorde van fase 3 om)"
-last_updated: "2026-09-06T03:15:00.000Z"
+stopped_at: "Completed 05-06-PLAN.md (de lessen zelf: vakanties eruit, botsingen gemeld, herimport zonder verdubbelen of stil terugzetten, en de zomertijdtest; fase 5 plan 6, buiten de volgorde van fase 3 om)"
+last_updated: "2026-09-06T04:30:00.000Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 36
-  completed_plans: 28
+  completed_plans: 29
   percent: 33
 ---
 
@@ -35,7 +35,7 @@ Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draa
 Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
 de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
 
-Progress: [████████░░] 78%
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: [████████░░] 78%
 | Phase 04 P02 | ~25min | 2 tasks | 2 files |
 | Phase 05-excel-import-van-trainingen P04 | ~35min | 3 tasks | 2 files |
 | Phase 05-excel-import-van-trainingen P05 | ~30min | 2 tasks | 2 files |
+| Phase 05-excel-import-van-trainingen P06 | ~45min | 3 tasks | 2 files |
 | Phase 04 P03 | ~20min | 2 tasks | 2 files |
 | Phase 04 P04 | ~25min | 2 tasks | 2 files |
 | Phase 04 P05 | ~20min | 2 tasks | 4 files |
@@ -95,6 +96,10 @@ confirmed as phases ship).
 - [Phase 05-excel-import]: de importsleutel van een lesgroep is `groepSleutel` uit
   lib/lesgroepen en niet een eigen versie ervan — één antwoord op "welke groep is dit" (D-23).
   Een `Groep-ID` van een actieve groep wint ervan; het samenvoegen gebeurt op `id:<id>`
+
+- [Phase 05-excel-import]: een herimport herkent een les op groep + dag + beginuur, maar
+  beschermt op dagniveau: staat er die dag al een les van die groep op een ander uur of afgezegd,
+  dan is dat een handmatige wijziging die gemeld wordt en nooit stil teruggezet (D-13)
 
 - [Phase 05-excel-import]: de import zoekt trainers en banen op en maakt ze nooit aan (D-07).
   Ontbreekt de trainer, dan komt de lesgroep er wél met een lege `coach_id` en haar roster,
