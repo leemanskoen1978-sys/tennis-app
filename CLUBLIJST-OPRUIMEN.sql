@@ -1,93 +1,83 @@
 -- De oude import opruimen, vóór de clublijst ingelezen wordt.
 --
--- WAAROM DIT NODIG IS. In de agenda staan 325 lessen uit de eerste import (`koen.xlsx`): tien
--- lesgroepen van één trainer. Diezelfde groepen staan óók in de clublijst van de club, want die
--- lijst bevat álle groepen van de tennisschool. De droogloop laat het zien: tegen een lege club
--- geeft de clublijst 301 overlappingen, tegen jouw club 626 — precies 325 meer.
+-- WAAROM DIT NODIG IS. In de agenda staan 325 lessen uit de eerste import (`koen.xlsx`), alle
+-- 325 op naam van één trainer en alle 325 zónder lesgroep. Dat laatste is geen slordigheid: dat
+-- bestand is ingelezen vóórdat de tabel `lesson_groups` bestond — die kwam er pas met
+-- `MIGRATIE-tennisschool.sql` op 6 september 2026 — dus de kolom `bookings.group_id` bestond nog
+-- niet en er viel niets te koppelen.
 --
--- Sinds 6 september 2026 blokkeert een overlap niet meer, dus de import zou die 325 lessen
--- gewoon een tweede keer inplannen. Dat is geen halve baan maar een dubbele boeking: dezelfde
--- les, twee keer in de agenda, met twee verschillende groepen eraan.
+-- Diezelfde lessen staan óók in de clublijst van de club, want die bevat alle groepen van de
+-- tennisschool en deze trainer is er een van. Sinds 6 september 2026 blokkeert een overlap niet
+-- meer, dus de import zou ze een tweede keer inplannen. De droogloop laat het zien: tegen een
+-- lege club geeft de clublijst 301 overlappingen, tegen deze club 626 — precies 325 meer.
 --
--- DRAAI DIT IN VIER STAPPEN, EN LEES STAP 1 VOOR JE STAP 2 DRAAIT. Stap 2 verwijdert lessen.
--- Dat kan niet ongedaan gemaakt worden.
+-- LET OP, EERDERE VERSIE VAN DIT BESTAND WAS FOUT. Die zocht de oude lessen via lesgroepen
+-- zonder baan. Er zijn helemaal geen lesgroepen: de lessen hangen aan niets. Het script vond
+-- daardoor niets en verwijderde ook niets — er is niets verloren gegaan, maar het loste ook
+-- niets op.
+--
+-- DRAAI DIT IN DRIE STAPPEN, EN LEES STAP 1 VOOR JE STAP 2 DRAAIT. Stap 2 verwijdert lessen en
+-- kan niet ongedaan gemaakt worden.
 
 -- ---------------------------------------------------------------------------
 -- STAP 1 · KIJKEN. Verwijdert niets.
 -- ---------------------------------------------------------------------------
 --
--- Hier hoort uit te komen: tien groepen, alle tien zonder baan, samen 325 lessen.
+-- Hier hoort één regel uit te komen: 325 lessen, trainer Koen Leemans, van 2026-09-09 tot ergens
+-- in juni 2027.
 --
--- De baan is het kenmerk waaraan de oude import te herkennen is: `koen.xlsx` heeft geen kolom
--- `Baan`, dus die tien groepen kregen er geen. De 193 groepen van de clublijst hebben alle 193
--- wél een terrein. Komt er hieronder een groep uit die je met de hand hebt aangemaakt en die
--- toevallig ook geen baan heeft, dan hoort die er NIET bij — noteer haar id en sluit haar
--- hieronder uit.
+-- Wat dit afbakent, en waarom dat veilig is:
+--
+--   `group_id is null`   — een les die wél aan een groep hangt, is er een van de nieuwe import
+--                          en blijft dus met rust. Vandaag hangt er geen enkele aan een groep,
+--                          maar deze voorwaarde blijft staan zodat dit script ook veilig is als
+--                          je het per ongeluk een tweede keer draait ná de import.
+--   `start_time >= ...`  — wat geweest is blijft staan. Alles vóór 7 september 2026 wordt niet
+--                          aangeraakt, ook al hangt het aan niets.
+--
+-- Staat er hieronder een regel met een ándere trainer, of met een aantal dat niet 325 is, stop
+-- dan en kijk eerst wat het is. Dan zit er meer in dan alleen de oude import — een baan die
+-- iemand zelf gereserveerd heeft bijvoorbeeld, en die hoort niet weg.
 
 select
-  g.id,
-  g.name,
-  g.weekday,
-  g.start_hour,
-  g.court_id,
-  u.name as trainer,
-  count(b.id) as lessen
-from lesson_groups g
-left join users u on u.id = g.coach_id
-left join bookings b on b.group_id = g.id
-where g.court_id is null
-  and g.archived = false
-group by g.id, g.name, g.weekday, g.start_hour, g.court_id, u.name
-order by g.weekday, g.start_hour;
-
--- En de controle op het totaal. Hier hoort 325 uit te komen: hetzelfde getal als het aantal
--- lessen dat nu in de agenda staat. Komt er minder uit, dan hangen er lessen aan een groep die
--- hierboven niet in de lijst staat, en dan moeten we eerst kijken welke.
-select count(*) as lessen_van_die_groepen
+  u.name              as trainer,
+  b.status,
+  count(*)            as lessen,
+  min(b.start_time)   as eerste,
+  max(b.start_time)   as laatste
 from bookings b
-join lesson_groups g on g.id = b.group_id
-where g.court_id is null and g.archived = false;
+left join users u on u.id = b.coach_id
+where b.group_id is null
+  and b.start_time >= '2026-09-07'
+group by u.name, b.status
+order by count(*) desc;
 
 -- ---------------------------------------------------------------------------
 -- STAP 2 · DE LESSEN WEG. Dit is de onomkeerbare stap.
 -- ---------------------------------------------------------------------------
 --
--- Alleen de lessen van díé groepen. Een losse boeking die iemand zelf gemaakt heeft, hangt aan
--- geen enkele groep (`group_id is null`) en wordt hier dus niet geraakt.
---
 -- Alle 325 liggen in de toekomst — het seizoen begint op 7 september 2026 — dus er verdwijnt
--- geen enkele gegeven les en geen enkele aanwezigheid.
+-- geen gegeven les, geen aanwezigheid en geen geschiedenis. Ze komen terug via de clublijst, en
+-- dan mét hun lesgroep en hun deelnemers erbij; dat is precies de winst.
 
-delete from bookings b
-using lesson_groups g
-where b.group_id = g.id
-  and g.court_id is null
-  and g.archived = false;
-
--- ---------------------------------------------------------------------------
--- STAP 3 · DE GROEPEN ARCHIVEREN, NIET VERWIJDEREN.
--- ---------------------------------------------------------------------------
---
--- Archiveren en niet weggooien, met opzet. Een gearchiveerde groep telt niet mee bij het
--- herkennen (`actieveGroepen` in lib/lesgroepen laat ze eruit), dus de import ziet ze niet en
--- maakt gewoon haar 193 nieuwe groepen aan. Maar de rij blijft staan: gaat er straks iets mis,
--- dan is er nog te zien wat er was. Een verwijderde rij is weg.
-
-update lesson_groups
-set archived = true
-where court_id is null and archived = false;
+delete from bookings
+where group_id is null
+  and start_time >= '2026-09-07';
 
 -- ---------------------------------------------------------------------------
--- STAP 4 · CONTROLE
+-- STAP 3 · CONTROLE
 -- ---------------------------------------------------------------------------
 --
--- Hier hoort uit te komen: 0 lessen, 0 actieve groepen zonder baan, 10 gearchiveerde.
+-- Hier hoort `0` uit te komen.
 
-select
-  (select count(*) from bookings where start_time >= '2026-09-07') as lessen_over,
-  (select count(*) from lesson_groups where court_id is null and archived = false) as actief_zonder_baan,
-  (select count(*) from lesson_groups where archived = true) as gearchiveerd;
+select count(*) as lessen_over
+from bookings
+where start_time >= '2026-09-07';
 
--- Daarna de clublijst inlezen in Beheer → Lessen beheren → Trainingen importeren. De droogloop
--- hoort dan te zeggen: 193 nieuwe lesgroepen, 510 nieuwe spelers, 6461 lessen, en **301**
--- overlappingen in plaats van 626. Die 301 zijn de zes halve banen en die horen er te zijn.
+-- Daarna: de pagina van de app hard herladen (Cmd+Shift+R) — hij houdt de lessen in het geheugen
+-- en rekent anders nog met wat er stond. Dan de clublijst opnieuw kiezen in Beheer → Lessen
+-- beheren → Trainingen importeren.
+--
+-- De droogloop hoort dan te zeggen: 193 nieuwe lesgroepen, 510 nieuwe spelers, 6461 lessen, en
+-- **301** overlappingen in plaats van 626. Die 301 zijn de zes halve banen en die horen er te
+-- zijn.
