@@ -39,10 +39,10 @@ const at = (b: GroepBoeking): number => new Date(b.start_time).getTime();
  * levert groepen op waarvan de trainer nog gekoppeld moet worden, maar wie er met de hand een
  * aanmaakt weet wie hem geeft.
  *
- * Wat hier bewust NIET staat is een controle op een al bestaande combinatie van naam, weekdag
- * en beginuur. Die sleutel dient om bij de import een groep te herkennen, niet om er een te
- * weigeren: twee groepen op hetzelfde uur mag — denk aan een tijdelijke tweede groep tijdens
- * een trainerswissel.
+ * Wat hier bewust NIET staat is een controle op een al bestaand moment (weekdag, beginuur en
+ * baan — zie `groepSleutel`). Die sleutel dient om bij de import een groep te herkennen, niet om
+ * er een te weigeren: twee groepen op hetzelfde uur mag — denk aan een tijdelijke tweede groep
+ * tijdens een trainerswissel.
  */
 export function lesGroepFout(g: Omit<LesGroep, 'id'>): string | null {
   if (g.name.trim().length === 0) return t('Geef de lesgroep een naam.');
@@ -271,14 +271,37 @@ export function planGroepWijziging(
 }
 
 /**
- * De sleutel waaraan een groep te herkennen is: naam, lesdag en beginuur. Eén naam kan in een
- * seizoen op drie momenten voorkomen met heel andere spelers, dus de naam alleen zegt niets.
+ * De sleutel waaraan een groep te herkennen is: haar moment. Lesdag, beginuur en baan — en
+ * uitdrukkelijk niet haar naam.
  *
- * Dit is een herkenningssleutel om een groep uit een geïmporteerde planning terug te vinden,
- * en geen uniciteitsregel — zie `lesGroepFout`.
+ * DIT IS DE ENIGE SLEUTEL, OOK VOOR DE IMPORT. Buiten deze definitie is er precies één caller:
+ * `lib/import-trainingen.ts`. Verder alleen de twee testbestanden `lib/lesgroepen.test.ts` en
+ * `lib/import-trainingen.test.ts`. Er is geen scherm en geen provider die op de oude vorm rekent
+ * — dat is nagekeken en niet aangenomen, dus deze functie mag voor iedereen tegelijk wijzigen.
+ * Dat moet ook: een tweede, net iets andere sleutel naast deze zou betekenen dat de import
+ * morgen een groep herkent die de app zelf niet herkent, of andersom.
+ *
+ * WAAROM DE NAAM ERUIT GAAT. Bij deze club komt de kolom `Groep` uit het Tennis
+ * Vlaanderen-systeem. In `koen.xlsx` staat "Groep 8" op drie momenten met twaalf verschillende
+ * mensen en nul overlap: het is een administratief label dat hergebruikt wordt, geen groep
+ * mensen. Hem meetellen maakte van één groep drie, en van een trainerswissel een nieuwe groep
+ * in plaats van een wijziging aan de bestaande. Dat laatste is de bug die deze fase wegneemt.
+ * De naam is voortaan een eigenschap van de groep en niet haar identiteit — de beheerder mag
+ * hem bewerken zonder dat de volgende import haar niet meer terugvindt.
+ *
+ * WAAROM DE BAAN ERIN KOMT. Zolang de club één trainer heeft volstaat lesdag + beginuur, maar
+ * met meerdere trainers geven er twee tegelijk les op verschillende terreinen. De baan is dan
+ * het enige dat die twee groepen uit elkaar houdt.
+ *
+ * De beginminuut telt niet mee, net zomin als vroeger: twee groepen op 17:00 en 17:15 vallen
+ * samen. Dat is de bestaande, aanvaarde grofheid van deze sleutel.
+ *
+ * En nog steeds: dit is een herkenningssleutel om een groep uit een geïmporteerde planning terug
+ * te vinden, en geen uniciteitsregel. `lesGroepFout` weigert geen tweede groep op dezelfde
+ * sleutel — twee groepen op hetzelfde uur mag.
  */
-export function groepSleutel(g: Pick<LesGroep, 'name' | 'weekday' | 'start_hour'>): string {
-  return `${g.name.trim().toLowerCase()}|${g.weekday}|${g.start_hour}`;
+export function groepSleutel(g: Pick<LesGroep, 'weekday' | 'start_hour' | 'court_id'>): string {
+  return `${g.weekday}|${g.start_hour}|${g.court_id ?? ''}`;
 }
 
 /** De groepen die de club dit moment lesgeeft. */
