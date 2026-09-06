@@ -1151,6 +1151,48 @@ describe('groepWijzigingen', () => {
     });
   });
 
+  it('werkt naam, weekdag en beginuur bij als de groep aan haar Groep-ID herkend werd', () => {
+    // D-03: `Groep-ID` wint van de afgeleide sleutel, juist zodat een groep herkenbaar blijft als
+    // haar naam of haar uur verandert. Dan hoort die verandering ook doorgevoerd te worden —
+    // anders wordt de hernoeming netjes herkend en stilzwijgend weggegooid (IMP-07).
+    const club = groepVan({ coach_id: 'u-koen', court_id: 'c1' });
+    const groep = groepUit([regelVan({
+      groepId: club.id,
+      groep: 'Groep 8 gevorderden',
+      datum: { jaar: 2026, maand: 9, dag: 11 }, // een vrijdag
+      uur: { uur: 18, minuut: 0 },
+    })], [club]);
+    expect(groep.viaGroepId).toBe(true);
+    expect(groepWijzigingen(club, groep, GEKOPPELD)).toEqual({
+      name: 'Groep 8 gevorderden',
+      weekday: 5,
+      start_hour: 18,
+    });
+  });
+
+  it('meldt naam, weekdag en beginuur niet bij een match op de sleutel', () => {
+    // Daar vórmen die drie de sleutel, dus ze zijn per definitie gelijk. Zou de vergelijking ook
+    // hier lopen, dan kostte het niets aan waarheid maar wel aan leesbaarheid — en dat is precies
+    // waarom `groepWijzigingen` alleen echte verschillen meldt.
+    const club = groepVan({ coach_id: 'u-koen', court_id: 'c1' });
+    const groep = groepUit([regelVan({ typeLes: 'Kidstennis groen' })], [club]);
+    expect(groep.viaGroepId).toBe(false);
+    const wijzigingen = groepWijzigingen(club, groep, GEKOPPELD);
+    expect(wijzigingen).toEqual({ level: 'Kidstennis groen' });
+    expect(Object.keys(wijzigingen)).not.toContain('name');
+    expect(Object.keys(wijzigingen)).not.toContain('weekday');
+    expect(Object.keys(wijzigingen)).not.toContain('start_hour');
+  });
+
+  it('meldt niets bij een Groep-ID-match waarbij naam, dag en uur gelijk bleven', () => {
+    // Het vlaggetje mag geen ruis maken: de export vult `Groep-ID` bij élke rij in, dus zonder
+    // deze grens zou iedere herimport elke groep als "bijgewerkt" tonen.
+    const club = groepVan({ coach_id: 'u-koen', court_id: 'c1' });
+    const groep = groepUit([regelVan({ groepId: club.id })], [club]);
+    expect(groep.viaGroepId).toBe(true);
+    expect(groepWijzigingen(club, groep, GEKOPPELD)).toEqual({});
+  });
+
   it('rekt het seizoen op en kort het nooit in', () => {
     const club = groepVan({
       coach_id: 'u-koen', court_id: 'c1', season_start: '2026-10-01', season_end: '2027-06-23',
@@ -1765,14 +1807,42 @@ describe('heen en terug met de export van fase 4', () => {
     expect(alle[0].groep.bestaand?.id).toBe(RONDRIT_GROEP.id);
     // De nieuwe naam staat wél in het plan — het scherm toont hem dus.
     expect(alle[0].naam).toBe('Groep 8 gevorderden');
-    // BEVINDING (plan 05-07): de groep komt hier als `ongewijzigd` binnen en niet als
-    // `bijgewerkt`, want `groepWijzigingen` vergelijkt de naam niet — die is bij een match op
-    // de sleutel per definitie gelijk, maar bij een match op `Groep-ID` juist niet. Gevolg: de
-    // hernoeming wordt herkend maar niet doorgevoerd. Deze test legt vast wat er vandaag
-    // gebeurt; de fix hoort in `groepWijzigingen` (plan 05-06) en staat in
-    // `.planning/phases/05-excel-import-van-trainingen/05-07-SUMMARY.md`.
-    expect(alle[0].wijzigingen).toEqual({});
-    expect(plan.groepenOngewijzigd).toHaveLength(1);
+    // En de hernoeming wordt ook echt doorgevoerd: bij een match op `Groep-ID` mág de naam
+    // verschillen, dus hoort ze bij de wijzigingen. Zou hier `ongewijzigd` staan, dan was IMP-07
+    // een lege belofte — herkend, en toch de oude naam gehouden.
+    expect(alle[0].status).toBe('bijgewerkt');
+    expect(alle[0].wijzigingen).toEqual({ name: 'Groep 8 gevorderden' });
+    expect(plan.groepenBijgewerkt).toHaveLength(1);
+    expect(plan.groepenOngewijzigd).toEqual([]);
+    // De lessen blijven staan waar ze staan: een hernoeming raakt de agenda niet, en de drie
+    // bestaande lessen worden ook niet verdubbeld.
+    expect(plan.nieuweLessen).toEqual([]);
+    expect(plan.ongewijzigdeLessen).toHaveLength(3);
+  });
+
+  it('werkt het uur bij, maar verzet de lessen van het seizoen niet stilzwijgend mee', () => {
+    // Verandert het beginuur van een groep, dan raakt dat haar al ingeplande lessen. De app heeft
+    // daar `planGroepWijziging` (lib/lesgroepen) voor, en die wordt hier bewust NIET aangeroepen:
+    // een import mag geen seizoen lessen verzetten als bijwerking van het lezen van een bestand.
+    // De import meldt het gevolg en laat de beslissing aan de beheerder — precies zoals ze ook
+    // niets verwijdert wat uit het bestand verdween.
+    const kolom = rijen[0].indexOf('Uur');
+    const verzet = rijen.map((rij, i) => (i === 0 ? rij : rij.map(
+      (cel, k) => (k === kolom ? '18:00' : cel),
+    )));
+    const plan = planImportLessen(
+      verzet, [RONDRIT_GROEP], [...RONDRIT_SPELERS, KOEN], [BAAN], rondritBoekingen(), {}, NU,
+    );
+
+    expect(plan.groepenNieuw).toEqual([]);
+    expect(plan.groepenBijgewerkt).toHaveLength(1);
+    expect(plan.groepenBijgewerkt[0].wijzigingen).toEqual({ start_hour: 18 });
+
+    // Geen enkele les wordt verzet en er komt er ook geen tweede naast: de drie lessen die er om
+    // 17:00 staan komen als handmatige wijziging terug, met beide tijden erbij.
+    expect(plan.nieuweLessen).toEqual([]);
+    expect(plan.handmatigGewijzigd).toHaveLength(3);
+    expect(plan.handmatigGewijzigd.map((h) => h.bestaandeTijd)).toEqual(['17:00', '17:00', '17:00']);
   });
 
   it('maakt van een privéles uit de export geen lesgroep', () => {

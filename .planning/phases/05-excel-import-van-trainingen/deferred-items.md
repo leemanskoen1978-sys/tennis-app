@@ -12,7 +12,7 @@ aangeraakt: het raakt code die deze fase niet verandert.
 - **Waarom niet hier gefixt:** raakt lib/goals, dat in deze fase niet meedoet. Een botsing betekent
   in de app dat één doel een ander overschrijft — de moeite waard, maar in een eigen plan.
 
-## Een groep die in de export hernoemd is, wordt herkend maar niet hernoemd
+## ~~Een groep die in de export hernoemd is, wordt herkend maar niet hernoemd~~ — OPGELOST
 
 - **Gevonden bij:** plan 05-07, taak 2 (de heen-en-terugtest met de export van fase 4).
 - **Wat:** `groepWijzigingen` in `lib/import-trainingen.ts` vergelijkt `name`, `weekday` en
@@ -26,3 +26,9 @@ aangeraakt: het raakt code die deze fase niet verandert.
   `groepWijzigingen`, dat in plan 05-06 geschreven is. Nodig: `name`, `weekday` en `start_hour`
   meenemen wanneer `groep.bestaand` via `Groep-ID` gevonden werd, plus een test dat een gewone
   sleutelmatch daardoor geen ruis krijgt (IMP-07).
+- **Opgelost:** `GeplandeGroep.viaGroepId` onthoudt nu waarop de groep herkend werd, en
+  `groepWijzigingen` vergelijkt `name`, `weekday` en `start_hour` uitsluitend bij een
+  `Groep-ID`-match. De lessen verhuizen daarbij niet mee: `planGroepWijziging` wordt bewust niet
+  aangeroepen, want een import mag geen seizoen lessen verzetten als bijwerking van het lezen van
+  een bestand — het gevolg staat als `handmatigGewijzigd` in de droogloop. De redenering staat in
+  het doc-commentaar bij `groepWijzigingen`.

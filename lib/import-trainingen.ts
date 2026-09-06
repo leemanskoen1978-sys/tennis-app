@@ -453,6 +453,16 @@ export interface GeplandeGroep {
   sleutel: string;
   /** De bestaande groep die dit blijkt te zijn, of `null` als dit een nieuwe groep is. */
   bestaand: LesGroep | null;
+  /**
+   * Is `bestaand` gevonden via de kolom `Groep-ID` in plaats van via de afgeleide sleutel?
+   *
+   * Dit verschil is niet cosmetisch. Bij een sleutelmatch zijn naam, weekdag en beginuur per
+   * definitie gelijk aan die van de bestaande groep — daar valt niets aan bij te werken. Bij een
+   * `Groep-ID`-match mógen ze juist verschillen: dáárvoor bestaat die kolom. Zonder dit vlaggetje
+   * kan `groepWijzigingen` die twee gevallen niet uit elkaar houden, en dat was precies de bug:
+   * een groep die in de export hernoemd werd kwam terug als "ongewijzigd" en hield haar oude naam.
+   */
+  viaGroepId: boolean;
   naam: string;
   niveau: string;
   /** 0-6 met zondag = 0, dezelfde telling als `LesGroep.weekday`. */
@@ -473,6 +483,8 @@ export interface GeplandeGroep {
 interface GroepEmmer {
   sleutel: string;
   bestaand: LesGroep | null;
+  /** Waar staat `true` zodra één regel van deze groep haar via `Groep-ID` aanwees. */
+  viaGroepId: boolean;
   naam: string;
   weekdag: number;
   beginuur: number;
@@ -575,8 +587,10 @@ export function groepenUitRegels(
     const sleutel = groepSleutel({ name: naam, weekday: dag.getDay(), start_hour: r.uur.uur });
 
     let bestaand: LesGroep | null = null;
+    let viaGroepId = false;
     if (r.groepId) {
       bestaand = opId.get(r.groepId) ?? null;
+      viaGroepId = bestaand !== null;
       if (!bestaand && !gemeldeIds.has(r.groepId)) {
         gemeldeIds.add(r.groepId);
         waarschuwingen.push({
@@ -600,6 +614,7 @@ export function groepenUitRegels(
       emmer = {
         sleutel,
         bestaand,
+        viaGroepId,
         naam,
         weekdag: dag.getDay(),
         beginuur: r.uur.uur,
@@ -615,6 +630,11 @@ export function groepenUitRegels(
       };
       emmers.set(emmerSleutel, emmer);
     }
+
+    // Eén regel die de groep bij haar id noemt is genoeg. Een bestand mag de kolom `Groep-ID`
+    // half ingevuld hebben — de export vult hem overal, een beheerder die er rijen bij typt
+    // niet — en dan is de emmer nog steeds op het id herkend.
+    if (viaGroepId) emmer.viaGroepId = true;
 
     emmer.regels.push(r);
     if (dagTekst < emmer.seizoenVan) emmer.seizoenVan = dagTekst;
@@ -658,6 +678,7 @@ export function groepenUitRegels(
     groepen.push({
       sleutel: emmer.sleutel,
       bestaand: emmer.bestaand,
+      viaGroepId: emmer.viaGroepId,
       naam: emmer.naam,
       niveau: niveau.gekozen,
       weekdag: emmer.weekdag,
@@ -1278,8 +1299,34 @@ export function lessenUitGroep(
  *
  * Alleen de échte verschillen, om dezelfde reden als `verschillen` in lib/import-leden: zou hier
  * elk veld in staan, dan is bij een herimport ineens élke groep "bijgewerkt" en verzuipt de ene
- * echte wijziging in de ruis. Naam, weekdag en beginuur staan er niet bij: die drie vormen de
- * sleutel waarmee de groep herkend werd, dus ze zijn per definitie gelijk.
+ * echte wijziging in de ruis.
+ *
+ * Naam, weekdag en beginuur tellen alleen mee bij een match op `Groep-ID` (`groep.viaGroepId`).
+ * Bij een sleutelmatch vórmen die drie de sleutel waarmee de groep herkend werd en zijn ze per
+ * definitie gelijk — meevergelijken zou daar alleen ruis opleveren. Bij een `Groep-ID`-match is
+ * het net omgekeerd: dáár mógen ze verschillen, want dat is precies waarvoor die kolom bestaat
+ * (`.planning/IMPORT-SJABLOON.md`, D-03). De bug die dit voorkomt: een beheerder hernoemt een
+ * groep in het geëxporteerde blad, stuurt het terug, en de import meldt "ongewijzigd" — de groep
+ * wordt netjes herkend en houdt haar oude naam. Dan is IMP-07 een lege belofte.
+ *
+ * WAAROM DE LESSEN HIER NIET MEE VERHUIZEN. Verandert `weekday` of `start_hour`, dan raakt dat
+ * de al ingeplande lessen van die groep, en de app heeft daar een regel voor:
+ * `planGroepWijziging` in lib/lesgroepen verzet elke komende les mee en meldt wat botst. Die
+ * regel wordt hier bewust NIET aangeroepen. Twee redenen:
+ *
+ * 1. Een import mag geen seizoen lessen verzetten als bijwerking van het lezen van een bestand.
+ *    `planGroepWijziging` hoort bij een beheerder die op het groepsscherm bewust een dag of uur
+ *    omzet en het gevolg meteen voor zich ziet. Hier komt de wijziging uit een cel in Excel, en
+ *    de weg van dit bestand naar de lessen loopt al ergens anders langs.
+ * 2. Die andere weg is strenger en staat er al. `lessenUitGroep` plant de lessen uit de datums
+ *    in het bestand zelf: op het nieuwe uur komen ze als nieuwe lessen binnen, staat er die dag
+ *    al een les van de groep op een ander uur dan is dat een `handmatigGewijzigd` (er wordt niets
+ *    overschreven), en wat het bestand niet meer kent belandt in `verdwenenUitBestand` — gemeld,
+ *    niet gewist. `planGroepWijziging` zou juist over die handmatige wijzigingen heen walsen, en
+ *    twee regels voor dezelfde vraag lopen vroeg of laat uit elkaar (D-13).
+ *
+ * De beheerder ziet het gevolg dus volledig in de droogloop en beslist zelf. Wat hier bijgewerkt
+ * wordt is de groepsrij, niet haar agenda.
  *
  * Het seizoen wordt opgerekt en nooit ingekort. Een beheerder die alleen de maand januari
  * opnieuw inleest, bedoelt niet dat het seizoen voortaan één maand duurt.
@@ -1290,6 +1337,11 @@ export function groepWijzigingen(
   koppeling: GroepKoppeling,
 ): Partial<Omit<LesGroep, 'id' | 'roster'>> {
   const wijzigingen: Partial<Omit<LesGroep, 'id' | 'roster'>> = {};
+  if (groep.viaGroepId) {
+    if (groep.naam !== bestaand.name) wijzigingen.name = groep.naam;
+    if (groep.weekdag !== bestaand.weekday) wijzigingen.weekday = groep.weekdag;
+    if (groep.beginuur !== bestaand.start_hour) wijzigingen.start_hour = groep.beginuur;
+  }
   if (groep.niveau && groep.niveau !== bestaand.level) wijzigingen.level = groep.niveau;
   if (groep.beginminuut !== bestaand.start_minute) wijzigingen.start_minute = groep.beginminuut;
   if (koppeling.trainer && koppeling.trainer.id !== bestaand.coach_id) {
