@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 05-04-PLAN.md (de kolomtabel van de trainingenimport, de koprij, de regels met betekenis en het sjabloon; fase 5 plan 4, buiten de volgorde van fase 3 om)"
-last_updated: "2026-09-06T02:40:00.000Z"
+stopped_at: "Completed 05-05-PLAN.md (lesgroepen afgeleid op de sleutel naam+dag+uur, spelers aangemaakt, trainer en baan alleen opgezocht; fase 5 plan 5, buiten de volgorde van fase 3 om)"
+last_updated: "2026-09-06T03:15:00.000Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 36
-  completed_plans: 27
+  completed_plans: 28
   percent: 33
 ---
 
@@ -35,7 +35,7 @@ Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draa
 Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
 de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
 
-Progress: [████████░░] 75%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [████████░░] 75%
 | Phase 04-excel-export P01 | ~20min | 2 tasks | 4 files |
 | Phase 04 P02 | ~25min | 2 tasks | 2 files |
 | Phase 05-excel-import-van-trainingen P04 | ~35min | 3 tasks | 2 files |
+| Phase 05-excel-import-van-trainingen P05 | ~30min | 2 tasks | 2 files |
 | Phase 04 P03 | ~20min | 2 tasks | 2 files |
 | Phase 04 P04 | ~25min | 2 tasks | 2 files |
 | Phase 04 P05 | ~20min | 2 tasks | 4 files |
@@ -90,6 +91,14 @@ confirmed as phases ship).
 - Roadmap: lesgroepen first (foundation for all else), "wie gaf de les écht" second and small
   (must precede substitution UI), sick-leave/substitute worklist third (Core Value), export
   fourth (decided before import, carries the round-trippable group identifier), import last.
+
+- [Phase 05-excel-import]: de importsleutel van een lesgroep is `groepSleutel` uit
+  lib/lesgroepen en niet een eigen versie ervan — één antwoord op "welke groep is dit" (D-23).
+  Een `Groep-ID` van een actieve groep wint ervan; het samenvoegen gebeurt op `id:<id>`
+
+- [Phase 05-excel-import]: de import zoekt trainers en banen op en maakt ze nooit aan (D-07).
+  Ontbreekt de trainer, dan komt de lesgroep er wél met een lege `coach_id` en haar roster,
+  en gaan alleen haar lessen niet door — `Booking.coach_id` en `court_id` zijn verplicht
 
 - [Phase 03-ziekmelding]: `vervangersVoor` filtert nooit — er komen er even veel uit als
   er kandidaten in gingen, elk met `'kan'` of met de reden die nee zei (D-09). Sorteren of
@@ -197,6 +206,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T01:09:36.649Z
-Stopped at: Completed 05-01-PLAN.md (de DEFLATE-uitpakker; fase 5 plan 1, buiten de volgorde van fase 3 om)
+Last session: 2026-09-06T03:15:00.000Z
+Stopped at: Completed 05-05-PLAN.md (lesgroepen afgeleid op de sleutel naam+dag+uur, spelers aangemaakt, trainer en baan alleen opgezocht; fase 5 plan 5, buiten de volgorde van fase 3 om)
 Resume file: None
