@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-03-PLAN.md (sick_leaves-tabel in het schema)
-last_updated: "2026-09-06T00:02:31.820Z"
+stopped_at: Completed 03-05-PLAN.md (de opslagweg voor ziekmeldingen)
+last_updated: "2026-09-06T00:08:21.584Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 36
-  completed_plans: 20
+  completed_plans: 21
   percent: 33
 ---
 
@@ -27,7 +27,7 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 ## Current Position
 
 Phase: 3 of 6 (Ziekmelding en vervangerswerklijst)
-Plan: 4 of 8 af (03-02-PLAN.md — SickLeave, zoektVervanger en lessenVoorZiekmelding, met de zomertijd-fixture)
+Plan: 5 of 8 af (03-05-PLAN.md — de opslagweg: de vier stops, meldZiek en trekZiekmeldingIn)
 Status: Ready to execute
 Last activity: 2026-09-06
 
@@ -35,7 +35,7 @@ Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draa
 Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
 de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
 
-Progress: [██████░░░░] 56%
+Progress: [██████░░░░] 58%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [██████░░░░] 56%
 | Phase 03-ziekmelding P02 | ~40min | 3 tasks | 4 files |
 | Phase 03 P03 | 15min | 2 tasks | 1 files |
 | Phase 03 P04 | ~35min | 2 tasks | 4 files |
+| Phase 03 P05 | ~25 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,8 @@ confirmed as phases ship).
 - [Phase 04-excel-export]: Blad Groepen draagt het Groep-ID, zodat een herimport de bestaande groep herkent in plaats van een tweede aan te maken
 - [Phase 03]: sick_leaves.coach_id gebruikt on delete cascade (niet set null zoals lesson_groups): een ziekmelding heeft geen betekenis meer zonder zijn trainer
 - [Phase 03]: sick_leaves-policies kopiëren rates_write exact: is_admin() op using en with check, geen created_by, tegen de upsert-val
+- [Phase 03]: D-14 uitgevoerd: sick_leaves wordt met selectAllOptioneel gelezen, nooit met selectAll
+- [Phase 03]: D-17 uitgevoerd: trekZiekmeldingIn raakt geen enkele boeking
 
 ### Pending Todos
 
@@ -187,6 +190,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T00:00:52.546Z
+Last session: 2026-09-06T00:08:15.273Z
 Stopped at: Completed 03-03-PLAN.md (sick_leaves-tabel in het schema)
 Resume file: None
