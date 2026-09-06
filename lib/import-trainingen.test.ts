@@ -1683,6 +1683,79 @@ function rij(datum: string, uur: string, groep: string, leerling: string): strin
   return [datum, uur, groep, 'Leemans Koen', leerling, 'Baan 1'];
 }
 
+describe('planImportLessen met het clubweekschema', () => {
+  const KOP_WEEK = [
+    'Doelgroep', 'Groep', 'Weekdag', 'Uur', 'Terrein(en)', 'Trainer(s)', 'Speler(s)',
+  ];
+  // Een kort seizoen, zodat de lessen te tellen zijn: 7 t/m 30 september 2026.
+  const SETTINGS_WEEK = {
+    lesson_duration_minutes: 60,
+    vakanties: [],
+    season_start: '2026-09-07',
+    season_end: '2026-09-30',
+  };
+  const weekRij = (uur: string, spelers = 'Peferoen Astor') => [
+    'Kidstennis blauw', 'Blauw 1', 'woensdag', uur, 'Baan 1', 'Koen Leemans', spelers,
+  ];
+  const duurVan = (les: { start: Date; eind: Date }): number =>
+    (les.eind.getTime() - les.start.getTime()) / 60000;
+
+  it('leest het weekschema en plant de woensdagen van september in', () => {
+    const uit = planImportLessen(
+      [KOP_WEEK, weekRij('14:00 - 15:00')], [], [KOEN], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    expect(uit.fouten).toEqual([]);
+    expect(uit.groepenNieuw).toHaveLength(1);
+    // Woensdag 9, 16, 23 en 30 september.
+    expect(uit.nieuweLessen).toHaveLength(4);
+  });
+
+  it('gebruikt de duur uit het bestand en niet die van de club', () => {
+    const uit = planImportLessen(
+      [KOP_WEEK, weekRij('14:00 - 14:30')], [], [KOEN], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    expect(duurVan(uit.nieuweLessen[0])).toBe(30);
+  });
+
+  it('valt op de clubinstelling terug als het bestand geen einde gaf', () => {
+    const uit = planImportLessen(
+      [KOP_WEEK, weekRij('14:00')], [], [KOEN], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    expect(duurVan(uit.nieuweLessen[0])).toBe(60);
+  });
+
+  it('maakt één lid per speler, met een verzonnen adres', () => {
+    const uit = planImportLessen(
+      [KOP_WEEK, weekRij('14:00 - 15:00', 'Peferoen Astor, Martens Clara')],
+      [], [KOEN], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    expect(uit.spelersNieuw.map((sp) => sp.email))
+      .toEqual(['peferoen.astor@example.com', 'martens.clara@example.com']);
+  });
+
+  it('weigert het weekschema zolang het seizoen niet ingesteld is', () => {
+    const uit = planImportLessen(
+      [KOP_WEEK, weekRij('14:00 - 15:00')], [], [KOEN], [BAAN], [],
+      { lesson_duration_minutes: 60, vakanties: [] }, NU,
+    );
+    expect(uit.groepenNieuw).toEqual([]);
+    expect(uit.nieuweLessen).toEqual([]);
+    expect(uit.fouten).toHaveLength(1);
+  });
+
+  it('plant twee groepen op dezelfde baan en hetzelfde uur allebei in, en meldt de botsing', () => {
+    const uit = planImportLessen(
+      [KOP_WEEK,
+        ['Kidstennis blauw', 'Blauw 1', 'woensdag', '14:00 - 15:00', 'Baan 1', 'Koen Leemans', 'Peferoen Astor'],
+        ['Kidstennis rood', 'Rood 3', 'woensdag', '14:00 - 15:00', 'Baan 1', 'Koen Leemans', 'Martens Clara']],
+      [], [KOEN], [BAAN], [], SETTINGS_WEEK, NU,
+    );
+    expect(uit.groepenNieuw).toHaveLength(2);
+    expect(uit.nieuweLessen).toHaveLength(8);
+    expect(uit.botsingen.length).toBeGreaterThan(0);
+  });
+});
+
 describe('planImportLessen', () => {
   const RIJEN = [
     KOP_MET_BAAN,

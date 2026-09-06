@@ -144,6 +144,15 @@ describe('isWeekschema', () => {
     expect(isWeekschema(['Datum', 'Uur', 'Groep', 'Coach', 'Leerling'])).toBe(false);
   });
 
+  it('kiest de datum boven de weekdag: koen.xlsx heeft ze allebei', () => {
+    // Het echte bestand van de club in het eerste formaat heeft een kolom `Weekdag` staan naast
+    // `Weeknr`, `Locatie` en `Indoor/Outdoor`. Op de weekdag kiezen stuurde het naar de
+    // verkeerde lezer en liet alle 1398 regels verdwijnen.
+    expect(isWeekschema(
+      ['Datum', 'Weekdag', 'Weeknr', 'Uur', 'Groep', 'Coach', 'Leerling', 'Indoor/Outdoor'],
+    )).toBe(false);
+  });
+
   it('is geen weekschema zonder Weekdag, ook al staat Speler(s) er', () => {
     expect(isWeekschema(['Groep', 'Uur', 'Speler(s)'])).toBe(false);
   });

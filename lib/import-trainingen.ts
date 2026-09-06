@@ -13,6 +13,14 @@
 
 import { GROEPSLES_METHOD } from './beurtenkaart';
 import { normalizeEmail } from './contact';
+// De lezer van het tweede formaat. Ja, die module importeert op haar beurt uit deze — een
+// kring. Hij is met opzet ongevaarlijk: allebei de kanten gebruiken elkaar uitsluitend binnen
+// een functie en nooit terwijl de module zelf opgebouwd wordt, en de typen die heen en weer gaan
+// verdwijnen bij het compileren. Wat de kring oplevert is dat `planImportLessen` de ene ingang
+// voor allebei de formaten blijft: het scherm hoeft niet te weten welk bestand het openmaakt.
+import {
+  groepenUitWeekRegels, isWeekschema, leesWeekRegels, spelerRegelsUitWeek,
+} from './import-weekschema';
 import { actieveGroepen, groepSleutel, groupBookingsFrom, lesGroepFout } from './lesgroepen';
 import { botstMet, type BezetBoeking } from './recurrence';
 import { normalizeName, zelfdeNaamOngeachtVolgorde, zoekOpNaam } from './students';
@@ -1846,12 +1854,23 @@ export function planImportLessen(
   users: readonly User[],
   courts: readonly Court[],
   bookings: readonly ImportBoeking[],
-  settings: Pick<Settings, 'lesson_duration_minutes' | 'vakanties'>,
+  settings: Pick<
+    Settings, 'lesson_duration_minutes' | 'vakanties' | 'season_start' | 'season_end'
+  >,
   nu: Date,
 ): ImportPlanLessen {
-  const gelezen = leesLesRegels(rijen);
+  // Welk van de twee formaten is dit? De clublijst heeft een kolom `Weekdag` en het sjabloon van
+  // de app heeft datums; die twee sluiten elkaar uit. Zie `isWeekschema` voor waarom er op dat
+  // ene woord gekozen wordt en niet op de zeven koppen samen.
+  const isWeek = rijen.length > 0 && isWeekschema(rijen[0]);
+  const gelezenWeek = isWeek ? leesWeekRegels(rijen) : null;
+  const gelezen = isWeek ? null : leesLesRegels(rijen);
+  const gelezenIets = gelezenWeek ?? gelezen;
+
   const plan: ImportPlanLessen = {
-    regels: gelezen.regels,
+    // `regels` is de lijst van het eerste formaat en blijft dat: het weekschema kent geen
+    // `LesRegel`, en er een verzinnen zou een datum verzinnen die de club nooit schreef.
+    regels: gelezen?.regels ?? [],
     groepenNieuw: [],
     groepenBijgewerkt: [],
     groepenOngewijzigd: [],
@@ -1863,24 +1882,44 @@ export function planImportLessen(
     handmatigGewijzigd: [],
     verdwenenUitBestand: [],
     trainerwissels: [],
-    fouten: gelezen.fouten,
+    fouten: [...(gelezenIets?.fouten ?? [])],
     waarschuwingen: [],
-    nietHerkend: gelezen.nietHerkend,
-    dubbel: gelezen.dubbel,
+    nietHerkend: gelezenIets?.nietHerkend ?? [],
+    dubbel: gelezenIets?.dubbel ?? [],
   };
-  if (gelezen.regels.length === 0) return plan;
+  if (!gelezenIets || gelezenIets.regels.length === 0) return plan;
 
-  const uitGroepen = groepenUitRegels(gelezen.regels, bestaandeGroepen, courts);
+  let uitGroepen: { groepen: GeplandeGroep[]; waarschuwingen: ImportFoutLessen[] };
+  let spelerRegels: readonly SpelerRegel[];
+
+  if (gelezenWeek) {
+    // Het weekschema heeft geen datums; zonder seizoen valt er niets in te plannen. Een fout en
+    // geen waarschuwing: doorgaan zou 192 groepen zonder één les opleveren, en dat leest als "de
+    // import deed niets" in plaats van als "er ontbreekt een instelling".
+    const seizoen = seizoenUitSettings(settings);
+    if (!seizoen) {
+      plan.fouten.push({
+        regel: 1,
+        reden: 'Dit bestand is een weekschema zonder datums, en het seizoen van de club staat nog niet ingesteld.',
+      });
+      return plan;
+    }
+    uitGroepen = groepenUitWeekRegels(gelezenWeek.regels, bestaandeGroepen, courts, seizoen);
+    spelerRegels = spelerRegelsUitWeek(gelezenWeek.regels);
+  } else {
+    uitGroepen = groepenUitRegels(gelezen!.regels, bestaandeGroepen, courts);
+    spelerRegels = gelezen!.regels;
+  }
   plan.waarschuwingen.push(...uitGroepen.waarschuwingen);
 
-  const uitSpelers = spelersUitRegels(gelezen.regels, users);
+  const uitSpelers = spelersUitRegels(spelerRegels, users);
   plan.waarschuwingen.push(...uitSpelers.waarschuwingen);
   plan.spelersNieuw = uitSpelers.spelers.filter((s) => s.bestaand === null);
   // Eén kaart van naam naar id, één keer gebouwd: per groep opnieuw door de spelerslijst lopen
   // maakt van 1400 regels een kwadratische zoektocht (T-05-16).
   const idVanNaam = new Map(uitSpelers.spelers.map((s) => [normalizeName(s.naam), spelerSleutel(s)]));
 
-  const duurMinuten = lesduurVan(settings);
+  const clubDuur = lesduurVan(settings);
   const vakanties = settings.vakanties ?? [];
 
   // Drie kaarten over de bestaande boekingen, één keer gebouwd. Een botsing kan alleen ontstaan
@@ -1945,8 +1984,11 @@ export function planImportLessen(
     ];
     for (const b of alles) raakbaar.set(b.id, b);
 
+    // De duur van de groep wint van die van de club. Vier van de 192 groepen van de club wijken
+    // af — twee van 30 minuten, twee van 90 — en die stonden zonder dit op 60.
     const lessen = lessenUitGroep(
-      groep, koppeling, users, [...raakbaar.values()], vakanties, duurMinuten, nu,
+      groep, koppeling, users, [...raakbaar.values()], vakanties,
+      groep.duurMinuten ?? clubDuur, nu,
     );
     plan.nieuweLessen.push(...lessen.nieuweLessen);
     plan.ongewijzigdeLessen.push(...lessen.ongewijzigd);

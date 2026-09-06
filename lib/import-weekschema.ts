@@ -17,7 +17,7 @@
 
 import {
   groepsnaamUitMoment, leesUurCel, zoekBaan,
-  type GeplandeGroep, type ImportFoutLessen, type Seizoen, type SpelerRegel,
+  type GeplandeGroep, type ImportFoutLessen, type LesRegel, type Seizoen, type SpelerRegel,
 } from './import-trainingen';
 import { actieveGroepen, groepSleutel } from './lesgroepen';
 import type { Court, LesGroep } from './types';
@@ -223,17 +223,29 @@ export function leesKopregelWeekschema(kopregel: readonly string[]): KopregelWee
   };
 }
 
+/** De schrijfwijzen van de datumkop in het eerste formaat; zie `LESSEN_KOPPEN`. */
+const DATUMKOPPEN = new Set(['datum', 'date']);
+
 /**
  * Is dit blad de clublijst, of het sjabloon van de app?
  *
- * Op `Weekdag` en niet op de zeven kolommen samen: een bestand waarin één kop verkeerd gespeld
- * is, hoort de nette foutmelding van deze lezer te krijgen ("de koprij mist een verplichte
- * kolom") en niet stilzwijgend door de andere lezer beoordeeld te worden, die dan over een
- * ontbrekende `Datum` klaagt. `Weekdag` is bovendien het ene woord dat in het sjabloon van de
- * app niet voorkomt en er ook nooit in kan komen: dat sjabloon heeft datums.
+ * DE DATUM BESLIST, EN NIET DE WEEKDAG. Dat was de eerste opzet en die was fout: `koen.xlsx` —
+ * het echte bestand van de club in het éérste formaat — heeft zélf een kolom `Weekdag` staan,
+ * naast `Weeknr`, `Locatie` en `Indoor/Outdoor`. De import negeert die kolommen, maar erop
+ * kiezen zou dat bestand naar de verkeerde lezer sturen en alle 1398 regels laten verdwijnen.
+ * De testsuite ving dat; zonder die test was het pas op de productiedatabank opgevallen.
+ *
+ * Wat de twee formaten echt scheidt is de datum. Het sjabloon van de app kán niet zonder — één
+ * regel is één les op één dag — en de clublijst is een weekschema en heeft er per definitie geen.
+ *
+ * Allebei getoetst en niet alleen de datum: een bestand zonder datum én zonder weekdag is geen
+ * van beide, en hoort de foutmelding van de gewone lezer te krijgen ("de koprij mist een
+ * verplichte kolom: Datum, ..."). Dat is de melding die klopt bij een leeg of vreemd blad.
  */
 export function isWeekschema(kopregel: readonly string[]): boolean {
-  return kopregel.some((kop) => WEEKSCHEMA_KOPPEN.get(kopSleutel(kop)) === 'weekdag');
+  const sleutels = kopregel.map(kopSleutel);
+  if (sleutels.some((k) => DATUMKOPPEN.has(k))) return false;
+  return sleutels.some((k) => WEEKSCHEMA_KOPPEN.get(k) === 'weekdag');
 }
 
 // ---------------------------------------------------------------------------
@@ -436,6 +448,54 @@ export function spelerRegelsUitWeek(regels: readonly WeekRegel[]): SpelerRegel[]
 }
 
 /**
+ * Alle dagen in het seizoen die op deze weekdag vallen, als lesregels voor één groep.
+ *
+ * WAAROM HIER DATUMS UITGEREKEND WORDEN. `lessenUitGroep` bouwt de lessen van een groep uit haar
+ * `regels`: één ingang per moment, met een datum en een uur. Het eerste formaat levert die
+ * regels rechtstreeks — één rij is één les op één dag. Het weekschema levert ze niet, en dan zou
+ * de groep wél aangemaakt worden en geen enkele les krijgen.
+ *
+ * Dit is geen datum verzinnen. "Woensdag" plus "7 september tot 30 juni" ís een lijst
+ * woensdagen; dat is precies wat de club bedoelt als ze een weekschema aanlevert. Wat de app
+ * niet mag doen is een seizoen raden — vandaar dat het uit de clubinstellingen komt en dat
+ * `planImportLessen` weigert zolang het er niet staat.
+ *
+ * De vakanties worden hier NIET overgeslagen. Dat doet `lessenUitGroep` verderop, en het daar
+ * laten houdt één plek die weet wanneer de club dicht is; hier een tweede zeef bouwen zou de
+ * twee formaten uit elkaar laten lopen zodra de kalender verandert.
+ */
+function lesregelsInSeizoen(r: WeekRegel, seizoen: Seizoen): LesRegel[] {
+  const [jv, mv, dv] = seizoen.van.split('-').map(Number);
+  const [jt, mt, dt] = seizoen.tot.split('-').map(Number);
+  const eerste = new Date(jv, mv - 1, dv);
+  const laatste = new Date(jt, mt - 1, dt);
+  // Vooruit naar de eerste keer dat deze weekdag valt. `getDay` telt zondag = 0, net als
+  // `WEEKDAGEN` hierboven en `LesGroep.weekday`.
+  const stap = (r.weekdag - eerste.getDay() + 7) % 7;
+  const regels: LesRegel[] = [];
+  const dag = new Date(eerste.getFullYear(), eerste.getMonth(), eerste.getDate() + stap);
+  while (dag.getTime() <= laatste.getTime()) {
+    regels.push({
+      regel: r.regel,
+      datum: { jaar: dag.getFullYear(), maand: dag.getMonth() + 1, dag: dag.getDate() },
+      uur: { uur: r.beginuur, minuut: r.beginminuut },
+      groep: r.groep,
+      groepId: '',
+      typeLes: r.doelgroep,
+      coach: r.trainers[0] ?? '',
+      // De leerling staat hier niet in: het weekschema kent één spelerslijst per groep, niet per
+      // les. `lessenUitGroep` leest van een regel alleen het regelnummer, de datum en het uur —
+      // wie er in de groep zit komt uit het rooster, en dat is bij dit formaat het enige juiste.
+      leerling: '',
+      emailLeerling: '',
+      baan: r.terreinen[0] ?? '',
+    });
+    dag.setDate(dag.getDate() + 7);
+  }
+  return regels;
+}
+
+/**
  * Van regels naar geplande groepen: de laatste stap die het formaat nog kent.
  *
  * Wat hier met opzet NIET gebeurt: de trainer opzoeken, de spelers aan leden koppelen, de lessen
@@ -534,9 +594,9 @@ export function groepenUitWeekRegels(
       seizoenVan: seizoen.van,
       seizoenTot: seizoen.tot,
       leerlingNamen: r.spelers,
-      // Dit formaat kent geen `LesRegel`. Wat de pijplijn erna met `regels` doet is naar een
-      // regelnummer wijzen, en dat staat al in de waarschuwingen hierboven.
-      regels: [],
+      // De momenten waarop deze groep lesheeft, uitgerekend uit haar weekdag en het seizoen.
+      // Zie `lesregelsInSeizoen` voor waarom dat hier gebeurt en niet in `lessenUitGroep`.
+      regels: lesregelsInSeizoen(r, seizoen),
     };
   });
 
