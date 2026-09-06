@@ -552,7 +552,7 @@ function groepVan(over: Partial<LesGroep> = {}): LesGroep {
 }
 
 describe('groepenUitRegels', () => {
-  it('voegt regels met dezelfde groep, dag en uur samen tot één groep', () => {
+  it('voegt regels met dezelfde dag, hetzelfde uur en dezelfde baan samen tot één groep', () => {
     const uitkomst = groepenUitRegels([
       regelVan({ regel: 2, leerling: 'Peferoen Astor' }),
       regelVan({ regel: 3, leerling: 'Martens Clara' }),
@@ -572,7 +572,7 @@ describe('groepenUitRegels', () => {
     expect(groep.beginminuut).toBe(0);
   });
 
-  it('scheidt dezelfde groepsnaam op een andere dag of een ander uur', () => {
+  it('scheidt hetzelfde label op een andere dag of een ander uur in twee groepen', () => {
     const uitkomst = groepenUitRegels([
       regelVan({ regel: 2, leerling: 'Peferoen Astor' }),
       regelVan({ regel: 3, datum: { jaar: 2026, maand: 9, dag: 11 }, leerling: 'Bertrem Mila' }),
@@ -1015,13 +1015,24 @@ const KOEN = userVan({ id: 'u-koen', name: 'Koen Leemans', role: 'coach' });
 const BAAN = baanVan();
 /** Een tweede terrein: sinds de sleutel de baan meetelt is dat het enige dat twee groepen op hetzelfde uur uit elkaar houdt. */
 const BAAN_2 = baanVan({ id: 'c2', name: 'Baan 2', number: 2 });
+/** Een tweede trainer, voor de rondrit waarin een trainerswissel géén nieuwe groep mag worden. */
+const SOFIE = userVan({ id: 'u-sofie', name: 'Sofie Maes', role: 'coach' });
 const GEKOPPELD: GroepKoppeling = { trainer: KOEN, baan: BAAN, meldingen: [] };
+/** Voor een groep die (nog) geen baan heeft: dan hoort er ook geen `court_id` in de wijzigingen. */
+const ZONDER_BAAN: GroepKoppeling = { trainer: KOEN, baan: null, meldingen: [] };
 /** Ruim vóór 9 september 2026: alles uit deze tests ligt dus in de toekomst. */
 const NU = new Date(2026, 8, 1);
 
 /** De ene groep die uit deze regels volgt. */
-function groepUit(regels: LesRegel[], bestaande: LesGroep[] = []): GeplandeGroep {
-  return groepenUitRegels(regels, bestaande, []).groepen[0];
+function groepUit(
+  regels: LesRegel[], bestaande: LesGroep[] = [], courts: Court[] = [],
+): GeplandeGroep {
+  return groepenUitRegels(regels, bestaande, courts).groepen[0];
+}
+
+/** Een regel op baan 1, zodat haar sleutel bij een bestaande groep met `court_id: 'c1'` past. */
+function opBaanEen(over: Partial<LesRegel> = {}): LesRegel {
+  return regelVan({ baan: 'Baan 1', ...over });
 }
 
 describe('lesSleutel', () => {
@@ -1289,13 +1300,29 @@ describe('herimport', () => {
 describe('groepWijzigingen', () => {
   it('meldt alleen het veld dat verandert', () => {
     const club = groepVan({ coach_id: 'u-koen', court_id: 'c1' });
-    const groep = groepUit([regelVan({ typeLes: 'Kidstennis groen' })], [club]);
+    // Mét baan, want de baan zit sinds deze fase in de sleutel: zonder haar zou deze groep niet
+    // op de bestaande herkend worden en zou de test iets anders bewijzen dan ze zegt.
+    const groep = groepUit([opBaanEen({ typeLes: 'Kidstennis groen' })], [club], [BAAN]);
+    expect(groep.bestaand).toBe(club);
     expect(groepWijzigingen(club, groep, GEKOPPELD)).toEqual({ level: 'Kidstennis groen' });
   });
 
   it('meldt niets als er niets verandert', () => {
     const club = groepVan({ coach_id: 'u-koen', court_id: 'c1' });
-    expect(groepWijzigingen(club, groepUit([regelVan()], [club]), GEKOPPELD)).toEqual({});
+    const groep = groepUit([opBaanEen()], [club], [BAAN]);
+    expect(groepWijzigingen(club, groep, GEKOPPELD)).toEqual({});
+  });
+
+  it('laat de bestaande naam staan bij een sleutelmatch, en meldt er niets over', () => {
+    // D-05, van beide kanten. `groepenUitRegels` neemt de naam van de bestaande groep over —
+    // de kolom `Groep` zegt hier iets heel anders — en `groepWijzigingen` heeft er dus niets
+    // over te melden. Zo overleeft een naam die de beheerder zelf gaf elke herimport.
+    const club = groepVan({ name: 'De woensdagploeg', coach_id: 'u-koen' });
+    const groep = groepUit([regelVan({ groep: 'Groep 99' })], [club]);
+    expect(groep.bestaand).toBe(club);
+    expect(groep.viaGroepId).toBe(false);
+    expect(groep.naam).toBe('De woensdagploeg');
+    expect(groepWijzigingen(club, groep, ZONDER_BAAN)).toEqual({});
   });
 
   it('koppelt de trainer en de baan die de groep nog niet had', () => {
@@ -1331,7 +1358,7 @@ describe('groepWijzigingen', () => {
     // hier lopen, dan kostte het niets aan waarheid maar wel aan leesbaarheid — en dat is precies
     // waarom `groepWijzigingen` alleen echte verschillen meldt.
     const club = groepVan({ coach_id: 'u-koen', court_id: 'c1' });
-    const groep = groepUit([regelVan({ typeLes: 'Kidstennis groen' })], [club]);
+    const groep = groepUit([opBaanEen({ typeLes: 'Kidstennis groen' })], [club], [BAAN]);
     expect(groep.viaGroepId).toBe(false);
     const wijzigingen = groepWijzigingen(club, groep, GEKOPPELD);
     expect(wijzigingen).toEqual({ level: 'Kidstennis groen' });
@@ -1353,7 +1380,7 @@ describe('groepWijzigingen', () => {
     const club = groepVan({
       coach_id: 'u-koen', court_id: 'c1', season_start: '2026-10-01', season_end: '2027-06-23',
     });
-    const groep = groepUit([regelVan()], [club]);
+    const groep = groepUit([opBaanEen()], [club], [BAAN]);
     // Het bestand loopt van 9 september tot 9 september; het seizoen begint dus vroeger en
     // eindigt niet eerder.
     expect(groepWijzigingen(club, groep, GEKOPPELD)).toEqual({ season_start: '2026-09-09' });
@@ -2018,6 +2045,52 @@ describe('heen en terug met de export van fase 4', () => {
     // bestaande lessen worden ook niet verdubbeld.
     expect(plan.nieuweLessen).toEqual([]);
     expect(plan.ongewijzigdeLessen).toHaveLength(3);
+  });
+
+  it('laat met een Groep-ID naam, dag, uur, trainer en baan alle vijf wijzigen op dezelfde groep', () => {
+    // Succescriterium 4 van de ROADMAP, en de reden dat deze fase bestaat. De club verzet een
+    // groep naar een andere dag, een ander uur, een andere trainer en een ander terrein, en
+    // hernoemt haar erbij. Met `Groep-ID` erbij is dat één groep die vijf dingen wijzigt — geen
+    // tweede groep naast de eerste, en al helemaal geen halve club verdubbeld.
+    const kop = rijen[0];
+    const kolom = (naam: string) => kop.indexOf(naam);
+    const anders = rijen.map((rij, i) => {
+      if (i === 0) return rij;
+      const datum = leesDatumCel(rij[kolom('Datum')])!;
+      // Twee dagen later: woensdag wordt vrijdag, met lokale datumvelden gebouwd.
+      const naar = new Date(datum.jaar, datum.maand - 1, datum.dag + 2);
+      const dd = String(naar.getDate()).padStart(2, '0');
+      const mm = String(naar.getMonth() + 1).padStart(2, '0');
+      return rij.map((cel, k) => {
+        if (k === kolom('Datum')) return `${dd}/${mm}/${naar.getFullYear()}`;
+        if (k === kolom('Uur')) return '18:00';
+        if (k === kolom('Groep')) return 'De gevorderden';
+        if (k === kolom('Coach')) return 'Maes Sofie';
+        if (k === kolom('Baan')) return BAAN_2.name;
+        return cel;
+      });
+    });
+
+    const plan = planImportLessen(
+      anders, [RONDRIT_GROEP], [...RONDRIT_SPELERS, KOEN, SOFIE], [BAAN, BAAN_2],
+      rondritBoekingen(), {}, NU,
+    );
+
+    expect(plan.groepenNieuw).toEqual([]);
+    expect(plan.groepenOngewijzigd).toEqual([]);
+    expect(plan.groepenBijgewerkt).toHaveLength(1);
+    const bij = plan.groepenBijgewerkt[0];
+    expect(bij.groep.bestaand?.id).toBe(RONDRIT_GROEP.id);
+    expect(bij.groep.viaGroepId).toBe(true);
+    expect(bij.wijzigingen).toEqual({
+      name: 'De gevorderden',
+      weekday: 5,
+      start_hour: 18,
+      coach_id: SOFIE.id,
+      court_id: BAAN_2.id,
+    });
+    // Het roster blijft van dezelfde drie mensen: een wissel is een wijziging, geen verhuizing.
+    expect([...bij.roster].sort()).toEqual([...RONDRIT_GROEP.roster].sort());
   });
 
   it('werkt het uur bij, maar verzet de lessen van het seizoen niet stilzwijgend mee', () => {
