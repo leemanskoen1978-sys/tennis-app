@@ -66,8 +66,10 @@ describe('leesKopregelLessen', () => {
 
   it('meldt de kolommen van koen.xlsx niet als onbekend', () => {
     const kop = leesKopregelLessen(KOP_KOEN);
+    // `Indoor/Outdoor` is de tiende kolom en telt als tweede baankolom: de club draagt haar
+    // terreinnummer daarin. `Locatie` blijft genegeerd.
     expect(kop.kolommen).toEqual({
-      datum: 0, uur: 3, typeLes: 4, groep: 5, coach: 6, leerling: 7,
+      datum: 0, uur: 3, typeLes: 4, groep: 5, coach: 6, leerling: 7, baanAlt: 9,
     });
     expect(kop.nietHerkend).toEqual([]);
     expect(kop.dubbel).toEqual([]);

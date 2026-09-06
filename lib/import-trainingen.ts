@@ -34,6 +34,17 @@ export interface KolommenLessen {
   typeLes?: number;
   emailLeerling?: number;
   baan?: number;
+  /**
+   * De tweede kolom waar een terreinnummer in kan staan: `Indoor/Outdoor`. Dat is de kop die
+   * het Tennis Vlaanderen-blad van de club gebruikt, en daar zet de club het terreinnummer in.
+   *
+   * WAAROM een eigen veld en niet gewoon een tweede schrijfwijze van `baan`: de export van
+   * fase 4 schrijft `Baan` én `Indoor/Outdoor` allebei. Mikten die twee koppen op hetzelfde
+   * veld, dan zou `leesKopregelLessen` de tweede als `dubbel` melden — en dan opent élke
+   * herimport van een eigen exportbestand met de waarschuwing "deze kolom staat er twee keer",
+   * precies de ruis die `KOPPEN_GENEGEERD` hieronder wil vermijden.
+   */
+  baanAlt?: number;
 }
 
 // Knoopt LESSEN_KOPPEN vast aan de velden van `KolommenLessen`: een kop die daar niet in past,
@@ -97,18 +108,24 @@ const KOPNAMEN_LESSEN = new Map<string, keyof KolommenLessen>([
   ['baan', 'baan'],
   ['terrein', 'baan'],
   ['court', 'baan'],
+  // De kop van het Tennis Vlaanderen-blad. `schoneKop` haalt hoofdletters en spaties eraf en
+  // laat de schuine streep staan, dus `Indoor / Outdoor` komt hier ook op uit.
+  ['indoor/outdoor', 'baanAlt'],
 ]);
 
 /**
  * Koppen die we lezen en bewust laten liggen. Ze staan apart van "onbekend" omdat ze in
- * `koen.xlsx` staan (`Weekdag`, `Weeknr`, `Locatie`, `Indoor/Outdoor`) en in wat de export van
+ * `koen.xlsx` staan (`Weekdag`, `Weeknr`, `Locatie`) en in wat de export van
  * fase 4 schrijft (daar komen `Einduur`, `Gaf de les`, `Spelers` en `Status` bij). Zou de
  * import ze als "niet herkend" melden, dan opent élke echte import — ook de eigen export die er
  * ongewijzigd weer in moet kunnen — met een lijstje ruis, en dan leest niemand dat lijstje nog
  * op de dag dat er wél een echte tikfout in staat.
  *
- * Schoongemaakte vorm: klein, zonder spaties. `indoor/outdoor` houdt zijn schuine streep, want
- * dat is geen spatie.
+ * Schoongemaakte vorm: klein, zonder spaties.
+ *
+ * `indoor/outdoor` stond hier ooit ook, maar staat nu in `KOPNAMEN_LESSEN`: de club draagt het
+ * terreinnummer in die kolom (IMP-15). `locatie` blijft wel genegeerd — de app kent geen
+ * locatiebegrip (IMPORT-SJABLOON).
  */
 const KOPPEN_GENEGEERD = new Set([
   'weekdag',
@@ -116,7 +133,6 @@ const KOPPEN_GENEGEERD = new Set([
   'weeknummer',
   'einduur',
   'locatie',
-  'indoor/outdoor',
   'gafdeles',
   'spelers',
   'status',
@@ -146,6 +162,28 @@ export interface KopregelLessen {
 /** De schoongemaakte vorm van een kop: klein, zonder spaties eromheen en zonder spaties erin. */
 function schoneKop(kop: string): string {
   return kop.trim().toLowerCase().replace(/\s+/g, '');
+}
+
+/**
+ * De baan van een regel, uit de twee kolommen die er een kunnen dragen.
+ *
+ * `Baan` wint van `Indoor/Outdoor`, want de eigen export van fase 4 zet de échte baannaam in
+ * `Baan` en gebruikt `Indoor/Outdoor` alleen nog voor het woord. Zonder die voorrang zou een
+ * herimport van een eigen exportbestand de baan uit de verkeerde kolom halen.
+ *
+ * De woorden `indoor` en `outdoor` betekenen géén baan maar de oude inhoud van die kolom
+ * (D-12). Die uitzondering voorkomt deze bug: in `koen.xlsx` staat op alle 1398 regels
+ * letterlijk `Indoor`, dus zonder haar zou elke groep aan een verzonnen baan "Indoor" hangen.
+ * `zoekBaan` vindt daar terecht niets bij, en de beheerder leest dan "Ik ken geen baan Indoor"
+ * in plaats van de juiste melding "bij deze groep staat geen baan".
+ */
+export function baanUitCellen(baan: string, binnenBuiten: string): string {
+  const uitBaan = baan.trim();
+  if (uitBaan) return uitBaan;
+  const alt = binnenBuiten.trim();
+  const woord = alt.toLowerCase();
+  if (woord === 'indoor' || woord === 'outdoor') return '';
+  return alt;
 }
 
 /**
@@ -430,7 +468,7 @@ export function leesLesRegels(rijen: ReadonlyArray<readonly string[]>): GelezenL
       coach,
       leerling,
       emailLeerling: cel(kolommen.emailLeerling),
-      baan: cel(kolommen.baan),
+      baan: baanUitCellen(cel(kolommen.baan), cel(kolommen.baanAlt)),
     });
   }
 
