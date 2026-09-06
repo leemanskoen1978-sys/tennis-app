@@ -15,7 +15,12 @@
 // Deze module schrijft niets weg en kent geen provider: rijen tekst gaan erin, geplande groepen
 // komen eruit. Zo blijft ze testbaar zonder databank, net als de rest van lib/.
 
-import { leesUurCel, type ImportFoutLessen } from './import-trainingen';
+import {
+  groepsnaamUitMoment, leesUurCel, zoekBaan,
+  type GeplandeGroep, type ImportFoutLessen, type Seizoen, type SpelerRegel,
+} from './import-trainingen';
+import { actieveGroepen, groepSleutel } from './lesgroepen';
+import type { Court, LesGroep } from './types';
 
 // ---------------------------------------------------------------------------
 // De cellen
@@ -350,12 +355,25 @@ export function leesWeekRegels(rijen: ReadonlyArray<readonly string[]>): Gelezen
 // De sleutel
 // ---------------------------------------------------------------------------
 
-/** Waar `weekSleutels` naar kijkt. Smal gehouden, zodat een test geen hele regel hoeft te bouwen. */
-export type SleutelRegel = Pick<WeekRegel, 'weekdag' | 'beginuur' | 'terreinen' | 'groep'>;
+/**
+ * Waar `weekSleutels` naar kijkt.
+ *
+ * `baanSleutel` en niet de naam uit het bestand: dit moet het baan-ID zijn, want `groepSleutel`
+ * in lib/lesgroepen sleutelt bestaande groepen op `court_id`. Zaten de twee kanten in een andere
+ * ruimte — hier "terrein 7", daar "c7" — dan vond de import nooit één bestaande groep terug en
+ * kwamen er elk seizoen 192 nieuwe bij. Het omzetten van naam naar ID doet `groepenUitWeekRegels`
+ * met `zoekBaan`, want alleen die kent de banen van de club.
+ */
+export interface SleutelRegel {
+  weekdag: number;
+  beginuur: number;
+  baanSleutel: string;
+  groep: string;
+}
 
-/** De sleutel zonder tiebreak: weekdag, beginuur en het eerste terrein. */
+/** De sleutel zonder tiebreak: weekdag, beginuur en de baan — precies `groepSleutel`. */
 function grondSleutel(r: SleutelRegel): string {
-  return `${r.weekdag}|${r.beginuur}|${(r.terreinen[0] ?? '').trim().toLowerCase()}`;
+  return `${r.weekdag}|${r.beginuur}|${r.baanSleutel}`;
 }
 
 /**
@@ -390,4 +408,137 @@ export function weekSleutels(regels: ReadonlyArray<SleutelRegel>): string[] {
     gebruikt.set(basis, eerder + 1);
     return eerder === 0 ? basis : `${basis}#${eerder + 1}`;
   });
+}
+
+// ---------------------------------------------------------------------------
+// Van regels naar geplande groepen — waar de twee formaten samenkomen
+// ---------------------------------------------------------------------------
+
+/**
+ * De spelers van alle groepen als één platte lijst, zodat `spelersUitRegels` ze kan lezen.
+ *
+ * De volgorde is die van het bestand, en het regelnummer is dat van de groep waarin de speler
+ * stond: een melding over "Jan Jansen" wijst dan naar de regel waar de beheerder hem ziet staan.
+ * Ontdubbelen gebeurt hier niet — dat doet `spelersUitRegels` al, en het twee keer doen zou
+ * betekenen dat twee plekken moeten blijven afspreken wat dezelfde naam is.
+ *
+ * De e-mail is altijd leeg: de clublijst heeft geen adreskolom. Wat daarmee gebeurt staat in
+ * `demoAdres` — een leeg adres kan niet, want `users.email` is uniek én verplicht.
+ */
+export function spelerRegelsUitWeek(regels: readonly WeekRegel[]): SpelerRegel[] {
+  const uit: SpelerRegel[] = [];
+  for (const r of regels) {
+    for (const naam of r.spelers) {
+      uit.push({ regel: r.regel, leerling: naam, emailLeerling: '' });
+    }
+  }
+  return uit;
+}
+
+/**
+ * Van regels naar geplande groepen: de laatste stap die het formaat nog kent.
+ *
+ * Wat hier met opzet NIET gebeurt: de trainer opzoeken, de spelers aan leden koppelen, de lessen
+ * inplannen. Dat doet `planImportLessen` voor allebei de formaten met dezelfde functies. Deze
+ * functie levert `GeplandeGroep` op, en daarmee houdt het verschil tussen de twee bestanden op te
+ * bestaan.
+ *
+ * Het seizoen komt van buiten en niet uit het bestand, want het bestand heeft geen datums. Het
+ * staat in de clubinstellingen sinds SEIZOEN-EN-LESDUUR.sql; `seizoenUitSettings` haalt het eruit
+ * en `planImportLessen` weigert het weekschema zolang het er niet staat.
+ */
+export function groepenUitWeekRegels(
+  regels: readonly WeekRegel[],
+  bestaande: readonly LesGroep[],
+  courts: readonly Court[],
+  seizoen: Seizoen,
+): { groepen: GeplandeGroep[]; waarschuwingen: ImportFoutLessen[] } {
+  const waarschuwingen: ImportFoutLessen[] = [];
+
+  // Gearchiveerde groepen tellen niet mee bij het herkennen — dezelfde regel als in
+  // `groepenUitRegels`: archiveren was een bewuste daad van de club, en een import die zo'n groep
+  // weer tot leven wekt maakt die daad ongedaan zonder het te vragen. Er komt dan een nieuwe bij.
+  const actief = actieveGroepen([...bestaande]);
+  const opSleutel = new Map<string, LesGroep>();
+  const opNaamSleutel = new Map<string, LesGroep>();
+  for (const g of actief) {
+    // De eerste wint: twee actieve groepen op dezelfde sleutel mag (zie `lesGroepFout`), en welke
+    // van de twee we dan kiezen is niet aan de import om stil te veranderen.
+    if (!opSleutel.has(groepSleutel(g))) opSleutel.set(groepSleutel(g), g);
+    // Dezelfde tiebreak als in het bestand, maar dan over de bestaande groepen. Zonder deze kaart
+    // zou een bestand waarin het kleutertennis mét naam gesleuteld is nooit meer dan één van die
+    // groepen terugvinden — de andere zou elk seizoen als nieuwe groep terugkomen.
+    const metNaam = `${groepSleutel(g)}|${g.name.trim().toLowerCase()}`;
+    if (!opNaamSleutel.has(metNaam)) opNaamSleutel.set(metNaam, g);
+  }
+
+  // Naam naar ID, vóór het sleutelen. Kent de club de baan niet, dan blijft de naam staan als
+  // sleutel: zo botsen twee groepen op datzelfde onbekende terrein nog steeds met elkaar, en
+  // niet met een groep zonder baan.
+  const baanSleutelVan = (r: WeekRegel): string => {
+    const naam = (r.terreinen[0] ?? '').trim();
+    if (!naam) return '';
+    return zoekBaan(courts, naam)?.id ?? naam.toLowerCase();
+  };
+
+  const sleutels = weekSleutels(regels.map((r) => ({
+    weekdag: r.weekdag,
+    beginuur: r.beginuur,
+    baanSleutel: baanSleutelVan(r),
+    groep: r.groep,
+  })));
+  const groepen = regels.map((r, i): GeplandeGroep => {
+    const sleutel = sleutels[i];
+    const baanNaam = (r.terreinen[0] ?? '').trim();
+
+    if (r.terreinen.length > 1) {
+      waarschuwingen.push({
+        regel: r.regel,
+        reden: 'Deze groep staat op meerdere terreinen; ik zet haar op {baan}. De andere: {rest}.',
+        vars: { baan: baanNaam, rest: r.terreinen.slice(1).join(', ') },
+      });
+    }
+    if (r.trainers.length > 1) {
+      waarschuwingen.push({
+        regel: r.regel,
+        reden: 'Deze groep heeft meerdere trainers; ik zet {trainer} erop. De andere: {rest}.',
+        vars: { trainer: r.trainers[0], rest: r.trainers.slice(1).join(', ') },
+      });
+    }
+    if (baanNaam && !zoekBaan(courts, baanNaam)) {
+      waarschuwingen.push({
+        regel: r.regel,
+        reden: 'Dit terrein kent de club niet: {baan}. De groep komt er wel, maar zonder lessen tot ze een baan heeft.',
+        vars: { baan: baanNaam },
+      });
+    }
+
+    // Eerst op de sleutel mét naam, dan op de grondsleutel — en niet andersom. Een bestand dat de
+    // naam nodig had om twee groepen uit elkaar te houden moet ze allebei kunnen terugvinden;
+    // zonder deze volgorde zouden ze samen naar dezelfde bestaande groep wijzen.
+    const bestaandeGroep = opNaamSleutel.get(sleutel) ?? opSleutel.get(sleutel) ?? null;
+
+    return {
+      sleutel,
+      bestaand: bestaandeGroep,
+      // Dit formaat heeft geen kolom `Groep-ID`; het herkennen loopt uitsluitend via de sleutel.
+      viaGroepId: false,
+      naam: r.groep.trim() || groepsnaamUitMoment(r.weekdag, r.beginuur, r.beginminuut, baanNaam),
+      niveau: r.doelgroep.trim(),
+      weekdag: r.weekdag,
+      beginuur: r.beginuur,
+      beginminuut: r.beginminuut,
+      duurMinuten: r.duurMinuten,
+      coachNaam: r.trainers[0] ?? '',
+      baanNaam,
+      seizoenVan: seizoen.van,
+      seizoenTot: seizoen.tot,
+      leerlingNamen: r.spelers,
+      // Dit formaat kent geen `LesRegel`. Wat de pijplijn erna met `regels` doet is naar een
+      // regelnummer wijzen, en dat staat al in de waarschuwingen hierboven.
+      regels: [],
+    };
+  });
+
+  return { groepen, waarschuwingen };
 }

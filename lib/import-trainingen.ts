@@ -513,6 +513,14 @@ export interface GeplandeGroep {
   weekdag: number;
   beginuur: number;
   beginminuut: number;
+  /**
+   * De lesduur van deze groep in minuten, of `null` voor de lesduur van de club.
+   *
+   * Het sjabloon van de app geeft die niet — daar staat één begintijd per les — dus daar is dit
+   * altijd `null`. De clublijst geeft een reeks (`16:00 - 17:00`) en daaruit volgt de duur; vier
+   * van haar 192 groepen wijken af van de 60 minuten van de club.
+   */
+  duurMinuten: number | null;
   /** De naam zoals hij in de kolom `Coach` stond; opzoeken doet `zoekTrainer`. */
   coachNaam: string;
   /** De naam of het nummer zoals het in de kolom `Baan` stond; leeg als er geen kolom was. */
@@ -841,6 +849,9 @@ export function groepenUitRegels(
       weekdag: emmer.weekdag,
       beginuur: emmer.beginuur,
       beginminuut: emmer.beginminuut,
+      // Het sjabloon van de app kent geen lesduur per groep: één begintijd per les, en de duur
+      // komt van de clubinstelling. Zie `GeplandeGroep.duurMinuten`.
+      duurMinuten: null,
       coachNaam: coach.gekozen,
       baanNaam: baan.gekozen,
       seizoenVan: emmer.seizoenVan,
@@ -961,8 +972,18 @@ interface SpelerEmmer {
  * melding. Hem dan maar als nieuw lid opnemen zou een derde naamgenoot opleveren, en dat is
  * erger dan hem overslaan: de beheerder beslist welke van de twee het is (T-05-11).
  */
+/**
+ * De drie velden die `spelersUitRegels` van een regel leest.
+ *
+ * Smal gehouden zodat het weekschema dezelfde spelerslezer kan gebruiken: dat formaat kent geen
+ * `LesRegel` — het heeft per groep een lijst namen in één cel — maar wel deze drie. Eén plek die
+ * bepaalt wie een bestaand lid is en wie een nieuw, voor allebei de formaten; een tweede zou
+ * vroeg of laat anders gaan matchen dan deze.
+ */
+export type SpelerRegel = Pick<LesRegel, 'regel' | 'leerling' | 'emailLeerling'>;
+
 export function spelersUitRegels(
-  regels: readonly LesRegel[],
+  regels: readonly SpelerRegel[],
   users: readonly User[],
 ): { spelers: GeplandeSpeler[]; waarschuwingen: ImportFoutLessen[] } {
   const emmers = new Map<string, SpelerEmmer>();

@@ -1,7 +1,10 @@
 import {
-  isWeekschema, leesKopregelWeekschema, leesLijstCel, leesUurReeksCel, leesWeekdagCel,
-  leesWeekRegels, weekSleutels,
+  groepenUitWeekRegels, isWeekschema, leesKopregelWeekschema, leesLijstCel, leesUurReeksCel,
+  leesWeekdagCel, leesWeekRegels, spelerRegelsUitWeek, weekSleutels, type WeekRegel,
 } from './import-weekschema';
+import { spelersUitRegels } from './import-trainingen';
+import { groepSleutel } from './lesgroepen';
+import type { Court, LesGroep } from './types';
 
 describe('leesWeekdagCel', () => {
   it('leest de zeven dagen, met zondag = 0 zoals LesGroep.weekday', () => {
@@ -249,45 +252,203 @@ describe('leesWeekRegels', () => {
 // De sleutel
 // ---------------------------------------------------------------------------
 
-const basis = {
-  weekdag: 3, beginuur: 14, terreinen: ['Terrein 7'], groep: 'Blauw 1',
-};
+const basis = { weekdag: 3, beginuur: 14, baanSleutel: 'c7', groep: 'Blauw 1' };
 
 describe('weekSleutels', () => {
-  it('gebruikt weekdag, uur en terrein als er niets botst', () => {
+  it('gebruikt weekdag, uur en baan als er niets botst', () => {
     expect(weekSleutels([
       { ...basis },
       { ...basis, weekdag: 6, groep: 'Rood 1' },
-    ])).toEqual(['3|14|terrein 7', '6|14|terrein 7']);
+    ])).toEqual(['3|14|c7', '6|14|c7']);
+  });
+
+  it('staat in dezelfde vorm als groepSleutel, zodat de twee kanten elkaar vinden', () => {
+    expect(weekSleutels([{ ...basis }])[0]).toBe(groepSleutel({
+      weekday: 3, start_hour: 14, court_id: 'c7',
+    }));
   });
 
   it('zet de groepsnaam erbij zodra twee regels op dezelfde sleutel vallen', () => {
     expect(weekSleutels([
       { ...basis, groep: 'Blauw 1' },
       { ...basis, groep: 'Rood 3' },
-    ])).toEqual(['3|14|terrein 7|blauw 1', '3|14|terrein 7|rood 3']);
+    ])).toEqual(['3|14|c7|blauw 1', '3|14|c7|rood 3']);
   });
 
   it('laat de groepen zonder botsing ongemoeid als het ergens anders wél botst', () => {
     const sleutels = weekSleutels([
       { ...basis, groep: 'Blauw 1' },
       { ...basis, groep: 'Rood 3' },
-      { ...basis, weekdag: 5, terreinen: ['Terrein 8'], groep: 'Tieners 2' },
+      { ...basis, weekdag: 5, baanSleutel: 'c8', groep: 'Tieners 2' },
     ]);
-    expect(sleutels[2]).toBe('5|14|terrein 8');
+    expect(sleutels[2]).toBe('5|14|c8');
   });
 
-  it('gebruikt alleen het eerste terrein, want daar komt de groep te staan', () => {
-    expect(weekSleutels([{ ...basis, terreinen: ['Terrein 10', 'Terrein 11'], groep: 'Wit 1' }]))
-      .toEqual(['3|14|terrein 10']);
-  });
-
-  it('kan zonder terrein', () => {
-    expect(weekSleutels([{ ...basis, terreinen: [] }])).toEqual(['3|14|']);
+  it('kan zonder baan', () => {
+    expect(weekSleutels([{ ...basis, baanSleutel: '' }])).toEqual(['3|14|']);
   });
 
   it('houdt twee regels die op alles gelijk zijn toch uit elkaar', () => {
     const sleutels = weekSleutels([{ ...basis }, { ...basis }]);
     expect(sleutels[0]).not.toBe(sleutels[1]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Van regels naar geplande groepen
+// ---------------------------------------------------------------------------
+
+const SEIZOEN = { van: '2026-09-07', tot: '2027-06-30' };
+const BANEN = [
+  { id: 'c7', name: 'Terrein 7', number: 7, hourly_rate: 60 },
+  { id: 'c8', name: 'Terrein 8', number: 8, hourly_rate: 60 },
+] as unknown as Court[];
+
+const weekRegel = (over: Partial<WeekRegel> = {}): WeekRegel => ({
+  regel: 2,
+  doelgroep: 'Kidstennis blauw',
+  groep: 'Blauw - Groep 1',
+  weekdag: 3,
+  beginuur: 14,
+  beginminuut: 0,
+  duurMinuten: 60,
+  terreinen: ['Terrein 7'],
+  trainers: ['Devries Ann'],
+  spelers: ['Jan Jansen', 'Piet Peeters'],
+  ...over,
+});
+
+const lesGroep = (over: Partial<LesGroep> = {}): LesGroep => ({
+  id: 'g1',
+  name: 'Blauw - Groep 1',
+  level: 'Kidstennis blauw',
+  weekday: 3,
+  start_hour: 14,
+  start_minute: 0,
+  court_id: 'c7',
+  season_start: '2026-09-07',
+  season_end: '2027-06-30',
+  roster: [],
+  archived: false,
+  ...over,
+});
+
+describe('groepenUitWeekRegels', () => {
+  it('maakt van één regel één groep', () => {
+    const { groepen } = groepenUitWeekRegels([weekRegel()], [], BANEN, SEIZOEN);
+    expect(groepen).toHaveLength(1);
+    expect(groepen[0]).toMatchObject({
+      naam: 'Blauw - Groep 1',
+      niveau: 'Kidstennis blauw',
+      weekdag: 3,
+      beginuur: 14,
+      beginminuut: 0,
+      duurMinuten: 60,
+      coachNaam: 'Devries Ann',
+      baanNaam: 'Terrein 7',
+      seizoenVan: '2026-09-07',
+      seizoenTot: '2027-06-30',
+      leerlingNamen: ['Jan Jansen', 'Piet Peeters'],
+      bestaand: null,
+      viaGroepId: false,
+    });
+  });
+
+  it('neemt het eerste terrein en meldt de rest', () => {
+    const { groepen, waarschuwingen } = groepenUitWeekRegels(
+      [weekRegel({ terreinen: ['Terrein 10', 'Terrein 11'] })], [], BANEN, SEIZOEN,
+    );
+    expect(groepen[0].baanNaam).toBe('Terrein 10');
+    expect(waarschuwingen.some((w) => w.regel === 2)).toBe(true);
+  });
+
+  it('neemt de eerste trainer en meldt de rest', () => {
+    const { groepen, waarschuwingen } = groepenUitWeekRegels(
+      [weekRegel({ trainers: ['Devries Ann', 'Lasoen Bart'] })], [], BANEN, SEIZOEN,
+    );
+    expect(groepen[0].coachNaam).toBe('Devries Ann');
+    expect(waarschuwingen.some((w) => w.regel === 2)).toBe(true);
+  });
+
+  it('maakt een groep zonder spelers aan, met een leeg rooster en zonder waarschuwing', () => {
+    const { groepen, waarschuwingen } = groepenUitWeekRegels(
+      [weekRegel({ spelers: [] })], [], BANEN, SEIZOEN,
+    );
+    expect(groepen[0].leerlingNamen).toEqual([]);
+    expect(waarschuwingen).toEqual([]);
+  });
+
+  it('herkent een bestaande groep op weekdag, uur en baan', () => {
+    const { groepen } = groepenUitWeekRegels([weekRegel()], [lesGroep()], BANEN, SEIZOEN);
+    expect(groepen[0].bestaand?.id).toBe('g1');
+  });
+
+  it('herkent een gearchiveerde groep niet: archiveren was een bewuste daad', () => {
+    const { groepen } = groepenUitWeekRegels(
+      [weekRegel()], [lesGroep({ archived: true })], BANEN, SEIZOEN,
+    );
+    expect(groepen[0].bestaand).toBeNull();
+  });
+
+  it('houdt twee groepen op hetzelfde terrein en uur uit elkaar via hun naam', () => {
+    const { groepen } = groepenUitWeekRegels(
+      [weekRegel({ groep: 'Blauw - Groep 1' }), weekRegel({ regel: 3, groep: 'Rood - Groep 3' })],
+      [], BANEN, SEIZOEN,
+    );
+    expect(groepen).toHaveLength(2);
+    expect(groepen[0].sleutel).not.toBe(groepen[1].sleutel);
+  });
+
+  it('vindt allebei de botsende groepen terug als ze al bestaan', () => {
+    const bestaand = [
+      lesGroep({ id: 'g1', name: 'Blauw - Groep 1' }),
+      lesGroep({ id: 'g2', name: 'Rood - Groep 3' }),
+    ];
+    const { groepen } = groepenUitWeekRegels(
+      [weekRegel({ groep: 'Blauw - Groep 1' }), weekRegel({ regel: 3, groep: 'Rood - Groep 3' })],
+      bestaand, BANEN, SEIZOEN,
+    );
+    expect(groepen.map((g) => g.bestaand?.id)).toEqual(['g1', 'g2']);
+  });
+
+  it('meldt een terrein dat de club niet kent', () => {
+    const { groepen, waarschuwingen } = groepenUitWeekRegels(
+      [weekRegel({ terreinen: ['Terrein 99'] })], [], BANEN, SEIZOEN,
+    );
+    expect(groepen[0].baanNaam).toBe('Terrein 99');
+    expect(waarschuwingen.some((w) => w.regel === 2)).toBe(true);
+  });
+
+  it('laat duurMinuten leeg als de cel geen einde gaf', () => {
+    const { groepen } = groepenUitWeekRegels(
+      [weekRegel({ duurMinuten: null })], [], BANEN, SEIZOEN,
+    );
+    expect(groepen[0].duurMinuten).toBeNull();
+  });
+
+  it('verzint een naam uit het moment als de kolom Groep leeg is', () => {
+    const { groepen } = groepenUitWeekRegels([weekRegel({ groep: '' })], [], BANEN, SEIZOEN);
+    expect(groepen[0].naam).toBe('Woensdag 14:00 — Terrein 7');
+  });
+});
+
+describe('spelerRegelsUitWeek', () => {
+  it('maakt van de spelers per groep één lijst voor spelersUitRegels', () => {
+    expect(spelerRegelsUitWeek([
+      weekRegel({ regel: 2, spelers: ['Jan Jansen', 'Piet Peeters'] }),
+      weekRegel({ regel: 3, spelers: ['Jan Jansen'] }),
+    ])).toEqual([
+      { regel: 2, leerling: 'Jan Jansen', emailLeerling: '' },
+      { regel: 2, leerling: 'Piet Peeters', emailLeerling: '' },
+      { regel: 3, leerling: 'Jan Jansen', emailLeerling: '' },
+    ]);
+  });
+
+  it('levert samen met spelersUitRegels één speler per unieke naam', () => {
+    const { spelers } = spelersUitRegels(spelerRegelsUitWeek([
+      weekRegel({ regel: 2, spelers: ['Jan Jansen', 'Piet Peeters'] }),
+      weekRegel({ regel: 3, spelers: ['jan jansen'] }),
+    ]), []);
+    expect(spelers.map((s) => s.naam)).toEqual(['Jan Jansen', 'Piet Peeters']);
   });
 });
