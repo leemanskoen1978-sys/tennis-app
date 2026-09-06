@@ -1,6 +1,11 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 import {
-  bestandAfgekeurdLessen, leesKopregelLessen,
+  bestandAfgekeurdLessen, kiesLessenBlad, leesDatumCel, leesKopregelLessen, leesLesRegels,
+  leesUurCel,
 } from './import-trainingen';
+import { leesWerkmap } from './xlsx-lezen';
 
 // De koprij van `koen.xlsx`, letterlijk zoals plan 05-03 hem uit het echte bestand las. Vier
 // van de tien kolommen betekenen niets voor de import; ze mogen dus geen ruis opleveren.
@@ -118,5 +123,230 @@ describe('bestandAfgekeurdLessen', () => {
 
   it('is onwaar zonder fouten', () => {
     expect(bestandAfgekeurdLessen({ regels: [], fouten: [] })).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// De cellen en de regels
+// ---------------------------------------------------------------------------
+
+/**
+ * Het echte bestand van de club, net als in `lib/xlsx-lezen.test.ts`. De helper staat hier
+ * opnieuw en niet in een gedeeld testbestand: elk `lib/*.ts` heeft in dit project precies één
+ * `lib/*.test.ts` ernaast, en een derde bestand dat geen module maar alleen testgerei is, zou
+ * die regel doorbreken voor drie regels code. De prijs is deze kleine herhaling; de winst is dat
+ * beide tests op zichzelf te lezen zijn.
+ */
+function koenBytes(): Uint8Array {
+  const rauw = readFileSync(join(__dirname, '..', 'koen.xlsx'));
+  return new Uint8Array(rauw.buffer, rauw.byteOffset, rauw.byteLength);
+}
+
+/** De koprij die de rest van deze tests gebruikt: de vijf verplichte kolommen, in die volgorde. */
+const KOP_MINIMAAL = ['Datum', 'Uur', 'Groep', 'Coach', 'Leerling'];
+
+describe('leesDatumCel', () => {
+  it('leest het serienummer dat Excel opslaat', () => {
+    expect(leesDatumCel('46274')).toEqual({ jaar: 2026, maand: 9, dag: 9 });
+  });
+
+  it('leest dezelfde dag als DD/MM/JJJJ', () => {
+    expect(leesDatumCel('09/09/2026')).toEqual({ jaar: 2026, maand: 9, dag: 9 });
+  });
+
+  it('leest ook met een koppelteken of een punt als scheiding', () => {
+    expect(leesDatumCel('9-9-2026')).toEqual({ jaar: 2026, maand: 9, dag: 9 });
+    expect(leesDatumCel('9.9.2026')).toEqual({ jaar: 2026, maand: 9, dag: 9 });
+  });
+
+  it('leest de dag vóór de maand, zoals Nederlandse Excel schrijft', () => {
+    expect(leesDatumCel('03/12/2026')).toEqual({ jaar: 2026, maand: 12, dag: 3 });
+  });
+
+  it('geeft niets bij een dag die in die maand niet bestaat', () => {
+    // 31 februari mag nooit stilletjes 3 maart worden: dat is precies het soort verschuiving
+    // die een heel seizoen scheeftrekt zonder dat iemand het merkt.
+    expect(leesDatumCel('31/02/2026')).toBeNull();
+    expect(leesDatumCel('31/04/2026')).toBeNull();
+  });
+
+  it('kent de schrikkeldag', () => {
+    expect(leesDatumCel('29/02/2028')).toEqual({ jaar: 2028, maand: 2, dag: 29 });
+    expect(leesDatumCel('29/02/2027')).toBeNull();
+  });
+
+  it('geeft niets bij tekst die geen datum is', () => {
+    expect(leesDatumCel('morgen')).toBeNull();
+    expect(leesDatumCel('')).toBeNull();
+    expect(leesDatumCel('9/9')).toBeNull();
+    expect(leesDatumCel('0')).toBeNull();
+  });
+});
+
+describe('leesUurCel', () => {
+  it('leest de tijdbreuk die Excel opslaat', () => {
+    expect(leesUurCel('0.625')).toEqual({ uur: 15, minuut: 0 });
+  });
+
+  it('leest hetzelfde uur als HH:MM', () => {
+    expect(leesUurCel('15:00')).toEqual({ uur: 15, minuut: 0 });
+    expect(leesUurCel('9:30')).toEqual({ uur: 9, minuut: 30 });
+    expect(leesUurCel('09.30')).toEqual({ uur: 9, minuut: 30 });
+  });
+
+  it('geeft 14:00 en niet 13:59 bij de breuk uit koen.xlsx', () => {
+    expect(leesUurCel('0.58333333333333337')).toEqual({ uur: 14, minuut: 0 });
+  });
+
+  it('geeft niets buiten een echte klok', () => {
+    expect(leesUurCel('24:00')).toBeNull();
+    expect(leesUurCel('15:60')).toBeNull();
+    expect(leesUurCel('kwart over')).toBeNull();
+    expect(leesUurCel('')).toBeNull();
+  });
+});
+
+describe('kiesLessenBlad', () => {
+  const blad = (naam: string) => ({ naam, rijen: [] });
+
+  it('kiest het blad Lessen uit de werkmap van de eigen export', () => {
+    const gekozen = kiesLessenBlad([blad('Groepen'), blad('Lessen'), blad('Uren per trainer')]);
+    expect(gekozen?.naam).toBe('Lessen');
+  });
+
+  it('trekt zich niets aan van hoofdletters', () => {
+    expect(kiesLessenBlad([blad('Groepen'), blad('LESSEN')])?.naam).toBe('LESSEN');
+  });
+
+  it('neemt het enige blad als het anders heet', () => {
+    expect(kiesLessenBlad([blad('Sheet1')])?.naam).toBe('Sheet1');
+  });
+
+  it('geeft niets bij een werkmap zonder bladen', () => {
+    expect(kiesLessenBlad([])).toBeNull();
+  });
+});
+
+describe('leesLesRegels', () => {
+  it('geeft per bruikbare rij een regel met het nummer zoals Excel het toont', () => {
+    const uitkomst = leesLesRegels([
+      KOP_MINIMAAL,
+      ['46274', '0.625', 'Groep 4', 'Leemans Koen', 'de Clippele Antoine'],
+    ]);
+    expect(uitkomst.fouten).toEqual([]);
+    expect(uitkomst.regels).toEqual([{
+      regel: 2,
+      datum: { jaar: 2026, maand: 9, dag: 9 },
+      uur: { uur: 15, minuut: 0 },
+      groep: 'Groep 4',
+      groepId: '',
+      typeLes: '',
+      coach: 'Leemans Koen',
+      leerling: 'de Clippele Antoine',
+      emailLeerling: '',
+      baan: '',
+    }]);
+  });
+
+  it('trimt elke tekstcel', () => {
+    const uitkomst = leesLesRegels([
+      [...KOP_MINIMAAL, 'Groep-ID', 'Type les', 'E-mail leerling', 'Baan'],
+      ['09/09/2026', '15:00', ' Groep 4 ', ' Koen ', ' Antoine ', ' g-7 ', ' Duoles ', ' a@b.be ', ' Baan 2 '],
+    ]);
+    expect(uitkomst.regels[0]).toMatchObject({
+      groep: 'Groep 4', coach: 'Koen', leerling: 'Antoine',
+      groepId: 'g-7', typeLes: 'Duoles', emailLeerling: 'a@b.be', baan: 'Baan 2',
+    });
+  });
+
+  it('meldt een onleesbare datum met regelnummer en waarde, en geeft er geen regel voor', () => {
+    const uitkomst = leesLesRegels([
+      KOP_MINIMAAL,
+      ['morgen', '15:00', 'Groep 4', 'Koen', 'Antoine'],
+    ]);
+    expect(uitkomst.regels).toEqual([]);
+    expect(uitkomst.fouten).toEqual([
+      { regel: 2, reden: 'Deze datum kon niet gelezen worden: {waarde}', vars: { waarde: 'morgen' } },
+    ]);
+  });
+
+  it('meldt een onleesbaar uur met regelnummer en waarde', () => {
+    const uitkomst = leesLesRegels([
+      KOP_MINIMAAL,
+      ['09/09/2026', 'kwart over', 'Groep 4', 'Koen', 'Antoine'],
+    ]);
+    expect(uitkomst.regels).toEqual([]);
+    expect(uitkomst.fouten[0]).toEqual(
+      { regel: 2, reden: 'Dit uur kon niet gelezen worden: {waarde}', vars: { waarde: 'kwart over' } },
+    );
+  });
+
+  it('meldt een lege coach en een lege leerling', () => {
+    const uitkomst = leesLesRegels([
+      KOP_MINIMAAL,
+      ['09/09/2026', '15:00', 'Groep 4', '  ', 'Antoine'],
+      ['09/09/2026', '15:00', 'Groep 4', 'Koen', ''],
+    ]);
+    expect(uitkomst.regels).toEqual([]);
+    expect(uitkomst.fouten.map((f) => f.regel)).toEqual([2, 3]);
+  });
+
+  it('laat een lege groep gewoon door: dat is een privéles', () => {
+    const uitkomst = leesLesRegels([
+      KOP_MINIMAAL,
+      ['09/09/2026', '15:00', '', 'Koen', 'Antoine'],
+    ]);
+    expect(uitkomst.fouten).toEqual([]);
+    expect(uitkomst.regels[0].groep).toBe('');
+  });
+
+  it('slaat een lege rij stilzwijgend over, ook als er alleen witruimte in staat', () => {
+    const uitkomst = leesLesRegels([
+      KOP_MINIMAAL,
+      [],
+      ['  ', '', '   ', '', ' '],
+      ['09/09/2026', '15:00', 'Groep 4', 'Koen', 'Antoine'],
+    ]);
+    expect(uitkomst.fouten).toEqual([]);
+    expect(uitkomst.regels.map((r) => r.regel)).toEqual([4]);
+  });
+
+  it('keurt een bestand zonder verplichte kolom af met één fout op regel 1', () => {
+    const uitkomst = leesLesRegels([
+      ['Datum', 'Uur', 'Groep', 'Leerling'],
+      ['09/09/2026', '15:00', 'Groep 4', 'Antoine'],
+    ]);
+    expect(uitkomst.regels).toEqual([]);
+    expect(uitkomst.fouten).toHaveLength(1);
+    expect(uitkomst.fouten[0].regel).toBe(1);
+    expect(bestandAfgekeurdLessen(uitkomst)).toBe(true);
+  });
+
+  it('keurt een leeg bestand af met één fout op regel 1', () => {
+    const uitkomst = leesLesRegels([]);
+    expect(bestandAfgekeurdLessen(uitkomst)).toBe(true);
+  });
+
+  it('geeft de lijstjes van de koprij door', () => {
+    const uitkomst = leesLesRegels([[...KOP_MINIMAAL, 'Opmerking', 'Coach']]);
+    expect(uitkomst.nietHerkend).toEqual(['Opmerking']);
+    expect(uitkomst.dubbel).toEqual(['Coach']);
+  });
+
+  it('leest de 1398 regels van koen.xlsx zonder één fout', () => {
+    const blad = kiesLessenBlad(leesWerkmap(koenBytes()));
+    const uitkomst = leesLesRegels(blad!.rijen);
+    expect(uitkomst.fouten).toEqual([]);
+    expect(uitkomst.nietHerkend).toEqual([]);
+    expect(uitkomst.regels).toHaveLength(1398);
+    expect(uitkomst.regels[0]).toMatchObject({
+      regel: 2,
+      datum: { jaar: 2026, maand: 9, dag: 9 },
+      uur: { uur: 14, minuut: 0 },
+      typeLes: 'Duoles',
+      groep: 'Groep 4',
+      coach: 'Leemans Koen',
+      leerling: 'de Clippele Antoine',
+    });
   });
 });
