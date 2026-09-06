@@ -1947,7 +1947,7 @@ export function planImportLessen(
   // Welk van de twee formaten is dit? De clublijst heeft een kolom `Weekdag` en het sjabloon van
   // de app heeft datums; die twee sluiten elkaar uit. Zie `isWeekschema` voor waarom er op dat
   // ene woord gekozen wordt en niet op de zeven koppen samen.
-  const isWeek = rijen.length > 0 && isWeekschema(rijen[0]);
+  const isWeek = isWeekschema(rijen);
   const gelezenWeek = isWeek ? leesWeekRegels(rijen) : null;
   const gelezen = isWeek ? null : leesLesRegels(rijen);
   const gelezenIets = gelezenWeek ?? gelezen;

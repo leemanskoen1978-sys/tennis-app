@@ -220,7 +220,7 @@ function ImportInhoud(): React.JSX.Element {
         return;
       }
       setLeesFout(null);
-      setWeekschema(blad.rijen.length > 0 && isWeekschema(blad.rijen[0]));
+      setWeekschema(isWeekschema(blad.rijen));
       const moment = new Date();
       setNu(moment);
       setPlan(planImportLessen(

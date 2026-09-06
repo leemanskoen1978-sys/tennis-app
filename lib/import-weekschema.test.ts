@@ -1,6 +1,7 @@
 import {
   groepenUitWeekRegels, isWeekschema, leesKopregelWeekschema, leesLijstCel, leesUurReeksCel,
-  leesWeekdagCel, leesWeekRegels, spelerRegelsUitWeek, weekSleutels, type WeekRegel,
+  leesWeekdagCel, leesWeekRegels, spelerRegelsUitWeek, vindKopregelWeekschema, weekSleutels,
+  type WeekRegel,
 } from './import-weekschema';
 import { spelersUitRegels } from './import-trainingen';
 import { groepSleutel } from './lesgroepen';
@@ -140,24 +141,50 @@ describe('leesKopregelWeekschema', () => {
 
 describe('isWeekschema', () => {
   it('herkent de clublijst', () => {
-    expect(isWeekschema(KOP)).toBe(true);
+    expect(isWeekschema([KOP])).toBe(true);
   });
 
   it('herkent het sjabloon van de app niet als weekschema', () => {
-    expect(isWeekschema(['Datum', 'Uur', 'Groep', 'Coach', 'Leerling'])).toBe(false);
+    expect(isWeekschema([['Datum', 'Uur', 'Groep', 'Coach', 'Leerling']])).toBe(false);
   });
 
   it('kiest de datum boven de weekdag: koen.xlsx heeft ze allebei', () => {
     // Het echte bestand van de club in het eerste formaat heeft een kolom `Weekdag` staan naast
     // `Weeknr`, `Locatie` en `Indoor/Outdoor`. Op de weekdag kiezen stuurde het naar de
     // verkeerde lezer en liet alle 1398 regels verdwijnen.
-    expect(isWeekschema(
+    expect(isWeekschema([
       ['Datum', 'Weekdag', 'Weeknr', 'Uur', 'Groep', 'Coach', 'Leerling', 'Indoor/Outdoor'],
-    )).toBe(false);
+    ])).toBe(false);
   });
 
   it('is geen weekschema zonder Weekdag, ook al staat Speler(s) er', () => {
-    expect(isWeekschema(['Groep', 'Uur', 'Speler(s)'])).toBe(false);
+    expect(isWeekschema([['Groep', 'Uur', 'Speler(s)']])).toBe(false);
+  });
+
+  it('vindt de koprij ook als er een titel en een lege regel boven staan', () => {
+    // Zo levert de club haar bestand echt aan: rij 1 is "Aanbod: Tennis - Jaarcyclus 2026 -
+    // 2027", rij 2 is leeg, en pas rij 3 draagt de koppen.
+    expect(isWeekschema([
+      ['Aanbod: Tennis - Jaarcyclus 2026 - 2027', ''],
+      [],
+      KOP,
+    ])).toBe(true);
+  });
+});
+
+describe('vindKopregelWeekschema', () => {
+  it('wijst rij 3 aan als de koprij daar staat', () => {
+    const gevonden = vindKopregelWeekschema([
+      ['Aanbod: Tennis - Jaarcyclus 2026 - 2027', ''],
+      [],
+      KOP,
+    ]);
+    expect(gevonden?.index).toBe(2);
+    expect(gevonden?.kop.kolommen).not.toBeNull();
+  });
+
+  it('geeft null als er nergens bovenaan een koprij staat', () => {
+    expect(vindKopregelWeekschema([['een'], ['twee']])).toBeNull();
   });
 });
 
@@ -257,6 +284,30 @@ describe('leesWeekRegels', () => {
     expect(uit.regels).toEqual([]);
     expect(uit.fouten).toHaveLength(1);
     expect(uit.nietHerkend).toEqual(['Onbekend']);
+  });
+
+  it('leest door de titelregel van de club heen, en telt de regels vanaf de koprij', () => {
+    const uit = leesWeekRegels([
+      ['Aanbod: Tennis - Jaarcyclus 2026 - 2027', ''],
+      [],
+      KOP,
+      rij('Kidstennis blauw', 'Blauw - Groep 1', 'woensdag', '14:00 - 15:00',
+        'Terrein 7', 'Devries Ann', 'Jan Jansen'),
+    ]);
+    expect(uit.fouten).toEqual([]);
+    expect(uit.regels).toHaveLength(1);
+    // Regel 4 zoals de beheerder hem in Excel ziet, niet regel 2.
+    expect(uit.regels[0].regel).toBe(4);
+  });
+
+  it('meldt de kolommen die na Speler(s) staan als niet herkend, zonder erover te vallen', () => {
+    const uit = leesWeekRegels([
+      [...KOP, 'Groeps-leden', 'Groep volzet', 'Lesdagen'],
+      rij('Kidstennis blauw', 'Blauw - Groep 1', 'woensdag', '14:00 - 15:00',
+        'Terrein 7', 'Devries Ann', 'Jan Jansen'),
+    ]);
+    expect(uit.regels).toHaveLength(1);
+    expect(uit.nietHerkend).toEqual(['Groeps-leden', 'Groep volzet', 'Lesdagen']);
   });
 });
 

@@ -227,6 +227,35 @@ export function leesKopregelWeekschema(kopregel: readonly string[]): KopregelWee
 const DATUMKOPPEN = new Set(['datum', 'date']);
 
 /**
+ * Hoeveel rijen er bovenaan afgezocht worden naar de koprij.
+ *
+ * WAAROM DIT NIET GEWOON RIJ 1 IS. Het echte bestand van de club begint met een titelregel
+ * ("Aanbod: Tennis - Jaarcyclus 2026 - 2027"), dan een lege regel, en pas op rij 3 staan de
+ * koppen. Een lezer die alleen naar rij 1 kijkt leest daar één cel met een titel, herkent geen
+ * enkele kolom en meldt "de koprij mist een verplichte kolom" over een bestand dat helemaal in
+ * orde is.
+ *
+ * Tien en niet onbeperkt: verder zoeken zou een blad zonder koprij pas na 196 rijen opgeven, en
+ * dan is de kans groter dat er een gegevensrij als koprij aangezien wordt dan dat er nog een
+ * echte komt. Een export die zijn koppen voorbij rij 10 zet, bestaat niet.
+ */
+const KOPREGEL_ZOEKDIEPTE = 10;
+
+/**
+ * Waar de koprij staat en wat erin staat, of `null` als er in de eerste rijen geen te vinden is.
+ */
+export function vindKopregelWeekschema(
+  rijen: ReadonlyArray<readonly string[]>,
+): { index: number; kop: KopregelWeekschema } | null {
+  const diepte = Math.min(rijen.length, KOPREGEL_ZOEKDIEPTE);
+  for (let i = 0; i < diepte; i++) {
+    const kop = leesKopregelWeekschema(rijen[i]);
+    if (kop.kolommen) return { index: i, kop };
+  }
+  return null;
+}
+
+/**
  * Is dit blad de clublijst, of het sjabloon van de app?
  *
  * DE DATUM BESLIST, EN NIET DE WEEKDAG. Dat was de eerste opzet en die was fout: `koen.xlsx` —
@@ -242,10 +271,14 @@ const DATUMKOPPEN = new Set(['datum', 'date']);
  * van beide, en hoort de foutmelding van de gewone lezer te krijgen ("de koprij mist een
  * verplichte kolom: Datum, ..."). Dat is de melding die klopt bij een leeg of vreemd blad.
  */
-export function isWeekschema(kopregel: readonly string[]): boolean {
-  const sleutels = kopregel.map(kopSleutel);
-  if (sleutels.some((k) => DATUMKOPPEN.has(k))) return false;
-  return sleutels.some((k) => WEEKSCHEMA_KOPPEN.get(k) === 'weekdag');
+export function isWeekschema(rijen: ReadonlyArray<readonly string[]>): boolean {
+  const diepte = Math.min(rijen.length, KOPREGEL_ZOEKDIEPTE);
+  for (let i = 0; i < diepte; i++) {
+    const sleutels = rijen[i].map(kopSleutel);
+    if (sleutels.some((k) => DATUMKOPPEN.has(k))) return false;
+    if (sleutels.some((k) => WEEKSCHEMA_KOPPEN.get(k) === 'weekdag')) return true;
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -292,20 +325,24 @@ export function leesWeekRegels(rijen: ReadonlyArray<readonly string[]>): Gelezen
   }
 
   // Eerst overnemen, dán pas afhaken: juist als de koprij niet deugt heeft de beheerder die
-  // lijstjes nodig — dat is het geval waarin hij zijn bestand moet aanpassen.
-  const kop = leesKopregelWeekschema(rijen[0]);
-  uit.nietHerkend = kop.nietHerkend;
-  uit.dubbel = kop.dubbel;
-  const { kolommen } = kop;
-  if (!kolommen) {
+  // lijstjes nodig — dat is het geval waarin hij zijn bestand moet aanpassen. Staat er nergens
+  // een bruikbare koprij, dan wordt rij 1 gemeld: dat is de rij waar de beheerder gaat kijken.
+  const gevonden = vindKopregelWeekschema(rijen);
+  if (!gevonden) {
+    const kop = leesKopregelWeekschema(rijen[0]);
+    uit.nietHerkend = kop.nietHerkend;
+    uit.dubbel = kop.dubbel;
     uit.fouten.push({
       regel: 1,
       reden: 'De koprij mist een verplichte kolom: Doelgroep, Groep, Weekdag, Uur, Terrein(en), Trainer(s) of Speler(s).',
     });
     return uit;
   }
+  uit.nietHerkend = gevonden.kop.nietHerkend;
+  uit.dubbel = gevonden.kop.dubbel;
+  const kolommen = gevonden.kop.kolommen as KolommenWeekschema;
 
-  for (let i = 1; i < rijen.length; i++) {
+  for (let i = gevonden.index + 1; i < rijen.length; i++) {
     const rij = rijen[i];
     const regel = i + 1;
     const cel = (index: number): string => (rij[index] ?? '').trim();
