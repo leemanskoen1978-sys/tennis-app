@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 import { GROEPSLES_METHOD } from './beurtenkaart';
@@ -210,8 +210,31 @@ describe('bestandAfgekeurdLessen', () => {
  * die regel doorbreken voor drie regels code. De prijs is deze kleine herhaling; de winst is dat
  * beide tests op zichzelf te lezen zijn.
  */
+// ---------------------------------------------------------------------------
+// Het echte bestand is er niet altijd.
+//
+// `koen.xlsx` staat bewust in .gitignore en zit dus niet in de repository: deze repo is
+// publiek en het bestand bevat de echte namen van 42 kinderen van de club. Commit het niet
+// en haal het niet uit .gitignore, hoe handig dat voor de build ook lijkt.
+//
+// Zonder dat bestand valt er niets te bewijzen. De tests die het lezen worden dan luid
+// overgeslagen -- niet stil geslaagd, en ook niet de hele suite laten ontploffen (wat op CI
+// gebeurde toen ze het bestand blind inlazen).
+// ---------------------------------------------------------------------------
+const KOEN_PAD = join(__dirname, '..', 'koen.xlsx');
+const heeftKoen = existsSync(KOEN_PAD);
+if (!heeftKoen) {
+  console.warn(
+    `LET OP: ${KOEN_PAD} ontbreekt -- het staat bewust in .gitignore omdat deze repository `
+    + 'publiek is en het bestand de namen van echte leerlingen bevat. De tests van '
+    + 'lib/import-trainingen die dat bestand lezen worden overgeslagen en bewijzen in deze '
+    + 'draaibeurt dus niets.',
+  );
+}
+const alsKoenErIs = heeftKoen ? it : it.skip;
+
 function koenBytes(): Uint8Array {
-  const rauw = readFileSync(join(__dirname, '..', 'koen.xlsx'));
+  const rauw = readFileSync(KOEN_PAD);
   return new Uint8Array(rauw.buffer, rauw.byteOffset, rauw.byteLength);
 }
 
@@ -427,7 +450,7 @@ describe('leesLesRegels', () => {
     expect(uitkomst.dubbel).toEqual(['Coach']);
   });
 
-  it('leest de 1398 regels van koen.xlsx zonder één fout', () => {
+  alsKoenErIs('leest de 1398 regels van koen.xlsx zonder één fout', () => {
     const blad = kiesLessenBlad(leesWerkmap(koenBytes()));
     const uitkomst = leesLesRegels(blad!.rijen);
     expect(uitkomst.fouten).toEqual([]);
@@ -750,7 +773,7 @@ describe('groepenUitRegels', () => {
     expect(uitkomst.waarschuwingen).toHaveLength(1);
   });
 
-  it('levert op koen.xlsx tien groepen met tien namen, elk naar haar eigen moment', () => {
+  alsKoenErIs('levert op koen.xlsx tien groepen met tien namen, elk naar haar eigen moment', () => {
     // Tien momenten, dus tien groepen en tien namen. De kolom `Groep` van dit bestand kent er
     // maar zeven verschillende, want "Groep 8" staat op drie momenten en "Groep 12" op twee —
     // en juist daarom doet die kolom niet meer mee aan het benoemen.
@@ -766,7 +789,7 @@ describe('groepenUitRegels', () => {
     expect(uitkomst.groepen.every((g) => g.bestaand === null)).toBe(true);
   });
 
-  it('houdt de drie momenten die "Groep 8" heetten uit elkaar: zes, vier en twee spelers', () => {
+  alsKoenErIs('houdt de drie momenten die "Groep 8" heetten uit elkaar: zes, vier en twee spelers', () => {
     // Dit was de test die bewees dat de naam mét dag en uur drie groepen opleverde. Hij bewijst
     // nu hetzelfde over dag en uur alléén: de club heeft hier één administratief label op drie
     // momenten met twaalf verschillende mensen en nul overlap gezet. Zouden die drie samenvallen,
@@ -918,7 +941,7 @@ describe('spelersUitRegels', () => {
     expect(uitkomst.waarschuwingen[0].vars).toMatchObject({ naam: 'Koen Leemans' });
   });
 
-  it('levert op koen.xlsx met een lege ledenlijst 42 nieuwe spelers zonder dubbels', () => {
+  alsKoenErIs('levert op koen.xlsx met een lege ledenlijst 42 nieuwe spelers zonder dubbels', () => {
     const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
     const { regels } = leesLesRegels(blad.rijen);
     const uitkomst = spelersUitRegels(regels, []);
@@ -974,7 +997,7 @@ describe('koppelingVoorGroep', () => {
     expect(koppeling.meldingen[0].vars).toEqual({ groep: 'Woensdag 17:00' });
   });
 
-  it('geeft op koen.xlsx twintig meldingen en niet veertienhonderd', () => {
+  alsKoenErIs('geeft op koen.xlsx twintig meldingen en niet veertienhonderd', () => {
     // Tien groepen × (geen trainersaccount + geen kolom Baan). Eén melding per groep is het
     // verschil tussen een droogloop en een muur: per regel zouden dit er 2796 zijn.
     const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
@@ -1654,6 +1677,8 @@ if (!kentEenWissel) {
   );
 }
 const alsErEenWisselIs = kentEenWissel ? it : it.skip;
+// Groep 8 komt uit het echte bestand: die test heeft de wissel en `koen.xlsx` nodig.
+const alsErEenWisselEnKoenIs = kentEenWissel && heeftKoen ? it : it.skip;
 
 describe('zomer- en wintertijd', () => {
   /** Elke woensdag van 1 oktober 2026 tot en met 30 april 2027, als regels van 17:00. */
@@ -1702,7 +1727,7 @@ describe('zomer- en wintertijd', () => {
     }
   });
 
-  alsErEenWisselIs('zet alle lessen van Groep 8 op woensdag van koen.xlsx om 17:00', () => {
+  alsErEenWisselEnKoenIs('zet alle lessen van Groep 8 op woensdag van koen.xlsx om 17:00', () => {
     // Het echte bestand loopt van 9 september 2026 tot 25 juni 2027 en overspant dus allebei de
     // wissels. Het heeft geen kolom Baan, dus er valt via het volledige plan niets in te
     // plannen (dat is de bedoeling, zie plan 05-05); de trainer en de baan worden hier dus
@@ -1807,10 +1832,13 @@ function opDagEnUur(a: VerwachteGroep, b: VerwachteGroep): number {
 describe('koen.xlsx — de acceptatie van IMP-10', () => {
   // Eén keer lezen en één keer plannen voor het hele blok. 1398 regels door twaalf tests halen
   // is twaalf keer hetzelfde werk; alle beweringen hieronder gaan over dít ene plan.
-  const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
-  const LEGE_CLUB = planImportLessen(blad.rijen, [], [], [], [], {}, NU);
+  // Zonder het echte bestand valt er niets te plannen. Elke test in dit blok is dan
+  // overgeslagen, dus deze plaatshouders worden nooit aangeraakt.
+  const GEEN_PLAN = null as unknown as ReturnType<typeof planImportLessen>;
+  const blad = (heeftKoen ? kiesLessenBlad(leesWerkmap(koenBytes())) : null)!;
+  const LEGE_CLUB = heeftKoen ? planImportLessen(blad.rijen, [], [], [], [], {}, NU) : GEEN_PLAN;
 
-  it('leest alle 1398 regels zonder één fout en zonder ruis in de koprij', () => {
+  alsKoenErIs('leest alle 1398 regels zonder één fout en zonder ruis in de koprij', () => {
     expect(LEGE_CLUB.regels).toHaveLength(1398);
     expect(LEGE_CLUB.fouten).toEqual([]);
     // `Weekdag`, `Weeknr`, `Locatie` en `Indoor/Outdoor` staan in dit bestand en betekenen
@@ -1819,7 +1847,7 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(LEGE_CLUB.dubbel).toEqual([]);
   });
 
-  it('heeft geen kolom Baan en geen Groep-ID, en in Indoor/Outdoor staat geen terrein', () => {
+  alsKoenErIs('heeft geen kolom Baan en geen Groep-ID, en in Indoor/Outdoor staat geen terrein', () => {
     expect(blad.rijen[0]).not.toContain('Baan');
     expect(blad.rijen[0]).not.toContain('Groep-ID');
     // De kolom `Indoor/Outdoor` staat er wél, en telt sinds IMP-15 als tweede baankolom. Maar
@@ -1831,7 +1859,7 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(LEGE_CLUB.regels.every((r) => r.baan === '')).toBe(true);
   });
 
-  it('levert tien nieuwe lesgroepen op, met tien verschillende namen', () => {
+  alsKoenErIs('levert tien nieuwe lesgroepen op, met tien verschillende namen', () => {
     expect(LEGE_CLUB.groepenNieuw).toHaveLength(10);
     expect(LEGE_CLUB.groepenBijgewerkt).toEqual([]);
     expect(LEGE_CLUB.groepenOngewijzigd).toEqual([]);
@@ -1841,7 +1869,7 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(namen.filter((n) => n.startsWith('Groep '))).toEqual([]);
   });
 
-  it('houdt zich aan de belofte van deze fase: tien groepen, 42 spelers, dezelfde rosters', () => {
+  alsKoenErIs('houdt zich aan de belofte van deze fase: tien groepen, 42 spelers, dezelfde rosters', () => {
     // Hard constraint 7 van de fase, letterlijk. Alleen de namen veranderden; als hier een ander
     // getal beweegt is dat een bevinding over de import en niet over deze test.
     expect(LEGE_CLUB.groepenNieuw).toHaveLength(10);
@@ -1857,7 +1885,7 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(woensdag17.groep.regels[0].groep).toBe('Groep 8');
   });
 
-  it('geeft elke groep uit de tabel haar eigen dag, uur, roster, lesmomenten en niveau', () => {
+  alsKoenErIs('geeft elke groep uit de tabel haar eigen dag, uur, roster, lesmomenten en niveau', () => {
     const werkelijk: VerwachteGroep[] = LEGE_CLUB.groepenNieuw.map((g) => ({
       naam: g.naam,
       weekdag: g.weekdag,
@@ -1869,12 +1897,12 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(werkelijk.sort(opDagEnUur)).toEqual([...KOEN_GROEPEN].sort(opDagEnUur));
   });
 
-  it('telt 325 lesmomenten in het hele bestand', () => {
+  alsKoenErIs('telt 325 lesmomenten in het hele bestand', () => {
     const perGroep = LEGE_CLUB.groepenNieuw.reduce((som, g) => som + momentenVan(g.groep), 0);
     expect(perGroep).toBe(KOEN_LESMOMENTEN);
   });
 
-  it('geeft elke groep het seizoen dat bij haar weekdag hoort', () => {
+  alsKoenErIs('geeft elke groep het seizoen dat bij haar weekdag hoort', () => {
     for (const g of LEGE_CLUB.groepenNieuw) {
       const verwacht = KOEN_SEIZOEN.get(g.weekdag);
       expect(verwacht).toBeDefined();
@@ -1883,12 +1911,12 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     }
   });
 
-  it('kent 42 verschillende leerlingen, allemaal nieuw voor de club', () => {
+  alsKoenErIs('kent 42 verschillende leerlingen, allemaal nieuw voor de club', () => {
     expect(LEGE_CLUB.spelersNieuw).toHaveLength(42);
     expect(new Set(LEGE_CLUB.spelersNieuw.map((s) => s.naam)).size).toBe(42);
   });
 
-  it('houdt de drie momenten die "Groep 8" heetten volledig uit elkaar', () => {
+  alsKoenErIs('houdt de drie momenten die "Groep 8" heetten volledig uit elkaar', () => {
     const acht = ([[3, 17], [5, 17], [5, 19]] as Array<[number, number]>).map(([dag, uur]) =>
       LEGE_CLUB.groepenNieuw.find((g) => g.weekdag === dag && g.beginuur === uur)!);
     expect(acht.map((g) => [g.weekdag, g.beginuur, g.aantalSpelers]))
@@ -1903,7 +1931,7 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(new Set(samen).size).toBe(12);
   });
 
-  it('plant nul lessen in: er is geen trainersaccount en er is geen baan', () => {
+  alsKoenErIs('plant nul lessen in: er is geen trainersaccount en er is geen baan', () => {
     // `LesGroep.coach_id` mag leeg zijn — daarom komen de tien groepen er wél. `Booking.coach_id`
     // en `Booking.court_id` mogen dat niet, dus de lessen kunnen niet bestaan. Ook niets
     // overgeslagen: er valt niets over te slaan zolang er niets te plannen viel.
@@ -1914,7 +1942,7 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(LEGE_CLUB.verdwenenUitBestand).toEqual([]);
   });
 
-  it('meldt uitsluitend de trainer en de baan, één keer per groep', () => {
+  alsKoenErIs('meldt uitsluitend de trainer en de baan, één keer per groep', () => {
     const meldingen = LEGE_CLUB.waarschuwingen;
     // Tien groepen × twee ontbrekende schakels. Eén melding per regel zou er 2796 opleveren.
     expect(meldingen).toHaveLength(20);
@@ -1928,7 +1956,7 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(new Set(overTrainer.map((m) => m.vars?.naam))).toEqual(new Set(['Leemans Koen']));
   });
 
-  it('laat de trainermelding verdwijnen zodra Leemans Koen een account heeft', () => {
+  alsKoenErIs('laat de trainermelding verdwijnen zodra Leemans Koen een account heeft', () => {
     // De trainer valt op te lossen zónder het bestand aan te raken: de kolom `Coach` staat er,
     // met de achternaam vooraan, en `zoekOpNaam` vindt daar "Koen Leemans" bij. De baan niet:
     // `koen.xlsx` heeft die kolom niet eens. Van de twee wegen die het plan aanbiedt kiezen we
@@ -1998,31 +2026,34 @@ function toestandUitPlan(plan: ImportPlanLessen): Toestand {
 }
 
 describe('koen.xlsx twee keer inlezen', () => {
-  const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
+  // Zonder het echte bestand valt er niets te plannen. Elke test in dit blok is dan
+  // overgeslagen, dus deze plaatshouders worden nooit aangeraakt.
+  const GEEN_PLAN = null as unknown as ReturnType<typeof planImportLessen>;
+  const blad = (heeftKoen ? kiesLessenBlad(leesWerkmap(koenBytes())) : null)!;
   const lees = (toestand: Toestand) => planImportLessen(
     blad.rijen, toestand.groepen, toestand.users, [], [], {}, NU,
   );
 
-  const eerste = planImportLessen(blad.rijen, [], [], [], [], {}, NU);
-  const naDeEerste = toestandUitPlan(eerste);
-  const tweede = lees(naDeEerste);
-  const derde = lees(naDeEerste);
+  const eerste = heeftKoen ? planImportLessen(blad.rijen, [], [], [], [], {}, NU) : GEEN_PLAN;
+  const naDeEerste = heeftKoen ? toestandUitPlan(eerste) : (null as unknown as Toestand);
+  const tweede = heeftKoen ? lees(naDeEerste) : GEEN_PLAN;
+  const derde = heeftKoen ? lees(naDeEerste) : GEEN_PLAN;
 
-  it('levert de eerste keer tien groepen en 42 spelers op', () => {
+  alsKoenErIs('levert de eerste keer tien groepen en 42 spelers op', () => {
     expect(eerste.groepenNieuw).toHaveLength(10);
     expect(eerste.spelersNieuw).toHaveLength(42);
     expect(naDeEerste.groepen).toHaveLength(10);
     expect(naDeEerste.users).toHaveLength(42);
   });
 
-  it('verdubbelt de tweede keer niets: nul nieuwe groepen, spelers en lessen', () => {
+  alsKoenErIs('verdubbelt de tweede keer niets: nul nieuwe groepen, spelers en lessen', () => {
     expect(tweede.groepenNieuw).toEqual([]);
     expect(tweede.groepenBijgewerkt).toEqual([]);
     expect(tweede.spelersNieuw).toEqual([]);
     expect(tweede.nieuweLessen).toEqual([]);
   });
 
-  it('herkent alle tien de groepen als ongewijzigd, elk met haar eigen bestaande groep', () => {
+  alsKoenErIs('herkent alle tien de groepen als ongewijzigd, elk met haar eigen bestaande groep', () => {
     expect(tweede.groepenOngewijzigd).toHaveLength(10);
     expect(tweede.groepenOngewijzigd.map((g) => g.groep.bestaand?.id).sort())
       .toEqual(naDeEerste.groepen.map((g) => g.id).sort());
@@ -2031,14 +2062,14 @@ describe('koen.xlsx twee keer inlezen', () => {
       .toBe(true);
   });
 
-  it('meldt de tweede keer nog steeds de trainer en de baan, en niets erbij', () => {
+  alsKoenErIs('meldt de tweede keer nog steeds de trainer en de baan, en niets erbij', () => {
     // Die twee schakels lost een tweede inleesbeurt niet op — en dat hoort ook zo: de import
     // maakt geen trainer en geen baan aan (D-07).
     expect(tweede.waarschuwingen).toHaveLength(20);
     expect(tweede.fouten).toEqual([]);
   });
 
-  it('geeft de derde keer exact hetzelfde antwoord als de tweede', () => {
+  alsKoenErIs('geeft de derde keer exact hetzelfde antwoord als de tweede', () => {
     // Stabiel, en niet toevallig: was de tweede uitkomst een gevolg van iets wat de eerste
     // opbouwde, dan zou de derde ervan afwijken.
     expect(derde.groepenNieuw).toEqual([]);

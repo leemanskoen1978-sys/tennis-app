@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 import {
@@ -16,8 +16,31 @@ import { buildXlsx, crc32, datumNaarSerie, kolomLetter, zip } from './xlsx';
 // gedeelde teksten. Daarom leest elke test hieronder de echte bytes uit de projectmap.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Het echte bestand is er niet altijd.
+//
+// `koen.xlsx` staat bewust in .gitignore en zit dus niet in de repository: deze repo is
+// publiek en het bestand bevat de echte namen van 42 kinderen van de club. Commit het niet
+// en haal het niet uit .gitignore, hoe handig dat voor de build ook lijkt.
+//
+// Zonder dat bestand valt er niets te bewijzen. De tests die het lezen worden dan luid
+// overgeslagen -- niet stil geslaagd, en ook niet de hele suite laten ontploffen (wat op CI
+// gebeurde toen ze het bestand blind inlazen).
+// ---------------------------------------------------------------------------
+const KOEN_PAD = join(__dirname, '..', 'koen.xlsx');
+const heeftKoen = existsSync(KOEN_PAD);
+if (!heeftKoen) {
+  console.warn(
+    `LET OP: ${KOEN_PAD} ontbreekt -- het staat bewust in .gitignore omdat deze repository `
+    + 'publiek is en het bestand de namen van echte leerlingen bevat. De tests van '
+    + 'lib/xlsx-lezen die dat bestand lezen worden overgeslagen en bewijzen in deze '
+    + 'draaibeurt dus niets.',
+  );
+}
+const alsKoenErIs = heeftKoen ? it : it.skip;
+
 function koenBytes(): Uint8Array {
-  const rauw = readFileSync(join(__dirname, '..', 'koen.xlsx'));
+  const rauw = readFileSync(KOEN_PAD);
   return new Uint8Array(rauw.buffer, rauw.byteOffset, rauw.byteLength);
 }
 
@@ -51,7 +74,7 @@ describe('leesZip', () => {
     }
   });
 
-  it('geeft de tien ingangen van koen.xlsx in de volgorde van de centrale map', () => {
+  alsKoenErIs('geeft de tien ingangen van koen.xlsx in de volgorde van de centrale map', () => {
     expect(namen(koenBytes())).toEqual([
       '[Content_Types].xml',
       '_rels/.rels',
@@ -66,13 +89,13 @@ describe('leesZip', () => {
     ]);
   });
 
-  it('pakt xl/worksheets/sheet1.xml uit tot 526954 bytes met de juiste controlesom', () => {
+  alsKoenErIs('pakt xl/worksheets/sheet1.xml uit tot 526954 bytes met de juiste controlesom', () => {
     const ingang = ingangVan(koenBytes(), 'xl/worksheets/sheet1.xml');
     expect(ingang.inhoud.length).toBe(526954);
     expect(crc32(ingang.inhoud)).toBe(0x35baed35);
   });
 
-  it('leest [Content_Types].xml goed, ondanks de 520 bytes extra veld in de lokale kop', () => {
+  alsKoenErIs('leest [Content_Types].xml goed, ondanks de 520 bytes extra veld in de lokale kop', () => {
     // De centrale map noemt hier extra-lengte 0 en de lokale kop 520. Wie de centrale
     // waarde gebruikt begint 520 bytes te vroeg en pakt rommel uit; de controlesom vangt dat.
     const ingang = ingangVan(koenBytes(), '[Content_Types].xml');
@@ -80,7 +103,7 @@ describe('leesZip', () => {
     expect(crc32(ingang.inhoud)).toBe(0x689dee62);
   });
 
-  it('leest xl/sharedStrings.xml en xl/workbook.xml op hun eigen controlesom', () => {
+  alsKoenErIs('leest xl/sharedStrings.xml en xl/workbook.xml op hun eigen controlesom', () => {
     const bytes = koenBytes();
     const gedeeld = ingangVan(bytes, 'xl/sharedStrings.xml');
     expect(gedeeld.inhoud.length).toBe(2141);
@@ -102,7 +125,7 @@ describe('leesZip', () => {
     expect(() => leesZip(bytes)).toThrow(/99/);
   });
 
-  it('geeft twee keer achter elkaar exact dezelfde bytes', () => {
+  alsKoenErIs('geeft twee keer achter elkaar exact dezelfde bytes', () => {
     const bytes = koenBytes();
     const eerst = ingangVan(bytes, 'xl/worksheets/sheet1.xml').inhoud;
     const nogmaals = ingangVan(bytes, 'xl/worksheets/sheet1.xml').inhoud;
@@ -204,7 +227,7 @@ describe('leesWerkmap', () => {
     expect(bladen[0].rijen[1]).toEqual(['Dupont & Zoon', '45']);
   });
 
-  it('volgt de r:id naar het juiste bestand en raadt de volgorde niet', () => {
+  alsKoenErIs('volgt de r:id naar het juiste bestand en raadt de volgorde niet', () => {
     const bladen = leesWerkmap(koenBytes());
     expect(bladen.map((b) => b.naam)).toEqual(['Sheet1']);
   });
@@ -277,39 +300,39 @@ describe('koen.xlsx — het echte bestand van de club', () => {
     return DAGEN[new Date(jaar, maand - 1, dag).getDay()];
   }
 
-  it('bevat precies één blad, met de naam Sheet1', () => {
+  alsKoenErIs('bevat precies één blad, met de naam Sheet1', () => {
     const bladen = leesWerkmap(koenBytes());
     expect(bladen).toHaveLength(1);
     expect(bladen[0].naam).toBe('Sheet1');
   });
 
-  it('heeft 1399 rijen: één koprij en 1398 gegevensrijen', () => {
+  alsKoenErIs('heeft 1399 rijen: één koprij en 1398 gegevensrijen', () => {
     expect(rijen).toHaveLength(1399);
     expect(gegevens).toHaveLength(1398);
   });
 
-  it('heeft de koprij die de club gewend is', () => {
+  alsKoenErIs('heeft de koprij die de club gewend is', () => {
     expect(rijen[0]).toEqual([
       'Datum', 'Weekdag', 'Weeknr', 'Uur', 'Type les', 'Groep', 'Coach', 'Leerling', 'Locatie',
       'Indoor/Outdoor',
     ]);
   });
 
-  it('leest de eerste gegevensrij letterlijk terug', () => {
+  alsKoenErIs('leest de eerste gegevensrij letterlijk terug', () => {
     expect(rijen[1]).toEqual([
       '46274', 'woensdag', '37', '0.58333333333333337', 'Duoles', 'Groep 4', 'Leemans Koen',
       'de Clippele Antoine', 'GANTOISE', 'Indoor',
     ]);
   });
 
-  it('heeft in elke gegevensrij tien gevulde cellen — er zit geen gat in dit bestand', () => {
+  alsKoenErIs('heeft in elke gegevensrij tien gevulde cellen — er zit geen gat in dit bestand', () => {
     for (const rij of gegevens) {
       expect(rij).toHaveLength(10);
       expect(rij.filter((c) => c === '')).toEqual([]);
     }
   });
 
-  it('loopt van 9 september 2026 tot en met 25 juni 2027', () => {
+  alsKoenErIs('loopt van 9 september 2026 tot en met 25 juni 2027', () => {
     const dagen = gegevens.map((rij) => serieNaarDatum(Number(rij[0])));
     const eerste = Math.min(...gegevens.map((rij) => Number(rij[0])));
     const laatste = Math.max(...gegevens.map((rij) => Number(rij[0])));
@@ -320,13 +343,13 @@ describe('koen.xlsx — het echte bestand van de club', () => {
     }
   });
 
-  it('kent zeven verschillende groepen', () => {
+  alsKoenErIs('kent zeven verschillende groepen', () => {
     const groepen = new Set(gegevens.map((rij) => rij[5]));
     expect(groepen.size).toBe(7);
     expect(groepen.has('Groep 8')).toBe(true);
   });
 
-  it('zet Groep 8 op drie momenten in de week — daarom is de naam alleen geen sleutel', () => {
+  alsKoenErIs('zet Groep 8 op drie momenten in de week — daarom is de naam alleen geen sleutel', () => {
     // D-02: "Groep 8" bestaat drie keer, op drie verschillende dag/uur-combinaties. Wie de
     // groep op naam alleen samenneemt, gooit drie lesgroepen op één hoop.
     const momenten = new Set(
@@ -340,15 +363,15 @@ describe('koen.xlsx — het echte bestand van de club', () => {
     expect([...momenten].sort()).toEqual(['vrijdag|17:00', 'vrijdag|19:00', 'woensdag|17:00']);
   });
 
-  it('heeft maar één coach: Leemans Koen', () => {
+  alsKoenErIs('heeft maar één coach: Leemans Koen', () => {
     expect([...new Set(gegevens.map((rij) => rij[6]))]).toEqual(['Leemans Koen']);
   });
 
-  it('noemt 42 verschillende leerlingen', () => {
+  alsKoenErIs('noemt 42 verschillende leerlingen', () => {
     expect(new Set(gegevens.map((rij) => rij[7])).size).toBe(42);
   });
 
-  it('geeft twee keer achter elkaar hetzelfde resultaat', () => {
+  alsKoenErIs('geeft twee keer achter elkaar hetzelfde resultaat', () => {
     expect(leesWerkmap(koenBytes())).toEqual(leesWerkmap(koenBytes()));
   });
 });
