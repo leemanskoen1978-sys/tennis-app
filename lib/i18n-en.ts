@@ -1232,4 +1232,20 @@ export const EN: Record<string, string> = {
   'Werklijst openen': 'Open work list',
   'Ingetrokken': 'Withdrawn',
   'Onbekende trainer': 'Unknown coach',
+
+  // --- Beheer → Ziekmelding: de werklijst (app/admin/ziekmelding/[id]) ---
+  'Deze ziekmelding bestaat niet meer.': 'This sick leave no longer exists.',
+  'Geen enkele les zoekt nog een vervanger.': 'No lesson is still looking for a substitute.',
+  '1 les zoekt nog een vervanger': '1 lesson is still looking for a substitute',
+  '{n} lessen zoeken nog een vervanger': '{n} lessons are still looking for a substitute',
+  'Deze ziekmelding raakt geen enkele les.': 'This sick leave affects no lesson at all.',
+  'Afgezegd': 'Cancelled',
+  'Geregeld': 'Sorted',
+  'Zoekt vervanger': 'Looking for a substitute',
+  'Vaste trainer': 'Regular coach',
+  'Vervanger koppelen': 'Attach a substitute',
+  'Andere vervanger': 'Another substitute',
+  'Laten staan': 'Leave it standing',
+  'Afzeggen': 'Cancel the lesson',
+  'Wie kan deze les overnemen?': 'Who can take this lesson over?',
 };
