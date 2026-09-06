@@ -119,13 +119,21 @@ Die droogloop haalde er drie dingen uit die op verzonnen testgegevens niet te zi
 Na die drie: **552 spelers, 552 verschillende adressen, alle 552 met telefoonnummer, nul
 verzonnen.**
 
-Twee dingen die de gebruiker zelf moet beoordelen en die de app niet kan zien:
+**De 301 overlappingen vallen op zes momenten, en alle zes zijn ze goed.** Vijf op Terrein 7 —
+het kleutertennis dat al bekend was — en één op Terrein 8. Die zesde stond niet in de eerdere
+analyse; de gebruiker bevestigde op 6 september 2026: *"zaterdag 10 uur terrein 8 is ook een
+halve baan"*. Er hoeft dus niets aan: ze horen in het rood te staan en door te gaan, precies wat
+er gebeurt.
 
-- **Zaterdag 10:00 op Terrein 8 is een zesde botsend moment**, naast de vijf op Terrein 7 die al
-  bekend waren. Twee halve banen, of een fout in de clubplanning?
-- **De club rekent 30 lesweken, de kalender geeft er 33.** Voor de app maakt het niets uit —
-  betalen gebeurt extern — maar de agenda toont straks ~33 lessen per groep waar de factuur er
-  30 noemt.
+```
+wo 14:00  Terrein 7   3 groepen        za 09:00  Terrein 7   3 groepen
+wo 15:00  Terrein 7   2 groepen        za 10:00  Terrein 7   3 groepen
+wo 16:00  Terrein 7   2 groepen        za 10:00  Terrein 8   2 groepen
+```
+
+Eén ding dat de gebruiker zelf moet beoordelen en dat de app niet kan zien: **de club rekent 30
+lesweken, de kalender geeft er 33.** Voor de app maakt het niets uit — betalen gebeurt extern —
+maar de agenda toont straks ~33 lessen per groep waar de factuur er 30 noemt.
 
 **Geverifieerd:** `npx tsc --noEmit` exit 0, `npx jest` 56 suites en 1703 tests groen (was 1591).
 
