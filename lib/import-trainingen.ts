@@ -13,7 +13,7 @@
 
 import { GROEPSLES_METHOD } from './beurtenkaart';
 import { normalizeEmail } from './contact';
-import { actieveGroepen, groepSleutel, groupBookingsFrom } from './lesgroepen';
+import { actieveGroepen, groepSleutel, groupBookingsFrom, lesGroepFout } from './lesgroepen';
 import { botstMet } from './recurrence';
 import { normalizeName, zelfdeNaamOngeachtVolgorde, zoekOpNaam } from './students';
 import type {
@@ -1566,6 +1566,228 @@ export function planImportLessen(
   }
 
   return plan;
+}
+
+// ---------------------------------------------------------------------------
+// Van plan naar rijen (IMP-09)
+// ---------------------------------------------------------------------------
+
+/** Eén bestaande lesgroep die bijgewerkt wordt, met alleen de velden die echt veranderen. */
+export interface GroepBijwerking {
+  id: string;
+  patch: Partial<Omit<LesGroep, 'id'>>;
+}
+
+/**
+ * Het goedgekeurde plan als concrete rijen: precies wat er weggeschreven wordt en niets meer.
+ *
+ * Er staat met opzet geen lijst met te verwijderen boekingen in. Een les die uit het bestand
+ * verdween staat in `ImportPlanLessen.verdwenenUitBestand` — dat is een melding voor de
+ * beheerder en geen opdracht. De import maakt aan en werkt bij; wissen doet ze nooit (D-13).
+ */
+export interface ImportWijziging {
+  nieuweUsers: User[];
+  nieuweGroepen: LesGroep[];
+  gewijzigdeGroepen: GroepBijwerking[];
+  nieuweBoekingen: Booking[];
+  /** Wat er van het plan niet weggeschreven wordt, met regelnummer en reden. */
+  fouten: ImportFoutLessen[];
+}
+
+/** Wat een uitgevoerde import opleverde: de aantallen, en wat er niet doorging. */
+export interface ImportUitslagLessen {
+  spelers: number;
+  nieuweGroepen: number;
+  bijgewerkteGroepen: number;
+  lessen: number;
+  fouten: ImportFoutLessen[];
+}
+
+/** Alle groepen van het plan achter elkaar, in de volgorde waarin het scherm ze toont. */
+function alleGroepen(plan: ImportPlanLessen): GroepInPlan[] {
+  return [...plan.groepenNieuw, ...plan.groepenBijgewerkt, ...plan.groepenOngewijzigd];
+}
+
+/** Het regelnummer waar deze groep in Excel begint; daar wijst een melding over haar naar. */
+function regelVanGroep(inPlan: GroepInPlan): number {
+  return inPlan.groep.regels[0]?.regel ?? 1;
+}
+
+/**
+ * Een lesgroep zoals ze de opslag in gaat, zonder haar id.
+ *
+ * Er staat geen `created_at` in, en dat is opzet: `bouwImportWijziging` moet op dezelfde invoer
+ * twee keer exact dezelfde rijen geven, en een klok maakt dat onmogelijk. Het veld is optioneel
+ * (`lib/types.ts`) en de club leest het nergens om iets te beslissen.
+ *
+ * Een ontbrekende trainer of baan komt er niet als sleutel met `undefined` in te staan: dat is
+ * het verschil tussen "niet ingevuld" en "leeggemaakt", precies zoals `lib/import-leden.ts` een
+ * leeg telefoonnummer weglaat in plaats van het als `undefined` mee te sturen.
+ */
+function groepUitPlan(inPlan: GroepInPlan, roster: string[]): Omit<LesGroep, 'id'> {
+  const groep: Omit<LesGroep, 'id'> = {
+    name: inPlan.naam,
+    level: inPlan.groep.niveau,
+    weekday: inPlan.weekdag,
+    start_hour: inPlan.beginuur,
+    start_minute: inPlan.beginminuut,
+    season_start: inPlan.groep.seizoenVan,
+    season_end: inPlan.groep.seizoenTot,
+    roster,
+    archived: false,
+  };
+  if (inPlan.trainer) groep.coach_id = inPlan.trainer.id;
+  if (inPlan.baan) groep.court_id = inPlan.baan.id;
+  return groep;
+}
+
+/**
+ * Het goedgekeurde plan omzetten in de rijen die weggeschreven worden — nog steeds zonder één
+ * databankverbinding en zonder een enkele belofte om op te wachten: dit blijft synchroon.
+ *
+ * De volgorde is eerst de spelers, dan de groepen, dan de lessen. Dat is geen willekeur maar de
+ * kern van wat IMP-09 hier betekent (D-21). Ten eerste moet het wel: de groepen verwijzen met
+ * hun rooster naar spelers, en de lessen verwijzen naar allebei. Ten tweede — en daar gaat het
+ * echt om — is dit de volgorde waarin een halverwege afgebroken import het minst schadelijk
+ * achterblijft. Een speler zonder groep is onschadelijk en wordt bij een volgende inleesbeurt
+ * gewoon op zijn naam herkend. Een groep zonder lessen staat zichtbaar in het lesgroepenscherm
+ * en krijgt haar lessen bij een volgende beurt alsnog. Andersom zou er een les kunnen staan
+ * met een speler-id dat nergens bij hoort, en dat is niet met opnieuw inlezen recht te zetten.
+ *
+ * De ids komen als parameter binnen en worden hier niet gemaakt. Dat maakt de uitkomst
+ * voorspelbaar en dus testbaar; de provider geeft er zijn eigen idmaker in, precies zoals
+ * `addBookingSeries` dat doet. (De naam van die maker staat hier bewust niet: dit bestand mag
+ * niets uit `providers/` kennen, ook niet bij naam.)
+ *
+ * Wat hier NIET gebeurt: er wordt niets opnieuw uitgerekend. Welke lessen doorgaan, welke groep
+ * bij welke bestaande groep hoort en wie er nieuw is, heeft `planImportLessen` al beslist en de
+ * beheerder al gezien. Zou deze functie daar iets aan bijstellen, dan schreef ze iets anders weg
+ * dan de droogloop toonde — en dan is die droogloop een belofte die niet nagekomen wordt (D-10).
+ */
+export function bouwImportWijziging(
+  plan: ImportPlanLessen,
+  maakId: (voorvoegsel: string) => string,
+): ImportWijziging {
+  const uit: ImportWijziging = {
+    nieuweUsers: [],
+    nieuweGroepen: [],
+    gewijzigdeGroepen: [],
+    nieuweBoekingen: [],
+    fouten: [],
+  };
+
+  // 1. De spelers. Zij hangen nergens aan vast en moeten er eerst zijn: elk rooster hieronder
+  //    verwijst naar hun ids.
+  const idVanPlaatshouder = new Map<string, string>();
+  for (const speler of plan.spelersNieuw) {
+    const id = maakId('u');
+    idVanPlaatshouder.set(spelerSleutel(speler), id);
+    uit.nieuweUsers.push({ ...nieuwLidUitSpeler(speler), id });
+  }
+
+  /**
+   * Het rooster van het plan als echte ids. Een plaatshouder (`NIEUWE_SPELER`) hoort altijd bij
+   * een speler uit `plan.spelersNieuw` en is dus altijd te vervangen; blijft er er tóch een
+   * over, dan was het plan niet met zichzelf in overeenstemming en valt hij eruit — liever een
+   * speler minder in een groep dan een rij met een id dat nergens bij hoort.
+   */
+  const echteIds = (roster: readonly string[]): string[] => roster
+    .map((id) => idVanPlaatshouder.get(id) ?? id)
+    .filter((id) => !id.startsWith(NIEUWE_SPELER));
+
+  // 2. De groepen. Ze verwijzen naar de spelers hierboven, en de lessen verwijzen straks naar
+  //    hen. Het id van een bestaande groep is dat wat de club al kende.
+  const idVanGroep = new Map<GeplandeGroep, string>();
+  const geweigerd = new Set<GeplandeGroep>();
+
+  for (const inPlan of plan.groepenNieuw) {
+    const groep = groepUitPlan(inPlan, echteIds(inPlan.roster));
+    // Dezelfde controle die `addLesGroep` doet, en met opzet vóór de opslag: stuitte de provider
+    // er halverwege op, dan stonden de spelers er al en de groep niet — met een lege plek in de
+    // agenda tot gevolg. Nu wordt de hele groep overgeslagen en zegt de melding waarom.
+    const fout = lesGroepFout(groep);
+    if (fout) {
+      geweigerd.add(inPlan.groep);
+      uit.fouten.push({
+        regel: regelVanGroep(inPlan),
+        // De reden van `lesGroepFout` is al vertaalde schermtekst; ze wordt als waarde
+        // doorgegeven en niet in de zin geplakt, zodat de zin zelf vertaalbaar blijft.
+        reden: 'Ik kan de lesgroep {groep} niet aanmaken: {reden} Haar lessen gaan dus ook niet door.',
+        vars: { groep: inPlan.naam, reden: fout },
+      });
+      continue;
+    }
+    const id = maakId('lg');
+    idVanGroep.set(inPlan.groep, id);
+    uit.nieuweGroepen.push({ ...groep, id });
+  }
+
+  for (const inPlan of plan.groepenBijgewerkt) {
+    const bestaand = inPlan.groep.bestaand;
+    if (!bestaand) continue;
+    idVanGroep.set(inPlan.groep, bestaand.id);
+    // Het rooster gaat altijd mee: dat is wat "bijgewerkt" hier betekent. Welke velden verder
+    // veranderen heeft `groepWijzigingen` al bepaald — er wordt niets bij bedacht.
+    uit.gewijzigdeGroepen.push({
+      id: bestaand.id,
+      patch: { ...inPlan.wijzigingen, roster: echteIds(inPlan.roster) },
+    });
+  }
+
+  for (const inPlan of plan.groepenOngewijzigd) {
+    // Niets bij te werken, maar haar lessen kunnen er wél bij komen: een groep die de club al
+    // kent en waar dit bestand een week aan toevoegt.
+    if (inPlan.groep.bestaand) idVanGroep.set(inPlan.groep, inPlan.groep.bestaand.id);
+  }
+
+  // 3. De lessen. Ze verwijzen naar de groep én naar haar spelers, dus ze kunnen pas nu.
+  const inPlanVanGroep = new Map(alleGroepen(plan).map((g) => [g.groep, g] as const));
+  /** De groepen waarover al een melding geschreven is; één zin per groep, nooit één per les (D-09). */
+  const gemeld = new Set<GeplandeGroep>(geweigerd);
+
+  for (const les of plan.nieuweLessen) {
+    const inPlan = inPlanVanGroep.get(les.groep);
+    const groepId = idVanGroep.get(les.groep);
+    if (!inPlan || !groepId) continue;
+
+    // `Booking.coach_id` en `Booking.court_id` zijn allebei verplicht: een les zonder trainer of
+    // zonder baan bestaat niet in dit gegevensmodel. Er wordt er geen aangemaakt en er wordt ook
+    // geen trainer of baan verzonnen — dat is uitdrukkelijk geen bijproduct van een import
+    // (D-07, en het besluit over een ontbrekende trainer in plan 05-05).
+    const deelnemers = deelnemersVoorLes(echteIds(inPlan.roster));
+    if (!inPlan.trainer || !inPlan.baan || !deelnemers) {
+      if (!gemeld.has(les.groep)) {
+        gemeld.add(les.groep);
+        uit.fouten.push({
+          regel: les.regel,
+          reden: 'De lessen van {groep} worden niet ingepland: er ontbreekt een trainer, een baan of een leerling.',
+          vars: { groep: inPlan.naam },
+        });
+      }
+      continue;
+    }
+
+    const boeking: Booking = {
+      id: maakId('b'),
+      group_id: groepId,
+      player_id: deelnemers.player_id,
+      coach_id: inPlan.trainer.id,
+      court_id: inPlan.baan.id,
+      start_time: les.start.toISOString(),
+      end_time: les.eind.toISOString(),
+      status: 'confirmed',
+      payment_method: deelnemers.payment_method,
+    };
+    // Leeg lijstje weglaten in plaats van als lege sleutel meesturen: "leeg of afwezig is een
+    // gewone les voor één speler" (lib/types.ts), en een lege sleutel is het verschil tussen
+    // "niet ingevuld" en "leeggemaakt".
+    if (deelnemers.participant_ids.length > 0) {
+      boeking.participant_ids = deelnemers.participant_ids;
+    }
+    uit.nieuweBoekingen.push(boeking);
+  }
+
+  return uit;
 }
 
 // ---------------------------------------------------------------------------

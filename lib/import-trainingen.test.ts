@@ -2101,6 +2101,12 @@ describe('bouwImportWijziging', () => {
     // Er is geen lijst met te verwijderen rijen, en dat is geen omissie maar de afspraak:
     // een les die uit het bestand valt wordt gemeld, nooit gewist.
     expect(Object.keys(uit)).not.toContain('verwijderdeBoekingen');
-    expect(uit.nieuweBoekingen).toEqual([]);
+    // De twee lessen die het bestand wél kent komen erbij; de les van 23 september wordt
+    // nergens genoemd, ook niet om hem weg te halen.
+    expect(uit.nieuweBoekingen.map((b) => b.start_time)).toEqual([
+      new Date(2026, 8, 9, 17, 0).toISOString(),
+      new Date(2026, 8, 16, 17, 0).toISOString(),
+    ]);
+    expect(uit.nieuweBoekingen.map((b) => b.id)).not.toContain('b-weg');
   });
 });
