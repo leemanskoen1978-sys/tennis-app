@@ -159,3 +159,203 @@ export function bytesNaarTekst(bytes: Uint8Array): string {
   }
   return uit;
 }
+
+// ---------------------------------------------------------------------------
+// De XML
+// ---------------------------------------------------------------------------
+
+/**
+ * De vijf entiteiten die `xml()` in `lib/xlsx.ts` erin zet, er weer uit.
+ *
+ * De volgorde is niet vrij: `&amp;` gaat als láátste. Andersom wordt `&amp;lt;` — de tekst
+ * "&lt;" die een coach letterlijk in een naam kan hebben staan — eerst "&lt;" en daarna het
+ * teken "<". Dat is precies het soort fout dat pas opvalt bij één naam met een ampersand
+ * erin, een jaar later.
+ */
+export function ontsnapTerug(tekst: string): string {
+  return tekst
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+/** De inhoud van alle `<t>`-stukken in een blok, aaneengeplakt en ontsnapt. */
+function tekstStukken(blok: string): string {
+  const stukken = blok.match(/<t[^>]*>([\s\S]*?)<\/t>/g) ?? [];
+  return stukken
+    .map((s) => ontsnapTerug(s.replace(/^<t[^>]*>/, '').replace(/<\/t>$/, '')))
+    .join('');
+}
+
+/**
+ * De tabel met gedeelde teksten van Excel, op volgorde.
+ *
+ * De volgorde is de betekenis: een cel met `t="s"` bewaart een índex in deze lijst, geen
+ * tekst. Een `<v>0</v>` is dus de eerste tekst en niet een lege cel — in `koen.xlsx` is dat
+ * de kop "Datum", die bij een lezer die op waarheid test spoorloos verdwijnt.
+ *
+ * Eén `<si>` kan uit meerdere `<r><t>`-stukken bestaan: dat is één tekst waarvan Excel een
+ * deel apart heeft opgemaakt. Aaneenplakken, anders valt een naam middenin uit elkaar.
+ */
+export function leesSharedStrings(xml: string): string[] {
+  const blokken = xml.match(/<si>[\s\S]*?<\/si>/g) ?? [];
+  return blokken.map(tekstStukken);
+}
+
+/** "A" → 0, "J" → 9, "AA" → 26. De omgekeerde van `kolomLetter` in `lib/xlsx.ts`. */
+export function letterNaarKolom(letters: string): number {
+  let n = 0;
+  for (let i = 0; i < letters.length; i++) {
+    n = n * 26 + (letters.charCodeAt(i) - 64);
+  }
+  return n - 1;
+}
+
+/**
+ * Eén blad als een rooster van rauwe teksten.
+ *
+ * Rauw, met opzet: hier wordt niets omgezet naar een getal, een datum of een uur. Wat een
+ * kolom betékent is de zaak van de import — die weet welke kolom een datum is en deze lezer
+ * niet. Zou de lezer alvast gaan omzetten, dan zit de kennis over het bestandsformaat op twee
+ * plekken en verschilt ze na de eerste wijziging.
+ *
+ * De plek van een cel komt uit zijn eigen `r` ("C3"), niet uit de volgorde waarin de cellen
+ * staan: een blad van Excel laat lege cellen gewoon weg.
+ */
+export function leesBlad(xml: string, gedeeld: readonly string[]): string[][] {
+  const rijen: string[][] = [];
+
+  const rijPatroon = /<row([^>]*?)\/>|<row([^>]*?)>([\s\S]*?)<\/row>/g;
+  let rijTreffer: RegExpExecArray | null;
+  while ((rijTreffer = rijPatroon.exec(xml)) !== null) {
+    const kenmerken = rijTreffer[1] ?? rijTreffer[2] ?? '';
+    const inhoud = rijTreffer[3] ?? '';
+    const nummer = Number(/\br="(\d+)"/.exec(kenmerken)?.[1] ?? rijen.length + 1);
+    const cellen: string[] = [];
+
+    const celPatroon = /<c([^>]*?)\/>|<c([^>]*?)>([\s\S]*?)<\/c>/g;
+    let celTreffer: RegExpExecArray | null;
+    while ((celTreffer = celPatroon.exec(inhoud)) !== null) {
+      const celKenmerken = celTreffer[1] ?? celTreffer[2] ?? '';
+      const celInhoud = celTreffer[3] ?? '';
+      const verwijzing = /\br="([A-Z]+)\d*"/.exec(celKenmerken)?.[1];
+      const plek = verwijzing !== undefined ? letterNaarKolom(verwijzing) : cellen.length;
+      const soort = /\bt="([a-zA-Z]+)"/.exec(celKenmerken)?.[1];
+      const waarde = /<v>([\s\S]*?)<\/v>/.exec(celInhoud)?.[1];
+
+      let tekst: string;
+      if (soort === 's') {
+        // Een index, geen tekst. `Number('0')` is 0 en dat is een geldige plek in de tabel;
+        // vandaar een expliciete controle en nergens een `|| ''`.
+        const index = Number(waarde);
+        tekst = Number.isInteger(index) && index >= 0 && index < gedeeld.length ? gedeeld[index] : '';
+      } else if (soort === 'inlineStr') {
+        // De schrijfwijze van deze app zelf: `<is><t>` met de tekst erin.
+        tekst = tekstStukken(celInhoud);
+      } else {
+        tekst = waarde !== undefined ? ontsnapTerug(waarde) : '';
+      }
+
+      while (cellen.length < plek) cellen.push('');
+      cellen[plek] = tekst;
+    }
+
+    while (rijen.length < nummer - 1) rijen.push([]);
+    rijen[nummer - 1] = cellen;
+  }
+  return rijen;
+}
+
+export interface GelezenBlad {
+  naam: string;
+  rijen: string[][];
+}
+
+/** De naam van een kenmerk uit een XML-tag, of undefined als hij er niet staat. */
+function kenmerk(tag: string, naam: string): string | undefined {
+  const treffer = new RegExp(`\\b${naam}="([^"]*)"`).exec(tag);
+  return treffer ? ontsnapTerug(treffer[1]) : undefined;
+}
+
+/**
+ * De bladen van een werkmap, met hun naam zoals hij op het tabblad staat.
+ *
+ * De koppeling naam → bestand loopt via `r:id` en `xl/_rels/workbook.xml.rels`, en nooit via
+ * de volgorde. In `koen.xlsx` heet het enige blad "Sheet1" terwijl het bestand
+ * `worksheets/sheet1.xml` heet; dat die twee hier toevallig op elkaar lijken is geen regel om
+ * op te bouwen — Excel mag een blad "Lessen" naar `sheet7.xml` schrijven.
+ */
+export function leesWerkmap(bytes: Uint8Array): GelezenBlad[] {
+  const ingangen = leesZip(bytes);
+  const inhoudVan = (naam: string): string | undefined => {
+    const ingang = ingangen.find((i) => i.naam === naam);
+    return ingang ? bytesNaarTekst(ingang.inhoud) : undefined;
+  };
+
+  const werkmap = inhoudVan('xl/workbook.xml');
+  if (werkmap === undefined) throw new Error('Dit is geen Excel-werkmap: xl/workbook.xml ontbreekt.');
+  const relaties = inhoudVan('xl/_rels/workbook.xml.rels') ?? '';
+
+  const doelen = new Map<string, string>();
+  for (const tag of relaties.match(/<Relationship\b[^>]*>/g) ?? []) {
+    const id = kenmerk(tag, 'Id');
+    const doel = kenmerk(tag, 'Target');
+    if (id !== undefined && doel !== undefined) doelen.set(id, doel);
+  }
+
+  // Een sharedStrings.xml hoeft er niet te zijn: deze app schrijft er zelf geen, want ze zet
+  // haar tekst met `inlineStr` in het blad zelf.
+  const gedeeld = leesSharedStrings(inhoudVan('xl/sharedStrings.xml') ?? '');
+
+  const bladen: GelezenBlad[] = [];
+  const sheets = /<sheets>([\s\S]*?)<\/sheets>/.exec(werkmap)?.[1] ?? '';
+  for (const tag of sheets.match(/<sheet\b[^>]*\/?>/g) ?? []) {
+    const naam = kenmerk(tag, 'name') ?? '';
+    const id = kenmerk(tag, 'r:id');
+    const doel = id !== undefined ? doelen.get(id) : undefined;
+    if (doel === undefined) continue;
+    // Het pad in een relatie staat relatief aan de map van het bestand waar de relatie bij
+    // hoort — hier `xl/`. Vandaar dat "worksheets/sheet1.xml" er "xl/" voor krijgt in plaats
+    // van dat we gokken waar het blad wel zal staan.
+    const pad = doel.startsWith('/') ? doel.slice(1) : `xl/${doel}`;
+    const blad = inhoudVan(pad);
+    if (blad === undefined) continue;
+    bladen.push({ naam, rijen: leesBlad(blad, gedeeld) });
+  }
+  return bladen;
+}
+
+// ---------------------------------------------------------------------------
+// Datum en tijd
+// ---------------------------------------------------------------------------
+
+/**
+ * Het getal in een datumcel terug naar een kalenderdag: het aantal dagen sinds 30 december
+ * 1899. Die dag en niet 1 januari 1900, omdat Excel 1900 voor een schrikkeljaar houdt en dus
+ * een 29 februari 1900 kent die nooit bestaan heeft. Het beginpunt één dag terugleggen maakt
+ * alles vanaf maart 1900 weer gelijk — en dat is het enige stuk van de kalender waar deze app
+ * mee te maken heeft. Dit is de spiegel van `datumNaarSerie` in `lib/xlsx.ts`.
+ *
+ * Er komen kale getallen uit en geen `Date`: een `Date` sleept een tijdzone mee, en een les
+ * van 's avonds is dan zomaar de dag ervoor.
+ */
+export function serieNaarDatum(serie: number): { jaar: number; maand: number; dag: number } {
+  const d = new Date(Date.UTC(1899, 11, 30) + Math.round(serie) * 86_400_000);
+  return { jaar: d.getUTCFullYear(), maand: d.getUTCMonth() + 1, dag: d.getUTCDate() };
+}
+
+/**
+ * Het getal in een uurcel terug naar klokuur en minuut. Excel bewaart een tijdstip als het
+ * deel van de dag dat verstreken is: 0.5 is het middaguur.
+ *
+ * Eerst de tótale minuten afronden, en pas dán splitsen. Reden (D-20):
+ * `0.58333333333333337 * 24 = 13.999999999999998`, en `Math.floor` daarvan geeft 13. Dat is
+ * een heel seizoen aan lessen een uur te vroeg in de agenda, en dat valt pas op als de eerste
+ * ouder belt omdat ze voor een dichte deur stond.
+ */
+export function fractieNaarTijd(fractie: number): { uur: number; minuut: number } {
+  const totaalMinuten = Math.round(fractie * 24 * 60);
+  return { uur: Math.floor(totaalMinuten / 60), minuut: totaalMinuten % 60 };
+}
