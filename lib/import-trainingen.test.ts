@@ -2356,10 +2356,11 @@ describe('bouwImportWijziging', () => {
   ];
   const planNieuw = () => planImportLessen(RIJEN_NIEUW, [], [KOEN], [BAAN], [], {}, NU);
 
-  it('geeft vier lijsten met rijen plus wat er niet doorging', () => {
+  it('geeft vijf lijsten met rijen plus wat er niet doorging', () => {
     const uit = bouwImportWijziging(planNieuw(), teller());
     expect(Object.keys(uit).sort()).toEqual([
-      'fouten', 'gewijzigdeGroepen', 'nieuweBoekingen', 'nieuweGroepen', 'nieuweUsers',
+      'fouten', 'gewijzigdeBoekingen', 'gewijzigdeGroepen', 'nieuweBoekingen', 'nieuweGroepen',
+      'nieuweUsers',
     ]);
     expect(uit.fouten).toEqual([]);
   });
@@ -2546,5 +2547,64 @@ describe('bouwImportWijziging', () => {
       new Date(2026, 8, 16, 17, 0).toISOString(),
     ]);
     expect(uit.nieuweBoekingen.map((b) => b.id)).not.toContain('b-weg');
+  });
+
+  // -------------------------------------------------------------------------
+  // De trainerwissel wegschrijven (plan 05.1-03, taak 2)
+  // -------------------------------------------------------------------------
+
+  /** De groep zoals de club haar kent: dezelfde woensdag op baan 1, maar met Sofie ervoor. */
+  const OP_SOFIE = groepVan({
+    id: 'g-8', coach_id: SOFIE.id, court_id: BAAN.id, roster: ['u-astor', 'u-clara'],
+  });
+  const LEERLINGEN = [
+    userVan({ id: 'u-astor', name: 'Peferoen Astor' }),
+    userVan({ id: 'u-clara', name: 'Martens Clara' }),
+  ];
+  /** Drie komende lessen van die groep, alle drie op Sofie. */
+  function boekingenVanSofie(): ImportBoeking[] {
+    return [9, 16, 23].map((dag, i) => boekingVan({
+      id: `b-sofie-${i}`,
+      group_id: OP_SOFIE.id,
+      coach_id: SOFIE.id,
+      start_time: new Date(2026, 8, dag, 17, 0).toISOString(),
+      end_time: new Date(2026, 8, dag, 18, 0).toISOString(),
+    }));
+  }
+  const planWissel = () => planImportLessen(
+    RIJEN_NIEUW, [OP_SOFIE], [KOEN, SOFIE, ...LEERLINGEN], [BAAN], boekingenVanSofie(), {}, NU,
+  );
+
+  it('schrijft de trainerwissel weg als één smalle patch per komende les', () => {
+    const uit = bouwImportWijziging(planWissel(), teller());
+    expect(uit.gewijzigdeBoekingen).toEqual([
+      { id: 'b-sofie-0', patch: { coach_id: KOEN.id } },
+      { id: 'b-sofie-1', patch: { coach_id: KOEN.id } },
+      { id: 'b-sofie-2', patch: { coach_id: KOEN.id } },
+    ]);
+  });
+
+  it('zet niets anders dan de trainer in een patch — geen tijd, geen baan, geen status', () => {
+    // De belofte van deze fase in één bewering: een les die iemand anders gaf blijft van hem, en
+    // wat er al stond blijft staan. Daarom is de patch getypeerd als `{ coach_id: string }` en
+    // niets breders; hier wordt bewezen dat er ook echt niets anders in zit.
+    for (const { patch } of bouwImportWijziging(planWissel(), teller()).gewijzigdeBoekingen) {
+      expect(Object.keys(patch)).toEqual(['coach_id']);
+    }
+  });
+
+  it('geeft twee keer dezelfde wissel twee keer exact dezelfde patches', () => {
+    expect(bouwImportWijziging(planWissel(), teller()).gewijzigdeBoekingen)
+      .toEqual(bouwImportWijziging(planWissel(), teller()).gewijzigdeBoekingen);
+  });
+
+  it('laat de lijst leeg als er niets wisselt', () => {
+    expect(bouwImportWijziging(planNieuw(), teller()).gewijzigdeBoekingen).toEqual([]);
+  });
+
+  it('telt de bijgewerkte lessen los van de nieuwe: de drie wisselen, er komt er geen bij', () => {
+    const uit = bouwImportWijziging(planWissel(), teller());
+    expect(uit.gewijzigdeBoekingen).toHaveLength(3);
+    expect(uit.nieuweBoekingen).toEqual([]);
   });
 });
