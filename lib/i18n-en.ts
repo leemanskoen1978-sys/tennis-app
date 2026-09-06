@@ -1414,6 +1414,9 @@ export const EN: Record<string, string> = {
     'This sick note will be deleted. The lessons stay, and so does any stand-in you already picked.',
   'De ziekteperiode eindigt voor ze begint.': 'The sick leave ends before it starts.',
   'Alles in één keer': 'All at once',
+  'Kies een datum uit de kalender': 'Pick a date from the calendar',
+  'Maand terug': 'Previous month',
+  'Maand verder': 'Next month',
   'Wie kan er het meeste overnemen? De lessen waarop hij niet kan blijven openstaan.':
     'Who can take on the most? The lessons they cannot take stay open.',
   '{naam} · kan er {kan} van de {totaal}': '{naam} · can take {kan} of {totaal}',

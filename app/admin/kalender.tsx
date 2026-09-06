@@ -45,6 +45,7 @@ import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography } from '../../constants/theme';
 import type { Boekingsperiode, User, Vakantie } from '../../lib/types';
+import { DatumVeld } from '../../components/ui/DatumVeld';
 
 /**
  * Kop boven een helft van het scherm. Twee formulieren onder elkaar zonder zo'n streep worden
@@ -159,13 +160,9 @@ function Clubkalender(): React.JSX.Element {
         <View style={styles.datumRij}>
           <View style={styles.veld}>
             <Text style={styles.label}>{t('Van')}</Text>
-            <TextInput
-              style={styles.input}
-              value={van}
-              onChangeText={setVan}
-              placeholder={t('dd/mm/jjjj')}
-              placeholderTextColor={tennisColors.textMuted}
-              inputMode="numeric"
+            <DatumVeld
+              waarde={van}
+              onChange={setVan}
             />
           </View>
           <View style={styles.veld}>
@@ -407,13 +404,9 @@ function Boekingstijden(): React.JSX.Element {
         <View style={styles.datumRij}>
           <View style={styles.veld}>
             <Text style={styles.labelTijden}>{t('Van')}</Text>
-            <TextInput
-              style={styles.inputTijden}
-              value={van}
-              onChangeText={setVan}
-              placeholder={t('dd/mm/jjjj')}
-              placeholderTextColor={tennisColors.textMuted}
-              inputMode="numeric"
+            <DatumVeld
+              waarde={van}
+              onChange={setVan}
             />
           </View>
           <View style={styles.veld}>

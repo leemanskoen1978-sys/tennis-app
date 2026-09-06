@@ -48,6 +48,7 @@ import { spacing, radius, typography } from '../../../constants/theme';
 import { botsingRegels } from '../../../lib/botsingen';
 import type { GeblokkeerdeLes } from '../../../lib/lesgroepen';
 import type { LesGroep } from '../../../lib/types';
+import { DatumVeld } from '../../../components/ui/DatumVeld';
 
 /** Lesdagen op leesvolgorde: maandag eerst, zondag laatst. De waarden blijven getDay(). */
 const DAG_VOLGORDE = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -314,24 +315,16 @@ export default function LesgroepDetailScreen(): React.JSX.Element {
         <View style={styles.datumRij}>
           <View style={styles.veld}>
             <Text style={styles.label}>{t('Seizoen van')}</Text>
-            <TextInput
-              style={styles.input}
-              value={huidig.van}
-              onChangeText={(v) => zet({ van: v })}
-              placeholder={t('dd/mm/jjjj')}
-              placeholderTextColor={tennisColors.textMuted}
-              inputMode="numeric"
+            <DatumVeld
+              waarde={huidig.van}
+              onChange={(v) => zet({ van: v })}
             />
           </View>
           <View style={styles.veld}>
             <Text style={styles.label}>{t('Tot en met')}</Text>
-            <TextInput
-              style={styles.input}
-              value={huidig.tot}
-              onChangeText={(v) => zet({ tot: v })}
-              placeholder={t('dd/mm/jjjj')}
-              placeholderTextColor={tennisColors.textMuted}
-              inputMode="numeric"
+            <DatumVeld
+              waarde={huidig.tot}
+              onChange={(v) => zet({ tot: v })}
             />
           </View>
         </View>

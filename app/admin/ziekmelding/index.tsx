@@ -35,6 +35,7 @@ import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
 import { spacing, radius, typography } from '../../../constants/theme';
 import type { SickLeave } from '../../../lib/types';
+import { DatumVeld } from '../../../components/ui/DatumVeld';
 
 /**
  * De meest recente melding bovenaan. Dat is de melding waarvoor de beheerder dit scherm
@@ -162,24 +163,16 @@ export default function ZiekmeldingScreen(): React.JSX.Element {
         <View style={styles.datumRij}>
           <View style={styles.veld}>
             <Text style={styles.label}>{t('Ziek van')}</Text>
-            <TextInput
-              style={styles.input}
-              value={van}
-              onChangeText={setVan}
-              placeholder={t('dd/mm/jjjj')}
-              placeholderTextColor={tennisColors.textMuted}
-              inputMode="numeric"
+            <DatumVeld
+              waarde={van}
+              onChange={setVan}
             />
           </View>
           <View style={styles.veld}>
             <Text style={styles.label}>{t('Tot en met')}</Text>
-            <TextInput
-              style={styles.input}
-              value={totDag}
-              onChangeText={setTotDag}
-              placeholder={t('dd/mm/jjjj')}
-              placeholderTextColor={tennisColors.textMuted}
-              inputMode="numeric"
+            <DatumVeld
+              waarde={totDag}
+              onChange={setTotDag}
             />
           </View>
         </View>

@@ -31,6 +31,7 @@ import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
 import { spacing, radius, typography } from '../../../constants/theme';
 import type { LesGroep } from '../../../lib/types';
+import { DatumVeld } from '../../../components/ui/DatumVeld';
 
 /** Lesdagen op leesvolgorde: maandag eerst, zondag laatst. De waarden blijven getDay(). */
 const DAG_VOLGORDE = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -201,24 +202,16 @@ export default function LesgroepenScreen(): React.JSX.Element {
         <View style={styles.datumRij}>
           <View style={styles.veld}>
             <Text style={styles.label}>{t('Seizoen van')}</Text>
-            <TextInput
-              style={styles.input}
-              value={van}
-              onChangeText={setVan}
-              placeholder={t('dd/mm/jjjj')}
-              placeholderTextColor={tennisColors.textMuted}
-              inputMode="numeric"
+            <DatumVeld
+              waarde={van}
+              onChange={setVan}
             />
           </View>
           <View style={styles.veld}>
             <Text style={styles.label}>{t('Tot en met')}</Text>
-            <TextInput
-              style={styles.input}
-              value={tot}
-              onChangeText={setTot}
-              placeholder={t('dd/mm/jjjj')}
-              placeholderTextColor={tennisColors.textMuted}
-              inputMode="numeric"
+            <DatumVeld
+              waarde={tot}
+              onChange={setTot}
             />
           </View>
         </View>

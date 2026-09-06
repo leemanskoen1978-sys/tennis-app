@@ -3,7 +3,7 @@
 // bladeren staan, zodat "Vorige" bij een kwartaal ook echt een kwartaal terug gaat.
 
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 import { Button } from './Button';
@@ -15,6 +15,7 @@ import {
 import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography } from '../../constants/theme';
+import { DatumVeld } from './DatumVeld';
 
 /** Twee periodes zijn dezelfde keuze als soort én grenzen gelijk zijn. */
 function sameChoice(a: Period, b: Period): boolean {
@@ -89,26 +90,16 @@ export function PeriodPicker({
           <View style={styles.customRow}>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>{t('Van')}</Text>
-              <TextInput
-                style={styles.input}
-                value={fromText}
-                onChangeText={setFromText}
-                placeholder={t('dd/mm/jjjj')}
-                placeholderTextColor={tennisColors.textMuted}
-                accessibilityLabel={t('Begindatum van de periode')}
-                inputMode="numeric"
+              <DatumVeld
+                waarde={fromText}
+                onChange={setFromText}
               />
             </View>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>{t('Tot en met')}</Text>
-              <TextInput
-                style={styles.input}
-                value={toText}
-                onChangeText={setToText}
-                placeholder={t('dd/mm/jjjj')}
-                placeholderTextColor={tennisColors.textMuted}
-                accessibilityLabel={t('Einddatum van de periode')}
-                inputMode="numeric"
+              <DatumVeld
+                waarde={toText}
+                onChange={setToText}
               />
             </View>
           </View>
