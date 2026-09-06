@@ -91,6 +91,10 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   // Vooruit geregistreerd: het groepsscherm zelf komt later, en zonder deze regel krijgt het
   // straks geen kop.
   { name: 'admin/lesgroepen/[id]', title: t('Lesgroep') },
+  { name: 'admin/ziekmelding/index', title: t('Ziekmelding') },
+  // Vooruit geregistreerd, net als het groepsscherm hierboven: de werklijst van één melding
+  // komt in het volgende plan, en zonder deze regel krijgt ze straks geen kop.
+  { name: 'admin/ziekmelding/[id]', title: t('Werklijst') },
   // De export staat bij de club en niet bij het geld: het gaat over de trainingen zelf.
   { name: 'admin/export', title: t('Trainingen exporteren') },
   { name: 'admin/leden', title: t('Leden') },
