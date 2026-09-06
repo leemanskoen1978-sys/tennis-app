@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-05-PLAN.md (de opslagweg voor ziekmeldingen)
-last_updated: "2026-09-06T00:08:21.584Z"
+stopped_at: Completed 03-06-PLAN.md (het ziekmeldingsscherm: formulier, lijst en tegel)
+last_updated: "2026-09-06T00:17:07.388Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 36
-  completed_plans: 21
+  completed_plans: 22
   percent: 33
 ---
 
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core value:** Als een trainer ziek is, ziet de beheerder binnen een minuut welke lessen dat
 raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf agenda's te zoeken.
-**Current focus:** Phase 3 — Ziekmelding en vervangerswerklijst (het rekenwerk staat, het scherm nog niet)
+**Current focus:** Phase 3 — Ziekmelding en vervangerswerklijst (ziek melden kan, de werklijst nog niet)
 
 ## Current Position
 
 Phase: 3 of 6 (Ziekmelding en vervangerswerklijst)
-Plan: 5 of 8 af (03-05-PLAN.md — de opslagweg: de vier stops, meldZiek en trekZiekmeldingIn)
+Plan: 6 of 8 af (03-06-PLAN.md — het ziekmeldingsscherm: formulier, lijst, tegel en de Engelse kant)
 Status: Ready to execute
 Last activity: 2026-09-06
 
@@ -35,7 +35,7 @@ Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draa
 Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
 de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
 
-Progress: [██████░░░░] 58%
+Progress: [██████░░░░] 61%
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [██████░░░░] 58%
 | Phase 03 P03 | 15min | 2 tasks | 1 files |
 | Phase 03 P04 | ~35min | 2 tasks | 4 files |
 | Phase 03 P05 | ~25 min | 2 tasks | 5 files |
+| Phase 03 P06 | 35min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,7 @@ confirmed as phases ship).
 - [Phase 03]: sick_leaves-policies kopiëren rates_write exact: is_admin() op using en with check, geen created_by, tegen de upsert-val
 - [Phase 03]: D-14 uitgevoerd: sick_leaves wordt met selectAllOptioneel gelezen, nooit met selectAll
 - [Phase 03]: D-17 uitgevoerd: trekZiekmeldingIn raakt geen enkele boeking
+- [Phase 03]: de beheerdersgrens staat op het ziekmeldingsscherm zelf en niet alleen op de tegel (D-12/TOEG-01)
 
 ### Pending Todos
 
@@ -190,6 +192,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T00:08:15.273Z
-Stopped at: Completed 03-03-PLAN.md (sick_leaves-tabel in het schema)
+Last session: 2026-09-06T00:16:40.850Z
+Stopped at: Completed 03-06-PLAN.md (het ziekmeldingsscherm: formulier, lijst en tegel)
 Resume file: None
