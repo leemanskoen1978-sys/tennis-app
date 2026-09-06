@@ -185,21 +185,21 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | EXP-07 | Phase 4 | Complete |
 | IMP-01 | Phase 5 | Pending |
 | IMP-02 | Phase 5 | Pending |
-| IMP-03 | Phase 5 | Pending |
+| IMP-03 | Phase 5 | Code klaar, wacht op handcontrole |
 | IMP-04 | Phase 5 | Pending |
 | IMP-05 | Phase 5 | Pending |
 | IMP-06 | Phase 5 | Pending |
 | IMP-07 | Phase 5 | Pending |
 | IMP-08 | Phase 5 | Pending |
 | IMP-09 | Phase 5 | Pending |
-| IMP-10 | Phase 5 | Pending |
+| IMP-10 | Phase 5 | Code klaar, wacht op handcontrole |
 | IMP-11 | Phase 5 | Pending |
-| IMP-12 | Phase 5.1 | Pending |
-| IMP-13 | Phase 5.1 | Complete |
-| IMP-14 | Phase 5.1 | Pending |
-| IMP-15 | Phase 5.1 | Pending |
-| IMP-16 | Phase 5.1 | Pending |
-| IMP-17 | Phase 5.1 | Pending |
+| IMP-12 | Phase 5.1 | Code klaar, wacht op handcontrole |
+| IMP-13 | Phase 5.1 | Code klaar, wacht op handcontrole |
+| IMP-14 | Phase 5.1 | Code klaar, wacht op handcontrole |
+| IMP-15 | Phase 5.1 | Code klaar, wacht op handcontrole |
+| IMP-16 | Phase 5.1 | Code klaar, wacht op handcontrole |
+| IMP-17 | Phase 5.1 | Code klaar, wacht op handcontrole |
 | TOEG-01 | Phase 1 | In Progress |
 | TOEG-02 | Phase 1 | Pending |
 | TOEG-03 | Phase 1 | Complete |

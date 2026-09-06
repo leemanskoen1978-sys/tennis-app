@@ -139,6 +139,37 @@ voorbeeldgegevens.
 - [ ] Exporteer een periode (punt 4) en lees dat bestand meteen weer in. Verwacht: alles
       herkend, niets verdubbeld.
 
+## 6. De trainerswissel via import — het scenario waar je om vroeg
+
+Dit is de reden dat fase 5.1 bestaat. Doe het op de voorbeeldgegevens (`.env` tijdelijk
+hernoemen), niet op de echte club.
+
+- [ ] Zorg voor twee traineraccounts, bijvoorbeeld `Koen Leemans` en `Sofie Maes`, en minstens
+      één baan.
+- [ ] **September**: importeer `koen.xlsx` echt. Tien groepen, genoemd naar hun moment.
+- [ ] **Januari, met de hand**: open de groep van woensdag 17:00, geef hem `Sofie Maes` als
+      trainer, en zet er één speler bij die niet in `koen.xlsx` staat.
+- [ ] **Maart**: kies hetzelfde `koen.xlsx` opnieuw, en kijk **vóór** je iets aanklikt:
+      - bovenaan de periode van het bestand met een percentage dat al geweest is;
+      - de zin dat je al eerder een seizoen inlas, met datum;
+      - een blok "dit neemt iets weg — bevestig apart", met de trainerswissel terug naar
+        `Leemans Koen` mét het aantal lessen, én de speler uit de vorige stap mét naam;
+      - het vinkje staat **uit**.
+- [ ] Importeer **zonder** het vinkje. De groep hoort nog steeds `Sofie Maes` te hebben en de
+      toegevoegde speler hoort er nog in te zitten. Dit is de bescherming.
+- [ ] Kies het bestand nog eens, zet het vinkje nu **aan**, importeer. Nu staan de komende
+      lessen weer op `Leemans Koen` en is de toegevoegde speler eruit — precies wat er
+      aangekondigd stond, niet meer.
+- [ ] Open een les van vóór vandaag. Die hoort onveranderd te zijn, ook wie hem werkelijk gaf.
+
+En het scenario waar het allemaal om begon:
+
+- [ ] Maak een kopie van `koen.xlsx` waarin in de kolom `Coach` overal `Leemans Koen`
+      vervangen is door `Maes Sofie`. Verder niets wijzigen.
+- [ ] Kies dat bestand. Verwacht: **nul** nieuwe lesgroepen, en per groep de regel hoeveel
+      komende lessen naar Sofie gaan. Importeer, en kijk of de komende lessen bij haar staan
+      en de gegeven lessen bij jou.
+
 ---
 
 ## Wat je moet weten vóór je begint
