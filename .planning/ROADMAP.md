@@ -151,9 +151,9 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md — De uitpakker met de hand: RFC 1951 in lib/inflate.ts, bewezen tegen bekende bytevectoren (wave 1)
-- [ ] 05-02-PLAN.md — Twee kleine uitbreidingen: namen herkennen ongeacht de volgorde, en een .xlsx als bytes kiezen (wave 1)
-- [ ] 05-03-PLAN.md — De lezer, eerst en alleen: zip, XML, datum en tijd, byte-exact bewezen tegen het echte koen.xlsx (wave 2)
-- [ ] 05-04-PLAN.md — De kolomtabel, de koprij, de regels met betekenis, en het sjabloon om te downloaden (wave 3)
+- [x] 05-02-PLAN.md — Twee kleine uitbreidingen: namen herkennen ongeacht de volgorde, en een .xlsx als bytes kiezen (wave 1)
+- [x] 05-03-PLAN.md — De lezer, eerst en alleen: zip, XML, datum en tijd, byte-exact bewezen tegen het echte koen.xlsx (wave 2)
+- [x] 05-04-PLAN.md — De kolomtabel, de koprij, de regels met betekenis, en het sjabloon om te downloaden (wave 3)
 - [ ] 05-05-PLAN.md — Lesgroepen afleiden op de sleutel naam+dag+uur; spelers aanmaken, trainer en baan alleen opzoeken (wave 4)
 - [ ] 05-06-PLAN.md — De lessen: vakanties eruit, botsingen gemeld, herimport zonder verdubbelen, en de zomertijdtest (wave 5)
 - [ ] 05-07-PLAN.md — De acceptatie: koen.xlsx van bytes tot plan, twee keer inlezen, en de export weer inlezen (wave 6)
@@ -173,4 +173,4 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 | 2.1 De groep verzetten werkt door | 1/2 | In Progress|  |
 | 3. Ziekmelding en vervangerswerklijst | 7/8 | In Progress|  |
 | 4. Excel-export | 5/5 | In Progress| Code af; taak 3 van 04-05 is een handmatige controle in Excel |
-| 5. Excel-import van trainingen | 1/10 | In Progress|  |
+| 5. Excel-import van trainingen | 4/10 | In Progress|  |

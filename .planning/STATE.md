@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 05-03-PLAN.md (de xlsx-lezer, byte-exact bewezen tegen het echte koen.xlsx; fase 5 plan 3, buiten de volgorde van fase 3 om)"
-last_updated: "2026-09-06T02:00:00.000Z"
+stopped_at: "Completed 05-04-PLAN.md (de kolomtabel van de trainingenimport, de koprij, de regels met betekenis en het sjabloon; fase 5 plan 4, buiten de volgorde van fase 3 om)"
+last_updated: "2026-09-06T02:40:00.000Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 36
-  completed_plans: 26
+  completed_plans: 27
   percent: 33
 ---
 
@@ -35,7 +35,7 @@ Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draa
 Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
 de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
 
-Progress: [██████░░░░] 64%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [██████░░░░] 64%
 | Phase 02.1-groep-verzetten P02 | 25min | 2 tasks | 3 files |
 | Phase 04-excel-export P01 | ~20min | 2 tasks | 4 files |
 | Phase 04 P02 | ~25min | 2 tasks | 2 files |
+| Phase 05-excel-import-van-trainingen P04 | ~35min | 3 tasks | 2 files |
 | Phase 04 P03 | ~20min | 2 tasks | 2 files |
 | Phase 04 P04 | ~25min | 2 tasks | 2 files |
 | Phase 04 P05 | ~20min | 2 tasks | 4 files |
