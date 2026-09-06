@@ -1413,6 +1413,13 @@ export const EN: Record<string, string> = {
   'Deze ziekmelding wordt verwijderd. De lessen blijven staan; een vervanger die je al koos ook.':
     'This sick note will be deleted. The lessons stay, and so does any stand-in you already picked.',
   'De ziekteperiode eindigt voor ze begint.': 'The sick leave ends before it starts.',
+  'Alles in één keer': 'All at once',
+  'Wie kan er het meeste overnemen? De lessen waarop hij niet kan blijven openstaan.':
+    'Who can take on the most? The lessons they cannot take stay open.',
+  '{naam} · kan er {kan} van de {totaal}': '{naam} · can take {kan} of {totaal}',
+  '{n} lessen naar {naam}.': '{n} lessons assigned to {naam}.',
+  '{n} lessen naar {naam}. {rest} blijven openstaan.':
+    '{n} lessons assigned to {naam}. {rest} stay open.',
   'Onbekende trainer': 'Unknown coach',
 
   // --- Beheer → Ziekmelding: de werklijst (app/admin/ziekmelding/[id]) ---

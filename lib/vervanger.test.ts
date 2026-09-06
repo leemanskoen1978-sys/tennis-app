@@ -1,4 +1,4 @@
-import { kanVervangen, vervangersVoor } from './vervanger';
+import { kanVervangen, planMassaVervanging, vervangersVoor } from './vervanger';
 import type { VervangerKandidaat, VervangerSlot, VervangerUitkomst } from './vervanger';
 import type { OpenZiekmelding } from './ziekmelding';
 import type { Booking, Vakantie } from './types';
@@ -240,5 +240,80 @@ describe('geen kandidaat valt stil weg', () => {
 
   it('een lege kandidatenlijst geeft een lege uitkomst', () => {
     expect(vervangersVoor([], slot, wereld.lessen, [], wereld.open, CLUB_EINDE)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Alle openstaande lessen in één keer aan één collega
+// ---------------------------------------------------------------------------
+
+describe('planMassaVervanging', () => {
+  /** Drie lessen van de zieke collega op dinsdag: 15:00, 16:00 en 17:00. */
+  const drieUren = [
+    { id: 'b-15', start_time: moment(6, 15), end_time: moment(6, 16) },
+    { id: 'b-16', start_time: moment(6, 16), end_time: moment(6, 17) },
+    { id: 'b-17', start_time: moment(6, 17), end_time: moment(6, 18) },
+  ];
+
+  it('geeft twee lege lijsten voor een lege lijst lessen', () => {
+    expect(planMassaVervanging(trainer(), [], [], [], [], CLUB_EINDE))
+      .toEqual({ toewijzen: [], overgeslagen: [] });
+  });
+
+  it('wijst alles toe aan een collega die alles kan', () => {
+    const uit = planMassaVervanging(trainer(), drieUren, [], [], [], CLUB_EINDE);
+    expect(uit.toewijzen).toEqual(['b-15', 'b-16', 'b-17']);
+    expect(uit.overgeslagen).toEqual([]);
+  });
+
+  it('slaat alles over als de collega zelf ziek is, met de reden erbij', () => {
+    const uit = planMassaVervanging(
+      trainer({ id: 'bart', name: 'Bart' }), drieUren, [], [],
+      [ziek({ coach_id: 'bart' })], CLUB_EINDE,
+    );
+    expect(uit.toewijzen).toEqual([]);
+    expect(uit.overgeslagen.map((o) => o.id)).toEqual(['b-15', 'b-16', 'b-17']);
+    expect(new Set(uit.overgeslagen.map((o) => o.reden))).toEqual(new Set(['zelf_ziek']));
+  });
+
+  it('geeft hem wat hij kan en laat de rest openstaan', () => {
+    // Hij geeft om 16:00 zelf al les; de andere twee uren zijn vrij.
+    const eigenLes = les({ id: 'eigen', coach_id: 'bart', start_time: moment(6, 16), end_time: moment(6, 17) });
+    const uit = planMassaVervanging(
+      trainer({ id: 'bart', name: 'Bart' }), drieUren, [eigenLes], [], [], CLUB_EINDE,
+    );
+    expect(uit.toewijzen).toEqual(['b-15', 'b-17']);
+    expect(uit.overgeslagen).toHaveLength(1);
+    expect(uit.overgeslagen[0].id).toBe('b-16');
+  });
+
+  it('geeft dezelfde reden als kanVervangen, zonder tweede formulering', () => {
+    const uit = planMassaVervanging(
+      trainer({ id: 'bart', name: 'Bart' }), [drieUren[0]], [], [vakantie()], [], CLUB_EINDE,
+    );
+    const los = kanVervangen(
+      trainer({ id: 'bart', name: 'Bart' }), slot, [], [vakantie()], [], CLUB_EINDE,
+    );
+    expect(uit.overgeslagen[0].reden).toBe(los.reden);
+  });
+
+  it('wijst drie lessen op hetzelfde uur alle drie toe', () => {
+    // Het kleutertennis op Terrein 7: de zieke collega draaide drie groepen tegelijk. Zou deze
+    // functie oplopend rekenen, dan heette de vervanger na de eerste les bezet en kreeg hij er
+    // één van de drie — terwijl zijn collega ze alle drie zelf gaf.
+    const tegelijk = [
+      { id: 'wit', start_time: moment(6, 15), end_time: moment(6, 16) },
+      { id: 'blauw', start_time: moment(6, 15), end_time: moment(6, 16) },
+      { id: 'rood', start_time: moment(6, 15), end_time: moment(6, 16) },
+    ];
+    const uit = planMassaVervanging(trainer(), tegelijk, [], [], [], CLUB_EINDE);
+    expect(uit.toewijzen).toEqual(['wit', 'blauw', 'rood']);
+    expect(uit.overgeslagen).toEqual([]);
+  });
+
+  it('houdt de volgorde van de lessen aan zoals ze binnenkwamen', () => {
+    const omgekeerd = [drieUren[2], drieUren[0], drieUren[1]];
+    const uit = planMassaVervanging(trainer(), omgekeerd, [], [], [], CLUB_EINDE);
+    expect(uit.toewijzen).toEqual(['b-17', 'b-15', 'b-16']);
   });
 });

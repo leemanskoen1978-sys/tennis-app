@@ -153,6 +153,15 @@ interface DataShape {
    * bewaker").
    */
   setTaughtBy: (bookingId: string, coachId: string | null) => Promise<void>;
+  /**
+   * Dezelfde vervanger op een reeks lessen, in één schrijfbeurt.
+   *
+   * Voor de werklijst van een ziekmelding: die raakt bij deze club makkelijk twaalf lessen, en
+   * een lus over `setTaughtBy` zou twaalf opslagbeurten en twaalf ronden naar Supabase
+   * betekenen — met een halve toewijzing als het onderweg misgaat. Wélke lessen erin gaan
+   * beslist het scherm met `planMassaVervanging`; deze functie schrijft alleen weg.
+   */
+  zetVervangerVoorLessen: (bookingIds: readonly string[], coachId: string) => Promise<void>;
   addBeurtenkaart: (playerId: string) => Promise<void>;
   updateBeurtenkaart: (id: string, patch: Pick<Beurtenkaart, 'remarks'>) => Promise<void>;
   /** Handmatig een beurt af- of bijboeken op het kaartscherm. */
@@ -985,6 +994,24 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [commit]);
 
+  // Dezelfde regel als `setTaughtBy`, maar dan voor een handvol lessen tegelijk: één veld,
+  // `coach_id` blijft staan, en leeg bestaat hier niet — wie een reeks toewijst, wijst iemand
+  // aan. Wissen blijft per les gaan, want dat is een correctie en geen bulkhandeling.
+  const zetVervangerVoorLessen = useCallback(async (
+    bookingIds: readonly string[],
+    coachId: string,
+  ): Promise<void> => {
+    const store = storeRef.current;
+    if (!store || bookingIds.length === 0) return;
+    const raakt = new Set(bookingIds);
+    await commit({
+      ...store,
+      bookings: store.bookings.map((b) => (
+        raakt.has(b.id) ? { ...b, taught_by_id: coachId } : b
+      )),
+    });
+  }, [commit]);
+
   const addBeurtenkaart = useCallback(async (playerId: string) => {
     const store = storeRef.current;
     if (!store) return;
@@ -1538,6 +1565,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setAanwezigheid,
     setPaymentMethod,
     setTaughtBy,
+    zetVervangerVoorLessen,
     addBeurtenkaart,
     updateBeurtenkaart,
     addCardSession,
@@ -1577,7 +1605,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     addCourt, updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
     updateBooking, deleteBooking, approveBooking, rejectBooking,
     setParticipants, setPaymentSplit, setAanwezigheid,
-    setPaymentMethod, setTaughtBy, addBeurtenkaart,
+    setPaymentMethod, setTaughtBy, zetVervangerVoorLessen, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
     vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster,

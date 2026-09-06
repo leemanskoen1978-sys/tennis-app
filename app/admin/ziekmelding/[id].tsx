@@ -40,7 +40,7 @@ import { useSimpleData } from '../../../providers/SimpleDataProvider';
 import { formatDay, formatTimeRange } from '../../../lib/datetime';
 import { groupSize, groupSizeLabel } from '../../../lib/groups';
 import { periodeTekst } from '../../../lib/vakanties';
-import { vervangersVoor } from '../../../lib/vervanger';
+import { planMassaVervanging, vervangersVoor } from '../../../lib/vervanger';
 import { coachesOf } from '../../../lib/hub';
 import { lessenVoorZiekmelding, openZiekmeldingen, zoektVervanger } from '../../../lib/ziekmelding';
 import { isAdmin } from '../../../lib/rechten';
@@ -62,7 +62,7 @@ export default function WerklijstScreen(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
     currentUser, users, courts, bookings, lesGroepen, sickLeaves, settings,
-    setTaughtBy, updateBooking, error,
+    setTaughtBy, zetVervangerVoorLessen, updateBooking, error,
   } = useSimpleData();
 
   // Welke regel zijn vervangerslijst open heeft staan; null = allemaal dicht. Eén tegelijk,
@@ -148,7 +148,42 @@ export default function WerklijstScreen(): React.JSX.Element {
     return zoektVervanger(booking, openMeldingen) ? 'zoekt' : 'geregeld';
   };
 
-  const nogTeDoen = rijen.filter((b) => toestandVan(b) === 'zoekt').length;
+  const openLessen = rijen.filter((b) => toestandVan(b) === 'zoekt');
+  const nogTeDoen = openLessen.length;
+
+  /**
+   * Wie hoeveel van de openstaande lessen kan overnemen, de nuttigste bovenaan.
+   *
+   * Waarvoor dit er is: een ziekmelding van een week raakt hier makkelijk twaalf lessen, en die
+   * stuk voor stuk aanklikken is precies het werk dat dit scherm zou wegnemen.
+   *
+   * Wie er nul kan, komt er niet in. Een knop die niets doet is een knop die je één keer indrukt
+   * en daarna wantrouwt; wie hem tóch wil, kiest hem per les — die weg blijft bestaan, mét de
+   * reden waarom de app hem niet voorstelt.
+   */
+  const massaKandidaten = useMemo(() => {
+    if (openLessen.length === 0 || !ziekmelding) return [];
+    const collegas = coachesOf(users).filter((u) => u.id !== ziekmelding.coach_id);
+    return collegas
+      .map((collega) => ({
+        collega,
+        plan: planMassaVervanging(
+          collega,
+          openLessen,
+          bookings,
+          settings.vakanties ?? [],
+          openMeldingen,
+          settings.booking_end_time,
+        ),
+      }))
+      .filter((k) => k.plan.toewijzen.length > 0)
+      .sort((a, b) => b.plan.toewijzen.length - a.plan.toewijzen.length);
+    // `openLessen` wordt elke render opnieuw gebouwd; de afhankelijkheid staat op `rijen`, waar
+    // hij uit volgt, plus alles wat de beschikbaarheid bepaalt.
+  }, [rijen, users, bookings, settings, openMeldingen, ziekmelding]);
+
+  /** Wat de laatste knop opleverde, als één zin. Verdwijnt zodra er iets anders gebeurt. */
+  const [uitslag, setUitslag] = useState<string | null>(null);
 
   return (
     <Screen>
@@ -170,6 +205,42 @@ export default function WerklijstScreen(): React.JSX.Element {
 
       {rijen.length === 0 ? (
         <Text style={styles.muted}>{t('Deze ziekmelding raakt geen enkele les.')}</Text>
+      ) : null}
+
+      {/* Alles in één keer aan één collega. Staat bóven de lijst omdat het de snelste weg is:
+          wie hier klikt hoeft de lijst eronder alleen nog na te kijken. Het blok verdwijnt
+          zodra er niets meer openstaat — dan valt er niets meer in één keer te doen. */}
+      {massaKandidaten.length > 0 ? (
+        <Card>
+          <Text style={styles.kop}>{t('Alles in één keer')}</Text>
+          <Text style={styles.onder}>
+            {t('Wie kan er het meeste overnemen? De lessen waarop hij niet kan blijven openstaan.')}
+          </Text>
+          {massaKandidaten.map(({ collega, plan }) => (
+            <Button
+              key={collega.id}
+              label={t('{naam} · kan er {kan} van de {totaal}', {
+                naam: collega.name,
+                kan: plan.toewijzen.length,
+                totaal: nogTeDoen,
+              })}
+              variant="secondary"
+              onPress={() => {
+                void zetVervangerVoorLessen(plan.toewijzen, collega.id);
+                setUitslag(plan.overgeslagen.length === 0
+                  ? t('{n} lessen naar {naam}.', {
+                    n: plan.toewijzen.length, naam: collega.name,
+                  })
+                  : t('{n} lessen naar {naam}. {rest} blijven openstaan.', {
+                    n: plan.toewijzen.length,
+                    naam: collega.name,
+                    rest: plan.overgeslagen.length,
+                  }));
+              }}
+            />
+          ))}
+          {uitslag ? <Text style={styles.uitslag}>{uitslag}</Text> : null}
+        </Card>
       ) : null}
 
       {rijen.map((booking) => {
@@ -341,6 +412,9 @@ const styles = StyleSheet.create({
   lesKop: { ...typography.body, fontWeight: '600', color: tennisColors.text },
   onder: { fontSize: 13, color: tennisColors.textMuted },
   telling: { ...typography.body, color: tennisColors.text, fontWeight: '600', marginTop: spacing.sm },
+  // Wat de laatste knop opleverde. In gewone tekstkleur en niet in het rood: er is niets
+  // misgegaan, er is iets gedaan — ook als er lessen bleven openstaan.
+  uitslag: { ...typography.body, color: tennisColors.text, marginTop: spacing.sm },
   label: { ...typography.label, color: tennisColors.textMuted, marginTop: spacing.sm },
   fout: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.sm },
   badgeRij: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },

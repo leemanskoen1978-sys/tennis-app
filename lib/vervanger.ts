@@ -161,3 +161,61 @@ export function vervangersVoor(
   return kandidaten.map((k) =>
     kanVervangen(k, slot, bestaandeLessen, vakanties, open, clubEinde));
 }
+
+// ---------------------------------------------------------------------------
+// Alle openstaande lessen in één keer aan één collega
+// ---------------------------------------------------------------------------
+
+/** Wat er gebeurt als deze collega alle openstaande lessen van een ziekmelding overneemt. */
+export interface MassaVervanging {
+  /** De ids van de boekingen die hij krijgt. */
+  toewijzen: string[];
+  /** De boekingen die blijven openstaan, met de reden waarom hij er niet kan. */
+  overgeslagen: Array<{ id: string; reden: VervangerReden }>;
+}
+
+/**
+ * Welke van deze lessen deze collega kan overnemen, en welke niet.
+ *
+ * WAARVOOR DIT BESTAAT. Een ziekmelding van een week raakt bij deze club makkelijk twaalf
+ * lessen. Die stuk voor stuk aanklikken is precies het werk dat de werklijst zou wegnemen.
+ *
+ * WELKE LESSEN ERIN GAAN, BEPAALT DE AANROEPER. Deze functie krijgt de lessen die nog een
+ * vervanger zoeken en stelt die vraag niet zelf: `zoektVervanger` in lib/ziekmelding is de enige
+ * plek die haar beantwoordt, en een tweede antwoord hier zou vroeg of laat uiteenlopen met wat
+ * de lijst op het scherm toont.
+ *
+ * ER WORDT TEGEN DE BEGINTOESTAND GEREKEND EN NIET OPLOPEND. Deze club heeft trainers die drie
+ * groepen tegelijk draaien — het kleutertennis op Terrein 7 staat met drie groepen op één halve
+ * baan. Die drie lessen botsen met elkaar. Zou deze functie na elke toewijzing opnieuw kijken,
+ * dan heet de vervanger na de eerste les "geeft zelf al les" en krijgt hij er één van de drie,
+ * terwijl de zieke collega ze alle drie zelf gaf. Tegen de begintoestand rekenen geeft hem
+ * precies wat zijn collega had, en sluit aan bij de regel dat een overlap nooit blokkeert maar
+ * altijd waarschuwt.
+ *
+ * Er wordt niets weggeschreven en niets stil overgeslagen: wat hij niet kan komt er mét reden
+ * uit, zodat het scherm kan tonen wat er nog te bellen valt.
+ */
+export function planMassaVervanging(
+  kandidaat: VervangerKandidaat,
+  lessen: ReadonlyArray<Pick<Booking, 'id' | 'start_time' | 'end_time'>>,
+  bestaandeLessen: Booking[],
+  vakanties: Vakantie[],
+  open: OpenZiekmelding[],
+  clubEinde: string,
+): MassaVervanging {
+  const uit: MassaVervanging = { toewijzen: [], overgeslagen: [] };
+  for (const les of lessen) {
+    const uitkomst = kanVervangen(
+      kandidaat,
+      { start_time: les.start_time, end_time: les.end_time },
+      bestaandeLessen,
+      vakanties,
+      open,
+      clubEinde,
+    );
+    if (uitkomst.reden === 'kan') uit.toewijzen.push(les.id);
+    else uit.overgeslagen.push({ id: les.id, reden: uitkomst.reden });
+  }
+  return uit;
+}
