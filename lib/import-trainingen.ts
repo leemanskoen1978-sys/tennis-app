@@ -11,9 +11,10 @@
 // dezelfde kolomtabel van de andere kant bekeken, en die twee uit elkaar laten lopen zou
 // betekenen dat de app haar eigen voorbeeldbestand niet meer leest.
 
+import { normalizeEmail } from './contact';
 import { actieveGroepen, groepSleutel } from './lesgroepen';
-import { normalizeName } from './students';
-import type { LesGroep } from './types';
+import { normalizeName, zelfdeNaamOngeachtVolgorde, zoekOpNaam } from './students';
+import type { Court, LesGroep, User } from './types';
 import { dagSleutel } from './vakanties';
 import { buildXlsx, type XlsxCel } from './xlsx';
 import { fractieNaarTijd, serieNaarDatum, type GelezenBlad } from './xlsx-lezen';
@@ -700,6 +701,209 @@ export function groepRosterVerschil(
   const verwijderd = [...was].filter((id) => !wordt.has(id));
   const status = toegevoegd.length === 0 && verwijderd.length === 0 ? 'ongewijzigd' : 'bijgewerkt';
   return { status, toegevoegd, verwijderd };
+}
+
+// ---------------------------------------------------------------------------
+// Spelers, trainers en banen (IMP-04)
+// ---------------------------------------------------------------------------
+
+/**
+ * De trainer met deze naam, of niemand.
+ *
+ * Twee dingen liggen hier vast. Ten eerste: er wordt alleen gezócht. Een trainer aanmaken
+ * betekent een uurtarief en toegang tot de club, en dat is geen bijproduct van een import
+ * (D-07). Ontbreekt hij, dan meldt de droogloop het en gaan de lessen van die groep niet door —
+ * de groep zelf wél, met een lege `coach_id`.
+ *
+ * Ten tweede: dit gaat langs `zoekOpNaam` uit `lib/students.ts`, precies dezelfde naamregel als
+ * de spelerzoekopdracht hieronder. Dat moet, want in dit bestand staat de achternaam vooraan:
+ * de kolom `Coach` van `koen.xlsx` zegt op alle 1398 regels "Leemans Koen", terwijl datzelfde
+ * account in de app "Koen Leemans" heet. Een tweede, strengere regel voor trainers zou IMP-10
+ * stilzwijgend breken — elke groep zou dan een onbekende trainer hebben (D-22).
+ *
+ * Eerst filteren op `role: 'coach'` uit `lib/types.ts`, dan pas zoeken: een speler die toevallig
+ * zo heet mag nooit als trainer aan een les hangen.
+ */
+export function zoekTrainer(users: readonly User[], naam: string): User | null {
+  return zoekOpNaam(users.filter((u) => u.role === 'coach'), naam);
+}
+
+/**
+ * De baan met deze naam of dit nummer, of geen enkele.
+ *
+ * Allebei, want `.planning/IMPORT-SJABLOON.md` staat allebei toe: de club schrijft "Baan 1" of
+ * gewoon "1". Ook hier wordt niets aangemaakt — een baan is een ding met een uurtarief en een
+ * agenda, en dat verzin je niet uit een cel.
+ *
+ * Bij twee banen die even goed passen komt er niets uit, om dezelfde reden als bij `zoekOpNaam`:
+ * stilzwijgend de eerste kiezen is een heel seizoen lessen op de verkeerde baan.
+ */
+export function zoekBaan(courts: readonly Court[], waarde: string): Court | null {
+  const schoon = waarde.trim();
+  if (!schoon) return null;
+  const opNaam = courts.filter((c) => c.name.trim().toLowerCase() === schoon.toLowerCase());
+  if (opNaam.length === 1) return opNaam[0];
+  if (opNaam.length === 0 && /^\d+$/.test(schoon)) {
+    const opNummer = courts.filter((c) => c.number === Number(schoon));
+    if (opNummer.length === 1) return opNummer[0];
+  }
+  return null;
+}
+
+/** Eén leerling uit het bestand: hoe hij er stond, zijn adres, en wie hij bij ons al is. */
+export interface GeplandeSpeler {
+  /** De naam zoals hij in het bestand stond, ongewijzigd op de spaties eromheen na. */
+  naam: string;
+  /** Het genormaliseerde adres uit `E-mail leerling`, of leeg als er geen stond. */
+  email: string;
+  /** Het bestaande lid, of `null` als dit een nieuw lid wordt. */
+  bestaand: User | null;
+}
+
+/** Wat er onderweg per leerling verzameld wordt. */
+interface SpelerEmmer {
+  naam: string;
+  email: string;
+  /** Het eerste regelnummer waarop deze naam stond; daar wijst een melding over hem naar. */
+  regel: number;
+}
+
+/**
+ * Wie er in dit bestand lesheeft, en wie van hen de club al kent.
+ *
+ * Eén ingang per unieke leerling, genormaliseerd op naam: dezelfde onbekende leerling op honderd
+ * regels is één nieuw lid en geen honderd. De volgorde is die van het bestand, zodat de
+ * droogloop leest zoals de beheerder scrolt.
+ *
+ * Passen er twee bestaande leden op dezelfde naam, dan komt er géén koppeling uit maar een
+ * melding. Hem dan maar als nieuw lid opnemen zou een derde naamgenoot opleveren, en dat is
+ * erger dan hem overslaan: de beheerder beslist welke van de twee het is (T-05-11).
+ */
+export function spelersUitRegels(
+  regels: readonly LesRegel[],
+  users: readonly User[],
+): { spelers: GeplandeSpeler[]; waarschuwingen: ImportFoutLessen[] } {
+  const emmers = new Map<string, SpelerEmmer>();
+  for (const r of regels) {
+    const naam = r.leerling.trim();
+    if (!naam) continue;
+    const sleutel = normalizeName(naam);
+    const email = normalizeEmail(r.emailLeerling);
+    const emmer = emmers.get(sleutel);
+    if (!emmer) {
+      emmers.set(sleutel, { naam, email, regel: r.regel });
+      continue;
+    }
+    // Het eerste ingevulde adres wint. Later overschrijven zou betekenen dat regel 1300 stil
+    // bepaalt wie er post krijgt; leeg overschrijven zou een adres kwijtmaken.
+    if (!emmer.email && email) emmer.email = email;
+  }
+
+  const spelers: GeplandeSpeler[] = [];
+  const waarschuwingen: ImportFoutLessen[] = [];
+  emmers.forEach((emmer) => {
+    const bestaand = zoekOpNaam(users, emmer.naam);
+    if (!bestaand) {
+      // `zoekOpNaam` geeft `null` bij niemand én bij twee treffers. Dat verschil telt hier: het
+      // eerste geval wordt een nieuw lid, het tweede mag juist géén nieuw lid worden.
+      const kandidaten = users.filter((u) => zelfdeNaamOngeachtVolgorde(u.name, emmer.naam));
+      if (kandidaten.length > 1) {
+        waarschuwingen.push({
+          regel: emmer.regel,
+          reden: 'Er staan al meerdere leden die {naam} kunnen zijn; koppel deze leerling zelf, ik laat hem staan.',
+          vars: { naam: emmer.naam },
+        });
+        return;
+      }
+    }
+    spelers.push({ naam: emmer.naam, email: emmer.email, bestaand });
+  });
+
+  return { spelers, waarschuwingen };
+}
+
+/**
+ * Een nieuwe speler als rij voor de ledenlijst, in dezelfde vorm als `lib/import-leden.ts` hem
+ * bouwt (D-06): naam, adres, rol. Geen sleutel met `undefined` erin — dat is het verschil tussen
+ * "niet ingevuld" en "leeggemaakt".
+ *
+ * Een leeg adres mag: een kind in de planning van de club heeft niet altijd een eigen mailbox,
+ * en zo'n regel weigeren zou de hele import op één lege cel laten stranden. Het adres is nodig
+ * om hem later een account te kunnen geven, niet om hem in een groep te zetten.
+ *
+ * Let op wat hier níét gebeurt: er wordt geen account aangemaakt, alleen een rij in de
+ * ledenlijst voorgesteld. De operationele keerzijde staat in `.planning/codebase/CONCERNS.md`:
+ * zolang "Confirm email" in Supabase uitstaat, is een lid dat al in `users` staat maar zich nog
+ * nooit aanmeldde, te claimen door wie zijn adres kent. Dat geldt hier precies zoals bij de
+ * ledenimport, en het importscherm hoort eraan te herinneren.
+ */
+export function nieuwLidUitSpeler(speler: GeplandeSpeler): Omit<User, 'id'> {
+  return { name: speler.naam, email: speler.email, role: 'player' };
+}
+
+/** De trainer en de baan van één lesgroep, met wat er nog aan ontbreekt. */
+export interface GroepKoppeling {
+  trainer: User | null;
+  baan: Court | null;
+  /** Wat er ontbreekt om de lessen van deze groep te kunnen inplannen. Hoogstens twee zinnen. */
+  meldingen: ImportFoutLessen[];
+}
+
+/**
+ * De trainer en de baan van deze groep opzoeken — en niets aanmaken.
+ *
+ * Eén melding per groep, nooit één per regel. Dat is geen verfraaiing: `koen.xlsx` heeft 1398
+ * regels en tien groepen, dus per regel melden levert 2796 zinnen op. Dat is geen droogloop meer
+ * maar een muur, en een muur leest niemand na (D-09). Het regelnummer wijst naar de eerste regel
+ * van de groep, zodat de beheerder weet waar hij moet kijken.
+ *
+ * Wat een ontbrekende trainer of baan betekent: de lesgroep wordt wél aangemaakt, met haar
+ * roster en een lege `coach_id` — `lib/types.ts` laat dat veld met opzet leeg zijn voor precies
+ * dit geval. De lessen van die groep gaan niet door, en dat kan ook niet: `Booking.coach_id` en
+ * `Booking.court_id` zijn allebei verplicht. Een les zonder trainer of zonder baan bestaat niet
+ * in dit gegevensmodel.
+ */
+export function koppelingVoorGroep(
+  groep: GeplandeGroep,
+  users: readonly User[],
+  courts: readonly Court[],
+): GroepKoppeling {
+  const regel = groep.regels[0]?.regel ?? 1;
+  const meldingen: ImportFoutLessen[] = [];
+
+  const trainer = zoekTrainer(users, groep.coachNaam);
+  if (!trainer) {
+    meldingen.push(groep.coachNaam
+      ? {
+        regel,
+        reden: 'Ik ken geen trainer {naam}; koppel hem aan een account, anders worden de lessen van {groep} niet ingepland.',
+        vars: { naam: groep.coachNaam, groep: groep.naam },
+      }
+      : {
+        regel,
+        reden: 'Bij {groep} staat geen trainer; zonder trainer worden haar lessen niet ingepland.',
+        vars: { groep: groep.naam },
+      });
+  }
+
+  const baan = zoekBaan(courts, groep.baanNaam);
+  if (!baan) {
+    // Een lege `Baan` is geen tikfout: `koen.xlsx` heeft die kolom niet eens. De melding gaat
+    // dus over wat er ontbreekt om te kunnen plannen, en niet over een naam die fout zou zijn.
+    meldingen.push(groep.baanNaam
+      ? {
+        regel,
+        reden: 'Ik ken geen baan {waarde}; koppel er een aan {groep}, anders worden haar lessen niet ingepland.',
+        vars: { waarde: groep.baanNaam, groep: groep.naam },
+      }
+      : {
+        regel,
+        reden: 'Bij {groep} staat geen baan; koppel er een, anders worden haar lessen niet ingepland.',
+        vars: { groep: groep.naam },
+      });
+  }
+
+  return { trainer, baan, meldingen };
 }
 
 // ---------------------------------------------------------------------------
