@@ -26,6 +26,14 @@ Wat erin zit:
 | `bookings.taught_by_id` | wie de les werkelijk gaf |
 | `sick_leaves` | de ziekmeldingen, met `retracted_at` voor intrekken |
 | `bewaak_betaalvelden` | uitgebreid: alleen een beheerder mag `taught_by_id` zetten |
+| `courts_write` | van elke trainer naar alleen de beheerder |
+
+**Let op bij dat laatste blok.** Zolang je het niet draait, verbergt de app het banenscherm
+wel voor gewone trainers, maar mag een trainer via de databank nog steeds tarieven wijzigen.
+De app is de wellevendheid, de policy is het slot.
+
+**`BANEN-toevoegen.sql` is al gedraaid** — Terrein 1 t/m 11 staan in de databank, allemaal op
+€60 per uur, 1 t/m 6 buiten en 7 t/m 11 binnen. De echte tarieven zet je in Beheer → Banen.
 
 **Let op bij het testen.** De dev-server praat met de échte productiedatabank van de club.
 Wil je vrij kunnen klikken zonder de club te raken: hernoem je `.env` tijdelijk naar
@@ -78,6 +86,18 @@ voorbeeldgegevens.
 - [ ] Trek de ziekmelding in. De markering "zoekt vervanger" verdwijnt overal; lessen waar
       al een vervanger op staat, houden hem.
 
+## 3b. Banen — Beheer → Club → Banen
+
+- [ ] Bovenaan staat een formulier om een baan toe te voegen: naam, nummer, buiten/binnen,
+      uurtarief. Voeg er een toe en kijk of hij in de lijst verschijnt.
+- [ ] Probeer een nummer dat al bestaat (bijvoorbeeld 5). Er hoort een melding te komen en er
+      mag niets aangemaakt worden.
+- [ ] Probeer een lege naam, en een nummer als `1,5`. Allebei een melding, niets aangemaakt.
+- [ ] Twee banen mogen wél dezelfde naam hebben — het nummer onderscheidt ze. Dat is met opzet.
+- [ ] Log in als gewone trainer: de tegel Banen hoort weg te zijn, en `/admin/courts` intikken
+      geeft de weigerzin. **Dit werkt pas volledig na het migratieblok hierboven**; zonder dat
+      blok houdt de databank hem niet tegen.
+
 ## 4. Export — Beheer → Club → Trainingen exporteren
 
 - [ ] Kies een periode, klik de Excel-knop. Verwacht `lessen-JJJJ-MM.xlsx`.
@@ -98,6 +118,8 @@ voorbeeldgegevens.
       voorbeeldregels, de tweede zonder baan en zonder e-mailadres.
 - [ ] Kies `koen.xlsx`. De droogloop hoort binnen enkele seconden te komen:
       **tien lesgroepen, 42 nieuwe spelers, nul ingeplande lessen.**
+- [ ] De groepen heten nu naar hun moment — `Woensdag 14:00` tot `Vrijdag 20:00` — en niet
+      meer naar het Tennis Vlaanderen-nummer. De kolom `Groep` wordt genegeerd.
 - [ ] Onder de aantallen staat een rode kaart: tien groepen worden nu níét aangemaakt, omdat
       er geen trainer aan hangt. Dat hoort er te staan.
 - [ ] Geef `Leemans Koen` een traineraccount in Beheer → Leden (rol trainer). Kies
