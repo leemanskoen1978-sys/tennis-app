@@ -6,8 +6,8 @@ import {
   alsBezet, bestandAfgekeurdLessen, deelnemersVoorLes, groepenUitRegels, groepRosterVerschil,
   kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
-  spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
-  type GeplandeGroep, type GroepKoppeling, type ImportBoeking, type LesRegel,
+  groepWijzigingen, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
+  type GeplandeGroep, type GeplandeLes, type GroepKoppeling, type ImportBoeking, type LesRegel,
 } from './import-trainingen';
 import { groepSleutel } from './lesgroepen';
 import type { Court, LesGroep, User } from './types';
@@ -1003,5 +1003,157 @@ describe('lessenUitGroep', () => {
     const uit = lessenUitGroep(groep, koppeling, [], [], 60, NU);
     expect(uit.nieuweLessen).toEqual([]);
     expect(uit.meldingen).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Herimport (plan 05-06, taak 2)
+// ---------------------------------------------------------------------------
+
+/** De lessen van een eerste import, zoals ze daarna als boekingen van de club terugkomen. */
+function alsBoekingen(lessen: GeplandeLes[], groepId: string): ImportBoeking[] {
+  return lessen.map((les, i) => ({
+    id: `b-${i}`,
+    group_id: groepId,
+    coach_id: KOEN.id,
+    court_id: BAAN.id,
+    start_time: les.start.toISOString(),
+    end_time: les.eind.toISOString(),
+    status: 'confirmed',
+  }));
+}
+
+describe('herimport', () => {
+  const WEEK_1 = regelVan({ regel: 2 });
+  const WEEK_2 = regelVan({ regel: 3, datum: { jaar: 2026, maand: 9, dag: 16 } });
+
+  it('levert hetzelfde bestand een tweede keer nul nieuwe lessen op', () => {
+    const eersteKeer = lessenUitGroep(groepUit([WEEK_1, WEEK_2]), GEKOPPELD, [], [], 60, NU);
+    expect(eersteKeer.nieuweLessen).toHaveLength(2);
+
+    // Na de eerste import kent de club de groep en staan haar twee lessen in de agenda.
+    const club = groepVan();
+    const boekingen = alsBoekingen(eersteKeer.nieuweLessen, club.id);
+    const tweedeKeer = lessenUitGroep(
+      groepUit([WEEK_1, WEEK_2], [club]), GEKOPPELD, boekingen, [], 60, NU,
+    );
+
+    expect(tweedeKeer.nieuweLessen).toEqual([]);
+    expect(tweedeKeer.ongewijzigd).toEqual(['b-0', 'b-1']);
+    expect(tweedeKeer.handmatigGewijzigd).toEqual([]);
+    expect(tweedeKeer.verdwenenUitBestand).toEqual([]);
+    expect(tweedeKeer.overgeslagen).toEqual([]);
+  });
+
+  it('meldt een met de hand verzette les en zet hem niet terug', () => {
+    const club = groepVan();
+    const verzet = boekingVan({
+      id: 'b-verzet',
+      start_time: new Date(2026, 8, 9, 19, 0).toISOString(),
+      end_time: new Date(2026, 8, 9, 20, 0).toISOString(),
+    });
+    const uit = lessenUitGroep(groepUit([WEEK_1], [club]), GEKOPPELD, [verzet], [], 60, NU);
+
+    expect(uit.nieuweLessen).toEqual([]);
+    expect(uit.handmatigGewijzigd).toEqual([{
+      regel: 2,
+      groep: 'Groep 8',
+      dag: '2026-09-09',
+      bestaandeTijd: '19:00',
+      tijdInBestand: '17:00',
+      status: 'confirmed',
+    }]);
+    // De bestaande les blijft staan waar de beheerder hem zette.
+    expect(verzet.start_time).toBe(new Date(2026, 8, 9, 19, 0).toISOString());
+  });
+
+  it('plant een afgezegde les niet opnieuw in — cancelled komt niet terug', () => {
+    const club = groepVan();
+    const afgezegd = boekingVan({ id: 'b-af', status: 'cancelled' });
+    const uit = lessenUitGroep(groepUit([WEEK_1], [club]), GEKOPPELD, [afgezegd], [], 60, NU);
+
+    expect(uit.nieuweLessen).toEqual([]);
+    expect(uit.ongewijzigd).toEqual([]);
+    expect(uit.handmatigGewijzigd).toHaveLength(1);
+    expect(uit.handmatigGewijzigd[0].status).toBe('cancelled');
+  });
+
+  it('laat staan wat geweest is: een regel van vóór nu wordt geteld, niet ingepland', () => {
+    const club = groepVan();
+    const geweest = regelVan({ datum: { jaar: 2026, maand: 9, dag: 2 } });
+    const les = boekingVan({
+      id: 'b-geweest',
+      start_time: new Date(2026, 8, 2, 17, 0).toISOString(),
+      end_time: new Date(2026, 8, 2, 18, 0).toISOString(),
+      status: 'completed',
+    });
+    const uit = lessenUitGroep(
+      groepUit([geweest], [club]), GEKOPPELD, [les], [], 60, new Date(2026, 8, 10),
+    );
+
+    expect(uit.overgeslagen.map((o) => o.reden)).toEqual(['verleden']);
+    expect(uit.nieuweLessen).toEqual([]);
+    // De les van vorige week wordt niet aangeraakt: niet bijgewerkt, niet gemeld, niet verwijderd.
+    expect(uit.ongewijzigd).toEqual([]);
+    expect(uit.handmatigGewijzigd).toEqual([]);
+    expect(uit.verdwenenUitBestand).toEqual([]);
+  });
+
+  it('meldt een komende les die niet meer in het bestand staat, en verwijdert hem niet', () => {
+    const club = groepVan();
+    const negen = boekingVan({ id: 'b-9' });
+    const zestien = boekingVan({
+      id: 'b-16',
+      start_time: new Date(2026, 8, 16, 17, 0).toISOString(),
+      end_time: new Date(2026, 8, 16, 18, 0).toISOString(),
+    });
+    const uit = lessenUitGroep(
+      groepUit([WEEK_1], [club]), GEKOPPELD, [negen, zestien], [], 60, NU,
+    );
+
+    expect(uit.ongewijzigd).toEqual(['b-9']);
+    expect(uit.verdwenenUitBestand).toEqual([
+      { id: 'b-16', groep: 'Groep 8', dag: '2026-09-16', tijd: '17:00' },
+    ]);
+  });
+
+  it('voert een speler af die niet meer in het bestand staat', () => {
+    const club = groepVan({ roster: ['u-astor', 'u-clara'] });
+    const verschil = groepRosterVerschil(club, ['u-astor']);
+    expect(verschil.status).toBe('bijgewerkt');
+    expect(verschil.verwijderd).toEqual(['u-clara']);
+    expect(verschil.toegevoegd).toEqual([]);
+  });
+});
+
+describe('groepWijzigingen', () => {
+  it('meldt alleen het veld dat verandert', () => {
+    const club = groepVan({ coach_id: 'u-koen', court_id: 'c1' });
+    const groep = groepUit([regelVan({ typeLes: 'Kidstennis groen' })], [club]);
+    expect(groepWijzigingen(club, groep, GEKOPPELD)).toEqual({ level: 'Kidstennis groen' });
+  });
+
+  it('meldt niets als er niets verandert', () => {
+    const club = groepVan({ coach_id: 'u-koen', court_id: 'c1' });
+    expect(groepWijzigingen(club, groepUit([regelVan()], [club]), GEKOPPELD)).toEqual({});
+  });
+
+  it('koppelt de trainer en de baan die de groep nog niet had', () => {
+    const club = groepVan();
+    const groep = groepUit([regelVan()], [club]);
+    expect(groepWijzigingen(club, groep, GEKOPPELD)).toEqual({
+      coach_id: 'u-koen',
+      court_id: 'c1',
+    });
+  });
+
+  it('rekt het seizoen op en kort het nooit in', () => {
+    const club = groepVan({
+      coach_id: 'u-koen', court_id: 'c1', season_start: '2026-10-01', season_end: '2027-06-23',
+    });
+    const groep = groepUit([regelVan()], [club]);
+    // Het bestand loopt van 9 september tot 9 september; het seizoen begint dus vroeger en
+    // eindigt niet eerder.
+    expect(groepWijzigingen(club, groep, GEKOPPELD)).toEqual({ season_start: '2026-09-09' });
   });
 });
