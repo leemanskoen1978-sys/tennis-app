@@ -23,7 +23,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2.1: De groep verzetten werkt door** (INSERTED) - Uur, dag, trainer of baan van een groep verzetten werkt door in alle komende lessen, met de botsingen gemeld.
 - [ ] **Phase 3: Ziekmelding en vervangerswerklijst** - Eén werklijst per ziekmelding, met een vervangersvoorstel dat alleen écht beschikbare collega's toont.
 - [ ] **Phase 4: Excel-export** - Eén export per periode met vier bladen, inclusief het groepskenmerk dat een latere herimport nodig heeft.
-- [ ] **Phase 5: Excel-import van trainingen** - Een seizoen in één keer inladen met droogloop, en herimporteren zonder te verdubbelen.
+- [ ] **Phase 5: Excel-import van trainingen**
+- [ ] **Phase 5.1: De groepssleutel zonder groepsnaam** (INSERTED) - Een lesgroep wordt herkend aan haar moment en terrein, niet aan een nummer uit een ander systeem. - Een seizoen in één keer inladen met droogloop, en herimporteren zonder te verdubbelen.
 
 ## Phase Details
 
@@ -161,10 +162,25 @@ Plans:
 - [x] 05-09-PLAN.md — Het importscherm met de droogloop, de tegel in Beheer en de Engelse teksten (wave 8, checkpoint)
 - [ ] 05-10-PLAN.md — Met de hand nalopen: de upsert-val, en het echte seizoen één keer bewust inlezen (wave 9, checkpoints)
 
+### Phase 5.1: De groepssleutel zonder groepsnaam
+**Mode:** mvp
+**Goal**: De import herkent een lesgroep aan haar moment en haar terrein in plaats van aan een groepsnaam uit een ander systeem, zodat een trainerswissel een wijziging is en geen nieuwe groep.
+**Depends on**: Phase 5
+**Requirements**: IMP-03, IMP-10, IMP-12, IMP-13, IMP-14, IMP-15
+**Inserted**: 2026-09-06, na fase 5, op aangeven van de gebruiker. De kolom `Groep` in de planning van de club komt uit het Tennis Vlaanderen-systeem en betekent daar iets anders: hetzelfde nummer staat op momenten met totaal verschillende spelers. Hem in de sleutel meenemen maakte van één groep drie, en van een trainerswissel een nieuwe groep in plaats van een wijziging. Het terreinnummer komt in de plaats, in de kolom die nu `Indoor/Outdoor` heet.
+**Success Criteria** (what must be TRUE):
+  1. De sleutel van een lesgroep is weekdag + beginuur + baan; de kolom `Groep` doet niet mee aan het matchen (IMP-03).
+  2. `koen.xlsx` levert nog steeds tien groepen met dezelfde rosters, nu genoemd naar hun moment in plaats van naar een nummer (IMP-10, IMP-12).
+  3. Hetzelfde bestand opnieuw inlezen met een andere naam in de kolom `Coach` werkt de komende lessen van die groep bij naar die trainer, meldt vooraf om hoeveel lessen het gaat, laat `taught_by_id` ongemoeid en raakt geen enkele les uit het verleden (IMP-13).
+  4. Staat er een `Groep-ID` in het bestand, dan mogen naam, dag, uur, trainer en baan allemaal wijzigen op de bestaande groep (IMP-14).
+  5. Het terreinnummer wordt gelezen uit `Baan` én uit `Indoor/Outdoor`; de woorden `Indoor` en `Outdoor` zelf betekenen "geen baan" (IMP-15).
+  6. `npx tsc --noEmit`, `npm test` en `npx expo export --platform web` slagen.
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5 → 5.1
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|

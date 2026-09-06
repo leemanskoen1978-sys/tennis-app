@@ -74,9 +74,24 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
 - [ ] **IMP-02**: De beheerder kiest een bestand en ziet vóór er iets wegschrijft een volledige
       droogloop: welke groepen erbij komen, welke worden bijgewerkt, welke spelers nieuw zijn,
       hoeveel lessen er ingepland worden, en wat er niet gelezen kon worden.
-- [ ] **IMP-03**: De import leidt lesgroepen af uit het bestand op sleutel `Groep` + weekdag +
-      beginuur, met trainer, baan, niveau en de spelers erin — één groepsnaam op twee
-      momenten levert twee lesgroepen op, elk met hun eigen roster.
+- [ ] **IMP-03**: De import leidt lesgroepen af uit het bestand op sleutel **weekdag +
+      beginuur + baan**, met trainer, niveau en de spelers erin. De kolom `Groep` doet niet
+      mee: bij deze club komt die uit het Tennis Vlaanderen-systeem en staat hetzelfde nummer
+      op momenten met totaal verschillende spelers.
+- [ ] **IMP-12**: Een nieuwe lesgroep krijgt een naam uit haar moment (`Woensdag 17:00`, of
+      `Woensdag 17:00 — baan 3` als er een baan is). Die naam is daarna met de hand te
+      wijzigen en wordt door een herimport zonder `Groep-ID` nooit overschreven.
+- [ ] **IMP-13**: De trainer is een eigenschap van de groep, geen deel van de sleutel. Noemt
+      het bestand een andere trainer, dan krijgen de komende lessen van die groep die trainer,
+      en meldt de droogloop vooraf om hoeveel lessen het gaat. `taught_by_id` — wie de les
+      werkelijk gaf — blijft ongemoeid, en lessen die al geweest zijn veranderen nooit.
+- [ ] **IMP-14**: Staat er een `Groep-ID` in het bestand, dan wint dat van de afgeleide
+      sleutel en mag álles wijzigen: naam, dag, uur, trainer en baan worden bijgewerkt op de
+      bestaande groep in plaats van een nieuwe aan te maken.
+- [ ] **IMP-15**: Het terreinnummer wordt gelezen uit de kolom `Baan` of uit de kolom
+      `Indoor/Outdoor` — de planning van de club draagt het in die tweede, omdat het Tennis
+      Vlaanderen-blad die kop gebruikt. Staat er `Indoor` of `Outdoor` in plaats van een
+      terrein, dan is er geen baan.
 - [ ] **IMP-04**: Een speler die nog niet in de ledenlijst staat, wordt tijdens de import
       aangemaakt — met dezelfde regels als de bestaande ledenimport. Een trainer of baan die
       niet bestaat wordt nooit aangemaakt; de droogloop meldt het en die groep gaat niet door.
@@ -92,11 +107,11 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
       stilzwijgend teruggezet; de droogloop meldt zulke botsingen apart.
 - [ ] **IMP-09**: Een import die halverwege mislukt, laat geen halve groep of halve reeks achter.
 - [ ] **IMP-10**: `koen.xlsx` — de bestaande seizoensplanning van de club, 1398 regels — leest
-      ongewijzigd in en levert **tien** lesgroepen met hun eigen roster en 42 spelers op. Tien en
-      niet zeven: er staan zeven verschillende groepsnamen in, maar "Groep 8" komt op drie
-      momenten voor en "Groep 12" op twee, elk met andere spelers, en de sleutel is naam + dag +
-      uur. Er worden nog géén lessen ingepland: het bestand kent geen baan en zijn trainer
-      bestaat nog niet in de app. De droogloop meldt precies die twee dingen en niets anders.
+      ongewijzigd in en levert **tien** lesgroepen met hun eigen roster en 42 spelers op, elk
+      genoemd naar haar moment. De kolom `Groep` wordt genegeerd; de tien volgen uit weekdag +
+      beginuur, die in dit bestand allemaal verschillend zijn. Er worden nog géén lessen
+      ingepland zolang de trainer geen account heeft en er geen terreinnummer in het bestand
+      staat; de droogloop meldt precies die twee dingen en niets anders.
 - [ ] **IMP-11**: De lesduur is een clubinstelling met 60 minuten als beginwaarde; een wijziging
       geldt voor nieuw ingeplande lessen en nooit met terugwerkende kracht.
 
@@ -172,6 +187,10 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | IMP-09 | Phase 5 | Pending |
 | IMP-10 | Phase 5 | Pending |
 | IMP-11 | Phase 5 | Pending |
+| IMP-12 | Phase 5.1 | Pending |
+| IMP-13 | Phase 5.1 | Pending |
+| IMP-14 | Phase 5.1 | Pending |
+| IMP-15 | Phase 5.1 | Pending |
 | TOEG-01 | Phase 1 | In Progress |
 | TOEG-02 | Phase 1 | Pending |
 | TOEG-03 | Phase 1 | Complete |
@@ -211,8 +230,8 @@ Het hele scherm van de app draagt de grens dus. Wat rest is plan 07: de RLS-kant
 nalopen. Pas als die controle gedaan is, is de requirement waar — de app is niet de bewaker.
 
 **Coverage:**
-- v1 requirements: 38 total
-- Mapped to phases: 38
+- v1 requirements: 42 total
+- Mapped to phases: 42
 - Unmapped: 0 ✓
 
 ---

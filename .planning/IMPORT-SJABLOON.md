@@ -37,20 +37,46 @@ in groepen en aantallen in plaats van in regels.
 
 Er is geen apart blad met groepsdefinities. Een lesgroep volgt uit de regels:
 
-- **Sleutel: `Groep` + weekdag + beginuur**, binnen het ingelezen seizoen.
+- **Sleutel: weekdag + beginuur + baan**, binnen het ingelezen seizoen.
 - De **roster** is de verzameling `Leerling` over alle regels met die sleutel.
 - Het **niveau** is de `Type les` die bij die sleutel hoort.
-- De **vaste trainer** is de `Coach` die bij die sleutel hoort.
+- De **vaste trainer** is de `Coach` die bij die sleutel hoort — een *eigenschap*, geen deel
+  van de sleutel. Dat is het punt: verandert de trainer in het bestand, dan is dat een
+  wijziging van een bestaande groep en niet een nieuwe groep.
 
-**Waarom niet de groepsnaam alleen.** In `koen.xlsx` staat "Groep 8" op drie momenten met
-drie volledig verschillende rosters — zes kinderen op woensdag 17u, vier andere op vrijdag
-17u, twee volwassenen op vrijdag 19u. Nul overlap. Het nummer is een administratief label dat
-hergebruikt wordt, geen groep mensen. Matchen op naam alleen zou die drie tot één groep van
-twaalf samensmelten.
+**De kolom `Groep` doet niet mee.** Bij de club komt die uit het Tennis Vlaanderen-systeem en
+betekent daar iets anders: hetzelfde nummer staat op momenten met totaal verschillende
+spelers. In de echte planning staat "Groep 8" op drie momenten met twaalf verschillende
+mensen en nul overlap. Meenemen in de sleutel zou die drie samensmelten; als naam gebruiken
+zou een nummer tonen dat niemand herkent.
 
-Deze sleutel werkt ook als de club later wél één groep twee keer per week laat trainen: dat
-worden twee lesgroepen met dezelfde spelers, en dat is zichtbaar en corrigeerbaar in plaats
-van stilzwijgend fout.
+Uitzondering: staat er een `Groep-ID` in de rij, dan komt het bestand uit de export van deze
+app, en is `Groep` juist wél de echte naam van die groep. Zo werkt hernoemen via de
+heen-en-terugweg gewoon.
+
+Getest op de echte planning: sleutelen op weekdag + beginuur levert dezelfde tien groepen op
+als sleutelen op naam + weekdag + beginuur, maar dan zonder dat "Groep 8" over drie groepen
+verspreid staat. Elke groep heeft precies één lessoort en er is geen enkel conflict.
+
+### Hoe een groep heet
+
+Bij het aanmaken wordt de naam gemaakt uit het moment: `Woensdag 17:00`, of
+`Woensdag 17:00 — baan 3` als er een baan bij staat. Daarna is het gewoon een naam: je kan
+hem op het groepsscherm wijzigen, en een herimport zonder `Groep-ID` overschrijft hem nooit.
+
+### Waarom de baan in de sleutel zit
+
+Zolang er één trainer is, volstaat weekdag + beginuur. Met meerdere trainers geven er twee
+tegelijk les op verschillende terreinen, en dan is de baan het enige dat die twee groepen uit
+elkaar houdt.
+
+### Wat er gebeurt als je iets uit de sleutel wijzigt
+
+Verzet je een groep in het bestand van 17:00 naar 18:00, dan ziet de import een andere groep.
+Dat is inherent aan een afgeleide sleutel. Daarvoor bestaat `Groep-ID`: importeer één keer,
+exporteer, en vanaf dan draagt het bestand het kenmerk mee. Dan mag álles wijzigen — naam,
+dag, uur, trainer, baan — en wordt het nog steeds als dezelfde groep herkend. **De
+heen-en-terugweg is het update-mechanisme.**
 
 ## De kolommen
 
@@ -60,7 +86,7 @@ van stilzwijgend fout.
 | --- | --- | --- |
 | `Datum` | Excel-datum of `DD/MM/JJJJ` | De dag van de les. |
 | `Uur` | Excel-tijd of `HH:MM` | Het beginuur. Geen einduur — zie Lesduur. |
-| `Groep` | tekst | Samen met dag en uur de sleutel van de lesgroep. |
+| `Groep` | tekst | Alleen een label. Doet niet mee aan de sleutel en wordt niet de naam — tenzij er een `Groep-ID` bij staat, dan is het de echte naam. Mag leeg zijn: dat is een privéles. |
 | `Coach` | tekst | Moet een bestaande trainer zijn. De import maakt géén trainers aan. |
 | `Leerling` | tekst | Wordt aangemaakt als hij nog niet bestaat. |
 
@@ -68,11 +94,12 @@ van stilzwijgend fout.
 
 | Kolom | Uitleg |
 | --- | --- |
-| `Groep-ID` | Het interne kenmerk van een bestaande lesgroep. De export vult dit in. Staat het er, dan wint het van de sleutel hierboven — zo blijft een groep herkenbaar ook als de naam of het uur verandert. Leeg of afwezig = matchen op de sleutel. |
+| `Groep-ID` | Het interne kenmerk van een bestaande lesgroep. De export vult dit in. Staat het er, dan wint het van de sleutel hierboven — zo blijft een groep herkenbaar ook als de naam, de dag, het uur, de trainer of de baan verandert. Leeg of afwezig = matchen op weekdag + beginuur + baan. |
 | `Type les` | Wordt het niveau van de lesgroep. Vrije tekst. |
 | `E-mail leerling` | Nodig om een nieuwe speler later een account te kunnen geven. |
 | `Baan` | Naam of nummer van een bestaande baan. Ontbreekt hij, dan krijgt de les geen baan. |
-| `Weekdag`, `Weeknr`, `Locatie`, `Indoor/Outdoor` | Genegeerd bij het inlezen; wél geschreven bij de export omdat ze het bestand leesbaar maken. Ze staan hier zodat `koen.xlsx` ongewijzigd ingelezen kan worden. |
+| `Indoor/Outdoor` | Een tweede naam voor `Baan`. De planning van de club draagt het terreinnummer in deze kolom, omdat het Tennis Vlaanderen-blad die kop gebruikt. Staat er `Indoor` of `Outdoor` in plaats van een terrein, dan is er geen baan. |
+| `Weekdag`, `Weeknr`, `Locatie` | Genegeerd bij het inlezen; `Weekdag` en `Weeknr` worden wél geschreven bij de export omdat ze het bestand leesbaar maken. |
 
 **Een les zonder groep.** Staat `Groep` leeg, dan is het een gewone privéles: er wordt geen
 lesgroep van gemaakt en er wordt er ook geen aan gekoppeld. De export schrijft zo'n les weg met
@@ -113,6 +140,12 @@ Antoine"). Het matchen moet daar tegen kunnen.
 
 De sleutel van één les is `Datum` + beginuur + de lesgroep. Dezelfde les die al bestaat,
 wordt niet nog eens aangemaakt.
+
+**Een andere trainer in het bestand werkt door.** Noemt het bestand trainer Y waar de agenda
+nog trainer X heeft staan, dan krijgen de komende lessen van die groep trainer Y, en zegt de
+droogloop vooraf om hoeveel lessen het gaat. Wie de les wérkelijk gaf (`taught_by_id`, een
+eerdere vervanging) blijft ongemoeid — dat is een ander veld met een andere betekenis, en het
+bepaalt het loon. Lessen die al geweest zijn veranderen nooit.
 
 - Hetzelfde bestand een tweede keer inlezen verandert niets (IMP-06).
 - Een gewijzigd bestand werkt bij, vanaf vandaag vooruit; wat geweest is blijft staan (IMP-07).
