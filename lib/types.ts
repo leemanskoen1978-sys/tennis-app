@@ -476,6 +476,29 @@ export interface Settings {
    * gekregen hebben.
    */
   lesson_duration_minutes?: number;
+  /**
+   * Wanneer er voor het laatst een seizoen trainingen ingelezen is, als ISO-tijdstip.
+   *
+   * Waarvoor het dient: weten dát er al eens een seizoen ingelezen is. Een importbestand is een
+   * foto van het moment waarop het gemaakt is; wie het maanden later opnieuw inleest, duwt die
+   * foto over de werkelijkheid heen. Met dit veld kan de droogloop dáárover waarschuwen in
+   * plaats van de beheerder het achteraf te laten ontdekken.
+   *
+   * Optioneel, en afwezig betekent gewoon "nog nooit geïmporteerd" — precies zoals `vakanties`
+   * en `lesson_duration_minutes` zich gedragen: de app doet dan wat ze deed voordat dit bestond.
+   *
+   * Waarom dit géén migratie vraagt: `club_settings` bewaart de hele `Settings` als één
+   * `jsonb`-waarde in één rij (supabase-schema.sql), en de opslag doet er een `upsert` van dat
+   * hele object. Een veld erbij bereikt de opslag dus zonder `alter table` en zonder één regel
+   * SQL.
+   *
+   * Wat dit veld NIET is: een wijzigingslogboek. De app kan niet zien wát er sinds die datum in
+   * de app veranderd is — er is geen `updated_at` per roster en geen geschiedenis per rij. De
+   * waarschuwing die hierop leunt zegt daarom alleen wat wél waar is: er is eerder een seizoen
+   * ingelezen, én dit bestand zou nú iets terugdraaien. Het concrete bewijs staat eronder in het
+   * bevestigingsblok, met namen en aantallen erbij.
+   */
+  laatste_trainingen_import?: string;
   shot_types?: string[];   // choices for a goal's Type slag
   change_types?: string[]; // choices for a goal's Type wijziging
   theme?: 'light' | 'dark';

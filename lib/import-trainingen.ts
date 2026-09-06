@@ -1968,6 +1968,185 @@ export function geweigerdeNieuweGroepen(
   return uit;
 }
 
+// ---------------------------------------------------------------------------
+// De rem op de vergissing (IMP-16, IMP-17)
+//
+// Drie afleidingen over een klaar plan, in dezelfde geest als `overgeslagenPerReden`
+// hierboven: ze rekenen niets opnieuw uit, ze staan hier en niet op het scherm, en `nu` komt
+// als parameter binnen zodat ze zonder de klok van de machine te testen zijn.
+// ---------------------------------------------------------------------------
+
+/** De periode waarover een importbestand gaat, en hoeveel daarvan al voorbij is. */
+export interface Bestandsperiode {
+  /** De vroegste dag in het bestand, als `jjjj-mm-dd`. */
+  van: string;
+  /** De laatste dag in het bestand, als `jjjj-mm-dd`. */
+  tot: string;
+  /** Het deel van de periode `van`–`tot` dat vóór `nu` ligt, van 0 tot 1. */
+  aandeelGeweest: number;
+}
+
+/** De dag als geheel getal, uit lokale velden — zo weegt zomer- en wintertijd niet mee. */
+function dagGetal(jaar: number, maand: number, dag: number): number {
+  return Date.UTC(jaar, maand - 1, dag);
+}
+
+/**
+ * Waar dit bestand over gaat, en hoeveel daarvan al geweest is.
+ *
+ * Het aandeel gaat over de PERIODE en niet over het aantal regels, en dat is geen detail: de
+ * zin die het scherm hiermee bouwt luidt "Dit bestand gaat over 9 september 2026 tot 25 juni
+ * 2027, en 60% daarvan is al geweest" (D-17), en "daarvan" slaat op die periode. Een
+ * percentage over de regels zou een ander getal geven dan de zin belooft, en het zou meebewegen
+ * met hoeveel leerlingen er per les in het bestand staan — dat is geen eigenschap van de tijd.
+ *
+ * De dagen worden uit lokale datumvelden gebouwd en nooit uit een ISO-tekst gelezen: dat laatste
+ * schuift de dag in een westelijke tijdzone, en dan gaat het bestand over de dag ervóór.
+ */
+export function bestandsperiode(
+  regels: readonly LesRegel[],
+  nu: Date,
+): Bestandsperiode | null {
+  // Geen regels, geen periode: er valt dan niets over dit bestand te zeggen, en een verzonnen
+  // "vandaag tot vandaag" zou een waarschuwing kunnen afvuren die nergens over gaat.
+  if (regels.length === 0) return null;
+
+  let vroegste = regels[0].datum;
+  let laatste = regels[0].datum;
+  for (const r of regels) {
+    const d = dagGetal(r.datum.jaar, r.datum.maand, r.datum.dag);
+    if (d < dagGetal(vroegste.jaar, vroegste.maand, vroegste.dag)) vroegste = r.datum;
+    if (d > dagGetal(laatste.jaar, laatste.maand, laatste.dag)) laatste = r.datum;
+  }
+
+  const vanGetal = dagGetal(vroegste.jaar, vroegste.maand, vroegste.dag);
+  const totGetal = dagGetal(laatste.jaar, laatste.maand, laatste.dag);
+  const nuGetal = dagGetal(nu.getFullYear(), nu.getMonth() + 1, nu.getDate());
+  const spanne = totGetal - vanGetal;
+  // Eén dag in het bestand: er valt niets te delen. Vóór die dag is er niets geweest, erna alles.
+  const aandeel = spanne <= 0
+    ? (nuGetal > vanGetal ? 1 : 0)
+    : Math.min(1, Math.max(0, (nuGetal - vanGetal) / spanne));
+
+  return {
+    van: dagSleutel(new Date(vroegste.jaar, vroegste.maand - 1, vroegste.dag)),
+    tot: dagSleutel(new Date(laatste.jaar, laatste.maand - 1, laatste.dag)),
+    aandeelGeweest: aandeel,
+  };
+}
+
+/** De spelers die volgens dit bestand uit één roster zouden vallen, met hun namen erbij. */
+export interface SpelerEruit {
+  groep: string;
+  namen: string[];
+  ids: string[];
+}
+
+/** Wat deze import van bestaande gegevens zou wegnemen of omzetten — en verder niets. */
+export interface IngrijpendeWijzigingen {
+  trainerwissels: TrainerWissel[];
+  spelersEruit: SpelerEruit[];
+  /** De komende lessen die een andere trainer zouden krijgen, alle wissels bij elkaar. */
+  aantalLessen: number;
+}
+
+/**
+ * Wat er van deze import apart bevestigd hoort te worden (D-16).
+ *
+ * Twee dingen, en met opzet niet meer: een andere trainer op komende lessen, en een speler die
+ * uit een roster verdwijnt. Dat zijn de twee bewegingen die iets wegnemen of omzetten wat er al
+ * stond. Erbij komen — een nieuwe groep, een nieuwe speler, een nieuwe les — staat hier
+ * uitdrukkelijk niet in en wordt nooit geremd: een rem die overal staat is een rem die niemand
+ * meer leest.
+ *
+ * Deze functie SELECTEERT en rekent niets opnieuw uit. `trainerwissels` is de lijst van het plan
+ * ongewijzigd, `aantalLessen` is de som van hun `aantal`, en `spelersEruit` komt regelrecht uit
+ * `verwijderd` van de bijgewerkte groepen. Zou hier iets herrekend worden, dan kan het
+ * bevestigingsblok iets anders tonen dan wat er straks wel of niet gebeurt — precies de belofte
+ * die `bouwImportWijziging` hieronder al bewaakt (D-10).
+ *
+ * Wat hier bewust NIET in zit: de lessen die uit het bestand verdwenen. Zo'n les is al een
+ * melding en nooit een opdracht — de import verwijdert nooit een les (D-13). Er valt dus niets
+ * aan te bevestigen.
+ */
+export function ingrijpendeWijzigingen(
+  plan: ImportPlanLessen,
+  users: readonly User[],
+): IngrijpendeWijzigingen {
+  const naamVanId = new Map(users.map((u) => [u.id, u.name] as const));
+  const spelersEruit: SpelerEruit[] = [];
+  for (const inPlan of plan.groepenBijgewerkt) {
+    if (inPlan.verwijderd.length === 0) continue;
+    spelersEruit.push({
+      groep: inPlan.naam,
+      // Kent de club dat account niet meer, dan is het id nog altijd meer dan een lege regel.
+      namen: inPlan.verwijderd.map((id) => naamVanId.get(id) ?? id),
+      ids: [...inPlan.verwijderd],
+    });
+  }
+  return {
+    trainerwissels: plan.trainerwissels,
+    spelersEruit,
+    aantalLessen: plan.trainerwissels.reduce((som, w) => som + w.aantal, 0),
+  };
+}
+
+/** De twee dingen waarover de droogloop bovenaan kan waarschuwen. */
+export type ImportWaarschuwingSoort = 'verleden' | 'sindsdien-gewijzigd';
+
+export interface ImportWaarschuwing {
+  soort: ImportWaarschuwingSoort;
+  /** Een vaste zin met plaatshouders, om dezelfde reden als bij `ImportFoutLessen.reden`. */
+  reden: string;
+  vars: Record<string, string | number>;
+}
+
+/**
+ * Wat er bovenaan de droogloop hoort te staan, vóór alle aantallen (D-17).
+ *
+ * Twee waarschuwingen, allebei op bewijs en niet op vermoeden. De eerste zegt waar dit bestand
+ * over gaat en hoeveel daarvan al geweest is — dat is de goedkoopste manier om te zien dat je
+ * het bestand van vórig seizoen te pakken hebt. De tweede vuurt pas als er allebei iets waar is:
+ * er is eerder een seizoen ingelezen, én dit bestand zou nú iets terugdraaien. Alleen een datum
+ * is niet genoeg: er is geen wijzigingslogboek in deze app, dus "er is sindsdien iets in de app
+ * veranderd" valt uit een tijdstip niet af te leiden (zie `Settings.laatste_trainingen_import`).
+ */
+export function importWaarschuwingen(
+  periode: Bestandsperiode | null,
+  ingrijpend: IngrijpendeWijzigingen,
+  settings: Pick<Settings, 'laatste_trainingen_import'>,
+): ImportWaarschuwing[] {
+  const uit: ImportWaarschuwing[] = [];
+
+  if (periode && periode.aandeelGeweest >= 0.5) {
+    uit.push({
+      soort: 'verleden',
+      reden: 'Dit bestand gaat over {van} tot {tot}, en {percentage}% daarvan is al geweest.',
+      vars: {
+        van: periode.van,
+        tot: periode.tot,
+        percentage: Math.round(periode.aandeelGeweest * 100),
+      },
+    });
+  }
+
+  const vorige = settings.laatste_trainingen_import;
+  const draaitIetsTerug = ingrijpend.aantalLessen > 0 || ingrijpend.spelersEruit.length > 0;
+  if (vorige && draaitIetsTerug) {
+    // Het opgeslagen tijdstip is een volledige ISO-tekst met tijd en zone erin; die mag wél
+    // gelezen worden, in tegenstelling tot een kale dag-tekst. Deugt hij toch niet, dan gaat
+    // hij ongewijzigd naar het scherm: liever een rare datum dan geen waarschuwing.
+    const gelezen = new Date(vorige);
+    uit.push({
+      soort: 'sindsdien-gewijzigd',
+      reden: 'Je las al eerder een seizoen in op {datum}. Dit bestand draait terug wat je daarna in de app wijzigde — kijk hieronder na wat dat precies is.',
+      vars: { datum: Number.isNaN(gelezen.getTime()) ? vorige : dagSleutel(gelezen) },
+    });
+  }
+
+  return uit;
+}
+
 /**
  * Het goedgekeurde plan omzetten in de rijen die weggeschreven worden — nog steeds zonder één
  * databankverbinding en zonder een enkele belofte om op te wachten: dit blijft synchroon.
