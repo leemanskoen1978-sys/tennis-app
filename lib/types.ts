@@ -179,6 +179,20 @@ export interface Booking {
   end_time: string; // ISO
   status: BookingStatus;
   /**
+   * De ziekmelding die deze les afzegde, als hij vanaf de werklijst afgezegd is.
+   *
+   * WAAROM DIT BESTAAT. `status: 'cancelled'` zegt niet waaróm. Een les die de beheerder vanaf
+   * de werklijst afzegde omdat er geen vervanger te vinden was, en een les die de speler zelf
+   * afzegde omdat hij ziek is, zien er identiek uit. Zonder dit veld kan het verwijderen van een
+   * ziekmelding de eerste soort niet terugzetten zonder de tweede te hervatten — en een les
+   * hervatten die de speler had afgezegd is erger dan een les die blijft ontbreken.
+   *
+   * Leeg is de normale toestand: elke andere afzegging, en elke les die niet afgezegd is. Het
+   * veld wordt gewist zodra de les weer bevestigd wordt, zodat er nooit een verwijzing blijft
+   * staan naar een melding die niet meer bestaat.
+   */
+  cancelled_by_sick_leave?: string;
+  /**
    * De betaalwijze van de les. Bij een groepsles is dat altijd 'invoice': beurtenkaart en
    * sponsorbudget gelden alleen voor een privéles, en cash of QR laat zich niet over vier
    * spelers verdelen. Die regel wordt afgedwongen in `planMethodChange` (lib/beurtenkaart) —

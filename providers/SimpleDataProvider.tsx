@@ -27,7 +27,7 @@ import { isGroupLesson } from '../lib/groups';
 import { bouwImportWijziging } from '../lib/import-trainingen';
 import type { ImportKeuze, ImportPlanLessen, ImportUitslagLessen } from '../lib/import-trainingen';
 import { zetAanwezigheid, magAanwezigheidZetten, type Aanwezigheid } from '../lib/aanwezigheid';
-import { vervangersNaVerwijdering } from '../lib/ziekmelding';
+import { herstelNaVerwijdering } from '../lib/ziekmelding';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
 import { botstMet, planSeries, type OvergeslagenSlot, type RecurrenceRule } from '../lib/recurrence';
@@ -1408,13 +1408,25 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     // wat geweest is blijft staan, en de reden waarom de afgezegde lessen er (nog) niet in
     // zitten. In één commit met het verwijderen zelf, zodat er geen tussenstand bestaat waarin
     // de melding weg is en de vervanger nog op de les staat.
-    const losTeKoppelen = new Set(vervangersNaVerwijdering(melding, store.bookings, new Date()));
+    const herstel = herstelNaVerwijdering(melding, store.bookings, new Date());
+    const zonderVervanger = new Set(herstel.vervangerWeg);
+    const weerBevestigd = new Set(herstel.weerBevestigd);
+    const raakt = zonderVervanger.size > 0 || weerBevestigd.size > 0;
     await commit({
       ...store,
       sickLeaves: store.sickLeaves.filter((z) => z.id !== id),
-      bookings: losTeKoppelen.size === 0 ? store.bookings : store.bookings.map((b) => (
-        losTeKoppelen.has(b.id) ? { ...b, taught_by_id: undefined } : b
-      )),
+      bookings: !raakt ? store.bookings : store.bookings.map((b) => {
+        if (!zonderVervanger.has(b.id) && !weerBevestigd.has(b.id)) return b;
+        const nieuw = { ...b };
+        if (zonderVervanger.has(b.id)) nieuw.taught_by_id = undefined;
+        if (weerBevestigd.has(b.id)) {
+          nieuw.status = 'confirmed';
+          // Het merkteken gaat mee weg: er mag nooit een verwijzing blijven staan naar een
+          // melding die niet meer bestaat.
+          nieuw.cancelled_by_sick_leave = undefined;
+        }
+        return nieuw;
+      }),
     });
   }, [commit]);
 

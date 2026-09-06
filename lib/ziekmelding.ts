@@ -171,11 +171,20 @@ export function lessenVoorZiekmelding<T extends ZiekmeldingBoeking>(
 
 /** De velden die `vervangersNaVerwijdering` van een boeking leest. */
 export type HerstelBoeking = Pick<
-  Booking, 'id' | 'coach_id' | 'taught_by_id' | 'start_time' | 'status'
+  Booking, 'id' | 'coach_id' | 'taught_by_id' | 'start_time' | 'status' | 'cancelled_by_sick_leave'
 >;
 
+/** Wat er teruggedraaid wordt als een ziekmelding verwijderd wordt. */
+export interface HerstelNaVerwijdering {
+  /** Lessen waarvan de vervanger weggehaald wordt. */
+  vervangerWeg: string[];
+  /** Lessen die van afgezegd terug naar bevestigd gaan. */
+  weerBevestigd: string[];
+}
+
 /**
- * Welke lessen hun vervanger kwijtraken als deze ziekmelding verwijderd wordt.
+ * Wat er teruggedraaid wordt als deze ziekmelding verwijderd wordt: de vervangers die eruit
+ * volgden, en de lessen die zij afzegde.
  *
  * WAAROM DIT MOET. Tot 6 september 2026 raakte het intrekken van een ziekmelding geen enkele
  * boeking, en dat was juist: intrekken liet de melding bestaan, dus wat eruit volgde bleef ook
@@ -196,31 +205,40 @@ export type HerstelBoeking = Pick<
  * ALLEEN DE LESSEN VAN DE ZIEKE TRAINER, BINNEN ZIJN PERIODE. Buiten die periode raakte de
  * melding niets en valt er niets terug te draaien.
  *
- * WAAROM DE AFGEZEGDE LESSEN HIER NIET IN ZITTEN, terwijl de eigenaar daar wél om vroeg. Een les
- * kan vanaf de werklijst afgezegd zijn omdat er geen vervanger was, maar net zo goed doordat de
- * speler zelf ziek was. In de databank zien die twee er identiek uit: `status: 'cancelled'` en
- * verder niets — geen wie, geen waarom. Ze allebei terugzetten zou een les hervatten die de
- * speler had afgezegd. Dat vraagt een veld dat bijhoudt wélke ziekmelding een les afzegde, en
- * dat is een aparte stap met een migratie. De vervanger heeft dat probleem niet: `taught_by_id`
- * wordt uitsluitend vanaf de werklijst gezet.
+ * DE TWEE HELFTEN WERKEN VERSCHILLEND, en dat is geen slordigheid. De vervanger gaat op de
+ * periode: `taught_by_id` wordt uitsluitend vanaf de werklijst gezet, dus staat hij binnen de
+ * ziekteperiode op een les van de zieke trainer, dan komt hij van deze melding. De afzegging
+ * gaat op een merkteken (`cancelled_by_sick_leave`), want daar kan het wél mis: een les die de
+ * speler zelf afzegde omdat híj ziek is, ziet er identiek uit — `status: 'cancelled'` en verder
+ * niets. Op de periode afgaan zou zo'n les hervatten, en dat is erger dan een les die blijft
+ * ontbreken.
  */
-export function vervangersNaVerwijdering(
-  melding: Pick<SickLeave, 'coach_id' | 'van' | 'tot'>,
+export function herstelNaVerwijdering(
+  melding: Pick<SickLeave, 'id' | 'coach_id' | 'van' | 'tot'>,
   boekingen: readonly HerstelBoeking[],
   nu: Date,
-): string[] {
-  const periode: OpenZiekmelding[] = [{ ...melding }];
-  const uit: string[] = [];
+): HerstelNaVerwijdering {
+  const periode: OpenZiekmelding[] = [{ coach_id: melding.coach_id, van: melding.van, tot: melding.tot }];
+  const uit: HerstelNaVerwijdering = { vervangerWeg: [], weerBevestigd: [] };
   for (const b of boekingen) {
-    if (!b.taught_by_id) continue;
-    if (b.coach_id !== melding.coach_id) continue;
     const start = new Date(b.start_time);
     if (Number.isNaN(start.getTime()) || start.getTime() < nu.getTime()) continue;
-    // Dezelfde periodevraag als overal, inclusief de omdraaiing voor oude rijen die verkeerd om
-    // staan. Een tweede vergelijking hier zou precies de kopie zijn waar `ziekOp` tegen
-    // waarschuwt.
+
+    // De afzegging gaat op het merkteken en niet op de periode. Dat is het hele punt van
+    // `cancelled_by_sick_leave`: alleen een les die dóór deze melding afgezegd werd komt terug,
+    // en een les die de speler zelf afzegde met zekerheid nooit — ook niet als hij toevallig in
+    // dezelfde week valt.
+    if (b.status === 'cancelled' && b.cancelled_by_sick_leave === melding.id) {
+      uit.weerBevestigd.push(b.id);
+    }
+
+    // De vervanger gaat wél op de periode: `taught_by_id` draagt geen merkteken en heeft er ook
+    // geen nodig, want hij wordt uitsluitend vanaf de werklijst gezet. Dezelfde periodevraag als
+    // overal, inclusief de omdraaiing voor oude rijen die verkeerd om staan.
+    if (!b.taught_by_id) continue;
+    if (b.coach_id !== melding.coach_id) continue;
     if (!ziekOp(melding.coach_id, dagSleutel(start), periode)) continue;
-    uit.push(b.id);
+    uit.vervangerWeg.push(b.id);
   }
   return uit;
 }

@@ -1,5 +1,5 @@
 import {
-  lessenVoorZiekmelding, openZiekmeldingen, vervangersNaVerwijdering, ziekOp, ziekmeldingFout,
+  herstelNaVerwijdering, lessenVoorZiekmelding, openZiekmeldingen, ziekOp, ziekmeldingFout,
   zoektVervanger,
 } from './ziekmelding';
 import type { Booking, SickLeave, Vakantie } from './types';
@@ -291,9 +291,9 @@ describe('ziekOp', () => {
   });
 });
 
-describe('vervangersNaVerwijdering', () => {
+describe('herstelNaVerwijdering', () => {
   const NU = new Date(2027, 2, 1, 8, 0);
-  const melding = { coach_id: 'c-1', van: '2027-03-01', tot: '2027-03-05' };
+  const melding = { id: 'z-1', coach_id: 'c-1', van: '2027-03-01', tot: '2027-03-05' };
   const b = (over: Partial<Booking> = {}): Booking => ({
     id: 'b1', player_id: 'p1', coach_id: 'c-1', court_id: 'baan-1',
     start_time: new Date(2027, 2, 3, 17).toISOString(),
@@ -302,38 +302,74 @@ describe('vervangersNaVerwijdering', () => {
   });
 
   it('haalt de vervanger weg op een komende les binnen de periode', () => {
-    expect(vervangersNaVerwijdering(melding, [b()], NU)).toEqual(['b1']);
+    expect(herstelNaVerwijdering(melding, [b()], NU).vervangerWeg).toEqual(['b1']);
   });
 
   it('laat een les zonder vervanger met rust', () => {
-    expect(vervangersNaVerwijdering(melding, [b({ taught_by_id: undefined })], NU)).toEqual([]);
+    expect(herstelNaVerwijdering(melding, [b({ taught_by_id: undefined })], NU).vervangerWeg).toEqual([]);
   });
 
   it('laat een les van een andere trainer met rust', () => {
-    expect(vervangersNaVerwijdering(melding, [b({ coach_id: 'c-9' })], NU)).toEqual([]);
+    expect(herstelNaVerwijdering(melding, [b({ coach_id: 'c-9' })], NU).vervangerWeg).toEqual([]);
   });
 
   it('laat een les buiten de periode met rust', () => {
     const buiten = b({ start_time: new Date(2027, 2, 9, 17).toISOString() });
-    expect(vervangersNaVerwijdering(melding, [buiten], NU)).toEqual([]);
+    expect(herstelNaVerwijdering(melding, [buiten], NU).vervangerWeg).toEqual([]);
   });
 
   it('laat een les die al geweest is met rust: die is echt door hem gegeven', () => {
     // Wat geweest is blijft staan zoals het was — en aan `taught_by_id` hangt het loon.
     const geweest = b({ start_time: new Date(2027, 1, 28, 17).toISOString() });
-    expect(vervangersNaVerwijdering(melding, [geweest], NU)).toEqual([]);
+    expect(herstelNaVerwijdering(melding, [geweest], NU).vervangerWeg).toEqual([]);
   });
 
   it('pakt ook een afgezegde les: de vervanger hoort er evengoed niet te blijven staan', () => {
-    expect(vervangersNaVerwijdering(melding, [b({ status: 'cancelled' })], NU)).toEqual(['b1']);
+    expect(herstelNaVerwijdering(melding, [b({ status: 'cancelled' })], NU).vervangerWeg).toEqual(['b1']);
   });
 
   it('leest een omgekeerd ingevulde periode zoals de rest van de app', () => {
-    const omgekeerd = { coach_id: 'c-1', van: '2027-03-05', tot: '2027-03-01' };
-    expect(vervangersNaVerwijdering(omgekeerd, [b()], NU)).toEqual(['b1']);
+    const omgekeerd = { id: 'z-1', coach_id: 'c-1', van: '2027-03-05', tot: '2027-03-01' };
+    expect(herstelNaVerwijdering(omgekeerd, [b()], NU).vervangerWeg).toEqual(['b1']);
+  });
+
+  it('zet een les terug die déze melding afzegde', () => {
+    const afgezegd = b({
+      status: 'cancelled', taught_by_id: undefined, cancelled_by_sick_leave: 'z-1',
+    });
+    expect(herstelNaVerwijdering(melding, [afgezegd], NU).weerBevestigd).toEqual(['b1']);
+  });
+
+  it('laat een les die de speler zelf afzegde met rust, ook in dezelfde week', () => {
+    // Dit is waarvoor het merkteken bestaat. Zonder dat veld zag deze les er identiek uit aan
+    // een die de werklijst afzegde, en zou het verwijderen van de ziekmelding hem hervatten —
+    // een les terugzetten die de speler had afgezegd omdat hij ziek is.
+    const doorSpeler = b({ status: 'cancelled', taught_by_id: undefined });
+    expect(herstelNaVerwijdering(melding, [doorSpeler], NU).weerBevestigd).toEqual([]);
+  });
+
+  it('laat een les met rust die een ándere ziekmelding afzegde', () => {
+    const andere = b({
+      status: 'cancelled', taught_by_id: undefined, cancelled_by_sick_leave: 'z-9',
+    });
+    expect(herstelNaVerwijdering(melding, [andere], NU).weerBevestigd).toEqual([]);
+  });
+
+  it('zet een afgezegde les die al geweest is niet terug', () => {
+    const geweest = b({
+      status: 'cancelled', taught_by_id: undefined, cancelled_by_sick_leave: 'z-1',
+      start_time: new Date(2027, 1, 28, 17).toISOString(),
+    });
+    expect(herstelNaVerwijdering(melding, [geweest], NU).weerBevestigd).toEqual([]);
+  });
+
+  it('doet allebei tegelijk op dezelfde les', () => {
+    const beide = b({ status: 'cancelled', cancelled_by_sick_leave: 'z-1' });
+    expect(herstelNaVerwijdering(melding, [beide], NU))
+      .toEqual({ vervangerWeg: ['b1'], weerBevestigd: ['b1'] });
   });
 
   it('geeft een lege lijst zonder boekingen', () => {
-    expect(vervangersNaVerwijdering(melding, [], NU)).toEqual([]);
+    expect(herstelNaVerwijdering(melding, [], NU)).toEqual({ vervangerWeg: [], weerBevestigd: [] });
   });
 });

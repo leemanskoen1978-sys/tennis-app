@@ -334,7 +334,16 @@ export default function WerklijstScreen(): React.JSX.Element {
                 <Button
                   label={t('Afzeggen')}
                   variant="secondary"
-                  onPress={() => { void updateBooking(booking.id, { status: 'cancelled' }); }}
+                  onPress={() => {
+                    // Het merkteken erbij: zo weet het verwijderen van deze ziekmelding straks
+                    // dat déze les door háár is afgezegd, en niet door de speler zelf. Zonder
+                    // dat onderscheid zou het verwijderen een les hervatten die de speler had
+                    // afgezegd. Zie `herstelNaVerwijdering` in lib/ziekmelding.
+                    void updateBooking(booking.id, {
+                      status: 'cancelled',
+                      cancelled_by_sick_leave: ziekmelding.id,
+                    });
+                  }}
                   fullWidth={false}
                   style={styles.knop}
                 />
