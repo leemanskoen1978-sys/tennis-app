@@ -329,6 +329,27 @@ describe('leesLesRegels', () => {
     });
   });
 
+  it('leest de baan uit de kolom Indoor/Outdoor, behalve als daar het woord zelf staat', () => {
+    const uitkomst = leesLesRegels([
+      [...KOP_MINIMAAL, 'Indoor/Outdoor'],
+      ['09/09/2026', '15:00', 'Groep 4', 'Koen', 'Antoine', '3'],
+      ['09/09/2026', '15:00', 'Groep 4', 'Koen', 'Lotte', 'Indoor'],
+    ]);
+    expect(uitkomst.fouten).toEqual([]);
+    expect(uitkomst.nietHerkend).toEqual([]);
+    expect(uitkomst.regels.map((r) => r.baan)).toEqual(['3', '']);
+  });
+
+  it('laat de kolom Baan winnen van Indoor/Outdoor, en valt erop terug als Baan leeg is', () => {
+    const uitkomst = leesLesRegels([
+      [...KOP_MINIMAAL, 'Baan', 'Indoor/Outdoor'],
+      ['09/09/2026', '15:00', 'Groep 4', 'Koen', 'Antoine', 'Baan 2', 'Indoor'],
+      ['09/09/2026', '15:00', 'Groep 4', 'Koen', 'Lotte', '', '5'],
+    ]);
+    expect(uitkomst.dubbel).toEqual([]);
+    expect(uitkomst.regels.map((r) => r.baan)).toEqual(['Baan 2', '5']);
+  });
+
   it('meldt een onleesbare datum met regelnummer en waarde, en geeft er geen regel voor', () => {
     const uitkomst = leesLesRegels([
       KOP_MINIMAAL,
@@ -1554,9 +1575,16 @@ describe('koen.xlsx — de acceptatie van IMP-10', () => {
     expect(LEGE_CLUB.dubbel).toEqual([]);
   });
 
-  it('heeft geen kolom Baan en geen kolom Groep-ID — daar hangt de rest van dit blok aan', () => {
+  it('heeft geen kolom Baan en geen Groep-ID, en in Indoor/Outdoor staat geen terrein', () => {
     expect(blad.rijen[0]).not.toContain('Baan');
     expect(blad.rijen[0]).not.toContain('Groep-ID');
+    // De kolom `Indoor/Outdoor` staat er wél, en telt sinds IMP-15 als tweede baankolom. Maar
+    // op alle 1398 regels staat er het woord `Indoor` in en geen terreinnummer, dus levert ze
+    // geen enkele baan op. Dát is precies de reden dat dit blok verderop nul lessen verwacht:
+    // geen baan, geen boeking.
+    expect(blad.rijen[0]).toContain('Indoor/Outdoor');
+    expect(LEGE_CLUB.regels).toHaveLength(1398);
+    expect(LEGE_CLUB.regels.every((r) => r.baan === '')).toBe(true);
   });
 
   it('levert tien nieuwe lesgroepen op, met zeven verschillende namen', () => {
