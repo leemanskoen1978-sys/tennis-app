@@ -727,7 +727,7 @@ export function groepenUitRegels(
         gemeldeIds.add(r.groepId);
         waarschuwingen.push({
           regel: r.regel,
-          reden: 'Deze groep heeft een Groep-ID dat ik niet ken: {waarde}. Ik zoek de groep op naam, dag en uur.',
+          reden: 'Deze groep heeft een Groep-ID dat ik niet ken: {waarde}. Ik zoek de groep op dag, uur en baan.',
           vars: { waarde: r.groepId },
         });
       }

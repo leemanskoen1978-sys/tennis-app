@@ -983,9 +983,9 @@ export const EN: Record<string, string> = {
     '{nieuw} new lesson groups, {bijgewerkt} updated, {ongewijzigd} unchanged.',
   '{spelers} nieuwe spelers, {lessen} lessen ingepland.':
     '{spelers} new players, {lessen} lessons scheduled.',
-  '{groepen} lesgroepen aangemaakt, {bijgewerkt} bijgewerkt, {spelers} spelers erbij, {lessen} lessen ingepland.':
+  '{groepen} lesgroepen aangemaakt, {bijgewerkt} bijgewerkt, {spelers} spelers erbij, {lessen} lessen ingepland, {gewisseld} lessen kregen een andere trainer.':
     '{groepen} lesson groups created, {bijgewerkt} updated, {spelers} players added, '
-    + '{lessen} lessons scheduled.',
+    + '{lessen} lessons scheduled, {gewisseld} lessons got a different coach.',
   '{n} lessen staan al goed en blijven zoals ze zijn.':
     '{n} lessons are already correct and stay as they are.',
   '{vakantie} vallen in een clubvakantie, {bezet} botsen met een bezette trainer of baan, {verleden} zijn al geweest.':
@@ -1006,6 +1006,14 @@ export const EN: Record<string, string> = {
     'Moved or cancelled by hand; this stays as it is',
   '{groep} op {dag}: staat op {bestaandeTijd}, het bestand zegt {tijdInBestand}.':
     '{groep} on {dag}: currently at {bestaandeTijd}, the file says {tijdInBestand}.',
+  'Deze lesgroepen krijgen een andere trainer': 'These lesson groups get a different coach',
+  '{groep}: {aantal} komende lessen gaan van {van} naar {naar}.':
+    '{groep}: {aantal} upcoming lessons move from {van} to {naar}.',
+  '{groep}: {aantal} komende lessen krijgen {naar}.':
+    '{groep}: {aantal} upcoming lessons get {naar}.',
+  'Lessen die al geweest zijn veranderen niet, en wie een les werkelijk gaf blijft staan zoals het staat.':
+    'Lessons that have already taken place do not change, and who actually gave a lesson stays '
+    + 'as it is.',
   'Deze lessen staan in de app maar niet meer in het bestand':
     'These lessons are in the app but no longer in the file',
   'Ze blijven staan; een import haalt nooit iets weg.':
@@ -1021,8 +1029,9 @@ export const EN: Record<string, string> = {
     + 'the same file again finishes the job. So it is safe to re-run, but it is not an import '
     + 'that rolls itself back in one go.',
   'Zeker weten?': 'Are you sure?',
-  'Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app.':
-    'After this the players, lesson groups and lessons above are really in the app.',
+  'Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app, en krijgen de genoemde komende lessen hun nieuwe trainer.':
+    'After this the players, lesson groups and lessons above are really in the app, and the '
+    + 'upcoming lessons named above get their new coach.',
   'Ja, nu importeren': 'Yes, import now',
   'Nee, toch niet': 'No, never mind',
   'Dit is niet weggeschreven': 'This was not saved',
@@ -1041,8 +1050,11 @@ export const EN: Record<string, string> = {
   'Geen leerling ingevuld.': 'No student filled in.',
   'Deze datum kon niet gelezen worden: {waarde}': 'This date could not be read: {waarde}',
   'Dit uur kon niet gelezen worden: {waarde}': 'This time could not be read: {waarde}',
-  'Deze groep heeft een Groep-ID dat ik niet ken: {waarde}. Ik zoek de groep op naam, dag en uur.':
-    'This group has a Groep-ID I do not know: {waarde}. I look the group up by name, day and time.',
+  'Deze groep heeft een Groep-ID dat ik niet ken: {waarde}. Ik zoek de groep op dag, uur en baan.':
+    'This group has a Groep-ID I do not know: {waarde}. I look the group up by day, time and court.',
+  'Op {dag} om {uur} staan lessen op meer dan één baan; ik houd ze uit elkaar als aparte lesgroepen.':
+    'On {dag} at {uur} lessons are on more than one court; I keep them apart as separate '
+    + 'lesson groups.',
   'De groep {groep} heeft meer dan één coach: {gekozen} en {andere}. Ik neem {gekozen}.':
     'Group {groep} has more than one coach: {gekozen} and {andere}. I use {gekozen}.',
   'De groep {groep} heeft meer dan één Type les: {gekozen} en {andere}. Ik neem {gekozen}.':
