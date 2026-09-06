@@ -1642,6 +1642,42 @@ function groepUitPlan(inPlan: GroepInPlan, roster: string[]): Omit<LesGroep, 'id
 }
 
 /**
+ * De nieuwe lesgroepen die niet aangemaakt kúnnen worden, met de reden erbij.
+ *
+ * Dit is dezelfde controle die `addLesGroep` doet en die `bouwImportWijziging` hieronder
+ * uitvoert. Ze staat hier apart zodat de droogloop haar kan tonen vóór er iets weggeschreven
+ * is, uit één bron — anders leest een beheerder "tien nieuwe lesgroepen", drukt hij op
+ * Importeren, en krijgt hij er nul met de uitleg pas achteraf.
+ *
+ * Dat is geen theoretisch geval. `lesGroepFout` eist een `coach_id` (lib/lesgroepen), en een
+ * bestand met een trainer die nog geen account heeft levert dus een fout per groep op. De weg
+ * eruit is één handeling: geef die trainer een account en lees hetzelfde bestand opnieuw in.
+ *
+ * Het rooster blijft hier leeg, en dat mag: `lesGroepFout` kijkt er niet naar. De ids van de
+ * nieuwe spelers bestaan op dit moment nog niet — ze zouden het antwoord toch niet veranderen.
+ */
+export function geweigerdeNieuweGroepen(
+  plan: Pick<ImportPlanLessen, 'groepenNieuw'>,
+): Array<{ inPlan: GroepInPlan; fout: ImportFoutLessen }> {
+  const uit: Array<{ inPlan: GroepInPlan; fout: ImportFoutLessen }> = [];
+  for (const inPlan of plan.groepenNieuw) {
+    const reden = lesGroepFout(groepUitPlan(inPlan, []));
+    if (!reden) continue;
+    uit.push({
+      inPlan,
+      fout: {
+        regel: regelVanGroep(inPlan),
+        // De reden van `lesGroepFout` is al vertaalde schermtekst; ze wordt als waarde
+        // doorgegeven en niet in de zin geplakt, zodat de zin zelf vertaalbaar blijft.
+        reden: 'Ik kan de lesgroep {groep} niet aanmaken: {reden} Haar lessen gaan dus ook niet door.',
+        vars: { groep: inPlan.naam, reden },
+      },
+    });
+  }
+  return uit;
+}
+
+/**
  * Het goedgekeurde plan omzetten in de rijen die weggeschreven worden — nog steeds zonder één
  * databankverbinding en zonder een enkele belofte om op te wachten: dit blijft synchroon.
  *
@@ -1698,28 +1734,20 @@ export function bouwImportWijziging(
   // 2. De groepen. Ze verwijzen naar de spelers hierboven, en de lessen verwijzen straks naar
   //    hen. Het id van een bestaande groep is dat wat de club al kende.
   const idVanGroep = new Map<GeplandeGroep, string>();
-  const geweigerd = new Set<GeplandeGroep>();
+  // Dezelfde controle die `addLesGroep` doet, en met opzet vóór de opslag: stuitte de provider
+  // er halverwege op, dan stonden de spelers er al en de groep niet — met een lege plek in de
+  // agenda tot gevolg. Nu wordt de hele groep overgeslagen en zegt de melding waarom. Ze staat
+  // in `geweigerdeNieuweGroepen` hierboven en niet hier, omdat het importscherm precies deze
+  // zinnen al in de droogloop toont: één bron, dus wat de beheerder leest is wat er gebeurt.
+  const geweigerdeGroepen = geweigerdeNieuweGroepen(plan);
+  const geweigerd = new Set<GeplandeGroep>(geweigerdeGroepen.map((g) => g.inPlan.groep));
+  for (const g of geweigerdeGroepen) uit.fouten.push(g.fout);
 
   for (const inPlan of plan.groepenNieuw) {
-    const groep = groepUitPlan(inPlan, echteIds(inPlan.roster));
-    // Dezelfde controle die `addLesGroep` doet, en met opzet vóór de opslag: stuitte de provider
-    // er halverwege op, dan stonden de spelers er al en de groep niet — met een lege plek in de
-    // agenda tot gevolg. Nu wordt de hele groep overgeslagen en zegt de melding waarom.
-    const fout = lesGroepFout(groep);
-    if (fout) {
-      geweigerd.add(inPlan.groep);
-      uit.fouten.push({
-        regel: regelVanGroep(inPlan),
-        // De reden van `lesGroepFout` is al vertaalde schermtekst; ze wordt als waarde
-        // doorgegeven en niet in de zin geplakt, zodat de zin zelf vertaalbaar blijft.
-        reden: 'Ik kan de lesgroep {groep} niet aanmaken: {reden} Haar lessen gaan dus ook niet door.',
-        vars: { groep: inPlan.naam, reden: fout },
-      });
-      continue;
-    }
+    if (geweigerd.has(inPlan.groep)) continue;
     const id = maakId('lg');
     idVanGroep.set(inPlan.groep, id);
-    uit.nieuweGroepen.push({ ...groep, id });
+    uit.nieuweGroepen.push({ ...groepUitPlan(inPlan, echteIds(inPlan.roster)), id });
   }
 
   for (const inPlan of plan.groepenBijgewerkt) {

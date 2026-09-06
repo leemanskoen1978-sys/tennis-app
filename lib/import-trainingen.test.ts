@@ -4,7 +4,8 @@ import { join } from 'path';
 import { GROEPSLES_METHOD } from './beurtenkaart';
 import { bladLessen, opzoektabellen } from './export-trainingen';
 import {
-  alsBezet, bestandAfgekeurdLessen, bouwImportWijziging, deelnemersVoorLes, groepenUitRegels,
+  alsBezet, bestandAfgekeurdLessen, bouwImportWijziging, deelnemersVoorLes,
+  geweigerdeNieuweGroepen, groepenUitRegels,
   groepRosterVerschil, kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
   NIEUWE_SPELER, planImportLessen, spelerSleutel,
@@ -1908,6 +1909,39 @@ function teller(): (voorvoegsel: string) => string {
     return `${voorvoegsel}-${volgende}`;
   };
 }
+
+describe('geweigerdeNieuweGroepen', () => {
+  const RIJEN = [
+    KOP_VOLLEDIG,
+    volleRij('09/09/2026', '17:00', 'Groep 8', 'Peferoen Astor'),
+    volleRij('09/09/2026', '17:00', 'Groep 8', 'Martens Clara'),
+  ];
+
+  it('geeft niets terug als elke nieuwe groep aangemaakt kan worden', () => {
+    expect(geweigerdeNieuweGroepen(planImportLessen(RIJEN, [], [KOEN], [BAAN], [], {}, NU)))
+      .toEqual([]);
+  });
+
+  it('meldt de groep waarvan de trainer nog geen account heeft, met naam en regelnummer', () => {
+    // Precies het geval van `koen.xlsx`: de coach staat op elke regel, maar de club heeft geen
+    // account voor hem. `lesGroepFout` eist een `coach_id`, dus deze groep komt er niet.
+    const geweigerd = geweigerdeNieuweGroepen(
+      planImportLessen(RIJEN, [], [], [BAAN], [], {}, NU),
+    );
+    expect(geweigerd).toHaveLength(1);
+    expect(geweigerd[0].inPlan.naam).toBe('Groep 8');
+    expect(geweigerd[0].fout.regel).toBe(2);
+    expect(geweigerd[0].fout.vars).toMatchObject({ groep: 'Groep 8' });
+  });
+
+  it('zegt hetzelfde als wat de uitvoerder straks weigert — één bron, geen twee verhalen', () => {
+    // De droogloop toont deze zinnen vóór het wegschrijven en `bouwImportWijziging` gebruikt
+    // ze erna. Lopen ze uiteen, dan belooft het scherm iets anders dan er gebeurt (D-10).
+    const plan = planImportLessen(RIJEN, [], [], [BAAN], [], {}, NU);
+    expect(bouwImportWijziging(plan, teller()).fouten)
+      .toEqual(geweigerdeNieuweGroepen(plan).map((g) => g.fout));
+  });
+});
 
 describe('bouwImportWijziging', () => {
   const RIJEN_NIEUW = [
