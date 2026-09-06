@@ -5,13 +5,13 @@ import { GROEPSLES_METHOD } from './beurtenkaart';
 import { bladLessen, opzoektabellen } from './export-trainingen';
 import {
   alsBezet, bestandAfgekeurdLessen, bouwImportWijziging, deelnemersVoorLes,
-  geweigerdeNieuweGroepen, groepenUitRegels,
+  geweigerdeNieuweGroepen, groepenUitRegels, overgeslagenPerReden,
   groepRosterVerschil, kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
   NIEUWE_SPELER, planImportLessen, spelerSleutel,
   groepWijzigingen, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
   type GeplandeGroep, type GeplandeLes, type GroepKoppeling, type ImportBoeking,
-  type ImportPlanLessen, type LesRegel,
+  type ImportPlanLessen, type LesRegel, type OvergeslagenLes,
 } from './import-trainingen';
 import { groepSleutel } from './lesgroepen';
 import type { Booking, Court, LesGroep, User } from './types';
@@ -1909,6 +1909,23 @@ function teller(): (voorvoegsel: string) => string {
     return `${voorvoegsel}-${volgende}`;
   };
 }
+
+describe('overgeslagenPerReden', () => {
+  const les = (reden: 'vakantie' | 'bezet' | 'verleden'): OvergeslagenLes => ({
+    sleutel: `s-${reden}`, start: NU, reden, regel: 2,
+  });
+
+  it('telt nul op elke reden als er niets is overgeslagen', () => {
+    expect(overgeslagenPerReden({ overgeslagen: [] }))
+      .toEqual({ vakantie: 0, bezet: 0, verleden: 0 });
+  });
+
+  it('telt per reden, zodat het scherm aantallen kan tonen in plaats van regels', () => {
+    expect(overgeslagenPerReden({
+      overgeslagen: [les('vakantie'), les('bezet'), les('vakantie'), les('verleden')],
+    })).toEqual({ vakantie: 2, bezet: 1, verleden: 1 });
+  });
+});
 
 describe('geweigerdeNieuweGroepen', () => {
   const RIJEN = [

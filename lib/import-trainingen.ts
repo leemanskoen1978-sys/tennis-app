@@ -1641,6 +1641,31 @@ function groepUitPlan(inPlan: GroepInPlan, roster: string[]): Omit<LesGroep, 'id
   return groep;
 }
 
+/** Hoeveel lessen er om welke reden niet ingepland worden. */
+export interface OvergeslagenTelling {
+  /** Ze vallen in een clubvakantie. */
+  vakantie: number;
+  /** De trainer of de baan staat op dat uur al bezet. */
+  bezet: number;
+  /** Ze zijn al geweest; wat geweest is blijft staan zoals het was. */
+  verleden: number;
+}
+
+/**
+ * De overgeslagen lessen geteld per reden.
+ *
+ * Dit hoort hier en niet op het scherm, om dezelfde reden als de rest van dit bestand: de
+ * droogloop toont aantallen en geen 1400 regels (D-09), en een scherm dat zelf telt komt vroeg
+ * of laat op een ander getal uit dan wat er straks weggeschreven wordt.
+ */
+export function overgeslagenPerReden(
+  plan: Pick<ImportPlanLessen, 'overgeslagen'>,
+): OvergeslagenTelling {
+  const telling: OvergeslagenTelling = { vakantie: 0, bezet: 0, verleden: 0 };
+  for (const les of plan.overgeslagen) telling[les.reden] += 1;
+  return telling;
+}
+
 /**
  * De nieuwe lesgroepen die niet aangemaakt kúnnen worden, met de reden erbij.
  *
