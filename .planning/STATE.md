@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: "Completed 05-06-PLAN.md (de lessen zelf: vakanties eruit, botsingen gemeld, herimport zonder verdubbelen of stil terugzetten, en de zomertijdtest; fase 5 plan 6, buiten de volgorde van fase 3 om)"
-last_updated: "2026-09-06T04:30:00.000Z"
+stopped_at: "Completed 05-07-PLAN.md (de acceptatie: koen.xlsx van bytes tot plan, twee en drie keer inlezen, en de export van fase 4 weer inlezen; fase 5 plan 7, buiten de volgorde van fase 3 om)"
+last_updated: "2026-09-06T05:15:00.000Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 36
-  completed_plans: 29
-  percent: 33
+  completed_plans: 30
+  percent: 34
 ---
 
 # Project State
@@ -34,6 +34,9 @@ Last activity: 2026-09-06
 Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draaiende app.
 Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
 de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
+
+Fase 5 staat op plan 7 van 10: de acceptatie op het echte bestand van de club is gehaald (05-07).
+Rest: de uitvoerder (05-08), het importscherm (05-09) en de handmatige controle (05-10).
 
 Progress: [████████░░] 81%
 
@@ -81,6 +84,7 @@ Progress: [████████░░] 81%
 | Phase 03 P06 | 35min | 2 tasks | 4 files |
 | Phase 03 P07 | ~40 min | 3 tasks | 4 files |
 | Phase 05-excel-import-van-trainingen P01 | 35min | 2 tasks | 2 files |
+| Phase 05-excel-import-van-trainingen P07 | ~35min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -104,6 +108,15 @@ confirmed as phases ship).
 - [Phase 05-excel-import]: de import zoekt trainers en banen op en maakt ze nooit aan (D-07).
   Ontbreekt de trainer, dan komt de lesgroep er wél met een lege `coach_id` en haar roster,
   en gaan alleen haar lessen niet door — `Booking.coach_id` en `court_id` zijn verplicht
+
+- [Phase 05-excel-import]: `koen.xlsx` is bewezen op het echte bestand — tien groepen uit zeven
+  namen, 42 spelers, 325 lesmomenten, nul lessen en twintig meldingen die alleen over de trainer
+  en de baan gaan. Geen enkel getal uit het plan hoefde bijgesteld (plan 05-07)
+
+- [Phase 05-excel-import]: OPEN BEVINDING — `groepWijzigingen` vergelijkt `name`, `weekday` en
+  `start_hour` niet, omdat die bij een sleutelmatch gelijk zijn. Bij een match op `Groep-ID`
+  (D-03) zijn ze dat juist niet: een groep die in de export hernoemd is wordt herkend maar niet
+  hernoemd. Zie `.planning/phases/05-excel-import-van-trainingen/deferred-items.md`
 
 - [Phase 03-ziekmelding]: `vervangersVoor` filtert nooit — er komen er even veel uit als
   er kandidaten in gingen, elk met `'kan'` of met de reden die nee zei (D-09). Sorteren of
