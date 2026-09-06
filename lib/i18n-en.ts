@@ -1361,4 +1361,22 @@ export const EN: Record<string, string> = {
     'The coach has been reported sick: this lesson is still looking for a substitute.',
   'Je regelt hem op de werklijst, onder Beheer bij Ziekmelding.':
     'You sort it out on the work list, under Admin in Sick leave.',
+
+  // --- Beheer → Banen: een baan aanmaken (app/admin/courts, lib/banen) ---
+  'Banen zijn alleen voor de beheerder.': 'Courts are for the administrator only.',
+  'Baan toevoegen': 'Add a court',
+  'bv. Gravel 3': 'e.g. Clay 3',
+  'Nummer': 'Number',
+  'bv. 3': 'e.g. 3',
+  'bv. 30': 'e.g. 30',
+  'Ligging': 'Location',
+  'Een nieuwe baan begint zonder staffel: tot je er een instelt, geldt dit uurtarief ook voor een groepsles.':
+    'A new court starts without a group tariff: until you set one, this hourly rate applies to '
+    + 'a group lesson too.',
+  'Geef de baan een naam.': 'Give the court a name.',
+  'Geef de baan een nummer: een heel getal vanaf 1.':
+    'Give the court a number: a whole number from 1 up.',
+  'Baan {nr} bestaat al.': 'Court {nr} already exists.',
+  'Vul een uurtarief in, bijvoorbeeld 30 of 22,50.':
+    'Fill in an hourly rate, for example 30 or 22.50.',
 };

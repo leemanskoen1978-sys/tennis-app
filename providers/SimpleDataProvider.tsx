@@ -15,6 +15,7 @@ import { u9Trainings, U9_CATALOGUE_ID } from '../lib/trainings-u9';
 import { upsertGoal, removeGoal } from '../lib/goals';
 import { aanvraagVoor, kinderenVan } from '../lib/ouderkind';
 import { zonderLid } from '../lib/leden';
+import { baanFout, leesBaan, type NieuweBaan } from '../lib/banen';
 import { lesGroepFout, planGroepWijziging, planRosterChange } from '../lib/lesgroepen';
 import type { GroepWijzigingPlan } from '../lib/lesgroepen';
 import {
@@ -77,6 +78,16 @@ interface DataShape {
   zetNieuwWachtwoord: (wachtwoord: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  /**
+   * Een baan aanmaken. Geeft de gemaakte baan terug, of `null` met een melding op het
+   * scherm als er iets niet klopt — zie `baanFout` in lib/banen.
+   *
+   * Neemt het formulier zoals het ingevuld is en geen kant-en-klare `Court`: het nummer en
+   * het bedrag komen als getypte tekst binnen, want juist het lezen daarvan is wat bewaakt
+   * moet worden. De lijst banen om het nummer tegen af te toetsen komt uit de opslag hier,
+   * niet van het scherm — de opslag is wat er echt staat.
+   */
+  addCourt: (concept: NieuweBaan) => Promise<Court | null>;
   /** Het tarief en de groepstaffel van een baan bijstellen; `id`, naam en nummer blijven. */
   updateCourt: (id: string, patch: Partial<Omit<Court, 'id'>>) => Promise<void>;
   addBooking: (b: Omit<Booking, 'id'>) => Promise<Booking | null>;
@@ -626,6 +637,27 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       }
     }
   }, []);
+
+  const addCourt = useCallback(async (concept: NieuweBaan): Promise<Court | null> => {
+    const store = storeRef.current;
+    if (!store) return null;
+    // Dezelfde volgorde als bij een lesgroep: eerst kijken of het klopt, en pas dan
+    // wegschrijven. Een baan met een nummer dat al bezet is, is achteraf lastiger recht te
+    // zetten dan een formulier dat nog even openblijft met de reden erbij — er hangen dan
+    // al lessen aan.
+    const fout = baanFout(concept, store.courts);
+    if (fout) {
+      setError(fout);
+      return null;
+    }
+    const baan = leesBaan(concept);
+    // `baanFout` heeft hierboven al afgetoetst wat `leesBaan` kan laten struikelen; dit is
+    // er voor de typecontrole en hoort nooit af te gaan.
+    if (!baan) return null;
+    const created: Court = { ...baan, id: newId('court') };
+    await commit({ ...store, courts: [...store.courts, created] });
+    return created;
+  }, [commit]);
 
   const updateCourt = useCallback(async (id: string, patch: Partial<Omit<Court, 'id'>>) => {
     const store = storeRef.current;
@@ -1447,6 +1479,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     zetNieuwWachtwoord,
     logout,
     refresh,
+    addCourt,
     updateCourt,
     addBooking,
     addBookingSeries,
@@ -1497,7 +1530,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   }), [
     store, currentUser, loading, error, clearError, login, signIn, signUp,
     herstelBezig, stuurHerstelmail, zetNieuwWachtwoord, logout, refresh,
-    updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
+    addCourt, updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
     updateBooking, deleteBooking, approveBooking, rejectBooking,
     setParticipants, setPaymentSplit, setAanwezigheid,
     setPaymentMethod, setTaughtBy, addBeurtenkaart,
