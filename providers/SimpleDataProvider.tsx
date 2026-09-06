@@ -671,14 +671,16 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const addBooking = useCallback(async (b: Omit<Booking, 'id'>): Promise<Booking | null> => {
     const store = storeRef.current;
     if (!store) return null;
-    // Dezelfde botsingsregel als het reeksscherm gebruikt: hier stond tot vandaag een eigen
-    // kopie, en twee kopieën lopen vroeg of laat uiteen -- dan meldt het scherm een reeks die
-    // de provider daarna weigert, of erger, andersom. Zonder baan in de vraag, want dat is
-    // precies wat de oude kopie deed: alleen de agenda van de trainer telt hier.
-    if (botstMet(b, store.bookings, { coachId: b.coach_id }) !== null) {
-      setError('Dit tijdslot is al geboekt bij deze coach.');
-      return null;
-    }
+    // WAAROM HIER GEEN WEIGERING MEER STAAT. Tot 6 september 2026 gaf `botstMet` hier een
+    // weigering: "Dit tijdslot is al geboekt bij deze coach." Die regel ging uit van één groep
+    // per trainer, en bij deze club klopt dat niet — op Terrein 7 draait dezelfde trainer
+    // blauw en rood naast elkaar op een halve baan. De beslissing van de eigenaar is één
+    // regel voor alle plekken: een overlap blokkeert nooit en waarschuwt altijd.
+    //
+    // De waarschuwing staat met opzet NIET hier maar in het boekingsvenster, dat de botsing
+    // vóór het aanmaken toont: een melding achteraf komt te laat als het venster dan al
+    // dichtklapt. `botstMet` blijft de enige plek die de vraag beantwoordt — het venster stelt
+    // haar via lib/botsingen, en niet met een eigen kopie van de vergelijking.
     // Een groepsles gaat altijd op factuur; hier staat die regel ook voor een nieuwe les,
     // zodat er geen les op cash of op een beurt kan ontstaan die naderhand geweigerd wordt.
     const created: Booking = {
@@ -718,8 +720,12 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       base.start_time, base.end_time, rule, base.coach_id, store.bookings,
       store.settings.vakanties ?? [],
     );
+    // Er blijft niets over om aan te maken. Sinds een overlap niet meer blokkeert kan dat nog
+    // maar één ding betekenen: elk moment van de reeks valt in een clubvakantie. Dat is ook
+    // wat de melding nu zegt — "al geboekt bij deze coach" zou een reden noemen die hier niet
+    // meer bestaat, en de beheerder in zijn agenda laten zoeken naar iets wat er niet is.
     if (plan.usable.length === 0) {
-      setError('Elk moment van deze reeks is al geboekt bij deze coach.');
+      setError('Elk moment van deze reeks valt in een periode dat de club dicht is.');
       return { created: [], skipped: plan.skipped };
     }
 

@@ -30,11 +30,15 @@ export interface SeriesSlot {
 }
 
 /**
- * Waarom een les van de reeks afvalt. De twee redenen staan uit elkaar omdat ze een
- * verschillend antwoord vragen: bij "bezet" verzet je die ene les, bij "vakantie" is er
- * niets aan de hand en hoort de reeks er gewoon overheen te stappen.
+ * Waarom een les van de reeks afvalt. Er is er nog één van over: de clubvakantie.
+ *
+ * Tot 6 september 2026 stond `'bezet'` hier ook in, en dan viel de les uit de reeks. Dat is
+ * omgedraaid — een overlap blokkeert nooit meer en waarschuwt altijd; zie `botsingen`
+ * hieronder. De vakantie blijft wél blokkeren: op een dag dat de club dicht is geeft niemand
+ * les, en die lessen achteraf één voor één terugvinden en schrappen is precies het werk dat
+ * een reeks moest besparen.
  */
-export type OvergeslagenReden = 'bezet' | 'vakantie';
+export type OvergeslagenReden = 'vakantie';
 
 export interface OvergeslagenSlot extends SeriesSlot {
   reden: OvergeslagenReden;
@@ -42,11 +46,30 @@ export interface OvergeslagenSlot extends SeriesSlot {
   vakantie?: string;
 }
 
+/**
+ * Een les die gewoon doorgaat maar overlapt met een andere, met die andere les erbij.
+ *
+ * De botsende boeking en niet enkel "er is een botsing": alleen zo kan het scherm zeggen
+ * wáármee het botst, en pas dan kan de lezer beoordelen of het kleutertennis is of een echte
+ * vergissing. Dat onderscheid kan de code niet maken en de beheerder wel.
+ */
+export interface BotsendSlot extends SeriesSlot {
+  /** De bestaande les waarmee dit moment overlapt. */
+  conflict: BezetBoeking;
+}
+
 export interface SeriesPlan {
   /** De lessen die aangemaakt kunnen worden, op tijd oplopend, inclusief de eerste. */
   usable: SeriesSlot[];
   /** De lessen die niet doorgaan, met de reden erbij. */
   skipped: OvergeslagenSlot[];
+  /**
+   * De lessen uit `usable` die overlappen met een bestaande les. Ze staan er dus twéé keer in:
+   * hier als waarschuwing, en in `usable` omdat ze aangemaakt worden. Wie deze lijst negeert
+   * maakt een dubbele boeking aan zonder het te melden, en dat is erger dan de weigering die
+   * dit verving.
+   */
+  botsingen: BotsendSlot[];
 }
 
 /** Hoeveel dagen er tussen twee lessen zitten. */
@@ -135,9 +158,18 @@ export interface BezetVraag {
  * weigert. `planSeries`, `planGroepWijziging` en `addBooking` lopen alle drie hier doorheen,
  * en wie in deze fase een vervanger zoekt hoort dat ook te doen — schrijf geen vierde.
  *
- * De baan hoort erbij omdat twee trainers niet tegelijk op hetzelfde terrein staan: een
- * groep die naar een vrij uur van haar trainer verhuist kan alsnog op een bezette baan
- * uitkomen, en dat is even hard een botsing. Een les zonder baan houdt geen baan bezet.
+ * De baan hoort erbij omdat een groep die naar een vrij uur van haar trainer verhuist alsnog
+ * op een bezette baan kan uitkomen. Een les zonder baan houdt geen baan bezet.
+ *
+ * WAT EEN BOTSING SINDS 6 SEPTEMBER 2026 BETEKENT. Ze blokkeert nooit meer en waarschuwt
+ * altijd. Deze functie is niet veranderd — ze beantwoordt nog steeds precies dezelfde vraag,
+ * en dat antwoord is nog steeds gewenst. Alleen wat de aanroepers ermee doen is omgedraaid,
+ * van weigeren naar melden. De aanleiding: op Terrein 7 hebben blauw en rood elk maar een
+ * halve baan nodig, dus staan er twee of drie kleutergroepen tegelijk — en dezelfde trainer
+ * draait er twee naast elkaar. Beide aannames van de oude regel ("één groep per baan", "één
+ * groep per trainer") zijn bij deze club dus onwaar, en de weigering liet juist die
+ * kinderlessen stilletjes verdwijnen. Wie hier een nieuwe aanroeper bijzet: melden, niet
+ * weigeren — en de teruggegeven boeking gebruiken om te zeggen wáármee het botst.
  */
 export function botstMet(
   slot: SeriesSlot,
@@ -159,8 +191,8 @@ export function botstMet(
 }
 
 /**
- * Zet één les plus een herhaalregel om in de volledige reeks, en zegt welke lessen
- * niet kunnen omdat de trainer dan al bezet is.
+ * Zet één les plus een herhaalregel om in de volledige reeks, zegt welke lessen niet doorgaan
+ * omdat de club dicht is, en welke wél doorgaan maar overlappen met een bestaande les.
  *
  * Onbruikbare invoer levert een lege reeks op in plaats van een fout: dit rekenwerk loopt
  * mee terwijl iemand nog in het formulier tikt, en een halfaf ingevulde datum mag geen
@@ -180,7 +212,7 @@ export function planSeries(
    */
   vakanties: Vakantie[] = [],
 ): SeriesPlan {
-  const empty: SeriesPlan = { usable: [], skipped: [] };
+  const empty: SeriesPlan = { usable: [], skipped: [], botsingen: [] };
 
   const start = parseMoment(startTime);
   const end = parseMoment(endTime);
@@ -198,6 +230,7 @@ export function planSeries(
 
   const usable: SeriesSlot[] = [];
   const skipped: OvergeslagenSlot[] = [];
+  const botsingen: BotsendSlot[] = [];
   for (let i = 0; i < MAX_LESSONS; i++) {
     const days = i * step;
     const slotStart = shiftDays(start, days);
@@ -211,14 +244,18 @@ export function planSeries(
     const vakantie = vakantieOpMoment(vakanties, slot.start_time);
     if (vakantie) {
       skipped.push({ ...slot, reden: 'vakantie', vakantie: vakantie.naam });
-    } else if (botstMet(slot, existing, { coachId }) !== null) {
-      skipped.push({ ...slot, reden: 'bezet' });
-    } else {
-      usable.push(slot);
+      continue;
     }
+    // De botsing valt de les niet meer af: ze gaat door én wordt gemeld. Bij het kleutertennis
+    // van deze club staan blauw en rood samen op de halve baan van Terrein 7, met dezelfde
+    // trainer ernaast — vroeger sloeg de reeks die weken over en verdwenen precies die
+    // kinderlessen. Wie deze reeks aanmaakt hoort ze in het rood te zien staan, niet te missen.
+    const conflict = botstMet(slot, existing, { coachId });
+    if (conflict) botsingen.push({ ...slot, conflict });
+    usable.push(slot);
   }
 
-  return { usable, skipped };
+  return { usable, skipped, botsingen };
 }
 
 /** Leesbare samenvatting, bv. "Wekelijks tot en met za 20 dec · 12 lessen". */

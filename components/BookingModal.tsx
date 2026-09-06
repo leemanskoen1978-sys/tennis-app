@@ -23,10 +23,11 @@ import { magInElkeAgenda } from '../lib/rechten';
 import { formatDay } from '../lib/datetime';
 import { playersOf } from '../lib/hub';
 import {
-  MAX_LESSONS, laatsteDagVan, planSeries, seriesSummary,
+  MAX_LESSONS, botstMet, laatsteDagVan, planSeries, seriesSummary,
   type OvergeslagenReden, type OvergeslagenSlot,
   type RecurrenceFrequency, type RecurrenceRule,
 } from '../lib/recurrence';
+import { botsingRegels, botsingTekst } from '../lib/botsingen';
 
 interface BookingModalProps {
   visible: boolean;
@@ -62,21 +63,24 @@ function lessons(n: number): string {
 }
 
 /**
- * De staart van de melding na het aanmaken: wat er is overgeslagen en waarom. De twee
- * redenen staan apart, want ze vragen een verschillend antwoord — een bezette dag verzet je,
- * een vakantiedag hoort gewoon over te slaan.
+ * De staart van de melding na het aanmaken: wat er is overgeslagen, en wat er is aangemaakt
+ * bovenop een les die er al stond.
+ *
+ * De twee staan apart omdat ze een verschillend antwoord vragen. Een vakantiedag hoort gewoon
+ * over te slaan en er is niets aan de hand. Een overlap is er wél: de les IS aangemaakt, en
+ * die zin hoort er te staan ook als de trainer het venster meteen dichtklikt — anders heeft
+ * hij een dubbele boeking gemaakt zonder het ooit te lezen.
  */
-function overgeslagenZin(skipped: OvergeslagenSlot[]): string {
-  const bezet = skipped.filter((s) => s.reden === 'bezet').length;
+function overgeslagenZin(skipped: OvergeslagenSlot[], botsend: number): string {
   const vakantie = skipped.filter((s) => s.reden === 'vakantie').length;
   const delen: string[] = [];
-  if (bezet > 0) {
-    delen.push(tr('{lessen} overgeslagen, de trainer was dan al bezet.', {
-      lessen: lessons(bezet),
-    }));
-  }
   if (vakantie > 0) {
     delen.push(tr('{lessen} vielen in een vakantie.', { lessen: lessons(vakantie) }));
+  }
+  if (botsend > 0) {
+    delen.push(tr('Let op: {lessen} staan tegelijk met een andere les.', {
+      lessen: lessons(botsend),
+    }));
   }
   return delen.length > 0 ? ` ${delen.join(' ')}` : '';
 }
@@ -202,6 +206,25 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
   const overgeslagen = (reden: OvergeslagenReden): OvergeslagenSlot[] =>
     plan?.skipped.filter((s) => s.reden === reden) ?? [];
 
+  // De namen waarmee een botsing leesbaar wordt. `allCourts` en niet `courts`: de botsende les
+  // kan op een terrein staan dat in dit venster niet gekozen kan worden, en dan hoort er nog
+  // steeds een naam te staan en geen leeg vakje.
+  const botsingNamen = { trainers: users, banen: allCourts };
+  // Waarvoor de botsing gezocht wordt. De baan gaat hier wél mee, en dat is nieuw: de oude
+  // weigering in de provider keek alleen naar de agenda van de trainer, dus een tweede les op
+  // hetzelfde terrein kwam er zwijgend naast te staan. Nu het een melding is en geen
+  // weigering, kan die vraag er zonder risico bij — meer zien, niets meer tegengehouden.
+  const botsingVraag = { coachId, courtId: selectedCourtId };
+  // De botsing van de losse les, live terwijl het venster openstaat. Vóór het boeken en niet
+  // erna: het venster klapt bij een gelukte boeking dicht, dus een melding achteraf zou
+  // niemand lezen. Dit is dezelfde `botstMet` die de reeks en de import gebruiken — er staat
+  // hier met opzet geen eigen vergelijking van twee tijdvakken.
+  const losseBotsing = repeat === null
+    ? botstMet({ start_time, end_time }, bookings, botsingVraag)
+    : null;
+  /** Eén regel per andere les waarmee de reeks overlapt; twaalf keer dezelfde buurgroep is één regel. */
+  const reeksBotsingen = botsingRegels(plan?.botsingen ?? [], botsingVraag, botsingNamen);
+
   /** Zelfde formulering als het exportscherm: hoeveel beurten heeft deze speler nog. */
   const beurtenHint = (): string => {
     const cards = forPlayerId ? cardsFor(beurtenkaarten, forPlayerId) : [];
@@ -296,7 +319,7 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
           setSeriesNotice(
             `${lessons(created.length)} aangemaakt: ${gelukt} op ${PAYMENT_LABELS[method]}, `
             + `${open} op ${PAYMENT_LABELS.open} — die vind je in Beheer → Betalingen.`
-            + overgeslagenZin(skipped),
+            + overgeslagenZin(skipped, plan.botsingen.length),
           );
           return;
         }
@@ -437,6 +460,20 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                   in werking zodra hij er iemand bij zet. */}
               <Text style={styles.price}>{priceLine}</Text>
 
+              {/* De overlap. Ze houdt het boeken niet tegen — dat is de beslissing van de
+                  eigenaar: een overlap blokkeert nooit en waarschuwt altijd — maar ze staat
+                  in het rood en ze zegt wáármee het botst. Bij het kleutertennis op Terrein 7
+                  is dat gewoon goed (blauw en rood delen een halve baan); bij twee
+                  volwassenengroepen is het een vergissing. Dat onderscheid kan alleen de
+                  lezer maken, en alleen als hij de andere les voor zich ziet. */}
+              {losseBotsing ? (
+                <Text style={styles.error}>
+                  {t('Deze les komt tegelijk met een andere te staan. {wat}', {
+                    wat: botsingTekst(losseBotsing, botsingVraag, botsingNamen),
+                  })}
+                </Text>
+              ) : null}
+
               {isGroup ? (
                 <>
                   <Text style={styles.label}>{t('Factuur')}</Text>
@@ -568,18 +605,9 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                   {plan && rule ? (
                     <>
                       <Text style={styles.price}>{seriesSummary(plan, rule)}</Text>
-                      {/* Twee redenen, twee regels: bij "bezet" verzet je die ene les, bij
-                          een vakantie is er niets aan de hand en stapt de reeks er gewoon
-                          overheen. Op één hoop gegooid zou de trainer gaan zoeken naar een
-                          botsing die er niet is. */}
-                      {overgeslagen('bezet').length > 0 ? (
-                        <Text style={styles.hint}>
-                          {t('{lessen} overgeslagen omdat de trainer dan al bezet is: {dagen}.', {
-                            lessen: lessons(overgeslagen('bezet').length),
-                            dagen: overgeslagen('bezet').map((s) => formatDay(s.start_time)).join(', '),
-                          })}
-                        </Text>
-                      ) : null}
+                      {/* De vakantie in grijs, de botsing in het rood: de eerste is normaal
+                          en de tweede vraagt een oordeel. Op één hoop gegooid zou de trainer
+                          gaan zoeken naar een probleem dat er niet is, of het echte missen. */}
                       {overgeslagen('vakantie').length > 0 ? (
                         <Text style={styles.hint}>
                           {t('{lessen} vallen in een vakantie en gaan niet door: {dagen}.', {
@@ -590,9 +618,25 @@ export function BookingModal(props: BookingModalProps): JSX.Element | null {
                           })}
                         </Text>
                       ) : null}
+                      {/* De botsende weken gaan gewoon door en staan er daarom bij als
+                          waarschuwing, niet als weigering. Eerst hoeveel en welke dagen, dan
+                          per andere les één regel met wie of welk terrein er al staat. */}
+                      {plan.botsingen.length > 0 ? (
+                        <>
+                          <Text style={styles.error}>
+                            {t('{lessen} komen tegelijk met een andere les te staan: {dagen}.', {
+                              lessen: lessons(plan.botsingen.length),
+                              dagen: plan.botsingen.map((s) => formatDay(s.start_time)).join(', '),
+                            })}
+                          </Text>
+                          {reeksBotsingen.map((regel) => (
+                            <Text key={regel} style={styles.error}>{regel}</Text>
+                          ))}
+                        </>
+                      ) : null}
                       {plan.usable.length === 0 ? (
                         <Text style={styles.error}>
-                          {t('Geen enkel moment van deze reeks is nog vrij; er valt niets te boeken.')}
+                          {t('Elk moment van deze reeks valt in een periode dat de club dicht is.')}
                         </Text>
                       ) : null}
                       {plan.usable.length + plan.skipped.length >= MAX_LESSONS ? (

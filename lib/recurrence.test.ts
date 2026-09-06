@@ -93,42 +93,62 @@ describe('de randen van de einddag', () => {
   it('geeft een lege reeks als de einddag vóór de eerste les ligt', () => {
     const rule: RecurrenceRule = { frequency: 'weekly', until: '2026-08-19' };
     const plan = planSeries(iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), rule, 'koen', []);
-    expect(plan).toEqual({ usable: [], skipped: [] });
+    expect(plan).toEqual({ usable: [], skipped: [], botsingen: [] });
   });
 });
 
 describe('botsingen met een bestaande boeking', () => {
-  it('slaat alleen de eerste les over als daar al een les staat', () => {
+  // Een overlap blokkeert nooit en waarschuwt altijd (beslissing van de eigenaar, 6 september
+  // 2026). Elke test hieronder bewijst daarom allebei de helften: de les IS er, én ze staat
+  // gemeld. Eén helft alleen is waardeloos — een les die stil dubbel geboekt wordt is erger
+  // dan de weigering die dit verving, en een melding zonder les is de oude bug.
+  it('plant de eerste les gewoon in als daar al een les staat, en meldt de botsing', () => {
     const plan = planSeries(
       iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen',
       [busy('bezet', 2026, 7, 20)],
     );
-    expect(days(plan.skipped)).toEqual(['20/8']);
-    expect(days(plan.usable)).toEqual(['27/8', '3/9', '10/9', '17/9']);
+    expect(days(plan.usable)).toEqual(['20/8', '27/8', '3/9', '10/9', '17/9']);
+    expect(plan.skipped).toEqual([]);
+    expect(days(plan.botsingen)).toEqual(['20/8']);
   });
 
-  it('kan de hele reeks overslaan als de trainer elke week al bezet is', () => {
+  it('noemt de les waarmee het botst, en niet enkel dát het botst', () => {
+    // Dit is waarvoor `botstMet` de boeking teruggeeft in plaats van een `true`: alleen zo kan
+    // het scherm zeggen of het het kleutertennis op Terrein 7 is of een echte vergissing.
+    const plan = planSeries(
+      iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen',
+      [busy('blauw-gr1', 2026, 7, 20)],
+    );
+    expect(plan.botsingen[0].conflict.id).toBe('blauw-gr1');
+    expect(plan.botsingen[0].conflict.coach_id).toBe('koen');
+  });
+
+  it('plant de hele reeks in als de trainer elke week al bezet is, en meldt ze allemaal', () => {
+    // Het kleutertennis: dezelfde trainer draait blauw en rood naast elkaar, elke week. Vroeger
+    // hield deze reeks nul lessen over en verdwenen precies die kinderlessen.
     const bezet = [20, 27].map((d) => busy(`a${d}`, 2026, 7, d))
       .concat([3, 10, 17].map((d) => busy(`s${d}`, 2026, 8, d)));
     const plan = planSeries(iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen', bezet);
-    expect(plan.usable).toEqual([]);
-    expect(days(plan.skipped)).toEqual(['20/8', '27/8', '3/9', '10/9', '17/9']);
+    expect(days(plan.usable)).toEqual(['20/8', '27/8', '3/9', '10/9', '17/9']);
+    expect(days(plan.botsingen)).toEqual(['20/8', '27/8', '3/9', '10/9', '17/9']);
+    expect(plan.skipped).toEqual([]);
   });
 
-  it('botst ook bij gedeeltelijke overlap, maar niet als de lessen op elkaar aansluiten', () => {
+  it('meldt gedeeltelijke overlap, maar niet als de lessen op elkaar aansluiten', () => {
     const overlapt = booking({ id: 'x', start_time: iso(2026, 7, 27, 10, 30), end_time: iso(2026, 7, 27, 11, 30) });
     const sluitAan = booking({ id: 'y', start_time: iso(2026, 8, 3, 11), end_time: iso(2026, 8, 3, 12) });
     const plan = planSeries(
       iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen', [overlapt, sluitAan],
     );
-    expect(days(plan.skipped)).toEqual(['27/8']);
-    expect(days(plan.usable)).toEqual(['20/8', '3/9', '10/9', '17/9']);
+    expect(days(plan.botsingen)).toEqual(['27/8']);
+    expect(days(plan.usable)).toEqual(['20/8', '27/8', '3/9', '10/9', '17/9']);
   });
 
-  it('laat een les van een andere trainer de reeks niet blokkeren', () => {
+  it('meldt niets bij een les van een andere trainer', () => {
     const andere = booking({ id: 'x', coach_id: 'sofie', start_time: iso(2026, 7, 20, 10), end_time: iso(2026, 7, 20, 11) });
     const plan = planSeries(iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen', [andere]);
     expect(plan.skipped).toEqual([]);
+    expect(plan.botsingen).toEqual([]);
     expect(plan.usable).toHaveLength(5);
   });
 
@@ -136,6 +156,7 @@ describe('botsingen met een bestaande boeking', () => {
     const geannuleerd = booking({ ...busy('x', 2026, 7, 20), status: 'cancelled' });
     const plan = planSeries(iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen', [geannuleerd]);
     expect(plan.skipped).toEqual([]);
+    expect(plan.botsingen).toEqual([]);
     expect(days(plan.usable)).toEqual(['20/8', '27/8', '3/9', '10/9', '17/9']);
   });
 });
@@ -155,15 +176,32 @@ describe('de clubkalender', () => {
     expect(plan.skipped[0].vakantie).toBe('Herfstvakantie');
   });
 
-  it('houdt vakantie en bezet uit elkaar', () => {
+  it('houdt vakantie en botsing uit elkaar: de eerste blokkeert, de tweede waarschuwt', () => {
+    // DE GRENS VAN DEZE FASE. Alleen de overlapregel is verzacht. Een les op een dag dat de
+    // club dicht is hoort nog steeds niet ingepland te worden, en die twee mogen niet met
+    // elkaar meeschuiven.
     const plan = planSeries(
       iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen',
       [busy('bezet', 2026, 8, 10)], [herfst],
     );
-    expect(plan.skipped.filter((s) => s.reden === 'vakantie').map((s) => s.vakantie))
-      .toEqual(['Herfstvakantie', 'Herfstvakantie']);
-    expect(days(plan.skipped.filter((s) => s.reden === 'bezet'))).toEqual(['10/9']);
-    expect(days(plan.usable)).toEqual(['20/8', '17/9']);
+    expect(plan.skipped.map((s) => s.vakantie)).toEqual(['Herfstvakantie', 'Herfstvakantie']);
+    expect(days(plan.skipped)).toEqual(['27/8', '3/9']);
+    // De botsende les gaat wél door en staat gemeld; de vakantiedagen gaan niet door.
+    expect(days(plan.botsingen)).toEqual(['10/9']);
+    expect(days(plan.usable)).toEqual(['20/8', '10/9', '17/9']);
+  });
+
+  it('blijft de vakantie blokkeren, ook nu de botsing dat niet meer doet', () => {
+    // Zou het verzachten van de overlap per ongeluk ook de vakantie hebben verzacht, dan stond
+    // hier een les op elke week van de herfstvakantie. De club is dan dicht.
+    const plan = planSeries(
+      iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen',
+      [busy('bezet', 2026, 7, 27)], [herfst],
+    );
+    expect(days(plan.usable)).not.toContain('27/8');
+    expect(days(plan.usable)).not.toContain('3/9');
+    expect(days(plan.botsingen)).toEqual([]);
+    expect(plan.skipped.every((s) => s.reden === 'vakantie')).toBe(true);
   });
 
   it('noemt een vakantiedag geen botsing, ook als er die dag al een les stond', () => {
@@ -173,6 +211,8 @@ describe('de clubkalender', () => {
       [busy('bezet', 2026, 7, 27)], [herfst],
     );
     expect(plan.skipped.find((s) => days([s])[0] === '27/8')?.reden).toBe('vakantie');
+    // En hij komt niet óók nog als botsing binnen: de vakantie is het hele antwoord.
+    expect(days(plan.botsingen)).toEqual([]);
   });
 
   it('doet zonder kalender precies wat het altijd deed', () => {
@@ -195,7 +235,7 @@ describe('de clubkalender', () => {
 describe('onbruikbare invoer laat geen scherm crashen', () => {
   it('geeft een lege reeks bij een onleesbare begintijd', () => {
     expect(planSeries('morgen om tien', iso(2026, 7, 20, 11), weekly, 'koen', []))
-      .toEqual({ usable: [], skipped: [] });
+      .toEqual({ usable: [], skipped: [], botsingen: [] });
   });
 
   it('geeft een lege reeks bij een omgekeerde of nul-lange les', () => {
@@ -236,10 +276,18 @@ describe('de samenvatting', () => {
   });
 
   it('telt alleen de bruikbare lessen, niet de overgeslagen', () => {
+    const vakantie: Vakantie = { id: 'v9', naam: 'Herfstvakantie', van: '2026-08-20', tot: '2026-08-20' };
+    const plan = planSeries(
+      iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen', [], [vakantie],
+    );
+    expect(seriesSummary(plan, weekly)).toContain('4 lessen');
+  });
+
+  it('telt een botsende les gewoon mee: ze wordt aangemaakt', () => {
     const plan = planSeries(
       iso(2026, 7, 20, 10), iso(2026, 7, 20, 11), weekly, 'koen', [busy('bezet', 2026, 7, 20)],
     );
-    expect(seriesSummary(plan, weekly)).toContain('4 lessen');
+    expect(seriesSummary(plan, weekly)).toContain('5 lessen');
   });
 
   it('zegt "geen lessen" in plaats van een nul bij een lege reeks', () => {
@@ -250,7 +298,7 @@ describe('de samenvatting', () => {
 
   it('valt terug op "datum onbekend" bij een onleesbare einddag, zonder te gooien', () => {
     const rule: RecurrenceRule = { frequency: 'weekly', until: 'ooit' };
-    expect(seriesSummary({ usable: [], skipped: [] }, rule))
+    expect(seriesSummary({ usable: [], skipped: [], botsingen: [] }, rule))
       .toBe('Wekelijks tot en met datum onbekend · geen lessen');
   });
 });
