@@ -1527,7 +1527,7 @@ describe('planImportLessen', () => {
     expect(Object.keys(plan()).sort()).toEqual([
       'dubbel', 'fouten', 'groepenBijgewerkt', 'groepenNieuw', 'groepenOngewijzigd',
       'handmatigGewijzigd', 'nietHerkend', 'nieuweLessen', 'ongewijzigdeLessen', 'overgeslagen',
-      'regels', 'spelersNieuw', 'verdwenenUitBestand', 'waarschuwingen',
+      'regels', 'spelersNieuw', 'trainerwissels', 'verdwenenUitBestand', 'waarschuwingen',
     ]);
   });
 

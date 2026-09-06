@@ -1266,6 +1266,74 @@ export interface VerdwenenLes {
   tijd: string;
 }
 
+/**
+ * De trainerwissel van één groep: de komende lessen die een andere trainer krijgen, en hoeveel
+ * het er zijn.
+ *
+ * `groep`, `van` en `naar` zijn er om te tonen; `trainerId` is het enige dat weggeschreven wordt.
+ * `van` mag leeg zijn — dan heeft de trainer die er stond geen account meer bij de club.
+ */
+export interface TrainerWissel {
+  groep: string;
+  /** De naam van de trainer die er nu op staat, of leeg als de club dat account niet (meer) kent. */
+  van: string;
+  naar: string;
+  /** Het id dat op `Booking.coach_id` komt te staan. */
+  trainerId: string;
+  aantal: number;
+  boekingIds: string[];
+}
+
+/**
+ * Noemt het bestand een andere coach dan wat er op de komende lessen van deze groep staat, dan
+ * krijgen die lessen die trainer — met hun aantal erbij, zodat de droogloop het vooraf kan zeggen.
+ *
+ * `taught_by_id` WORDT NIET AANGERAAKT, EN KÁN HIER NIET AANGERAAKT WORDEN. Dat veld betekent iets
+ * anders dan `coach_id`: het zegt wie de les werkelijk gaf, en het bepaalt het loon (fase 2,
+ * lib/lesgever). Een les die iemand anders gaf blijft van hem, ook als de groep vandaag een andere
+ * vaste trainer krijgt. Het veld staat niet eens in de `Pick` van `ImportBoeking` hierboven, en dat
+ * is met opzet: de bescherming zit in het type en niet in een afspraak die iemand ooit vergeet.
+ *
+ * ALLEEN VOORUIT. `vanGroep` komt uit `groupBookingsFrom(..., nu)` in lib/lesgroepen en bevat per
+ * definitie niets van vóór `nu`. Een les die al gegeven is verandert nooit van trainer — dezelfde
+ * grens als overal in dit project, en hier bovendien een loonvraag.
+ *
+ * ER WORDT NIET GERADEN. De app kan niet zien of een `coach_id` met de hand gezet is of door een
+ * eerdere import, dus wordt er niet geprobeerd slim te zijn: elke afwijkende komende les gaat mee,
+ * de wijziging staat zichtbaar in de droogloop mét het aantal erbij, en de beheerder bevestigt
+ * (D-10). Een afgezegde les blijft erbuiten: die wordt nooit meer gegeven.
+ *
+ * WAT DIT BEWUST NIET CONTROLEERT. De nieuwe trainer krijgt lessen die al op hun eigen moment
+ * staan; er wordt geen nieuw uur geclaimd. Maar hij kán op dat uur al een andere les hebben. Dat
+ * wordt niet geweigerd en ook niet stil opgelost — het aantal staat in de droogloop en de
+ * beheerder ziet wat hij bevestigt.
+ */
+export function trainerwisselVoorGroep(
+  groep: GeplandeGroep,
+  koppeling: GroepKoppeling,
+  vanGroep: readonly ImportBoeking[],
+  users: readonly User[],
+): TrainerWissel | null {
+  const trainer = koppeling.trainer;
+  // Geen bestaande groep: er staat nog geen enkele les die van trainer kan wisselen. Geen trainer:
+  // de club kent de naam uit de kolom `Coach` niet, en er wordt er geen verzonnen.
+  if (!groep.bestaand || !trainer) return null;
+
+  const boekingen = vanGroep.filter(
+    (b) => b.status !== 'cancelled' && b.coach_id !== trainer.id,
+  );
+  if (boekingen.length === 0) return null;
+
+  return {
+    groep: groep.naam,
+    van: users.find((u) => u.id === boekingen[0].coach_id)?.name ?? '',
+    naar: trainer.name,
+    trainerId: trainer.id,
+    aantal: boekingen.length,
+    boekingIds: boekingen.map((b) => b.id),
+  };
+}
+
 /** Wat er met de lessen van één groep zou gebeuren. */
 export interface GroepLessen {
   /** De lessen die aangemaakt worden. */
@@ -1280,6 +1348,8 @@ export interface GroepLessen {
   verdwenenUitBestand: VerdwenenLes[];
   /** Wat er ontbreekt om deze groep te kunnen plannen; komt uit `koppelingVoorGroep`. */
   meldingen: ImportFoutLessen[];
+  /** De komende lessen die een andere trainer krijgen, of `null` als er niets wisselt. */
+  trainerwissel: TrainerWissel | null;
 }
 
 /**
@@ -1308,6 +1378,7 @@ export interface GroepLessen {
 export function lessenUitGroep(
   groep: GeplandeGroep,
   koppeling: GroepKoppeling,
+  users: readonly User[],
   bestaandeBoekingen: readonly ImportBoeking[],
   vakanties: readonly Vakantie[],
   duurMinuten: number,
@@ -1320,7 +1391,22 @@ export function lessenUitGroep(
     handmatigGewijzigd: [],
     verdwenenUitBestand: [],
     meldingen: koppeling.meldingen,
+    trainerwissel: null,
   };
+
+  // De lessen die deze groep vanaf nu al in de agenda heeft, afgezegde meegerekend: juist een
+  // afgezegde les moet gezien worden, want die mag niet stilzwijgend terugkomen. Vandaar
+  // `groupBookingsFrom` en niet `komendeLessen` — lees het verschil in lib/lesgroepen. Alles vanaf
+  // `nu` vooruit; wat geweest is komt in deze lijst niet voor en wordt dus ook nooit aangeraakt.
+  const vanGroep = groep.bestaand
+    ? groupBookingsFrom([...bestaandeBoekingen], groep.bestaand.id, nu)
+    : [];
+
+  // De trainerwissel staat bewust vóór de terugkeer hieronder. Een groep zonder baan in het
+  // bestand plant geen enkele nieuwe les in — maar haar bestaande lessen staan er gewoon, en die
+  // horen hun nieuwe trainer wél te krijgen. Anders zou de groep straks trainer Y zeggen en de
+  // agenda nog steeds trainer X, en dat is precies de tegenstrijdigheid die deze fase wegneemt.
+  uit.trainerwissel = trainerwisselVoorGroep(groep, koppeling, vanGroep, users);
 
   // Zonder trainer of zonder baan valt er niets in te plannen: `Booking.coach_id` en
   // `Booking.court_id` zijn allebei verplicht. De groep zelf gaat wél gewoon door, met haar
@@ -1341,13 +1427,6 @@ export function lessenUitGroep(
     if (!kandidaten.has(sleutel)) kandidaten.set(sleutel, { regel: r.regel, start, dag });
   }
 
-  // De lessen die deze groep vanaf nu al in de agenda heeft, afgezegde meegerekend: juist een
-  // afgezegde les moet gezien worden, want die mag niet stilzwijgend terugkomen. Vandaar
-  // `groupBookingsFrom` en niet `komendeLessen` — lees het verschil in lib/lesgroepen. Alles vanaf
-  // `nu` vooruit; wat geweest is komt in deze lijst niet voor en wordt dus ook nooit aangeraakt.
-  const vanGroep = groep.bestaand
-    ? groupBookingsFrom([...bestaandeBoekingen], groep.bestaand.id, nu)
-    : [];
   // Twee kaarten, één keer opgebouwd: op sleutel voor "staat deze les er al precies zo", en op dag
   // voor "staat er die dag iets ánders van deze groep". Een club met tienduizend lessen mag geen
   // lijst-in-lijst worden (T-05-16).
@@ -1582,6 +1661,12 @@ export interface ImportPlanLessen {
   overgeslagen: OvergeslagenLes[];
   handmatigGewijzigd: HandmatigeWijziging[];
   verdwenenUitBestand: VerdwenenLes[];
+  /**
+   * Per groep de komende lessen die een andere trainer krijgen, met hun aantal erbij. Dit staat
+   * in het plan en niet pas in de wijziging, zodat de droogloop vóór het wegschrijven kan zeggen
+   * om hoeveel lessen het gaat — de beheerder ziet het, hij ontdekt het niet achteraf (D-10).
+   */
+  trainerwissels: TrainerWissel[];
   /** Wat er niet gelezen kon worden, met regelnummer en reden. */
   fouten: ImportFoutLessen[];
   /** Wat wel doorgaat maar de beheerder beter even nakijkt. */
@@ -1631,6 +1716,7 @@ export function planImportLessen(
     overgeslagen: [],
     handmatigGewijzigd: [],
     verdwenenUitBestand: [],
+    trainerwissels: [],
     fouten: gelezen.fouten,
     waarschuwingen: [],
     nietHerkend: gelezen.nietHerkend,
@@ -1714,13 +1800,14 @@ export function planImportLessen(
     for (const b of alles) raakbaar.set(b.id, b);
 
     const lessen = lessenUitGroep(
-      groep, koppeling, [...raakbaar.values()], vakanties, duurMinuten, nu,
+      groep, koppeling, users, [...raakbaar.values()], vakanties, duurMinuten, nu,
     );
     plan.nieuweLessen.push(...lessen.nieuweLessen);
     plan.ongewijzigdeLessen.push(...lessen.ongewijzigd);
     plan.overgeslagen.push(...lessen.overgeslagen);
     plan.handmatigGewijzigd.push(...lessen.handmatigGewijzigd);
     plan.verdwenenUitBestand.push(...lessen.verdwenenUitBestand);
+    if (lessen.trainerwissel) plan.trainerwissels.push(lessen.trainerwissel);
 
     // De zojuist goedgekeurde lessen tellen vanaf nu mee als bezet: zo botst het bestand ook met
     // zichzelf, en niet alleen met wat er al stond.
