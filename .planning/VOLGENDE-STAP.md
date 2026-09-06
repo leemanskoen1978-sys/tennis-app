@@ -9,7 +9,7 @@ Fases 1, 2, 2.1, 3, 4, 5 en 5.1 staan op `main`, de build is groen en de site is
 1574 tests. De testlijst voor de gebruiker staat in `TESTEN-tennisschool.md`.
 
 Drie SQL-bestanden die de gebruiker zelf draait, in deze volgorde:
-1. `MIGRATIE-tennisschool.sql` — de tabellen. **Nog niet gedraaid.**
+1. `MIGRATIE-tennisschool.sql` — de tabellen. **Gedraaid op 6 september 2026**, door de gebruiker bevestigd als correct. Daarmee bestaan `lesson_groups`, `sick_leaves`, `bookings.group_id` en `bookings.taught_by_id`, is `bewaak_betaalvelden` bijgewerkt en staat `courts_write` op `is_admin()`.
 2. `BANEN-toevoegen.sql` — terrein 1 t/m 11. **Gedraaid.**
 3. `KALENDER-2026-2027.sql` — dertien vakantieperiodes. **Gedraaid op 6 september 2026**, geverifieerd: 13 periodes in `club_settings`.
 
