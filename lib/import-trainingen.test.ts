@@ -1185,7 +1185,7 @@ describe('planImportLessen', () => {
   it('geeft een plan met alles erin wat de droogloop moet tonen', () => {
     expect(Object.keys(plan()).sort()).toEqual([
       'dubbel', 'fouten', 'groepenBijgewerkt', 'groepenNieuw', 'groepenOngewijzigd',
-      'handmatigGewijzigd', 'nieuweLessen', 'nietHerkend', 'ongewijzigdeLessen', 'overgeslagen',
+      'handmatigGewijzigd', 'nietHerkend', 'nieuweLessen', 'ongewijzigdeLessen', 'overgeslagen',
       'regels', 'spelersNieuw', 'verdwenenUitBestand', 'waarschuwingen',
     ]);
   });

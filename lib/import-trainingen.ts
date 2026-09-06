@@ -1304,6 +1304,219 @@ export function groepWijzigingen(
 }
 
 // ---------------------------------------------------------------------------
+// Het volledige plan (IMP-02)
+// ---------------------------------------------------------------------------
+
+/**
+ * Het voorvoegsel van een speler die de club nog niet kent.
+ *
+ * Een roster is een lijst gebruiker-ids, maar een leerling die vanavond voor het eerst in een
+ * bestand opduikt heeft er nog geen: dat id ontstaat pas als hij weggeschreven wordt (plan 05-08).
+ * Zonder plaatshouder zou hij uit het rooster van het plan vallen, en dan zou een groep waaraan
+ * één nieuwe speler toegevoegd wordt als "ongewijzigd" op het scherm staan. Wie dit plan
+ * wegschrijft, vervangt elke plaatshouder door het id dat hij zojuist aanmaakte.
+ */
+export const NIEUWE_SPELER = 'nieuw:';
+
+/** Het id van deze leerling, of zijn plaatshouder zolang hij er nog geen heeft. */
+export function spelerSleutel(speler: GeplandeSpeler): string {
+  return speler.bestaand ? speler.bestaand.id : `${NIEUWE_SPELER}${normalizeName(speler.naam)}`;
+}
+
+/**
+ * Eén lesgroep in het plan, met alles erbij om hem te tonen zonder terug naar de rijen te hoeven:
+ * naam, dag, uur, trainer en aantal spelers. Dat is precies wat de droogloop moet laten zien
+ * (`.planning/IMPORT-SJABLOON.md`), en een scherm dat het zelf uit `regels` moest halen zou de
+ * telling van dit bestand overdoen — en er vroeg of laat anders op uitkomen.
+ */
+export interface GroepInPlan {
+  groep: GeplandeGroep;
+  status: GroepStatus;
+  naam: string;
+  weekdag: number;
+  beginuur: number;
+  beginminuut: number;
+  /** De naam van het gekoppelde account, of die uit het bestand als er geen account bij past. */
+  trainerNaam: string;
+  trainer: User | null;
+  baan: Court | null;
+  aantalSpelers: number;
+  /** Het rooster als ids; een nieuwe speler draagt zijn plaatshouder (`NIEUWE_SPELER`). */
+  roster: string[];
+  toegevoegd: string[];
+  verwijderd: string[];
+  /** De velden van de bestaande groep die veranderen; leeg bij een nieuwe of ongewijzigde groep. */
+  wijzigingen: Partial<Omit<LesGroep, 'id' | 'roster'>>;
+}
+
+/** Wat dit bestand met de club zou doen. Alles bij elkaar, en nog niets weggeschreven. */
+export interface ImportPlanLessen {
+  /** De regels die gelezen konden worden; elke les in het plan wijst er met zijn regelnummer naar. */
+  regels: LesRegel[];
+  groepenNieuw: GroepInPlan[];
+  groepenBijgewerkt: GroepInPlan[];
+  groepenOngewijzigd: GroepInPlan[];
+  /** De leerlingen die de club nog niet kent, in de volgorde van het bestand. */
+  spelersNieuw: GeplandeSpeler[];
+  nieuweLessen: GeplandeLes[];
+  /** De ids van de boekingen die al precies goed staan. */
+  ongewijzigdeLessen: string[];
+  overgeslagen: OvergeslagenLes[];
+  handmatigGewijzigd: HandmatigeWijziging[];
+  verdwenenUitBestand: VerdwenenLes[];
+  /** Wat er niet gelezen kon worden, met regelnummer en reden. */
+  fouten: ImportFoutLessen[];
+  /** Wat wel doorgaat maar de beheerder beter even nakijkt. */
+  waarschuwingen: ImportFoutLessen[];
+  nietHerkend: string[];
+  dubbel: string[];
+}
+
+/** De boeking bij haar sleutel zetten, en de lijst aanmaken als ze er nog niet was. */
+function bijSleutel(kaart: Map<string, ImportBoeking[]>, sleutel: string, b: ImportBoeking): void {
+  const lijst = kaart.get(sleutel);
+  if (lijst) lijst.push(b); else kaart.set(sleutel, [b]);
+}
+
+/**
+ * Wat dit bestand met de club zou doen: de koprij, de regels, de groepen, de spelers, de
+ * koppelingen en de lessen, achter elkaar.
+ *
+ * Dit is de enige functie die het importscherm hoeft te kennen, en er komt geen databank aan te
+ * pas, geen scherm en geen bestand: rijen tekst plus de lijsten die de club vandaag heeft gaan
+ * erin, en een plan komt eruit. Daarom kan de beheerder zien wat er gaat gebeuren vóór er iets
+ * vastligt, en daarom valt die belofte hier te testen — dezelfde belofte die `planImport` in
+ * lib/import-leden voor de ledenlijst doet (D-10). Alles is synchroon; wie hier ooit iets wil
+ * ophalen, hoort dat buiten deze functie te doen en het resultaat mee te geven.
+ *
+ * `nu` komt binnen als parameter en wordt hier nooit zelf uitgelezen: alleen zo is "wat geweest
+ * is blijft staan" te testen zonder de klok van de machine te moeten geloven.
+ */
+export function planImportLessen(
+  rijen: ReadonlyArray<readonly string[]>,
+  bestaandeGroepen: readonly LesGroep[],
+  users: readonly User[],
+  courts: readonly Court[],
+  bookings: readonly ImportBoeking[],
+  settings: Pick<Settings, 'lesson_duration_minutes' | 'vakanties'>,
+  nu: Date,
+): ImportPlanLessen {
+  const gelezen = leesLesRegels(rijen);
+  const plan: ImportPlanLessen = {
+    regels: gelezen.regels,
+    groepenNieuw: [],
+    groepenBijgewerkt: [],
+    groepenOngewijzigd: [],
+    spelersNieuw: [],
+    nieuweLessen: [],
+    ongewijzigdeLessen: [],
+    overgeslagen: [],
+    handmatigGewijzigd: [],
+    verdwenenUitBestand: [],
+    fouten: gelezen.fouten,
+    waarschuwingen: [],
+    nietHerkend: gelezen.nietHerkend,
+    dubbel: gelezen.dubbel,
+  };
+  if (gelezen.regels.length === 0) return plan;
+
+  const uitGroepen = groepenUitRegels(gelezen.regels, bestaandeGroepen);
+  plan.waarschuwingen.push(...uitGroepen.waarschuwingen);
+
+  const uitSpelers = spelersUitRegels(gelezen.regels, users);
+  plan.waarschuwingen.push(...uitSpelers.waarschuwingen);
+  plan.spelersNieuw = uitSpelers.spelers.filter((s) => s.bestaand === null);
+  // Eén kaart van naam naar id, één keer gebouwd: per groep opnieuw door de spelerslijst lopen
+  // maakt van 1400 regels een kwadratische zoektocht (T-05-16).
+  const idVanNaam = new Map(uitSpelers.spelers.map((s) => [normalizeName(s.naam), spelerSleutel(s)]));
+
+  const duurMinuten = lesduurVan(settings);
+  const vakanties = settings.vakanties ?? [];
+
+  // Drie kaarten over de bestaande boekingen, één keer gebouwd. Een botsing kan alleen ontstaan
+  // bij dezelfde trainer of op dezelfde baan, en de herimport kijkt alleen naar de lessen van de
+  // groep zelf: `lessenUitGroep` krijgt dus een korte, gefilterde lijst mee in plaats van alle
+  // boekingen van de club (T-05-16).
+  const opCoach = new Map<string, ImportBoeking[]>();
+  const opBaan = new Map<string, ImportBoeking[]>();
+  const opGroep = new Map<string, ImportBoeking[]>();
+  for (const b of bookings) {
+    bijSleutel(opCoach, b.coach_id, b);
+    if (b.court_id) bijSleutel(opBaan, b.court_id, b);
+    if (b.group_id) bijSleutel(opGroep, b.group_id, b);
+  }
+
+  for (const groep of uitGroepen.groepen) {
+    const koppeling = koppelingVoorGroep(groep, users, courts);
+    plan.waarschuwingen.push(...koppeling.meldingen);
+
+    // De namen van het bestand als ids; een leerling die om een melding vroeg (twee naamgenoten)
+    // staat niet in de kaart en dus ook niet in het rooster.
+    const roster: string[] = [];
+    for (const naam of groep.leerlingNamen) {
+      const id = idVanNaam.get(normalizeName(naam));
+      if (id) roster.push(id);
+    }
+    const verschil = groepRosterVerschil(groep.bestaand, roster);
+    const wijzigingen = groep.bestaand
+      ? groepWijzigingen(groep.bestaand, groep, koppeling)
+      : {};
+    const status: GroepStatus = verschil.status === 'ongewijzigd' && Object.keys(wijzigingen).length > 0
+      ? 'bijgewerkt'
+      : verschil.status;
+
+    const inPlan: GroepInPlan = {
+      groep,
+      status,
+      naam: groep.naam,
+      weekdag: groep.weekdag,
+      beginuur: groep.beginuur,
+      beginminuut: groep.beginminuut,
+      trainerNaam: koppeling.trainer?.name ?? groep.coachNaam,
+      trainer: koppeling.trainer,
+      baan: koppeling.baan,
+      aantalSpelers: roster.length,
+      roster,
+      toegevoegd: verschil.toegevoegd,
+      verwijderd: verschil.verwijderd,
+      wijzigingen,
+    };
+    if (status === 'nieuw') plan.groepenNieuw.push(inPlan);
+    else if (status === 'bijgewerkt') plan.groepenBijgewerkt.push(inPlan);
+    else plan.groepenOngewijzigd.push(inPlan);
+
+    // Alleen wat deze groep kan raken. Dubbels eruit, want een les van haar eigen trainer op haar
+    // eigen baan staat in twee van de drie kaarten.
+    const raakbaar = new Map<string, ImportBoeking>();
+    const alles = [
+      ...(groep.bestaand ? opGroep.get(groep.bestaand.id) ?? [] : []),
+      ...(koppeling.trainer ? opCoach.get(koppeling.trainer.id) ?? [] : []),
+      ...(koppeling.baan ? opBaan.get(koppeling.baan.id) ?? [] : []),
+    ];
+    for (const b of alles) raakbaar.set(b.id, b);
+
+    const lessen = lessenUitGroep(
+      groep, koppeling, [...raakbaar.values()], vakanties, duurMinuten, nu,
+    );
+    plan.nieuweLessen.push(...lessen.nieuweLessen);
+    plan.ongewijzigdeLessen.push(...lessen.ongewijzigd);
+    plan.overgeslagen.push(...lessen.overgeslagen);
+    plan.handmatigGewijzigd.push(...lessen.handmatigGewijzigd);
+    plan.verdwenenUitBestand.push(...lessen.verdwenenUitBestand);
+
+    // De zojuist goedgekeurde lessen tellen vanaf nu mee als bezet: zo botst het bestand ook met
+    // zichzelf, en niet alleen met wat er al stond.
+    for (const les of lessen.nieuweLessen) {
+      const bezet = alsBezet(les, koppeling);
+      bijSleutel(opCoach, bezet.coach_id, bezet);
+      if (bezet.court_id) bijSleutel(opBaan, bezet.court_id, bezet);
+    }
+  }
+
+  return plan;
+}
+
+// ---------------------------------------------------------------------------
 // Het sjabloon om te downloaden (IMP-01)
 // ---------------------------------------------------------------------------
 
