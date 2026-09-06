@@ -142,9 +142,9 @@ export default function WerklijstScreen(): React.JSX.Element {
 
   const toestandVan = (booking: Booking): Toestand => {
     if (booking.status === 'cancelled') return 'afgezegd';
-    if (booking.taught_by_id) return 'geregeld';
-    // Niet zelf uitrekenen uit `taught_by_id` en de melding: dat is precies de tweede plek die
-    // ooit uit de pas gaat lopen met de agenda en het detailblad.
+    // Of een les nog een vervanger zoekt vraagt dit scherm aan lib/ziekmelding en beslist het
+    // niet zelf uit de lesgever en de melding. Twee plekken die dezelfde vraag beantwoorden
+    // gaan ooit uit de pas lopen, en dan zegt de werklijst iets anders dan de agenda.
     return zoektVervanger(booking, openMeldingen) ? 'zoekt' : 'geregeld';
   };
 
@@ -179,6 +179,9 @@ export default function WerklijstScreen(): React.JSX.Element {
         // of niet kan, wordt door niemand weggelaten — dat is het verschil met de regel
         // hieronder, waar iedereen zichtbaar blijft.
         const kandidaten = coachesOf(users).filter((u) => u.id !== booking.coach_id);
+        // De vervanger staat náást de vaste trainer, nooit in zijn plaats — dezelfde regel en
+        // dezelfde vorm als op het lesdetailblad; leeg betekent dat er nog niemand op staat.
+        const vervangerNaam = booking.taught_by_id ? nameOf(booking.taught_by_id) : null;
         // Alleen voor de regel die openstaat. Beschikbaarheid wordt hier niet uitgerekend:
         // `vervangersVoor` stelt de vijf vragen, in een vaste volgorde, met een test eromheen.
         const uitkomsten = kiezerVoor === booking.id
@@ -218,13 +221,13 @@ export default function WerklijstScreen(): React.JSX.Element {
             {/* Beide namen blijven staan. Wie hier alleen de vervanger zou tonen, maakt
                 achteraf onnavolgbaar wat er gebeurd is: dan is niet meer te zien aan wie de
                 les was toegewezen én wie hem uiteindelijk gaf. */}
-            {booking.taught_by_id ? (
+            {vervangerNaam ? (
               <>
                 <Text style={styles.onder}>
                   {t('Vaste trainer')}: {nameOf(booking.coach_id)}
                 </Text>
                 <Text style={styles.onder}>
-                  {t('Vervanger')}: {nameOf(booking.taught_by_id)}
+                  {t('Vervanger')}: {vervangerNaam}
                 </Text>
               </>
             ) : (
@@ -236,7 +239,7 @@ export default function WerklijstScreen(): React.JSX.Element {
             {toestand === 'afgezegd' ? null : (
               <View style={styles.knopRij}>
                 <Button
-                  label={booking.taught_by_id ? t('Andere vervanger') : t('Vervanger koppelen')}
+                  label={vervangerNaam ? t('Andere vervanger') : t('Vervanger koppelen')}
                   onPress={() => setKiezerVoor(kiezerVoor === booking.id ? null : booking.id)}
                   fullWidth={false}
                   style={styles.knop}

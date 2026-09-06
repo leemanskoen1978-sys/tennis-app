@@ -1258,4 +1258,8 @@ export const EN: Record<string, string> = {
   'is die periode afwezig': 'is away during that period',
   'de club is dan dicht': 'the club is closed then',
   'is zelf ziek gemeld': 'has been reported sick',
+  'De trainer is ziek gemeld: deze les zoekt nog een vervanger.':
+    'The coach has been reported sick: this lesson is still looking for a substitute.',
+  'Je regelt hem op de werklijst, onder Beheer bij Ziekmelding.':
+    'You sort it out on the work list, under Admin in Sick leave.',
 };

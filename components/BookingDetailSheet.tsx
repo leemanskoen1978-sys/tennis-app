@@ -35,6 +35,7 @@ import { seriesFrom } from '../lib/series';
 import { sponsorHint, sponsorState } from '../lib/sponsor';
 import { bookingStatusLabel } from '../lib/status';
 import { isAwaitingApproval } from '../lib/inbox';
+import { openZiekmeldingen, zoektVervanger } from '../lib/ziekmelding';
 import type { Beurtenkaart, Booking, BookingStatus, PaymentMethod } from '../lib/types';
 import { useT, t as tr } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
@@ -108,7 +109,7 @@ export function BookingDetailSheet({
   const router = useRouter();
   const speler = useActieveSpeler();
   const {
-    currentUser, bookings, users, courts, beurtenkaarten, relaties, lesGroepen,
+    currentUser, bookings, users, courts, beurtenkaarten, relaties, lesGroepen, sickLeaves,
     updateBooking, deleteBooking, cancelSeriesFrom, deleteSeriesFrom,
     approveBooking, rejectBooking,
     setPaymentMethod, setParticipants, setPaymentSplit, setAanwezigheid, setTaughtBy,
@@ -146,6 +147,11 @@ export function BookingDetailSheet({
   // De vervanger staat náást de vaste trainer, nooit in zijn plaats (D-07): leeg betekent
   // dat de vaste trainer de les zelf gaf (D-02).
   const vervangerNaam = booking.taught_by_id ? nameOf(booking.taught_by_id) : null;
+
+  // Zoekt deze les nog een vervanger? Elke keer opnieuw gevraagd aan lib/ziekmelding, tegen de
+  // meldingen die nú openstaan — nooit een boolean die ergens eerder is uitgerekend en
+  // doorgegeven. Zo staat er op dit blad hetzelfde als op de agendakaart en in de werklijst.
+  const zoektNogIemand = zoektVervanger(booking, openZiekmeldingen(sickLeaves));
 
   const payment = bookingPaymentMeta(booking);
   const paymentLabel = paymentLabelFor(booking, payment, beurtenkaarten);
@@ -341,6 +347,19 @@ export function BookingDetailSheet({
             <Text style={styles.partyLink}>{t('Vervanger')}: {vervangerNaam}</Text>
             <ChevronRight size={16} color={tennisColors.textMuted} />
           </Pressable>
+        ) : null}
+
+        {/* De trainer van deze les is ziek gemeld en er staat nog niemand anders op: dat blijft
+            hier staan tot de les geregeld of afgezegd is (D-06 / VERV-07). Er wordt niets
+            weggeschreven en er staat geen vlaggetje op de les — is de ziekmelding ingetrokken,
+            dan is deze regel vanzelf weg. Voor de beheerder staat erbij waar hij het oplost;
+            een speler of trainer leest alleen dát er nog iemand gezocht wordt, en niet wie er
+            ziek is of waarom. */}
+        {zoektNogIemand ? (
+          <Text style={styles.hint}>{t('De trainer is ziek gemeld: deze les zoekt nog een vervanger.')}</Text>
+        ) : null}
+        {zoektNogIemand && isAdmin(currentUser) ? (
+          <Text style={styles.hint}>{t('Je regelt hem op de werklijst, onder Beheer bij Ziekmelding.')}</Text>
         ) : null}
 
         {/* Invullen wie de les werkelijk gaf mag alleen de beheerder (D-08) — bewust niet

@@ -14,6 +14,7 @@ import { formatDay, formatTimeRange } from '../lib/datetime';
 import { groupSize, shortGroupLabel } from '../lib/groups';
 import { bookingPaymentMeta, type PaymentMeta } from '../lib/payments';
 import { isAwaitingApproval } from '../lib/inbox';
+import { openZiekmeldingen, zoektVervanger } from '../lib/ziekmelding';
 import { BOOKING_STATUS_LABELS } from '../lib/status';
 import type { Booking } from '../lib/types';
 import { useT } from '../lib/i18n';
@@ -31,13 +32,18 @@ export function LessonCards({
   empty: string;
 }): React.JSX.Element {
   const t = useT();
-  const { currentUser, users, courts, beurtenkaarten, clearError } = useSimpleData();
+  const { currentUser, users, courts, beurtenkaarten, sickLeaves, clearError } = useSimpleData();
   // Een trainer die naar zijn eigen kind kijkt, leest mee als ouder: hij ziet de les, maar
   // niet de knoppen waarmee een trainer hem verzet of annuleert.
   const { kijktNaarZichzelf } = useKindkeuze();
   const isWide = useIsWide();
   // Welke les zijn details laat zien; null = blad dicht.
   const [openBooking, setOpenBooking] = useState<Booking | null>(null);
+
+  // Welke meldingen nog meetellen is één vraag voor de hele lijst, dus die staat hier en niet
+  // in de lus. Het antwoord per les — zoekt díe les nog een vervanger — wordt wél per kaart
+  // vers gesteld: het hangt van de dag en van de lesgever van die ene les af.
+  const openMeldingen = openZiekmeldingen(sickLeaves);
 
   const nameOf = (id?: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
   const courtName = (id: string): string =>
@@ -86,6 +92,25 @@ export function LessonCards({
                   {formatDay(booking.start_time)} · {courtName(booking.court_id)}
                 </Text>
                 <View style={styles.badgeRow}>
+                  {/* Een les waarvan de trainer ziek is en die nog geen vervanger heeft,
+                      blijft hier zichtbaar gemarkeerd staan tot hij geregeld of afgezegd is
+                      (D-06 / VERV-07). Hij verdwijnt nooit stil: een les die er gewoon uitziet
+                      terwijl er niemand komt, is precies de fout waarvoor deze module bestaat.
+
+                      Het is een afgeleid feit en geen kolom of status: er staat nergens een
+                      vlaggetje dat iemand kan vergeten uit te zetten. Wordt de ziekmelding
+                      ingetrokken, dan is deze markering vanzelf weg — zonder dat er ook maar
+                      één boeking bijgewerkt hoeft te worden.
+
+                      De markering ernaast, "(vervangen)" bij de naam hierboven, gaat over iets
+                      anders: dáár stond iemand anders. De twee sluiten elkaar uit, want
+                      `zoektVervanger` zegt nee zodra er een lesgever op de les staat. */}
+                  {zoektVervanger(booking, openMeldingen) ? (
+                    <Badge
+                      label={t('Zoekt vervanger')}
+                      color={tennisColors.warningFill}
+                    />
+                  ) : null}
                   {/* Zolang de trainer niet beslist heeft, is dát het enige wat er over deze
                       les te zeggen valt — vandaar vóór de betaalwijze. */}
                   {isAwaitingApproval(booking) ? (
