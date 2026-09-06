@@ -2,9 +2,11 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 import {
-  bestandAfgekeurdLessen, kiesLessenBlad, leesDatumCel, leesKopregelLessen, leesLesRegels,
-  leesUurCel, voorbeeldTrainingenXlsx,
+  bestandAfgekeurdLessen, groepenUitRegels, groepRosterVerschil, kiesLessenBlad, leesDatumCel,
+  leesKopregelLessen, leesLesRegels, leesUurCel, voorbeeldTrainingenXlsx, type LesRegel,
 } from './import-trainingen';
+import { groepSleutel } from './lesgroepen';
+import type { LesGroep } from './types';
 import { datumNaarSerie } from './xlsx';
 import { leesWerkmap } from './xlsx-lezen';
 
@@ -416,5 +418,229 @@ describe('voorbeeldTrainingenXlsx', () => {
     const datum = leesDatumCel(cel)!;
     expect(datum).toEqual({ jaar: 2027, maand: 9, dag: 8 });
     expect(Number(cel)).toBe(datumNaarSerie(new Date(2027, 8, 8)));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// De lesgroepen die uit de regels volgen (IMP-03)
+// ---------------------------------------------------------------------------
+
+/**
+ * Eén lesregel, met alleen het veld dat de test wil zeggen. De beginwaarden zijn een woensdag
+ * (9 september 2026 is `getDay() === 3`), zodat een test die over de weekdag gaat die datum
+ * bewust moet overschrijven en niet per ongeluk.
+ */
+function regelVan(over: Partial<LesRegel> = {}): LesRegel {
+  return {
+    regel: 2,
+    datum: { jaar: 2026, maand: 9, dag: 9 },
+    uur: { uur: 17, minuut: 0 },
+    groep: 'Groep 8',
+    groepId: '',
+    typeLes: 'Kidstennis oranje',
+    coach: 'Leemans Koen',
+    leerling: 'Peferoen Astor',
+    emailLeerling: '',
+    baan: '',
+    ...over,
+  };
+}
+
+/** Een bestaande lesgroep van de club, met alleen het veld dat de test wil zeggen. */
+function groepVan(over: Partial<LesGroep> = {}): LesGroep {
+  return {
+    id: 'g-8-woensdag',
+    name: 'Groep 8',
+    level: 'Kidstennis oranje',
+    weekday: 3,
+    start_hour: 17,
+    start_minute: 0,
+    season_start: '2026-09-09',
+    season_end: '2027-06-23',
+    roster: [],
+    archived: false,
+    ...over,
+  };
+}
+
+describe('groepenUitRegels', () => {
+  it('voegt regels met dezelfde groep, dag en uur samen tot één groep', () => {
+    const uitkomst = groepenUitRegels([
+      regelVan({ regel: 2, leerling: 'Peferoen Astor' }),
+      regelVan({ regel: 3, leerling: 'Martens Clara' }),
+      regelVan({ regel: 4, datum: { jaar: 2026, maand: 9, dag: 16 }, leerling: 'Peferoen Astor' }),
+    ], []);
+    expect(uitkomst.groepen).toHaveLength(1);
+    expect(uitkomst.groepen[0].leerlingNamen).toEqual(['Peferoen Astor', 'Martens Clara']);
+    expect(uitkomst.groepen[0].regels).toHaveLength(3);
+    expect(uitkomst.waarschuwingen).toEqual([]);
+  });
+
+  it('gebruikt de sleutel van lib/lesgroepen en geen eigen versie', () => {
+    const [groep] = groepenUitRegels([regelVan()], []).groepen;
+    expect(groep.sleutel).toBe(groepSleutel({ name: 'Groep 8', weekday: 3, start_hour: 17 }));
+    expect(groep.weekdag).toBe(3);
+    expect(groep.beginuur).toBe(17);
+    expect(groep.beginminuut).toBe(0);
+  });
+
+  it('scheidt dezelfde groepsnaam op een andere dag of een ander uur', () => {
+    const uitkomst = groepenUitRegels([
+      regelVan({ regel: 2, leerling: 'Peferoen Astor' }),
+      regelVan({ regel: 3, datum: { jaar: 2026, maand: 9, dag: 11 }, leerling: 'Bertrem Mila' }),
+      regelVan({ regel: 4, datum: { jaar: 2026, maand: 9, dag: 11 }, uur: { uur: 19, minuut: 0 }, leerling: 'Malcolm Eric' }),
+    ], []);
+    expect(uitkomst.groepen).toHaveLength(3);
+    expect(uitkomst.groepen.map((g) => g.leerlingNamen)).toEqual([
+      ['Peferoen Astor'], ['Bertrem Mila'], ['Malcolm Eric'],
+    ]);
+  });
+
+  it('maakt van een regel zonder groep geen groep — dat is een privéles', () => {
+    const uitkomst = groepenUitRegels([regelVan({ groep: '' }), regelVan({ regel: 3, groep: '   ' })], []);
+    expect(uitkomst.groepen).toEqual([]);
+    expect(uitkomst.waarschuwingen).toEqual([]);
+  });
+
+  it('neemt de vroegste en de laatste datum als seizoen', () => {
+    const [groep] = groepenUitRegels([
+      regelVan({ regel: 2, datum: { jaar: 2026, maand: 10, dag: 7 } }),
+      regelVan({ regel: 3, datum: { jaar: 2026, maand: 9, dag: 9 } }),
+      regelVan({ regel: 4, datum: { jaar: 2027, maand: 6, dag: 23 } }),
+    ], []).groepen;
+    expect(groep.seizoenVan).toBe('2026-09-09');
+    expect(groep.seizoenTot).toBe('2027-06-23');
+  });
+
+  it('kiest bij twee lessoorten de meest voorkomende en meldt beide waarden', () => {
+    const uitkomst = groepenUitRegels([
+      regelVan({ regel: 2, typeLes: 'Oranje' }),
+      regelVan({ regel: 3, typeLes: 'Groen' }),
+      regelVan({ regel: 4, typeLes: 'Oranje' }),
+    ], []);
+    expect(uitkomst.groepen[0].niveau).toBe('Oranje');
+    expect(uitkomst.waarschuwingen).toHaveLength(1);
+    expect(uitkomst.waarschuwingen[0].regel).toBe(3);
+    expect(uitkomst.waarschuwingen[0].vars).toMatchObject({ gekozen: 'Oranje', andere: 'Groen' });
+  });
+
+  it('meldt niets over een lege Type les — een lege cel is geen tweede lessoort', () => {
+    const uitkomst = groepenUitRegels([
+      regelVan({ regel: 2, typeLes: 'Oranje' }),
+      regelVan({ regel: 3, typeLes: '' }),
+    ], []);
+    expect(uitkomst.groepen[0].niveau).toBe('Oranje');
+    expect(uitkomst.waarschuwingen).toEqual([]);
+  });
+
+  it('kiest bij twee coaches de meest voorkomende en meldt het', () => {
+    const uitkomst = groepenUitRegels([
+      regelVan({ regel: 2, coach: 'Leemans Koen' }),
+      regelVan({ regel: 3, coach: 'Maes Sofie' }),
+      regelVan({ regel: 4, coach: 'Leemans Koen' }),
+    ], []);
+    expect(uitkomst.groepen[0].coachNaam).toBe('Leemans Koen');
+    expect(uitkomst.waarschuwingen).toHaveLength(1);
+    expect(uitkomst.waarschuwingen[0].regel).toBe(3);
+    expect(uitkomst.waarschuwingen[0].vars).toMatchObject({ gekozen: 'Leemans Koen', andere: 'Maes Sofie' });
+  });
+
+  it('herkent een bestaande groep op de sleutel', () => {
+    const bestaand = groepVan();
+    const [groep] = groepenUitRegels([regelVan()], [bestaand]).groepen;
+    expect(groep.bestaand).toBe(bestaand);
+  });
+
+  it('laat een Groep-ID winnen van de sleutel, ook als naam en uur veranderd zijn', () => {
+    const bestaand = groepVan({ id: 'g-42' });
+    const uitkomst = groepenUitRegels([
+      regelVan({ regel: 2, groepId: 'g-42', groep: 'Groep 9', uur: { uur: 18, minuut: 0 } }),
+      regelVan({ regel: 3, groepId: 'g-42', groep: 'Groep 9', uur: { uur: 18, minuut: 0 }, leerling: 'Martens Clara' }),
+    ], [bestaand]);
+    expect(uitkomst.groepen).toHaveLength(1);
+    expect(uitkomst.groepen[0].bestaand).toBe(bestaand);
+    expect(uitkomst.groepen[0].naam).toBe('Groep 9');
+    expect(uitkomst.waarschuwingen).toEqual([]);
+  });
+
+  it('voegt twee regels met hetzelfde Groep-ID samen, ook als hun sleutel verschilt', () => {
+    const bestaand = groepVan({ id: 'g-42' });
+    const uitkomst = groepenUitRegels([
+      regelVan({ regel: 2, groepId: 'g-42', leerling: 'Peferoen Astor' }),
+      regelVan({ regel: 3, groepId: 'g-42', uur: { uur: 19, minuut: 0 }, leerling: 'Martens Clara' }),
+    ], [bestaand]);
+    expect(uitkomst.groepen).toHaveLength(1);
+    expect(uitkomst.groepen[0].leerlingNamen).toEqual(['Peferoen Astor', 'Martens Clara']);
+  });
+
+  it('valt terug op de sleutel bij een Groep-ID dat de club niet kent, met één waarschuwing', () => {
+    const uitkomst = groepenUitRegels([
+      regelVan({ regel: 2, groepId: 'van-vorig-seizoen' }),
+      regelVan({ regel: 3, groepId: 'van-vorig-seizoen', leerling: 'Martens Clara' }),
+    ], [groepVan()]);
+    expect(uitkomst.groepen).toHaveLength(1);
+    expect(uitkomst.groepen[0].sleutel).toBe(groepSleutel({ name: 'Groep 8', weekday: 3, start_hour: 17 }));
+    expect(uitkomst.waarschuwingen).toHaveLength(1);
+    expect(uitkomst.waarschuwingen[0].regel).toBe(2);
+    expect(uitkomst.waarschuwingen[0].vars).toMatchObject({ waarde: 'van-vorig-seizoen' });
+  });
+
+  it('herkent een gearchiveerde groep niet — archiveren was een bewuste daad', () => {
+    const uitkomst = groepenUitRegels([regelVan()], [groepVan({ archived: true })]);
+    expect(uitkomst.groepen[0].bestaand).toBeNull();
+  });
+
+  it('herkent ook een gearchiveerde groep niet op haar Groep-ID', () => {
+    const uitkomst = groepenUitRegels([regelVan({ groepId: 'g-8-woensdag' })], [groepVan({ archived: true })]);
+    expect(uitkomst.groepen[0].bestaand).toBeNull();
+    expect(uitkomst.waarschuwingen).toHaveLength(1);
+  });
+
+  it('levert op koen.xlsx tien groepen met zeven namen', () => {
+    // Tien en niet zeven: "Groep 8" staat op drie momenten en "Groep 12" op twee. IMP-10 en de
+    // ROADMAP zeggen "zeven lesgroepen" en tellen daarmee de groepsnámen; de sleutel van D-02
+    // telt de groepen. Allebei staan ze hier, zodat de volgende lezer weet dat dit klopt.
+    const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
+    const { regels } = leesLesRegels(blad.rijen);
+    const uitkomst = groepenUitRegels(regels, []);
+    expect(uitkomst.groepen).toHaveLength(10);
+    expect(new Set(uitkomst.groepen.map((g) => g.naam)).size).toBe(7);
+    expect(uitkomst.groepen.every((g) => g.coachNaam === 'Leemans Koen')).toBe(true);
+    expect(uitkomst.groepen.every((g) => g.bestaand === null)).toBe(true);
+  });
+
+  it('maakt van "Groep 8" drie groepen met zes, vier en twee spelers en nul overlap', () => {
+    const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
+    const { regels } = leesLesRegels(blad.rijen);
+    const acht = groepenUitRegels(regels, []).groepen.filter((g) => g.naam === 'Groep 8');
+    expect(acht.map((g) => [g.weekdag, g.beginuur, g.leerlingNamen.length])).toEqual([
+      [3, 17, 6], [5, 17, 4], [5, 19, 2],
+    ]);
+    const alle = acht.flatMap((g) => g.leerlingNamen);
+    // Nul overlap: twaalf regels, twaalf verschillende mensen. Matchen op de naam alleen zou
+    // hier één groep van twaalf van maken — dat is waarom de sleutel de dag en het uur meetelt.
+    expect(new Set(alle).size).toBe(12);
+    expect(acht[0].seizoenVan).toBe('2026-09-09');
+    expect(acht[0].seizoenTot).toBe('2027-06-23');
+  });
+});
+
+describe('groepRosterVerschil', () => {
+  it('noemt een groep zonder bestaande tegenhanger nieuw', () => {
+    expect(groepRosterVerschil(null, ['u1', 'u2'])).toEqual({
+      status: 'nieuw', toegevoegd: ['u1', 'u2'], verwijderd: [],
+    });
+  });
+
+  it('noemt een gelijk roster ongewijzigd, ongeacht de volgorde', () => {
+    expect(groepRosterVerschil(groepVan({ roster: ['u2', 'u1'] }), ['u1', 'u2'])).toEqual({
+      status: 'ongewijzigd', toegevoegd: [], verwijderd: [],
+    });
+  });
+
+  it('noemt precies wie erbij komt en wie eraf gaat', () => {
+    expect(groepRosterVerschil(groepVan({ roster: ['u1', 'u2'] }), ['u2', 'u3'])).toEqual({
+      status: 'bijgewerkt', toegevoegd: ['u3'], verwijderd: ['u1'],
+    });
   });
 });
