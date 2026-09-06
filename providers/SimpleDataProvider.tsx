@@ -29,7 +29,7 @@ import { seriesFrom } from '../lib/series';
 import { botstMet, planSeries, type OvergeslagenSlot, type RecurrenceRule } from '../lib/recurrence';
 import type {
   User, Court, Booking, Lesson, Memo, StudentProgress, PlayerGoal, Role, Settings,
-  Beurtenkaart, BookingStatus, LesGroep, OuderKind, PaymentMethod, PaymentSplit,
+  Beurtenkaart, BookingStatus, LesGroep, OuderKind, PaymentMethod, PaymentSplit, SickLeave,
 } from '../lib/types';
 
 interface DataShape {
@@ -45,6 +45,8 @@ interface DataShape {
   relaties: OuderKind[];
   /** De lesgroepen van de club, actief én gearchiveerd. Zie lib/lesgroepen. */
   lesGroepen: LesGroep[];
+  /** De ziekmeldingen van de trainers, open én ingetrokken. Zie lib/ziekmelding. */
+  sickLeaves: SickLeave[];
   settings: Settings;
   currentUser: User | null;
   loading: boolean;
@@ -224,6 +226,26 @@ interface DataShape {
    * niets gebeurd behalve dat de club deze groep niet meer inplant.
    */
   archiveLesGroep: (id: string, gearchiveerd: boolean) => Promise<void>;
+  /**
+   * Een trainer ziek melden, van dag tot en met dag. Geeft de gemaakte melding terug, zodat
+   * het scherm er meteen de werklijst van kan openen.
+   *
+   * Deze actie toetst geen bedrijfsregels: of de melding klopt vraagt het scherm aan
+   * `ziekmeldingFout` (lib/ziekmelding) vóórdat het hier komt, net zoals het formulier van
+   * de lesgroepen `lesGroepFout` aanroept vóór `addLesGroep`.
+   */
+  meldZiek: (
+    coachId: string,
+    van: string,
+    tot: string,
+    reden?: string,
+  ) => Promise<SickLeave | null>;
+  /**
+   * De melding intrekken: hij telt niet meer mee, maar blijft terug te zien.
+   *
+   * Dit raakt geen enkele boeking, en dat is geen vergetelheid — zie de actie zelf.
+   */
+  trekZiekmeldingIn: (id: string) => Promise<void>;
   addLesson: (l: Omit<Lesson, 'id'>) => Promise<void>;
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
@@ -1153,6 +1175,57 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [commit]);
 
+  // ---------------------------------------------------------------------------
+  // Ziekmeldingen
+  //
+  // Een ziekmelding is een periode op een trainer, en niets meer. Welke lessen ze raakt en
+  // welke daarvan nog een vervanger zoeken, wordt nergens opgeslagen maar uitgerekend in
+  // lib/ziekmelding — hier wordt de melding alleen aangemaakt en ingetrokken.
+  // ---------------------------------------------------------------------------
+
+  const meldZiek = useCallback(async (
+    coachId: string,
+    van: string,
+    tot: string,
+    reden?: string,
+  ): Promise<SickLeave | null> => {
+    const store = storeRef.current;
+    if (!store) return null;
+    // Of de melding klopt is al gevraagd door het scherm (`ziekmeldingFout`); hier wordt ze
+    // alleen weggeschreven. De id wordt op één plek gemaakt, net als bij elke andere
+    // `add*`-actie, en gaat mee terug zodat het scherm meteen naar de werklijst kan.
+    const aangemaakt: SickLeave = {
+      id: newId('z'),
+      coach_id: coachId,
+      van,
+      tot,
+      reden,
+      created_at: nowISO(),
+    };
+    await commit({ ...store, sickLeaves: [...store.sickLeaves, aangemaakt] });
+    return aangemaakt;
+  }, [commit]);
+
+  // Uitsluitend dit ene veld, en met opzet geen enkele boeking erbij. Er valt namelijk
+  // niets terug te zetten: `coach_id` is bij het zoeken van een vervanger nooit
+  // overschreven (D-02), en "deze les zoekt nog een vervanger" staat nergens als kolom maar
+  // wordt afgeleid door `zoektVervanger` (D-16). Zodra deze melding niet meer als open
+  // telt, is dat antwoord vanzelf overal nee. Wie hier alsnog "even netjes opruimt" met een
+  // map over de boekingen, draait de lessen terug waar de beheerder al een vervanger op
+  // gezet heeft — precies wat D-02 verbiedt.
+  const trekZiekmeldingIn = useCallback(async (id: string): Promise<void> => {
+    const store = storeRef.current;
+    if (!store) return;
+    const melding = store.sickLeaves.find((z) => z.id === id);
+    if (!melding) return;
+    await commit({
+      ...store,
+      sickLeaves: store.sickLeaves.map((z) => (
+        z.id === id ? { ...z, retracted_at: nowISO() } : z
+      )),
+    });
+  }, [commit]);
+
   const addLesson = useCallback(async (l: Omit<Lesson, 'id'>) => {
     const store = storeRef.current;
     if (!store) return;
@@ -1277,6 +1350,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     beurtenkaarten: store?.beurtenkaarten ?? [],
     relaties: store?.relaties ?? [],
     lesGroepen: store?.lesGroepen ?? [],
+    sickLeaves: store?.sickLeaves ?? [],
     // Zolang de opslag nog niet geladen is: dezelfde waarden als een club die het veld nog
     // niet kent. Ook `lesson_duration_minutes`, want een scherm dat er `undefined` uit haalt
     // rekent met niets in plaats van met een lesuur van 60 minuten.
@@ -1327,6 +1401,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     updateLesGroep,
     updateLesGroepRoster,
     archiveLesGroep,
+    meldZiek,
+    trekZiekmeldingIn,
     addLesson,
     updateLesson,
     deleteLesson,
@@ -1349,7 +1425,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setPaymentMethod, setTaughtBy, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
-    vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster, archiveLesGroep, addLesson,
+    vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster, archiveLesGroep,
+    meldZiek, trekZiekmeldingIn, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
     addMemo, deleteMemo, werkMemoUit,
     saveGoal, deleteGoal, saveSettings, emergencyCleanup,
