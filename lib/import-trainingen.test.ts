@@ -8,6 +8,7 @@ import {
   geweigerdeNieuweGroepen, groepenUitRegels, overgeslagenPerReden,
   groepRosterVerschil, kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
+  trainerwisselVoorGroep,
   NIEUWE_SPELER, planImportLessen, spelerSleutel,
   groepWijzigingen, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
   type GeplandeGroep, type GeplandeLes, type GroepKoppeling, type ImportBoeking,
@@ -1018,6 +1019,8 @@ const BAAN_2 = baanVan({ id: 'c2', name: 'Baan 2', number: 2 });
 /** Een tweede trainer, voor de rondrit waarin een trainerswissel géén nieuwe groep mag worden. */
 const SOFIE = userVan({ id: 'u-sofie', name: 'Sofie Maes', role: 'coach' });
 const GEKOPPELD: GroepKoppeling = { trainer: KOEN, baan: BAAN, meldingen: [] };
+/** De ledenlijst waarin `lessenUitGroep` de naam van de vórige trainer opzoekt. */
+const LEDEN = [KOEN, SOFIE];
 /** Voor een groep die (nog) geen baan heeft: dan hoort er ook geen `court_id` in de wijzigingen. */
 const ZONDER_BAAN: GroepKoppeling = { trainer: KOEN, baan: null, meldingen: [] };
 /** Ruim vóór 9 september 2026: alles uit deze tests ligt dus in de toekomst. */
@@ -1084,7 +1087,7 @@ describe('deelnemersVoorLes', () => {
 describe('lessenUitGroep', () => {
   it('plant één les op het lokale uur uit het bestand, een uur lang', () => {
     const groep = groepUit([regelVan({ uur: { uur: 14, minuut: 0 } })]);
-    const uit = lessenUitGroep(groep, GEKOPPELD, [], [], 60, NU);
+    const uit = lessenUitGroep(groep, GEKOPPELD, LEDEN, [], [], 60, NU);
     expect(uit.nieuweLessen).toHaveLength(1);
     const les = uit.nieuweLessen[0];
     expect(les.start.getFullYear()).toBe(2026);
@@ -1098,7 +1101,7 @@ describe('lessenUitGroep', () => {
 
   it('maakt van anderhalf uur les ook anderhalf uur', () => {
     const groep = groepUit([regelVan({ uur: { uur: 17, minuut: 0 } })]);
-    const [les] = lessenUitGroep(groep, GEKOPPELD, [], [], 90, NU).nieuweLessen;
+    const [les] = lessenUitGroep(groep, GEKOPPELD, LEDEN, [], [], 90, NU).nieuweLessen;
     expect(les.eind.getHours()).toBe(18);
     expect(les.eind.getMinutes()).toBe(30);
   });
@@ -1109,13 +1112,13 @@ describe('lessenUitGroep', () => {
       regelVan({ regel: 3, leerling: 'Martens Clara' }),
       regelVan({ regel: 4, leerling: 'Bertrem Mila' }),
     ]);
-    expect(lessenUitGroep(groep, GEKOPPELD, [], [], 60, NU).nieuweLessen).toHaveLength(1);
+    expect(lessenUitGroep(groep, GEKOPPELD, LEDEN, [], [], 60, NU).nieuweLessen).toHaveLength(1);
   });
 
   it('slaat een les in een clubvakantie over, met de naam van de vakantie erbij', () => {
     const groep = groepUit([regelVan()]);
     const herfst = { id: 'v1', naam: 'Herfstvakantie', van: '2026-09-07', tot: '2026-09-13' };
-    const uit = lessenUitGroep(groep, GEKOPPELD, [], [herfst], 60, NU);
+    const uit = lessenUitGroep(groep, GEKOPPELD, LEDEN, [], [herfst], 60, NU);
     expect(uit.nieuweLessen).toEqual([]);
     expect(uit.overgeslagen).toHaveLength(1);
     expect(uit.overgeslagen[0].reden).toBe('vakantie');
@@ -1125,7 +1128,7 @@ describe('lessenUitGroep', () => {
   it('meldt een les die botst met een bezette trainer en raakt de bestaande les niet aan', () => {
     const groep = groepUit([regelVan()]);
     const bezet = boekingVan({ id: 'b-ander', group_id: 'g-ander', court_id: 'c9' });
-    const uit = lessenUitGroep(groep, GEKOPPELD, [bezet], [], 60, NU);
+    const uit = lessenUitGroep(groep, GEKOPPELD, LEDEN, [bezet], [], 60, NU);
     expect(uit.nieuweLessen).toEqual([]);
     expect(uit.overgeslagen.map((o) => o.reden)).toEqual(['bezet']);
     expect(bezet.start_time).toBe(new Date(2026, 8, 9, 17, 0).toISOString());
@@ -1134,7 +1137,7 @@ describe('lessenUitGroep', () => {
   it('meldt ook een les die botst met een bezette baan', () => {
     const groep = groepUit([regelVan()]);
     const bezet = boekingVan({ id: 'b-ander', group_id: 'g-ander', coach_id: 'u-sofie' });
-    const uit = lessenUitGroep(groep, GEKOPPELD, [bezet], [], 60, NU);
+    const uit = lessenUitGroep(groep, GEKOPPELD, LEDEN, [bezet], [], 60, NU);
     expect(uit.overgeslagen.map((o) => o.reden)).toEqual(['bezet']);
   });
 
@@ -1142,7 +1145,7 @@ describe('lessenUitGroep', () => {
     const groep = groepUit([regelVan()]);
     const bezet = boekingVan({ id: 'b-ander', group_id: 'g-ander' });
     const herfst = { id: 'v1', naam: 'Herfstvakantie', van: '2026-09-07', tot: '2026-09-13' };
-    const uit = lessenUitGroep(groep, GEKOPPELD, [bezet], [herfst], 60, NU);
+    const uit = lessenUitGroep(groep, GEKOPPELD, LEDEN, [bezet], [herfst], 60, NU);
     expect(uit.overgeslagen).toHaveLength(1);
     expect(uit.overgeslagen[0].reden).toBe('vakantie');
   });
@@ -1150,10 +1153,10 @@ describe('lessenUitGroep', () => {
   it('laat het bestand ook met zichzelf botsen: de tweede groep op hetzelfde uur gaat niet door', () => {
     const eerste = groepUit([regelVan({ groep: 'Groep 8' })]);
     const tweede = groepUit([regelVan({ regel: 20, groep: 'Groep 12', leerling: 'Bertrem Mila' })]);
-    const uitEerste = lessenUitGroep(eerste, GEKOPPELD, [], [], 60, NU);
+    const uitEerste = lessenUitGroep(eerste, GEKOPPELD, LEDEN, [], [], 60, NU);
     expect(uitEerste.nieuweLessen).toHaveLength(1);
     const reeds = uitEerste.nieuweLessen.map((l) => alsBezet(l, GEKOPPELD));
-    const uitTweede = lessenUitGroep(tweede, GEKOPPELD, reeds, [], 60, NU);
+    const uitTweede = lessenUitGroep(tweede, GEKOPPELD, LEDEN, reeds, [], 60, NU);
     expect(uitTweede.nieuweLessen).toEqual([]);
     expect(uitTweede.overgeslagen.map((o) => o.reden)).toEqual(['bezet']);
   });
@@ -1161,7 +1164,7 @@ describe('lessenUitGroep', () => {
   it('plant geen les zonder trainer, en meldt het één keer', () => {
     const groep = groepUit([regelVan({ baan: 'Baan 1' })]);
     const koppeling = koppelingVoorGroep(groep, [], [BAAN]);
-    const uit = lessenUitGroep(groep, koppeling, [], [], 60, NU);
+    const uit = lessenUitGroep(groep, koppeling, LEDEN, [], [], 60, NU);
     expect(uit.nieuweLessen).toEqual([]);
     expect(uit.meldingen).toHaveLength(1);
     // De groep zelf blijft gewoon in het plan staan, mét haar roster.
@@ -1171,9 +1174,120 @@ describe('lessenUitGroep', () => {
   it('plant geen les zonder baan, en meldt het één keer', () => {
     const groep = groepUit([regelVan()]);
     const koppeling = koppelingVoorGroep(groep, [KOEN], []);
-    const uit = lessenUitGroep(groep, koppeling, [], [], 60, NU);
+    const uit = lessenUitGroep(groep, koppeling, LEDEN, [], [], 60, NU);
     expect(uit.nieuweLessen).toEqual([]);
     expect(uit.meldingen).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// De trainerwissel (plan 05.1-03, taak 1)
+//
+// Het scenario waar deze fase om begon: dezelfde lijst, trainer X wordt trainer Y in de kolom
+// `Coach`. De groep wordt op haar moment herkend, en haar komende lessen horen mee te gaan.
+// ---------------------------------------------------------------------------
+
+describe('trainerwisselVoorGroep', () => {
+  /** De groep zoals de club haar kent: woensdag 17:00 op baan 1, met Sofie als trainer. */
+  const CLUB = groepVan({ coach_id: SOFIE.id, court_id: BAAN.id });
+
+  /** Diezelfde groep zoals het bestand haar aanlevert, met Koen in de kolom `Coach`. */
+  function uitBestand(): GeplandeGroep {
+    return groepUit([opBaanEen()], [CLUB], [BAAN]);
+  }
+
+  /** Drie komende lessen van die groep, alle drie nog op de oude trainer. */
+  function opSofie(): ImportBoeking[] {
+    return [9, 16, 23].map((dag, i) => boekingVan({
+      id: `b-${i}`,
+      group_id: CLUB.id,
+      coach_id: SOFIE.id,
+      start_time: new Date(2026, 8, dag, 17, 0).toISOString(),
+      end_time: new Date(2026, 8, dag, 18, 0).toISOString(),
+    }));
+  }
+
+  it('geeft de drie komende lessen aan de nieuwe trainer, met hun aantal en hun ids erbij', () => {
+    expect(trainerwisselVoorGroep(uitBestand(), GEKOPPELD, opSofie(), LEDEN)).toEqual({
+      groep: 'Groep 8',
+      van: 'Sofie Maes',
+      naar: 'Koen Leemans',
+      trainerId: KOEN.id,
+      aantal: 3,
+      boekingIds: ['b-0', 'b-1', 'b-2'],
+    });
+  });
+
+  it('geeft niets terug als het bestand dezelfde trainer noemt als die er al staat', () => {
+    const zelfde = opSofie().map((b) => ({ ...b, coach_id: KOEN.id }));
+    expect(trainerwisselVoorGroep(uitBestand(), GEKOPPELD, zelfde, LEDEN)).toBeNull();
+  });
+
+  it('wisselt ook een oude trainer zonder account, en laat zijn naam dan leeg', () => {
+    // `van` is er om te tonen. Kent de club dat account niet meer, dan is er niets te tonen —
+    // maar de lessen staan er wél en horen gewoon hun nieuwe trainer te krijgen.
+    const wissel = trainerwisselVoorGroep(uitBestand(), GEKOPPELD, opSofie(), [KOEN]);
+    expect(wissel?.van).toBe('');
+    expect(wissel?.aantal).toBe(3);
+  });
+
+  it('geeft niets terug voor een nieuwe groep: er is nog niets om bij te werken', () => {
+    const nieuw = groepUit([opBaanEen()], [], [BAAN]);
+    expect(nieuw.bestaand).toBeNull();
+    expect(trainerwisselVoorGroep(nieuw, GEKOPPELD, opSofie(), LEDEN)).toBeNull();
+  });
+
+  it('verzint geen trainer als de club de coach uit het bestand niet kent', () => {
+    const koppeling = koppelingVoorGroep(uitBestand(), [], [BAAN]);
+    expect(koppeling.trainer).toBeNull();
+    expect(trainerwisselVoorGroep(uitBestand(), koppeling, opSofie(), LEDEN)).toBeNull();
+  });
+
+  it('laat een afgezegde komende les met rust: die krijgt geen nieuwe trainer', () => {
+    const metAfzegging = opSofie().map((b) => (
+      b.id === 'b-1' ? { ...b, status: 'cancelled' as const } : b
+    ));
+    const wissel = trainerwisselVoorGroep(uitBestand(), GEKOPPELD, metAfzegging, LEDEN);
+    expect(wissel?.aantal).toBe(2);
+    expect(wissel?.boekingIds).toEqual(['b-0', 'b-2']);
+  });
+
+  it('laat de lessen van vóór nu buiten de wissel: wat geweest is, blijft van wie het gaf', () => {
+    // De lijst komt uit `groupBookingsFrom(..., nu)` en kan het verleden dus niet eens zien.
+    const geweest = boekingVan({
+      id: 'b-geweest',
+      group_id: CLUB.id,
+      coach_id: SOFIE.id,
+      start_time: new Date(2026, 8, 2, 17, 0).toISOString(),
+      end_time: new Date(2026, 8, 2, 18, 0).toISOString(),
+      status: 'completed',
+    });
+    const uit = lessenUitGroep(
+      uitBestand(), GEKOPPELD, LEDEN, [geweest, ...opSofie()], [], 60, new Date(2026, 8, 10),
+    );
+    expect(uit.trainerwissel?.boekingIds).toEqual(['b-1', 'b-2']);
+    expect(uit.trainerwissel?.aantal).toBe(2);
+  });
+
+  it('geeft een groep zónder baan haar nieuwe trainer wél, ook al plant ze niets in', () => {
+    // Zonder baan gaat er geen enkele nieuwe les door — maar de lessen die er al staan bestaan
+    // gewoon, en die horen mee te wisselen.
+    const uit = lessenUitGroep(uitBestand(), ZONDER_BAAN, LEDEN, opSofie(), [], 60, NU);
+    expect(uit.nieuweLessen).toEqual([]);
+    expect(uit.trainerwissel?.aantal).toBe(3);
+    expect(uit.trainerwissel?.trainerId).toBe(KOEN.id);
+  });
+
+  it('legt de wissel in het plan, zodat de droogloop het aantal vooraf kan tonen', () => {
+    const plan = planImportLessen(
+      [KOP_VOLLEDIG, volleRij('09/09/2026', '17:00', 'Groep 8', 'Peferoen Astor')],
+      [CLUB], [KOEN, SOFIE, userVan({ id: 'u-astor', name: 'Peferoen Astor' })], [BAAN],
+      opSofie(), {}, NU,
+    );
+    expect(plan.trainerwissels).toHaveLength(1);
+    expect(plan.trainerwissels[0]).toMatchObject({
+      van: 'Sofie Maes', naar: 'Koen Leemans', aantal: 3,
+    });
   });
 });
 
@@ -1199,14 +1313,14 @@ describe('herimport', () => {
   const WEEK_2 = regelVan({ regel: 3, datum: { jaar: 2026, maand: 9, dag: 16 } });
 
   it('levert hetzelfde bestand een tweede keer nul nieuwe lessen op', () => {
-    const eersteKeer = lessenUitGroep(groepUit([WEEK_1, WEEK_2]), GEKOPPELD, [], [], 60, NU);
+    const eersteKeer = lessenUitGroep(groepUit([WEEK_1, WEEK_2]), GEKOPPELD, LEDEN, [], [], 60, NU);
     expect(eersteKeer.nieuweLessen).toHaveLength(2);
 
     // Na de eerste import kent de club de groep en staan haar twee lessen in de agenda.
     const club = groepVan();
     const boekingen = alsBoekingen(eersteKeer.nieuweLessen, club.id);
     const tweedeKeer = lessenUitGroep(
-      groepUit([WEEK_1, WEEK_2], [club]), GEKOPPELD, boekingen, [], 60, NU,
+      groepUit([WEEK_1, WEEK_2], [club]), GEKOPPELD, LEDEN, boekingen, [], 60, NU,
     );
 
     expect(tweedeKeer.nieuweLessen).toEqual([]);
@@ -1223,7 +1337,7 @@ describe('herimport', () => {
       start_time: new Date(2026, 8, 9, 19, 0).toISOString(),
       end_time: new Date(2026, 8, 9, 20, 0).toISOString(),
     });
-    const uit = lessenUitGroep(groepUit([WEEK_1], [club]), GEKOPPELD, [verzet], [], 60, NU);
+    const uit = lessenUitGroep(groepUit([WEEK_1], [club]), GEKOPPELD, LEDEN, [verzet], [], 60, NU);
 
     expect(uit.nieuweLessen).toEqual([]);
     expect(uit.handmatigGewijzigd).toEqual([{
@@ -1241,7 +1355,7 @@ describe('herimport', () => {
   it('plant een afgezegde les niet opnieuw in — cancelled komt niet terug', () => {
     const club = groepVan();
     const afgezegd = boekingVan({ id: 'b-af', status: 'cancelled' });
-    const uit = lessenUitGroep(groepUit([WEEK_1], [club]), GEKOPPELD, [afgezegd], [], 60, NU);
+    const uit = lessenUitGroep(groepUit([WEEK_1], [club]), GEKOPPELD, LEDEN, [afgezegd], [], 60, NU);
 
     expect(uit.nieuweLessen).toEqual([]);
     expect(uit.ongewijzigd).toEqual([]);
@@ -1259,7 +1373,7 @@ describe('herimport', () => {
       status: 'completed',
     });
     const uit = lessenUitGroep(
-      groepUit([geweest], [club]), GEKOPPELD, [les], [], 60, new Date(2026, 8, 10),
+      groepUit([geweest], [club]), GEKOPPELD, LEDEN, [les], [], 60, new Date(2026, 8, 10),
     );
 
     expect(uit.overgeslagen.map((o) => o.reden)).toEqual(['verleden']);
@@ -1279,7 +1393,7 @@ describe('herimport', () => {
       end_time: new Date(2026, 8, 16, 18, 0).toISOString(),
     });
     const uit = lessenUitGroep(
-      groepUit([WEEK_1], [club]), GEKOPPELD, [negen, zestien], [], 60, NU,
+      groepUit([WEEK_1], [club]), GEKOPPELD, LEDEN, [negen, zestien], [], 60, NU,
     );
 
     expect(uit.ongewijzigd).toEqual(['b-9']);
@@ -1546,7 +1660,7 @@ describe('zomer- en wintertijd', () => {
     return regels;
   };
 
-  const lessen = () => lessenUitGroep(groepUit(woensdagen()), GEKOPPELD, [], [], 60, NU).nieuweLessen;
+  const lessen = () => lessenUitGroep(groepUit(woensdagen()), GEKOPPELD, LEDEN, [], [], 60, NU).nieuweLessen;
 
   alsErEenWisselIs('zet elke les van het seizoen op hetzelfde lokale uur', () => {
     const alle = lessen();
@@ -1584,7 +1698,7 @@ describe('zomer- en wintertijd', () => {
     const { regels } = leesLesRegels(blad.rijen);
     const groepen = groepenUitRegels(regels, [], []).groepen;
     const acht = groepen.find((g) => g.weekdag === 3 && g.beginuur === 17)!;
-    const uit = lessenUitGroep(acht, GEKOPPELD, [], [], 60, NU);
+    const uit = lessenUitGroep(acht, GEKOPPELD, LEDEN, [], [], 60, NU);
 
     expect(uit.nieuweLessen.length).toBeGreaterThan(30);
     expect(uit.nieuweLessen.every((l) => l.start.getHours() === 17)).toBe(true);
