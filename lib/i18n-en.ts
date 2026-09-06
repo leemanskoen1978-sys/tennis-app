@@ -107,6 +107,7 @@ export const EN: Record<string, string> = {
   // Beheer → Leden en het bewerkblad erachter (app/admin/leden, components/LidBewerken).
   'Leden': 'Members',
   'Gegevens, type account en beheerders': 'Details, account type and administrators',
+  'Toevoegen, importeren en gegevens bijwerken': 'Add, import and update details',
   'Dit scherm is voor een beheerder. Vraag er een om je het vinkje te geven.':
     'This screen is for an administrator. Ask one to give you the flag.',
   'Zoek op naam of e-mailadres': 'Search by name or email address',

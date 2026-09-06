@@ -1,15 +1,13 @@
-import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-  CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
-  Upload, Users, UserCog, BookOpen, CalendarOff, GraduationCap, FileSpreadsheet,
+  CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, Target, Ticket,
+  Users, UserCog, BookOpen, CalendarOff, GraduationCap, FileSpreadsheet,
   Thermometer, FileUp,
   type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
-import { UserManagement } from '../../components/UserManagement';
 import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
@@ -32,7 +30,6 @@ export default function Admin() {
   const router = useRouter();
   const { currentUser, relaties, settings } = useSimpleData();
   const pending = usePendingPaymentBookings();
-  const [addOpen, setAddOpen] = useState(false);
 
   if (!isCoach(currentUser)) {
     return (
@@ -81,8 +78,6 @@ export default function Admin() {
         // club en niet bij het systeem: het is hetzelfde papier dat anders aan de muur van de
         // kantine hangt.
         { key: 'kalender', title: t('Kalender'), subtitle: vakantieSubtitel, icon: CalendarOff, onPress: () => router.push('/admin/kalender') },
-        { key: 'add', title: t('Speler toevoegen'), subtitle: t('Nieuw lid aanmaken'), icon: UserPlus, onPress: () => setAddOpen(true) },
-        { key: 'import', title: t('Leden importeren'), subtitle: t('Uit een Excel-lijst'), icon: Upload, onPress: () => router.push('/admin/leden-import') },
         // Alleen voor een beheerder: hier zit het beheerdersvinkje, en hier verdwijnt een lid
         // met zijn hele geschiedenis. Een gewone trainer maakt spelers aan en houdt het
         // daarbij.
@@ -100,7 +95,7 @@ export default function Admin() {
           ? [{ key: 'ziekmelding', title: t('Ziekmelding'), subtitle: t('Werklijst en vervangers'), icon: Thermometer, onPress: () => router.push('/admin/ziekmelding') } as Tile]
           : []),
         ...(isAdmin(currentUser)
-          ? [{ key: 'leden', title: t('Leden'), subtitle: t('Gegevens, type account en beheerders'), icon: UserCog, onPress: () => router.push('/admin/leden') } as Tile]
+          ? [{ key: 'leden', title: t('Leden'), subtitle: t('Toevoegen, importeren en gegevens bijwerken'), icon: UserCog, onPress: () => router.push('/admin/leden') } as Tile]
           : []),
         // Het bestand gaat over de hele club — alle trainers, alle groepen — en dat is niet
         // wat een gewone trainer van zijn collega's hoort mee te nemen. Dat de tegel hier
@@ -151,7 +146,6 @@ export default function Admin() {
           </TileGrid>
         </View>
       ))}
-      <UserManagement visible={addOpen} onClose={() => setAddOpen(false)} />
     </Screen>
   );
 }
