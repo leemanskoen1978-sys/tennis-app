@@ -60,6 +60,21 @@ describe('diffStores', () => {
     expect(change.catalogues).toEqual([]);
   });
 
+  it('schrijft een lesgroep vóór de lessen die eraan hangen', () => {
+    // `bookings.group_id` verwijst in de databank naar `lesson_groups(id)`. Komt de les eerst,
+    // dan weigert Postgres haar omdat de groep nog niet bestaat — en dan mislukt de hele
+    // trainingenimport op zijn eerste nieuwe groep.
+    const groep: LesGroep = {
+      id: 'lg-1', name: 'Groep 8', level: 'Oranje', weekday: 3, start_hour: 17, start_minute: 0,
+      season_start: '2026-09-09', season_end: '2027-06-23', roster: [], archived: false,
+    };
+    const change = diffStores(store(), store({
+      lesGroepen: [groep],
+      bookings: [les, { ...les, id: 'b2', group_id: 'lg-1' }],
+    }));
+    expect(change.tables.map((c) => c.table)).toEqual(['lesGroepen', 'bookings']);
+  });
+
   it('ziet een gewijzigde rij, en alleen die', () => {
     const change = diffStores(store(), store({ bookings: [{ ...les, status: 'cancelled' }] }));
     expect(change.tables).toHaveLength(1);

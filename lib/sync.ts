@@ -131,9 +131,17 @@ export function diffStores(
     installed_catalogues: [],
   };
 
+  // De volgorde van deze lijst is de volgorde waarin `saveToSupabase` de tabellen schrijft, en
+  // dat is geen detail: de databank kent echte verwijzingen. `bookings.group_id` verwijst naar
+  // `lesson_groups(id)`, dus een les die in dezelfde opslag als haar splinternieuwe groep
+  // wordt weggeschreven, moet ná die groep aan de beurt komen — anders weigert Postgres de hele
+  // boekingenrij. Dat viel pas op bij de trainingenimport (plan 05-08): dat is de eerste actie
+  // die een groep en haar lessen samen aanmaakt. Wie hier iets verplaatst, kijkt eerst naar de
+  // `references` in supabase-schema.sql: wat verwezen wordt, gaat eerst.
   const tables: TableChange[] = [
     changeFor('users', before.users, next.users),
     changeFor('courts', before.courts, next.courts),
+    changeFor('lesGroepen', before.lesGroepen, next.lesGroepen),
     changeFor('bookings', before.bookings, next.bookings),
     changeFor('lessons', before.lessons, next.lessons),
     changeFor('progress', before.progress, next.progress),
@@ -141,7 +149,6 @@ export function diffStores(
     changeFor('beurtenkaarten', before.beurtenkaarten, next.beurtenkaarten),
     changeFor('memos', before.memos, next.memos),
     changeFor('relaties', before.relaties, next.relaties),
-    changeFor('lesGroepen', before.lesGroepen, next.lesGroepen),
     changeFor('sickLeaves', before.sickLeaves, next.sickLeaves),
   ].filter((c) => c.upsert.length > 0 || c.remove.length > 0);
 
