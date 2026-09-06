@@ -1,5 +1,5 @@
 import { diffStores, sameRow, type SyncableStore } from './sync';
-import type { Booking, LesGroep, Memo, Settings, User } from './types';
+import type { Booking, LesGroep, Memo, Settings, SickLeave, User } from './types';
 
 const settings: Settings = { booking_end_time: '21:00', theme: 'light', language: 'nl' };
 
@@ -23,6 +23,7 @@ const store = (extra: Partial<SyncableStore> = {}): SyncableStore => ({
   memos: [],
   relaties: [],
   lesGroepen: [],
+  sickLeaves: [],
   settings,
   installed_catalogues: ['u9-kdt-v1'],
   ...extra,
@@ -180,5 +181,56 @@ describe('diffStores — lesGroepen', () => {
   it('zwijgt als er aan de lesgroepen niets veranderde', () => {
     const zelfde = diffStores(store({ lesGroepen: [groep('lg1')] }), store({ lesGroepen: [groep('lg1')] }));
     expect(zelfde.empty).toBe(true);
+  });
+});
+
+const ziek = (id: string, extra: Partial<SickLeave> = {}): SickLeave => ({
+  id,
+  coach_id: 'u-koen',
+  van: '2026-10-05',
+  tot: '2026-10-09',
+  reden: 'griep',
+  created_at: '2026-10-05T08:00:00.000Z',
+  ...extra,
+});
+
+describe('diffStores — sickLeaves', () => {
+  it('ziet een nieuwe ziekmelding als iets dat weggeschreven moet worden', () => {
+    const verschil = diffStores(store(), store({ sickLeaves: [ziek('z1')] }));
+    const tabel = verschil.tables.find((tb) => tb.table === 'sickLeaves');
+    expect(tabel?.upsert.map((r) => r.id)).toEqual(['z1']);
+    expect(verschil.empty).toBe(false);
+  });
+
+  it('ziet een verdwenen ziekmelding als een verwijdering', () => {
+    const verschil = diffStores(store({ sickLeaves: [ziek('z1')] }), store({ sickLeaves: [] }));
+    const tabel = verschil.tables.find((tb) => tb.table === 'sickLeaves');
+    expect(tabel?.remove).toEqual(['z1']);
+    expect(tabel?.upsert).toEqual([]);
+  });
+
+  it('ziet een ingetrokken melding als een upsert en niet als een verwijdering', () => {
+    // Intrekken zet `retracted_at` en gooit de rij niet weg: de club hoort te kunnen
+    // terugzien dat de melding er geweest is.
+    const verschil = diffStores(
+      store({ sickLeaves: [ziek('z1')] }),
+      store({ sickLeaves: [ziek('z1', { retracted_at: '2026-10-07T09:00:00.000Z' })] }),
+    );
+    const tabel = verschil.tables.find((tb) => tb.table === 'sickLeaves');
+    expect(tabel?.upsert.map((r) => r.id)).toEqual(['z1']);
+    expect(tabel?.remove).toEqual([]);
+  });
+
+  it('zwijgt als er aan de ziekmeldingen niets veranderde', () => {
+    const zelfde = diffStores(store({ sickLeaves: [ziek('z1')] }), store({ sickLeaves: [ziek('z1')] }));
+    expect(zelfde.empty).toBe(true);
+  });
+
+  it('leest de allereerste bewaaractie zonder vorige opslag als een lege lijst', () => {
+    // Zonder `sickLeaves: []` in de terugval leest dit `undefined`, en dan valt het verschil
+    // weg dat er nu wél een ziekmelding is — de melding zou stil nooit weggeschreven worden.
+    const verschil = diffStores(null, store({ sickLeaves: [ziek('z1')] }));
+    const tabel = verschil.tables.find((tb) => tb.table === 'sickLeaves');
+    expect(tabel?.upsert.map((r) => r.id)).toEqual(['z1']);
   });
 });
