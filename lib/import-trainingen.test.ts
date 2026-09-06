@@ -1356,3 +1356,195 @@ describe('zomer- en wintertijd', () => {
     expect(uit.nieuweLessen.every((l) => l.start.getDay() === 3)).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// koen.xlsx — de acceptatie van IMP-10 (plan 05-07)
+//
+// Dit is de zwaarste test van deze fase, en met opzet de enige die het échte bestand van de
+// club van de eerste byte tot het volledige plan door de hele keten haalt: uitpakken en lezen
+// (lib/xlsx-lezen), de koprij, de regels, de groepen, de spelers, de koppelingen en de lessen.
+// Elke andere test hierboven neemt één van die lagen apart met verzonnen rijen ernaast; deze
+// valt om zodra één ervan stilletjes een uur, een dag of een groep verschuift — ook als alle
+// vijf de lagen afzonderlijk nog groen staan. Dat is precies het soort fout dat pas opvalt als
+// een heel seizoen een uur te vroeg in de agenda van de club staat.
+//
+// De getallen hieronder zijn in de bytes van het bestand geteld. Wijkt er één af, dan is dat
+// een bevinding over de import en niet over deze tabel: hem bijstellen om de test groen te
+// krijgen maakt van een acceptatiebar een formaliteit.
+// ---------------------------------------------------------------------------
+
+/** Wat één groep uit het bestand hoort op te leveren. `weekdag`: 3 = woensdag, 5 = vrijdag. */
+interface VerwachteGroep {
+  naam: string;
+  weekdag: number;
+  beginuur: number;
+  spelers: number;
+  lesmomenten: number;
+  niveau: string;
+}
+
+/**
+ * De tien groepen van `koen.xlsx`, met zeven verschillende namen: "Groep 8" staat op drie
+ * dag/uur-combinaties en "Groep 12" op twee, elk met andere spelers. Het nummer is een
+ * administratief label dat de club hergebruikt, geen groep mensen — daarom telt de sleutel van
+ * D-02 de weekdag en het beginuur mee.
+ *
+ * `Groep 12` van vrijdag 18:00 heeft `Type les` = `Privéles` én een gevulde `Groep`: dat is
+ * hier een niveau-etiket en geen privéles in de zin van `.planning/IMPORT-SJABLOON.md` (dáár
+ * gaat het over een lége `Groep`). Er hoort dus geen uitzondering op te staan.
+ */
+const KOEN_GROEPEN: VerwachteGroep[] = [
+  { naam: 'Groep 4', weekdag: 3, beginuur: 14, spelers: 2, lesmomenten: 33, niveau: 'Duoles' },
+  { naam: 'Groep 12', weekdag: 3, beginuur: 15, spelers: 4, lesmomenten: 33, niveau: 'Tienertennis geel' },
+  { naam: 'Groep 13', weekdag: 3, beginuur: 16, spelers: 6, lesmomenten: 33, niveau: 'Oranje' },
+  { naam: 'Groep 8', weekdag: 3, beginuur: 17, spelers: 6, lesmomenten: 33, niveau: 'Kidstennis oranje' },
+  { naam: 'Groep 26', weekdag: 3, beginuur: 18, spelers: 4, lesmomenten: 33, niveau: 'Tienertennis geel' },
+  { naam: 'Groep 31', weekdag: 5, beginuur: 16, spelers: 5, lesmomenten: 32, niveau: 'Tienertennis geel' },
+  { naam: 'Groep 8', weekdag: 5, beginuur: 17, spelers: 4, lesmomenten: 32, niveau: 'Tienertennis geel' },
+  { naam: 'Groep 12', weekdag: 5, beginuur: 18, spelers: 4, lesmomenten: 32, niveau: 'Privéles' },
+  { naam: 'Groep 8', weekdag: 5, beginuur: 19, spelers: 2, lesmomenten: 32, niveau: 'Duoles' },
+  { naam: 'Groep 3', weekdag: 5, beginuur: 20, spelers: 6, lesmomenten: 32, niveau: 'Volwassenen - (her)starters' },
+];
+
+/** Vijf woensdaggroepen × 33 plus vijf vrijdaggroepen × 32 = 325 lesmomenten. */
+const KOEN_LESMOMENTEN = 325;
+
+/** Het seizoen van het bestand, per weekdag: 9 sep 2026 t/m 23 jun 2027 op woensdag. */
+const KOEN_SEIZOEN = new Map([
+  [3, { van: '2026-09-09', tot: '2027-06-23' }],
+  [5, { van: '2026-09-11', tot: '2027-06-25' }],
+]);
+
+/**
+ * Het aantal verschillende lesmomenten van een groep: haar regels zijn één les × één leerling
+ * (D-01), dus zes kinderen op woensdag 17:00 zijn zes regels en één moment. De sleutel is die
+ * van de import zelf (`lesSleutel`) en geen nagebouwde tekst — een tweede telwijze zou een
+ * verschil kunnen wegpoetsen dat de import wél maakt.
+ */
+function momentenVan(groep: GeplandeGroep): number {
+  const momenten = groep.regels.map((r) => lesSleutel(
+    groep.sleutel,
+    dagSleutel(new Date(r.datum.jaar, r.datum.maand - 1, r.datum.dag)),
+    r.uur.uur,
+    r.uur.minuut,
+  ));
+  return new Set(momenten).size;
+}
+
+/** Op weekdag en daarna op beginuur, zodat een verschil de groep bij naam kan noemen. */
+function opDagEnUur(a: VerwachteGroep, b: VerwachteGroep): number {
+  return a.weekdag - b.weekdag || a.beginuur - b.beginuur;
+}
+
+describe('koen.xlsx — de acceptatie van IMP-10', () => {
+  // Eén keer lezen en één keer plannen voor het hele blok. 1398 regels door twaalf tests halen
+  // is twaalf keer hetzelfde werk; alle beweringen hieronder gaan over dít ene plan.
+  const blad = kiesLessenBlad(leesWerkmap(koenBytes()))!;
+  const LEGE_CLUB = planImportLessen(blad.rijen, [], [], [], [], {}, NU);
+
+  it('leest alle 1398 regels zonder één fout en zonder ruis in de koprij', () => {
+    expect(LEGE_CLUB.regels).toHaveLength(1398);
+    expect(LEGE_CLUB.fouten).toEqual([]);
+    // `Weekdag`, `Weeknr`, `Locatie` en `Indoor/Outdoor` staan in dit bestand en betekenen
+    // niets voor de import. Ze horen genegeerd te worden en niet gemeld.
+    expect(LEGE_CLUB.nietHerkend).toEqual([]);
+    expect(LEGE_CLUB.dubbel).toEqual([]);
+  });
+
+  it('heeft geen kolom Baan en geen kolom Groep-ID — daar hangt de rest van dit blok aan', () => {
+    expect(blad.rijen[0]).not.toContain('Baan');
+    expect(blad.rijen[0]).not.toContain('Groep-ID');
+  });
+
+  it('levert tien nieuwe lesgroepen op, met zeven verschillende namen', () => {
+    expect(LEGE_CLUB.groepenNieuw).toHaveLength(10);
+    expect(LEGE_CLUB.groepenBijgewerkt).toEqual([]);
+    expect(LEGE_CLUB.groepenOngewijzigd).toEqual([]);
+    expect(new Set(LEGE_CLUB.groepenNieuw.map((g) => g.naam)).size).toBe(7);
+  });
+
+  it('geeft elke groep uit de tabel haar eigen dag, uur, roster, lesmomenten en niveau', () => {
+    const werkelijk: VerwachteGroep[] = LEGE_CLUB.groepenNieuw.map((g) => ({
+      naam: g.naam,
+      weekdag: g.weekdag,
+      beginuur: g.beginuur,
+      spelers: g.aantalSpelers,
+      lesmomenten: momentenVan(g.groep),
+      niveau: g.groep.niveau,
+    }));
+    expect(werkelijk.sort(opDagEnUur)).toEqual([...KOEN_GROEPEN].sort(opDagEnUur));
+  });
+
+  it('telt 325 lesmomenten in het hele bestand', () => {
+    const perGroep = LEGE_CLUB.groepenNieuw.reduce((som, g) => som + momentenVan(g.groep), 0);
+    expect(perGroep).toBe(KOEN_LESMOMENTEN);
+  });
+
+  it('geeft elke groep het seizoen dat bij haar weekdag hoort', () => {
+    for (const g of LEGE_CLUB.groepenNieuw) {
+      const verwacht = KOEN_SEIZOEN.get(g.weekdag);
+      expect(verwacht).toBeDefined();
+      expect([g.naam, g.groep.seizoenVan, g.groep.seizoenTot])
+        .toEqual([g.naam, verwacht!.van, verwacht!.tot]);
+    }
+  });
+
+  it('kent 42 verschillende leerlingen, allemaal nieuw voor de club', () => {
+    expect(LEGE_CLUB.spelersNieuw).toHaveLength(42);
+    expect(new Set(LEGE_CLUB.spelersNieuw.map((s) => s.naam)).size).toBe(42);
+  });
+
+  it('houdt de drie groepen die "Groep 8" heten volledig uit elkaar', () => {
+    const acht = LEGE_CLUB.groepenNieuw.filter((g) => g.naam === 'Groep 8');
+    expect(acht.map((g) => [g.weekdag, g.beginuur, g.aantalSpelers]))
+      .toEqual([[3, 17, 6], [5, 17, 4], [5, 19, 2]]);
+    // Twaalf plaatsen, twaalf verschillende mensen: nul overlap. Matchen op de groepsnaam
+    // alleen zou hier één groep van twaalf van maken.
+    const samen = acht.flatMap((g) => g.roster);
+    expect(samen).toHaveLength(12);
+    expect(new Set(samen).size).toBe(12);
+  });
+
+  it('plant nul lessen in: er is geen trainersaccount en er is geen baan', () => {
+    // `LesGroep.coach_id` mag leeg zijn — daarom komen de tien groepen er wél. `Booking.coach_id`
+    // en `Booking.court_id` mogen dat niet, dus de lessen kunnen niet bestaan. Ook niets
+    // overgeslagen: er valt niets over te slaan zolang er niets te plannen viel.
+    expect(LEGE_CLUB.nieuweLessen).toEqual([]);
+    expect(LEGE_CLUB.ongewijzigdeLessen).toEqual([]);
+    expect(LEGE_CLUB.overgeslagen).toEqual([]);
+    expect(LEGE_CLUB.handmatigGewijzigd).toEqual([]);
+    expect(LEGE_CLUB.verdwenenUitBestand).toEqual([]);
+  });
+
+  it('meldt uitsluitend de trainer en de baan, één keer per groep', () => {
+    const meldingen = LEGE_CLUB.waarschuwingen;
+    // Tien groepen × twee ontbrekende schakels. Eén melding per regel zou er 2796 opleveren.
+    expect(meldingen).toHaveLength(20);
+    const overTrainer = meldingen.filter((m) => m.reden.includes('trainer'));
+    const overBaan = meldingen.filter((m) => m.reden.includes('baan'));
+    expect(overTrainer).toHaveLength(10);
+    expect(overBaan).toHaveLength(10);
+    // En niets anders: geen onbekende kop, geen naamgenoot, geen tweede niveau, geen tweede
+    // coach. Deze bewering is de kern van IMP-10 — "de droogloop meldt precies die twee dingen".
+    expect(meldingen.filter((m) => !overTrainer.includes(m) && !overBaan.includes(m))).toEqual([]);
+    expect(new Set(overTrainer.map((m) => m.vars?.naam))).toEqual(new Set(['Leemans Koen']));
+  });
+
+  it('laat de trainermelding verdwijnen zodra Leemans Koen een account heeft', () => {
+    // De trainer valt op te lossen zónder het bestand aan te raken: de kolom `Coach` staat er,
+    // met de achternaam vooraan, en `zoekOpNaam` vindt daar "Koen Leemans" bij. De baan niet:
+    // `koen.xlsx` heeft die kolom niet eens. Van de twee wegen die het plan aanbiedt kiezen we
+    // daarom de meldingen als bewijs — een tweede opzet mét een `Baan`-kolom zou een verzonnen
+    // bestand testen in plaats van het bestand waarvoor deze hele fase gebouwd is. Dat een baan
+    // koppelen op het scherm gebeurt en niet in dit bestand, is precies wat de tien
+    // overgebleven meldingen zeggen.
+    const metTrainer = planImportLessen(blad.rijen, [], [KOEN], [], [], {}, NU);
+    expect(metTrainer.waarschuwingen).toHaveLength(10);
+    expect(metTrainer.waarschuwingen.every((m) => m.reden.includes('baan'))).toBe(true);
+    expect(metTrainer.groepenNieuw.every((g) => g.trainer?.id === KOEN.id)).toBe(true);
+    expect(metTrainer.groepenNieuw.every((g) => g.trainerNaam === 'Koen Leemans')).toBe(true);
+    // Nog steeds nul lessen: de baan is de tweede ontbrekende schakel en de enige die over is.
+    expect(metTrainer.nieuweLessen).toEqual([]);
+    expect(metTrainer.spelersNieuw).toHaveLength(42);
+  });
+});
