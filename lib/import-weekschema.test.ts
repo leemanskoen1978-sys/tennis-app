@@ -4,6 +4,9 @@ import {
 } from './import-weekschema';
 import { spelersUitRegels } from './import-trainingen';
 import { groepSleutel } from './lesgroepen';
+import { kiesLessenBlad, planImportLessen } from './import-trainingen';
+import { buildXlsx, type XlsxCel } from './xlsx';
+import { leesWerkmap } from './xlsx-lezen';
 import type { Court, LesGroep } from './types';
 
 describe('leesWeekdagCel', () => {
@@ -308,6 +311,19 @@ describe('weekSleutels', () => {
 // ---------------------------------------------------------------------------
 
 const SEIZOEN = { van: '2026-09-07', tot: '2027-06-30' };
+/** Een kort seizoen, zodat het aantal lessen in een test te overzien blijft. */
+const SETTINGS_KORT = {
+  lesson_duration_minutes: 60,
+  vakanties: [],
+  season_start: '2026-09-07',
+  season_end: '2026-09-30',
+};
+const BANEN7 = [
+  { id: 'c7', name: 'Terrein 7', number: 7, hourly_rate: 60 },
+  { id: 'c8', name: 'Terrein 8', number: 8, hourly_rate: 60 },
+  { id: 'c10', name: 'Terrein 10', number: 10, hourly_rate: 60 },
+  { id: 'c11', name: 'Terrein 11', number: 11, hourly_rate: 60 },
+] as unknown as Court[];
 const BANEN = [
   { id: 'c7', name: 'Terrein 7', number: 7, hourly_rate: 60 },
   { id: 'c8', name: 'Terrein 8', number: 8, hourly_rate: 60 },
@@ -459,5 +475,90 @@ describe('spelerRegelsUitWeek', () => {
       weekRegel({ regel: 3, spelers: ['jan jansen'] }),
     ]), []);
     expect(spelers.map((s) => s.naam)).toEqual(['Jan Jansen', 'Piet Peeters']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Van bytes tot lesplan — het hele pad, zoals het scherm het aflegt
+//
+// Het echte bestand van de club staat NIET in deze repository en hoort daar niet: die is
+// publiek en er staan 550 echte namen in. Dit blad wordt hier opgebouwd met verzonnen namen en
+// dekt de gevallen die er in de echte lijst toe doen: de drie groepen die op woensdag 14:00
+// samen op Terrein 7 staan, een regel met twee terreinen, een regel met twee trainers, een
+// regel zonder spelers, een les van 30 minuten en een van 90.
+// ---------------------------------------------------------------------------
+
+describe('weekschema — van bytes tot lesplan', () => {
+  const tekstRij = (waarden: string[]): XlsxCel[] =>
+    waarden.map((waarde) => ({ soort: 'tekst', waarde }));
+
+  const BLAD: string[][] = [
+    ['Kidstennis wit', 'Wit/Multimove Gr1', 'woensdag', '14:00 - 15:00', 'Terrein 7', 'Aerts Lien', 'Jan Jansen, Piet Peeters'],
+    ['Kidstennis blauw', 'Blauw Gr1', 'woensdag', '14:00 - 15:00', 'Terrein 7', 'Baeten Nore', 'Marie Maes'],
+    ['Kidstennis rood', 'Rood Gr3', 'woensdag', '14:00 - 15:00', 'Terrein 7', 'Baeten Nore', 'Tuur Torfs'],
+    ['Kidstennis oranje', 'Oranje Gr1', 'donderdag', '16:00 - 17:00', 'Terrein 8', 'Aerts Lien', 'Lore Loos'],
+    ['Kidstennis groen', 'Groen Gr1', 'vrijdag', '17:00 - 18:00', 'Terrein 10, Terrein 11', 'Aerts Lien', 'Stan Stas'],
+    ['Tienertennis', 'Tieners Gr1', 'vrijdag', '18:00 - 19:00', 'Terrein 8', 'Aerts Lien, Baeten Nore', 'Ella Elst'],
+    ['Tienertennis', 'Tieners Gr2', 'zaterdag', '09:00 - 09:30', 'Terrein 8', 'Aerts Lien', 'Sam Somers'],
+    ['Groepslessen voor volwassenen', 'Volw Gr1', 'zaterdag', '10:00 - 11:30', 'Terrein 8', 'Baeten Nore', 'Rik Roos'],
+    ['Groepslessen voor (her)starters', 'Herstart Gr1', 'zaterdag', '12:00 - 13:00', 'Terrein 8', 'Aerts Lien', ''],
+  ];
+
+  const bytes = buildXlsx({ naam: 'Sheet1', koppen: KOP, rijen: BLAD.map(tekstRij) });
+  const blad = kiesLessenBlad(leesWerkmap(bytes));
+  const gelezen = leesWeekRegels(blad?.rijen ?? []);
+
+  it('leest het blad van kop tot staart zonder één fout', () => {
+    expect(gelezen.fouten).toEqual([]);
+    expect(gelezen.nietHerkend).toEqual([]);
+    expect(gelezen.regels).toHaveLength(9);
+  });
+
+  it('leest de drie duren die de club echt gebruikt', () => {
+    const duren = gelezen.regels.map((r) => r.duurMinuten);
+    expect(duren.filter((d) => d === 60)).toHaveLength(7);
+    expect(duren.filter((d) => d === 30)).toHaveLength(1);
+    expect(duren.filter((d) => d === 90)).toHaveLength(1);
+  });
+
+  it('geeft de drie groepen op Terrein 7 elk hun eigen sleutel', () => {
+    const { groepen } = groepenUitWeekRegels(gelezen.regels, [], BANEN7, SEIZOEN);
+    const opWoensdag = groepen.filter((g) => g.weekdag === 3 && g.beginuur === 14);
+    expect(opWoensdag).toHaveLength(3);
+    expect(new Set(opWoensdag.map((g) => g.sleutel)).size).toBe(3);
+  });
+
+  it('plant alles in, met de botsingen op Terrein 7 gemeld en niet geweigerd', () => {
+    const plan = planImportLessen(
+      blad?.rijen ?? [], [], [], BANEN7, [], SETTINGS_KORT, new Date(2026, 8, 6),
+    );
+    expect(plan.fouten).toEqual([]);
+    // Negen groepen, en twee trainers die de club nog niet kende.
+    expect(plan.groepenNieuw).toHaveLength(9);
+    expect(plan.trainersNieuw.map((tr) => tr.naam).sort()).toEqual(['Aerts Lien', 'Baeten Nore']);
+    // Negen unieke spelers; de groep zonder spelers levert er geen.
+    expect(plan.spelersNieuw).toHaveLength(9);
+    // Elke speler een eigen adres — anders strandt het wegschrijven op users.email.
+    const adressen = plan.spelersNieuw.map((sp) => sp.email);
+    expect(new Set(adressen).size).toBe(adressen.length);
+    // De drie groepen op Terrein 7 overlappen elkaar en dat mag: melden, niet blokkeren.
+    expect(plan.botsingen.length).toBeGreaterThan(0);
+    expect(plan.nieuweLessen.length).toBeGreaterThan(0);
+  });
+
+  it('maakt geen les voor de groep zonder spelers, en de groep zelf wél', () => {
+    const plan = planImportLessen(
+      blad?.rijen ?? [], [], [], BANEN7, [], SETTINGS_KORT, new Date(2026, 8, 6),
+    );
+    const leeg = plan.groepenNieuw.find((g) => g.naam === 'Herstart Gr1');
+    expect(leeg).toBeDefined();
+    expect(leeg?.roster).toEqual([]);
+  });
+
+  it('bevat geen enkele naam uit de echte clublijst', () => {
+    const tekst = Buffer.from(bytes).toString('latin1');
+    for (const naam of ['Devries', 'Lasoen']) {
+      expect(tekst).not.toContain(naam);
+    }
   });
 });
