@@ -131,3 +131,33 @@ export function kanVervangen(
 
   return antwoord('kan');
 }
+
+/**
+ * Het vervangersvoorstel: elke kandidaat met zijn antwoord, in de volgorde waarin hij
+ * binnenkwam.
+ *
+ * Deze functie is met opzet saai. De verleiding is om er `.filter((u) => u.reden === 'kan')`
+ * in te zetten, of "wie kan" bovenaan te sorteren, en precies dat verbiedt D-09: er gaan er
+ * even veel uit als er in gingen. Een beheerder die niet ziet waarom een collega ontbreekt,
+ * weet niet of de app hem terecht wegliet of iets mist — en dan belt hij toch maar zelf de
+ * hele club rond, en heeft deze module niets opgelost. Dat hij bewust mag afwijken, kan
+ * alleen als de reden op zijn scherm staat.
+ *
+ * Het scherm mag de lijst in twee groepen tonen, "kan" boven en "kan niet" eronder. Dat is
+ * presentatie. De lijst zelf is compleet.
+ *
+ * Ook geen rangschikking op geschiktheid, voorkeur of ervaring (D-10): voor één club met een
+ * handvol trainers is "kan hij of niet" genoeg, en de beheerder kent zijn mensen beter dan
+ * welke score ook.
+ */
+export function vervangersVoor(
+  kandidaten: VervangerKandidaat[],
+  slot: VervangerSlot,
+  bestaandeLessen: Booking[],
+  vakanties: Vakantie[],
+  open: OpenZiekmelding[],
+  clubEinde: string,
+): VervangerUitkomst[] {
+  return kandidaten.map((k) =>
+    kanVervangen(k, slot, bestaandeLessen, vakanties, open, clubEinde));
+}
