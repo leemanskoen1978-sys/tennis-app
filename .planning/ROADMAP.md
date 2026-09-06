@@ -108,7 +108,7 @@ Plans:
 - [x] 03-04-PLAN.md — Het vervangersvoorstel: kanVervangen met alle vijf de redenen, en vervangersVoor die niemand stil weglaat (wave 2)
 - [x] 03-05-PLAN.md — De opslagweg: de vier stops plus meldZiek en trekZiekmeldingIn, die geen enkele boeking aanraakt (wave 2)
 - [x] 03-06-PLAN.md — Het ziekmeldingsscherm: formulier, lijst, intrekken, de tegel in Beheer en de beheerdersgrens op het scherm zelf (wave 3)
-- [ ] 03-07-PLAN.md — De werklijst: drie keuzes per les, het voorstel met redenen, en de markering "zoekt vervanger" in de agenda (wave 4)
+- [x] 03-07-PLAN.md — De werklijst: drie keuzes per les, het voorstel met redenen, en de markering "zoekt vervanger" in de agenda (wave 4)
 - [ ] 03-08-PLAN.md — De migratie draaien, de upsert-val nalopen en het fasedoel met de hand bevestigen (wave 5, checkpoints)
 
 ### Phase 4: Excel-export
@@ -171,6 +171,6 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5
 | 1. Lesgroepen | 6/7 | In Progress|  |
 | 2. Wie gaf de les écht | 2/4 | In Progress|  |
 | 2.1 De groep verzetten werkt door | 1/2 | In Progress|  |
-| 3. Ziekmelding en vervangerswerklijst | 6/8 | In Progress|  |
+| 3. Ziekmelding en vervangerswerklijst | 7/8 | In Progress|  |
 | 4. Excel-export | 5/5 | In Progress| Code af; taak 3 van 04-05 is een handmatige controle in Excel |
 | 5. Excel-import van trainingen | 0/10 | Not started | - |

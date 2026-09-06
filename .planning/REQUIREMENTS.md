@@ -34,16 +34,16 @@ raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf
       de vaste trainer was.
 - [ ] **VERV-04**: De beheerder kan een trainer ziek melden over een periode (van–tot,
       eventueel met een reden).
-- [ ] **VERV-05**: Een ziekmelding levert één werklijst op met alle lessen van die trainer in
+- [x] **VERV-05**: Een ziekmelding levert één werklijst op met alle lessen van die trainer in
       die periode, met per les de datum, het uur, de baan, de groep of speler en het aantal spelers.
-- [ ] **VERV-06**: De beheerder kiest per les in de werklijst: vervanger koppelen, laten staan
+- [x] **VERV-06**: De beheerder kiest per les in de werklijst: vervanger koppelen, laten staan
       met de markering "zoekt vervanger", of de les afzeggen.
-- [ ] **VERV-07**: Een les zonder vervanger blijft zichtbaar gemarkeerd in de agenda en blijft
+- [x] **VERV-07**: Een les zonder vervanger blijft zichtbaar gemarkeerd in de agenda en blijft
       in de werklijst staan tot hij is opgelost of afgezegd.
-- [ ] **VERV-08**: Bij het koppelen van een vervanger toont de app alleen collega's die dat uur
+- [x] **VERV-08**: Bij het koppelen van een vervanger toont de app alleen collega's die dat uur
       werkelijk kunnen: geen eigen les op dat moment, binnen hun boekingstijden, niet in een
       afwijkende periode, niet in een clubvakantie en zelf niet ziek gemeld.
-- [ ] **VERV-09**: Trainers die niet kunnen, zijn opvraagbaar mét de reden waarom niet, zodat
+- [x] **VERV-09**: Trainers die niet kunnen, zijn opvraagbaar mét de reden waarom niet, zodat
       de beheerder toch bewust kan afwijken.
 - [ ] **VERV-10**: De beheerder kan een ziekmelding intrekken; lessen die nog geen vervanger
       hebben, gaan terug naar de vaste trainer.
@@ -148,11 +148,11 @@ Elke v1-requirement is toegewezen aan precies één fase in .planning/ROADMAP.md
 | VERV-02 | Phase 2 | Complete |
 | VERV-03 | Phase 2 | Complete |
 | VERV-04 | Phase 3 | Pending |
-| VERV-05 | Phase 3 | Pending |
-| VERV-06 | Phase 3 | Pending |
-| VERV-07 | Phase 3 | Pending |
-| VERV-08 | Phase 3 | Pending |
-| VERV-09 | Phase 3 | Pending |
+| VERV-05 | Phase 3 | Complete |
+| VERV-06 | Phase 3 | Complete |
+| VERV-07 | Phase 3 | Complete |
+| VERV-08 | Phase 3 | Complete |
+| VERV-09 | Phase 3 | Complete |
 | VERV-10 | Phase 3 | Pending |
 | EXP-01 | Phase 4 | Complete |
 | EXP-02 | Phase 4 | Complete |

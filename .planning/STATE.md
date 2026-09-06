@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-06-PLAN.md (het ziekmeldingsscherm: formulier, lijst en tegel)
-last_updated: "2026-09-06T00:17:07.388Z"
+stopped_at: Completed 03-07-PLAN.md (de werklijst: drie keuzes per les en het vervangersvoorstel)
+last_updated: "2026-09-06T01:05:00.000Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 36
-  completed_plans: 22
+  completed_plans: 23
   percent: 33
 ---
 
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core value:** Als een trainer ziek is, ziet de beheerder binnen een minuut welke lessen dat
 raakt en hangt hij er een vervanger aan die dat uur écht kan — zonder in vijf agenda's te zoeken.
-**Current focus:** Phase 3 — Ziekmelding en vervangerswerklijst (ziek melden kan, de werklijst nog niet)
+**Current focus:** Phase 3 — Ziekmelding en vervangerswerklijst (de werklijst staat; rest: de migratie en de handmatige controle)
 
 ## Current Position
 
 Phase: 3 of 6 (Ziekmelding en vervangerswerklijst)
-Plan: 6 of 8 af (03-06-PLAN.md — het ziekmeldingsscherm: formulier, lijst, tegel en de Engelse kant)
+Plan: 7 of 8 af (03-07-PLAN.md — de werklijst: drie keuzes per les, het voorstel met redenen en de markering in de agenda)
 Status: Ready to execute
 Last activity: 2026-09-06
 
@@ -35,7 +35,7 @@ Nog open uit fase 2.1: taak 3 van 02.1-02 is een handmatige controle in een draa
 Nog open uit fase 4: taak 3 van 04-05 is een handmatige controle — het bestand in Excel openen,
 de kolommen optellen, en een niet-beheerder /admin/export laten intikken.
 
-Progress: [██████░░░░] 61%
+Progress: [██████░░░░] 64%
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Progress: [██████░░░░] 61%
 | Phase 03 P04 | ~35min | 2 tasks | 4 files |
 | Phase 03 P05 | ~25 min | 2 tasks | 5 files |
 | Phase 03 P06 | 35min | 2 tasks | 4 files |
+| Phase 03 P07 | ~40 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,8 @@ confirmed as phases ship).
 - [Phase 03]: D-14 uitgevoerd: sick_leaves wordt met selectAllOptioneel gelezen, nooit met selectAll
 - [Phase 03]: D-17 uitgevoerd: trekZiekmeldingIn raakt geen enkele boeking
 - [Phase 03]: de beheerdersgrens staat op het ziekmeldingsscherm zelf en niet alleen op de tegel (D-12/TOEG-01)
+- [Phase 03]: D-07 uitgevoerd: de werklijst raakt per handeling precies één boeking, nooit de reeks of de groep
+- [Phase 03]: D-09 uitgevoerd: wie niet kan staat in het voorstel mét reden en blijft aanklikbaar
 
 ### Pending Todos
 
@@ -192,6 +195,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-06T00:16:40.850Z
-Stopped at: Completed 03-06-PLAN.md (het ziekmeldingsscherm: formulier, lijst en tegel)
+Last session: 2026-09-06T01:05:00.000Z
+Stopped at: Completed 03-07-PLAN.md (de werklijst: drie keuzes per les en het vervangersvoorstel)
 Resume file: None
