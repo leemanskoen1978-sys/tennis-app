@@ -11,11 +11,13 @@
 // dezelfde kolomtabel van de andere kant bekeken, en die twee uit elkaar laten lopen zou
 // betekenen dat de app haar eigen voorbeeldbestand niet meer leest.
 
+import { GROEPSLES_METHOD } from './beurtenkaart';
 import { normalizeEmail } from './contact';
 import { actieveGroepen, groepSleutel } from './lesgroepen';
+import { botstMet } from './recurrence';
 import { normalizeName, zelfdeNaamOngeachtVolgorde, zoekOpNaam } from './students';
-import type { Court, LesGroep, User } from './types';
-import { dagSleutel } from './vakanties';
+import type { Booking, Court, LesGroep, PaymentMethod, Settings, User, Vakantie } from './types';
+import { dagSleutel, vakantieOpMoment } from './vakanties';
 import { buildXlsx, type XlsxCel } from './xlsx';
 import { fractieNaarTijd, serieNaarDatum, type GelezenBlad } from './xlsx-lezen';
 
@@ -904,6 +906,265 @@ export function koppelingVoorGroep(
   }
 
   return { trainer, baan, meldingen };
+}
+
+// ---------------------------------------------------------------------------
+// Van groepen naar lessen (IMP-05, IMP-11)
+// ---------------------------------------------------------------------------
+
+/**
+ * De velden die dit bestand van een bestaande les nodig heeft; meer weet de import niet van een
+ * boeking. Een uitbreiding van `BezetBoeking` uit lib/recurrence met de groep erbij: de
+ * botsingsvraag heeft de groep niet nodig, de herimport wél — die moet de lessen van déze groep
+ * kunnen terugvinden.
+ */
+export type ImportBoeking = Pick<
+  Booking, 'id' | 'group_id' | 'coach_id' | 'court_id' | 'start_time' | 'end_time' | 'status'
+>;
+
+/** Hoe lang een les duurt als de club er niets over zei. Zie `Settings.lesson_duration_minutes`. */
+export const LESDUUR_MINUTEN = 60;
+
+/**
+ * De lesduur van de club, in minuten.
+ *
+ * Eén clubinstelling en geen kolom in het bestand (D-05): een kolom die op elke regel hetzelfde
+ * hoort te zijn, is een kolom die op regel 700 verkeerd ingevuld wordt. De instelling geldt voor
+ * lessen die hierna ingepland worden en werkt nooit met terugwerkende kracht — een les die al in
+ * de agenda staat houdt zijn eigen begin- en eindtijd. Lees het commentaar bij
+ * `lesson_duration_minutes` in lib/types: daar staat waarom, en `planGroepWijziging` in
+ * lib/lesgroepen houdt zich aan dezelfde regel.
+ */
+export function lesduurVan(settings: Pick<Settings, 'lesson_duration_minutes'>): number {
+  const duur = settings.lesson_duration_minutes;
+  return typeof duur === 'number' && duur > 0 ? duur : LESDUUR_MINUTEN;
+}
+
+/**
+ * De sleutel waaraan één les te herkennen is: zijn lesgroep, zijn dag en zijn beginuur (D-11).
+ *
+ * Dit is een herkenningssleutel om een les uit een geïmporteerde planning terug te vinden, en
+ * geen uniciteitsregel — precies zoals `groepSleutel` in lib/lesgroepen dat voor een groep is.
+ * Twee lessen met dezelfde sleutel mógen bestaan; wat deze sleutel doet, is een tweede inleesbeurt
+ * van hetzelfde bestand laten zien dat die les er al staat, in plaats van er nog een te maken.
+ *
+ * De groep komt binnen als tekst en niet als groep, want er zijn twee soorten: een groep die de
+ * club al kent draagt haar id, een nieuwe groep haar afgeleide sleutel. De dag is een lokale
+ * dagsleutel (`dagSleutel`), nooit een ISO-tijdstip: dat laatste zou de sleutel van een avondles
+ * in een westelijke tijdzone een dag laten opschuiven.
+ */
+export function lesSleutel(groepSleutelOfId: string, dag: string, uur: number, minuut: number): string {
+  return `${groepSleutelOfId.trim().toLowerCase()}|${dag.trim().toLowerCase()}|${uur}|${minuut}`;
+}
+
+/** Waaronder deze groep haar lessen herkent: haar id als de club haar kent, anders haar sleutel. */
+function groepIdentiteit(groep: GeplandeGroep): string {
+  return groep.bestaand ? groep.bestaand.id : groep.sleutel;
+}
+
+/**
+ * Een lokaal tijdstip als `HH:MM`, om te tonen en te vergelijken.
+ *
+ * Bewust niet `formatTime` uit lib/datetime: die maakt schermtekst in de taal van de gebruiker,
+ * en wat hier gebouwd wordt is een gegeven in het plan — even tijdzone- en taalloos als
+ * `dagSleutel` dat voor een dag is.
+ */
+function tijdTekst(d: Date): string {
+  const twee = (n: number): string => String(n).padStart(2, '0');
+  return `${twee(d.getHours())}:${twee(d.getMinutes())}`;
+}
+
+/**
+ * Eén les zoals hij uit het bestand volgt, met lokale `Date`-velden en nog geen enkele identiteit
+ * erin.
+ *
+ * Er wordt hier met opzet géén `Booking` gebouwd. Een boeking heeft een betaler, deelnemers, een
+ * trainer en een baan — allemaal gebruiker-ids die pas bestaan nadat de nieuwe spelers
+ * weggeschreven zijn (plan 05-08). Die grens is precies waarom dit bestand puur kan blijven: het
+ * rekent uit wát er zou gebeuren, zonder iets of iemand te hoeven aanmaken.
+ */
+export interface GeplandeLes {
+  sleutel: string;
+  start: Date;
+  eind: Date;
+  groep: GeplandeGroep;
+  /**
+   * Het regelnummer van de eerste rij waaruit deze les volgt. Zonder dat verschijnt er straks
+   * een les in de agenda en weet niemand meer waar hij vandaan kwam (T-05-17).
+   */
+  regel: number;
+}
+
+/**
+ * Een les uit het bestand die niet ingepland wordt, met de reden.
+ *
+ * De woorden zijn letterlijk overgenomen: `vakantie` en `bezet` uit `OvergeslagenReden` in
+ * lib/recurrence, `verleden` uit `GeblokkeerdeLes` in lib/lesgroepen. Drie vocabulaires voor
+ * hetzelfde zou de schermen laten uiteenlopen — dezelfde melding zou dan in Reserveren anders
+ * heten dan in de import.
+ */
+export interface OvergeslagenLes {
+  sleutel: string;
+  start: Date;
+  reden: 'vakantie' | 'bezet' | 'verleden';
+  /** De naam van de vakantie, als dat de reden was. */
+  vakantie?: string;
+  regel: number;
+}
+
+/** Wat er van een geplande les naar de boeking gaat: wie betaalt, wie meedoet, en hoe. */
+export interface LesDeelnemers {
+  player_id: string;
+  participant_ids: string[];
+  payment_method: PaymentMethod;
+}
+
+/**
+ * De betaler en de deelnemers van één les, uit het rooster van de groep.
+ *
+ * De eerste speler betaalt en de anderen staan ernaast: dat is de grens die lib/groups bewaakt —
+ * `Booking.player_id` is de betaler en staat nooit óók in `participant_ids`. Bij meer dan één
+ * speler is de betaalwijze `GROEPSLES_METHOD`, want een groepsles gaat altijd op factuur
+ * (lib/beurtenkaart dwingt dat sowieso af). Eén speler is een gewone privéles en houdt zijn
+ * betaalwijze open: er is nog niets afgesproken.
+ *
+ * Een leeg rooster levert niets op. Een les zonder speler bestaat niet.
+ */
+export function deelnemersVoorLes(roster: readonly string[]): LesDeelnemers | null {
+  const [betaler, ...anderen] = roster.filter((id) => id.trim() !== '');
+  if (!betaler) return null;
+  return {
+    player_id: betaler,
+    participant_ids: anderen,
+    payment_method: anderen.length > 0 ? GROEPSLES_METHOD : 'open',
+  };
+}
+
+/**
+ * Een geplande les als bezette plek, zodat het bestand ook met zichzelf kan botsen.
+ *
+ * Zonder dit ziet de import alleen de agenda zoals die vóór de import was: twee groepen die in
+ * hetzelfde bestand dezelfde trainer op hetzelfde uur claimen zouden er dan allebei doorkomen, en
+ * de tweede zou pas bij het wegschrijven stuklopen — of erger, er gewoon naast komen te staan.
+ */
+export function alsBezet(les: GeplandeLes, koppeling: GroepKoppeling): ImportBoeking {
+  return {
+    id: `import:${les.sleutel}`,
+    group_id: les.groep.bestaand?.id,
+    coach_id: koppeling.trainer?.id ?? '',
+    court_id: koppeling.baan?.id ?? '',
+    start_time: les.start.toISOString(),
+    end_time: les.eind.toISOString(),
+    status: 'confirmed',
+  };
+}
+
+/** Wat er met de lessen van één groep zou gebeuren. */
+export interface GroepLessen {
+  /** De lessen die aangemaakt worden. */
+  nieuweLessen: GeplandeLes[];
+  /** De lessen uit het bestand die niet doorgaan, met hun reden. */
+  overgeslagen: OvergeslagenLes[];
+  /** Wat er ontbreekt om deze groep te kunnen plannen; komt uit `koppelingVoorGroep`. */
+  meldingen: ImportFoutLessen[];
+}
+
+/**
+ * De lessen van één groep: welke gaan er door, en welke niet en waarom.
+ *
+ * De datums komen uit het bestand en nergens anders vandaan. Er wordt met opzet geen herhaalregel
+ * gebouwd — de reeksenbouwer van lib/recurrence blijft hier ongebruikt. Het bestand zegt "één regel
+ * per les × leerling", en een week zonder les staat er gewoon niet in; een herhaalregel zou datums
+ * verzinnen die de club nooit geschreven heeft. Wél `vakantieOpMoment` en `botstMet` uit diezelfde
+ * bestanden, per datum die er wél in staat.
+ *
+ * Alles in lokale velden: `new Date(jaar, maand - 1, dag, uur, minuut)` en de duur erbij in het
+ * minuutveld. `.toISOString()` gebeurt precies één keer, om de vraag aan `botstMet` te stellen —
+ * nooit om een datum te lézen. Een reeks die over de uurwissel loopt blijft zo op hetzelfde lokale
+ * uur staan; met "168 uur erbij" zou hij naar 16:00 of 18:00 schuiven.
+ *
+ * `nu` is een parameter en nooit `new Date()` hierbinnen: dat is wat dit hele blok testbaar maakt,
+ * en het is dezelfde discipline als `komendeLessen(bookings, groupId, now)` in lib/lesgroepen.
+ *
+ * `bestaandeBoekingen` is de lijst waar `botstMet` in kijkt. Die mag — en hoort — al gefilterd te
+ * zijn op wat deze groep kan raken: de lessen van haar trainer, die van haar baan en die van
+ * haarzelf. Er staan ook de lessen in die dit plan zelf al goedkeurde (zie `alsBezet`), zodat het
+ * bestand ook met zichzelf botst. Een club met tienduizend lessen mag deze functie niet in een
+ * kwadratische vergelijking laten lopen (T-05-16).
+ */
+export function lessenUitGroep(
+  groep: GeplandeGroep,
+  koppeling: GroepKoppeling,
+  bestaandeBoekingen: readonly ImportBoeking[],
+  vakanties: readonly Vakantie[],
+  duurMinuten: number,
+  nu: Date,
+): GroepLessen {
+  const uit: GroepLessen = {
+    nieuweLessen: [],
+    overgeslagen: [],
+    meldingen: koppeling.meldingen,
+  };
+
+  // Zonder trainer of zonder baan valt er niets in te plannen: `Booking.coach_id` en
+  // `Booking.court_id` zijn allebei verplicht. De groep zelf gaat wél gewoon door, met haar
+  // roster en een lege `coach_id` — zie `koppelingVoorGroep`, dat de melding al schreef.
+  const { trainer, baan } = koppeling;
+  if (!trainer || !baan) return uit;
+
+  const identiteit = groepIdentiteit(groep);
+  const bezet = [...bestaandeBoekingen];
+
+  // Eén kandidaat per uniek moment: een groepsles van zes staat als zes regels in het bestand,
+  // en dat is één les. De eerste regel van dat moment draagt de melding.
+  const kandidaten = new Map<string, { regel: number; start: Date; dag: string }>();
+  for (const r of groep.regels) {
+    const start = new Date(r.datum.jaar, r.datum.maand - 1, r.datum.dag, r.uur.uur, r.uur.minuut);
+    const dag = dagSleutel(start);
+    const sleutel = lesSleutel(identiteit, dag, r.uur.uur, r.uur.minuut);
+    if (!kandidaten.has(sleutel)) kandidaten.set(sleutel, { regel: r.regel, start, dag });
+  }
+
+  const opTijd = [...kandidaten.entries()].sort((a, b) => a[1].start.getTime() - b[1].start.getTime());
+  for (const [sleutel, kandidaat] of opTijd) {
+    const { start, regel } = kandidaat;
+
+    // Vanaf vandaag vooruit (IMP-07, D-12). Een regel met een datum van gisteren verandert niets:
+    // hij wordt niet ingepland, niet bijgewerkt en niet verwijderd. Wat geweest is, blijft staan.
+    if (start.getTime() < nu.getTime()) {
+      uit.overgeslagen.push({ sleutel, start, reden: 'verleden', regel });
+      continue;
+    }
+
+    // De minuten in het minuutveld optellen, niet in milliseconden: een les van 17:00 die over de
+    // uurwissel heen gepland wordt hoort om 17:00 te blijven staan.
+    const eind = new Date(
+      start.getFullYear(), start.getMonth(), start.getDate(),
+      start.getHours(), start.getMinutes() + duurMinuten,
+    );
+    const slot = { start_time: start.toISOString(), end_time: eind.toISOString() };
+
+    // De vakantie eerst: is de club dicht, dan doet het er niet meer toe of de trainer dan ook nog
+    // bezet was — exact de volgorde van de reeksenbouwer in lib/recurrence en van
+    // `planGroepWijziging` in lib/lesgroepen.
+    const vakantie = vakantieOpMoment([...vakanties], slot.start_time);
+    if (vakantie) {
+      uit.overgeslagen.push({ sleutel, start, reden: 'vakantie', vakantie: vakantie.naam, regel });
+      continue;
+    }
+
+    // De enige botsingsregel van de app; hier komt geen tweede versie van (lees het commentaar
+    // bij `botstMet`). Een bezette trainer of een bezette baan wordt gemeld en nooit stil
+    // overschreven: de bestaande les blijft precies staan waar hij staat.
+    if (botstMet(slot, bezet, { coachId: trainer.id, courtId: baan.id }) !== null) {
+      uit.overgeslagen.push({ sleutel, start, reden: 'bezet', regel });
+      continue;
+    }
+
+    uit.nieuweLessen.push({ sleutel, start, eind, groep, regel });
+  }
+
+  return uit;
 }
 
 // ---------------------------------------------------------------------------

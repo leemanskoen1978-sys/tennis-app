@@ -943,7 +943,7 @@ describe('lessenUitGroep', () => {
 
   it('slaat een les in een clubvakantie over, met de naam van de vakantie erbij', () => {
     const groep = groepUit([regelVan()]);
-    const herfst = { naam: 'Herfstvakantie', van: '2026-09-07', tot: '2026-09-13' };
+    const herfst = { id: 'v1', naam: 'Herfstvakantie', van: '2026-09-07', tot: '2026-09-13' };
     const uit = lessenUitGroep(groep, GEKOPPELD, [], [herfst], 60, NU);
     expect(uit.nieuweLessen).toEqual([]);
     expect(uit.overgeslagen).toHaveLength(1);
@@ -970,7 +970,7 @@ describe('lessenUitGroep', () => {
   it('telt een les in een vakantie én in een bezet uur één keer, als vakantie', () => {
     const groep = groepUit([regelVan()]);
     const bezet = boekingVan({ id: 'b-ander', group_id: 'g-ander' });
-    const herfst = { naam: 'Herfstvakantie', van: '2026-09-07', tot: '2026-09-13' };
+    const herfst = { id: 'v1', naam: 'Herfstvakantie', van: '2026-09-07', tot: '2026-09-13' };
     const uit = lessenUitGroep(groep, GEKOPPELD, [bezet], [herfst], 60, NU);
     expect(uit.overgeslagen).toHaveLength(1);
     expect(uit.overgeslagen[0].reden).toBe('vakantie');
@@ -988,7 +988,7 @@ describe('lessenUitGroep', () => {
   });
 
   it('plant geen les zonder trainer, en meldt het één keer', () => {
-    const groep = groepUit([regelVan()]);
+    const groep = groepUit([regelVan({ baan: 'Baan 1' })]);
     const koppeling = koppelingVoorGroep(groep, [], [BAAN]);
     const uit = lessenUitGroep(groep, koppeling, [], [], 60, NU);
     expect(uit.nieuweLessen).toEqual([]);
