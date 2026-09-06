@@ -153,9 +153,17 @@ De import is gedraaid op de productiedatabank. Wat er nu in staat:
 | Lesgroepen | 193 |
 | Spelers | 555 (510 nieuw, 45 stonden er al) |
 | Trainers | 13 (10 nieuw, 3 stonden er al) |
-| Lessen vanaf 7 september 2026 | 6396 |
+| Lessen vanaf 7 september 2026 | 5736 |
 
-**6396 en niet 6461.** Het verschil van 65 zijn de lessen van twee groepen zonder spelers —
+**Het seizoen eindigt op 6 juni 2027 en niet op 30 juni.** Dat stond er eerst fout in: een
+verkeerde lezing van de kalenderfoto, waar 7 t/m 30 juni wit is en dus buiten het seizoen valt.
+Het kwam aan het licht doordat de eigenaar dertig woensdagen telde en de app er vierendertig
+toonde. De rekensom wijst één kant op: met 6 juni komen dinsdag tot en met zaterdag allemaal op
+precies dertig lesweken uit, het getal van het tarievenblad; met 30 juni geen enkele dag.
+Rechtgezet met `SEIZOEN-EINDIGT-6-JUNI.sql`, dat 660 lessen verwijderde. De import doet dat niet
+zelf: die verwijdert nooit een les (D-13).
+
+**5736 en niet 5801.** Het verschil van 65 zijn de lessen van twee groepen zonder spelers —
 "Privéles - Groep 18" (zondag 15:00) en "GTTA - Groep 57" (zaterdag 16:00). Een groepsles zonder
 deelnemer kan niet bestaan: `Booking.player_id` is verplicht. De groepen staan er wel; zet er
 spelers in en lees het bestand opnieuw, dan komen hun lessen er alsnog bij.
