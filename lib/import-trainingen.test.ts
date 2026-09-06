@@ -9,6 +9,7 @@ import {
   ingrijpendeWijzigingen, overgeslagenPerReden,
   groepRosterVerschil, kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
+  seizoenUitSettings,
   trainerwisselVoorGroep,
   NIEUWE_SPELER, planImportLessen, spelerSleutel,
   groepWijzigingen, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
@@ -1101,6 +1102,32 @@ describe('lesduurVan', () => {
 
   it('duurt zestig minuten als de instelling er niet is', () => {
     expect(lesduurVan({})).toBe(60);
+  });
+});
+
+describe('seizoenUitSettings', () => {
+  it('leest het seizoen uit de clubinstellingen', () => {
+    expect(seizoenUitSettings({ season_start: '2026-09-07', season_end: '2027-06-30' }))
+      .toEqual({ van: '2026-09-07', tot: '2027-06-30' });
+  });
+
+  it('geeft null als het seizoen niet ingesteld is', () => {
+    expect(seizoenUitSettings({})).toBeNull();
+  });
+
+  it('geeft null bij een half seizoen: een datum zonder de andere is geen periode', () => {
+    expect(seizoenUitSettings({ season_start: '2026-09-07' })).toBeNull();
+    expect(seizoenUitSettings({ season_end: '2027-06-30' })).toBeNull();
+  });
+
+  it('geeft null als het einde voor het begin ligt', () => {
+    expect(seizoenUitSettings({ season_start: '2027-06-30', season_end: '2026-09-07' }))
+      .toBeNull();
+  });
+
+  it('geeft null bij een datum die geen jjjj-mm-dd is', () => {
+    expect(seizoenUitSettings({ season_start: '7 september', season_end: '2027-06-30' }))
+      .toBeNull();
   });
 });
 

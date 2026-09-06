@@ -1120,6 +1120,35 @@ export function lesduurVan(settings: Pick<Settings, 'lesson_duration_minutes'>):
   return typeof duur === 'number' && duur > 0 ? duur : LESDUUR_MINUTEN;
 }
 
+/** Het seizoen als twee dagsleutels. */
+export interface Seizoen {
+  van: string;
+  tot: string;
+}
+
+/** Een dagsleutel jjjj-mm-dd en niets anders — dezelfde vorm als `Vakantie.van`. */
+const DAGSLEUTEL = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Het seizoen uit de clubinstellingen, of `null` als het er niet bruikbaar in staat.
+ *
+ * Eén ingang, zodat elke plek die het seizoen nodig heeft dezelfde afwezigheid ziet. `null` is
+ * hier geen fout maar een toestand: een club die het nog niet ingesteld heeft hoort dat te
+ * lezen te krijgen, niet een verzonnen jaartal te zien.
+ *
+ * Een half seizoen telt als afwezig. Met één datum zonder de andere kan `lessenUitGroep` niets,
+ * en hem aanvullen met een gok is precies wat deze velden moesten wegnemen.
+ */
+export function seizoenUitSettings(
+  settings: Pick<Settings, 'season_start' | 'season_end'>,
+): Seizoen | null {
+  const van = (settings.season_start ?? '').trim();
+  const tot = (settings.season_end ?? '').trim();
+  if (!DAGSLEUTEL.test(van) || !DAGSLEUTEL.test(tot)) return null;
+  if (tot < van) return null;
+  return { van, tot };
+}
+
 /**
  * De sleutel waaraan één les te herkennen is: zijn lesgroep, zijn dag en zijn beginuur (D-11).
  *

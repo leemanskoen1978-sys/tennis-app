@@ -477,6 +477,24 @@ export interface Settings {
    */
   lesson_duration_minutes?: number;
   /**
+   * De eerste lesdag van het seizoen, als jjjj-mm-dd — dezelfde dagsleutel als `Vakantie.van`.
+   *
+   * WAAROM DIT NAAST DE VAKANTIES STAAT EN NIET ERIN. De clubkalender kleurt de dagen zonder
+   * les rood en de dagen buiten het seizoen wit. Alleen het rood zit in `vakanties`; het wit is
+   * geen vakantie maar een rand, en dat verschil kon de databank niet uitdrukken.
+   *
+   * De importer van het weekschema heeft die rand nodig. Dat bestand is een weekschema zonder
+   * één datum — de lessen volgen uit de kalender — en zonder begin en einde zou hij het seizoen
+   * moeten raden. Raden kost hier echte lessen: een gok op 1 september geeft de groepen van
+   * woensdag tot en met zaterdag een les extra in de week vóór het seizoen.
+   *
+   * Optioneel, en afwezig betekent "nog niet ingesteld" — net als `vakanties` en
+   * `lesson_duration_minutes`. De app doet dan wat ze deed voordat dit bestond.
+   */
+  season_start?: string;
+  /** De laatste lesdag van het seizoen, meegerekend. Zie `season_start`. */
+  season_end?: string;
+  /**
    * Wanneer er voor het laatst een seizoen trainingen ingelezen is, als ISO-tijdstip.
    *
    * Waarvoor het dient: weten dát er al eens een seizoen ingelezen is. Een importbestand is een
@@ -572,6 +590,18 @@ export interface LesGroep {
   weekday: number;
   start_hour: number;
   start_minute: number;
+  /**
+   * Hoe lang een les van deze groep duurt, in minuten. Leeg = de lesduur van de club.
+   *
+   * De club werkt met 60 minuten en voor 188 van haar 192 groepen klopt dat. Twee groepen duren
+   * 30 minuten en twee 90; dat staat in de kolom `Uur` van de clublijst als een reeks
+   * ("16:00 - 17:00") en ging bij het inlezen verloren, waarna die vier op 60 minuten in de
+   * agenda stonden.
+   *
+   * Leeg en niet "60": zo hoeft geen enkele bestaande groep aangeraakt te worden, en blijft een
+   * gewijzigde clubinstelling alles bepalen behalve de uitzonderingen.
+   */
+  duration_minutes?: number;
   /**
    * De trainer van de groep. Wie een groep via het scherm aanmaakt moet er een kiezen, maar
    * het veld zelf blijft optioneel: een import levert groepen op waarvan de trainer nog aan
