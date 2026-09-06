@@ -293,26 +293,36 @@ describe('planGroepWijziging', () => {
     expect(met.taught_by_id).toBe('jan');
   });
 
-  it('meldt een les die op een bezette trainer zou uitkomen, en geeft haar geen patch', () => {
+  // Een overlap blokkeert nooit en waarschuwt altijd. De twee tests hieronder bewijzen daarom
+  // allebei de helften: de les verhuist mee ÉN de botsing staat gemeld. Vroeger bleef zo'n les
+  // stilletjes op haar oude dag staan terwijl het scherm zei dat de groep verhuisd was.
+  it('verzet een les die op een bezette trainer uitkomt, en meldt de botsing', () => {
     const bezet: Booking = {
       ...base, id: 'bezet', coach_id: 'koen', court_id: 'court-9',
       start_time: iso(2026, 8, 9, 19), end_time: iso(2026, 8, 9, 20),
     };
     const plan = planGroepWijziging(groep(), naarWoensdagOm19, [lokaleLes('b-1', 2026, 8, 8), bezet], nu);
-    expect(plan.bookingPatches).toEqual([]);
-    expect(plan.geblokkeerd).toEqual([
-      { id: 'b-1', start_time: iso(2026, 8, 9, 19), reden: 'bezet', conflict: 'bezet' },
-    ]);
+    // De les IS verzet.
+    expect(plan.bookingPatches.map((p) => [p.id, p.start_time]))
+      .toEqual([['b-1', iso(2026, 8, 9, 19)]]);
+    expect(plan.geblokkeerd).toEqual([]);
+    // En de botsing IS gemeld, mét de les waarmee het botst.
+    expect(plan.botsingen.map((b) => [b.id, b.start_time, b.conflict.id]))
+      .toEqual([['b-1', iso(2026, 8, 9, 19), 'bezet']]);
   });
 
-  it('meldt ook een bezette baan, ook al is de trainer vrij', () => {
+  it('verzet ook bij een bezette baan, ook al is de trainer vrij, en meldt het', () => {
+    // Precies het kleutertennis: blauw en rood delen Terrein 7, elk een halve baan.
     const anderesTrainer: Booking = {
       ...base, id: 'baan', coach_id: 'sofie', court_id: 'court-1',
       start_time: iso(2026, 8, 9, 19), end_time: iso(2026, 8, 9, 20),
     };
     const plan = planGroepWijziging(groep(), naarWoensdagOm19, [lokaleLes('b-1', 2026, 8, 8), anderesTrainer], nu);
-    expect(plan.bookingPatches).toEqual([]);
-    expect(plan.geblokkeerd.map((g) => [g.reden, g.conflict])).toEqual([['bezet', 'baan']]);
+    expect(plan.bookingPatches.map((p) => p.id)).toEqual(['b-1']);
+    expect(plan.geblokkeerd).toEqual([]);
+    expect(plan.botsingen.map((b) => b.conflict.id)).toEqual(['baan']);
+    // De baan van de botsende les komt mee, zodat het scherm "Terrein 7" kan zeggen.
+    expect(plan.botsingen[0].conflict.court_id).toBe('court-1');
   });
 
   it('laat een groep niet met haar eigen lessen botsen', () => {
@@ -320,12 +330,15 @@ describe('planGroepWijziging', () => {
     const lijst = [lokaleLes('b-1', 2026, 8, 8), lokaleLes('b-2', 2026, 8, 15)];
     const plan = planGroepWijziging(groep(), { start_minute: 30 }, lijst, nu);
     expect(plan.geblokkeerd).toEqual([]);
+    expect(plan.botsingen).toEqual([]);
     expect(plan.bookingPatches.map((p) => p.id)).toEqual(['b-1', 'b-2']);
   });
 
   it('meldt een les die in een clubvakantie zou vallen, met de naam erbij', () => {
     const herfst: Vakantie = { id: 'v1', naam: 'Herfstvakantie', van: '2026-09-07', tot: '2026-09-13' };
     const plan = planGroepWijziging(groep(), naarWoensdagOm19, [lokaleLes('b-1', 2026, 8, 8)], nu, [herfst]);
+    // DE GRENS VAN DEZE FASE: de vakantie blokkeert nog steeds wél. Alleen de overlapregel is
+    // verzacht — een les op een dag dat de club dicht is hoort niet ingepland te worden.
     expect(plan.bookingPatches).toEqual([]);
     expect(plan.geblokkeerd.map((g) => [g.reden, g.vakantie])).toEqual([['vakantie', 'Herfstvakantie']]);
   });
@@ -338,6 +351,9 @@ describe('planGroepWijziging', () => {
     };
     const plan = planGroepWijziging(groep(), naarWoensdagOm19, [lokaleLes('b-1', 2026, 8, 8), bezet], nu, [herfst]);
     expect(plan.geblokkeerd.map((g) => g.reden)).toEqual(['vakantie']);
+    // De vakantie is het hele antwoord: de les verhuist niet, dus er valt ook niets te melden.
+    expect(plan.bookingPatches).toEqual([]);
+    expect(plan.botsingen).toEqual([]);
   });
 
   it('verhuist nooit een les het verleden in', () => {

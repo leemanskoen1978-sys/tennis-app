@@ -14,7 +14,7 @@
 // twee antwoorden op dezelfde vraag is precies wat deze verwijzing moet voorkomen.
 
 import { t } from './i18n';
-import { botstMet } from './recurrence';
+import { botstMet, type BezetBoeking } from './recurrence';
 import { vakantieOpMoment } from './vakanties';
 import type { Booking, LesGroep, Vakantie } from './types';
 
@@ -153,16 +153,35 @@ export interface VerzetPatch {
   court_id: string;
 }
 
-/** Een komende les die het verzetten niet kan volgen, met de reden waarom. */
+/**
+ * Een komende les die het verzetten niet kan volgen, met de reden waarom.
+ *
+ * `'bezet'` stond hier tot 6 september 2026 ook bij en is weg: een overlap houdt een les niet
+ * meer tegen, ze verhuist mee en komt in `botsingen` te staan. Wat overblijft zijn de twee
+ * redenen die écht blokkeren — de club is dicht, of het moment is al geweest.
+ */
 export interface GeblokkeerdeLes {
   id: string;
   /** Het nieuwe moment dat voorgesteld werd — niet waar de les nu staat. */
   start_time: string;
-  reden: 'bezet' | 'vakantie' | 'verleden';
+  reden: 'vakantie' | 'verleden';
   /** De naam van de vakantie, als dat de reden was. */
   vakantie?: string;
-  /** De boeking waarmee het botst, als dat de reden was. */
-  conflict?: string;
+}
+
+/**
+ * Een les die wél mee verhuist, maar op haar nieuwe plek overlapt met een andere les.
+ *
+ * De hele botsende boeking en niet enkel haar id: het scherm moet kunnen zeggen wáármee het
+ * botst (lib/botsingen maakt er een zin van), en met alleen een id zou het die les eerst weer
+ * moeten opzoeken in een lijst die het hier al had.
+ */
+export interface BotsendeVerzetting {
+  id: string;
+  /** Het nieuwe moment van de verhuizende les. */
+  start_time: string;
+  /** De bestaande les waarmee dat moment overlapt. */
+  conflict: BezetBoeking;
 }
 
 /** Het plan voor een verzetting: wat er zou veranderen, en wat er niet kan. */
@@ -173,6 +192,12 @@ export interface GroepWijzigingPlan {
   bookingPatches: VerzetPatch[];
   /** De komende lessen die niet mee kunnen, met de reden erbij. */
   geblokkeerd: GeblokkeerdeLes[];
+  /**
+   * De lessen uit `bookingPatches` die op hun nieuwe plek overlappen. Ze staan er dus twéé
+   * keer in: hier als waarschuwing, en in `bookingPatches` omdat ze verzet worden. Wie deze
+   * lijst niet toont verzet een groep stilzwijgend bovenop een andere.
+   */
+  botsingen: BotsendeVerzetting[];
 }
 
 /** De velden waarvan een wijziging een al ingeplande les raakt. */
@@ -203,7 +228,9 @@ export function planGroepWijziging(
   vakanties: Vakantie[] = [],
 ): GroepWijzigingPlan {
   const nieuw: LesGroep = { ...group, ...patch };
-  const leeg: GroepWijzigingPlan = { group: nieuw, bookingPatches: [], geblokkeerd: [] };
+  const leeg: GroepWijzigingPlan = {
+    group: nieuw, bookingPatches: [], geblokkeerd: [], botsingen: [],
+  };
 
   // Naam, niveau en seizoen raken geen enkele les: alleen deze vijf velden bepalen waar en
   // bij wie een les staat.
@@ -219,6 +246,7 @@ export function planGroepWijziging(
 
   const bookingPatches: VerzetPatch[] = [];
   const geblokkeerd: GeblokkeerdeLes[] = [];
+  const botsingen: BotsendeVerzetting[] = [];
 
   for (const les of raken) {
     const oud = new Date(les.start_time);
@@ -248,15 +276,16 @@ export function planGroepWijziging(
       geblokkeerd.push({ id: les.id, start_time, reden: 'vakantie', vakantie: vakantie.naam });
       continue;
     }
+    // De botsing houdt de les niet meer tegen: hij verhuist mee en wordt gemeld. Bij het
+    // kleutertennis van deze club delen blauw en rood één half Terrein 7 en draait dezelfde
+    // trainer er twee groepen naast elkaar — vroeger bleef zo'n groep bij een verzetting
+    // stilletjes op haar oude dag staan, terwijl het scherm zei dat ze verhuisd was.
     const conflict = botstMet(
       { start_time, end_time: eindDatum.toISOString() },
       bookings,
       { coachId: nieuw.coach_id ?? les.coach_id, courtId: nieuw.court_id, negeer },
     );
-    if (conflict) {
-      geblokkeerd.push({ id: les.id, start_time, reden: 'bezet', conflict: conflict.id });
-      continue;
-    }
+    if (conflict) botsingen.push({ id: les.id, start_time, conflict });
     bookingPatches.push({
       id: les.id,
       start_time,
@@ -267,7 +296,7 @@ export function planGroepWijziging(
     });
   }
 
-  return { group: nieuw, bookingPatches, geblokkeerd };
+  return { group: nieuw, bookingPatches, geblokkeerd, botsingen };
 }
 
 /**

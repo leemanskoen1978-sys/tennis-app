@@ -45,6 +45,7 @@ import { DAY_LABELS } from '../../../lib/slots';
 import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
 import { spacing, radius, typography } from '../../../constants/theme';
+import { botsingRegels } from '../../../lib/botsingen';
 import type { GeblokkeerdeLes } from '../../../lib/lesgroepen';
 import type { LesGroep } from '../../../lib/types';
 
@@ -190,8 +191,21 @@ export default function LesgroepDetailScreen(): React.JSX.Element {
     voorvertoning?.geblokkeerd.filter((g) => g.reden === reden) ?? [];
 
   /** De dagen van die lessen op een rij, met dezelfde datumopmaak als overal elders. */
-  const dagenVan = (lessen: GeblokkeerdeLes[]): string =>
+  const dagenVan = (lessen: Array<{ start_time: string }>): string =>
     lessen.map((g) => formatDay(g.start_time)).join(', ');
+
+  // Waarmee de botsingen gemeld worden. Dezelfde trainer en baan als waarvoor het plan ze
+  // vond, anders zou de zin de verkeerde helft van de overlap benoemen.
+  const botsingVraag = {
+    coachId: huidig.trainerId ?? groep?.coach_id ?? '',
+    courtId: huidig.baanId ?? undefined,
+  };
+  /** Eén regel per andere les waarmee deze groep zou samenvallen, ontdubbeld over de weken. */
+  const botsingLijst = botsingRegels(
+    voorvertoning?.botsingen ?? [],
+    botsingVraag,
+    { trainers: users, banen: courts },
+  );
 
   const bewaar = (): void => {
     const vanDag = parseDayInput(huidig.van);
@@ -338,13 +352,23 @@ export default function LesgroepDetailScreen(): React.JSX.Element {
                 })}
               </Text>
             ) : null}
-            {geblokkeerd('bezet').length > 0 ? (
-              <Text style={styles.uitleg}>
-                {t('{lessen} blijven staan: de trainer of de baan is dan al bezet: {dagen}.', {
-                  lessen: lessenTelling(geblokkeerd('bezet').length),
-                  dagen: dagenVan(geblokkeerd('bezet')),
-                })}
-              </Text>
+            {/* De botsende lessen verhuizen gewoon mee — een overlap blokkeert nooit en
+                waarschuwt altijd — maar ze staan in het rood, met erbij wáármee ze samenvallen.
+                Op Terrein 7 delen blauw en rood een halve baan en is dat precies de bedoeling;
+                twee volwassenengroepen op één terrein is een vergissing. Vroeger bleven deze
+                lessen stilletjes op hun oude dag staan terwijl de groep verhuisd heette. */}
+            {voorvertoning.botsingen.length > 0 ? (
+              <>
+                <Text style={styles.fout}>
+                  {t('{lessen} komen tegelijk met een andere les te staan: {dagen}.', {
+                    lessen: lessenTelling(voorvertoning.botsingen.length),
+                    dagen: dagenVan(voorvertoning.botsingen),
+                  })}
+                </Text>
+                {botsingLijst.map((regel) => (
+                  <Text key={regel} style={styles.fout}>{regel}</Text>
+                ))}
+              </>
             ) : null}
             {geblokkeerd('vakantie').length > 0 ? (
               <Text style={styles.uitleg}>
