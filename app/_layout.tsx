@@ -99,6 +99,7 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   { name: 'admin/export', title: t('Trainingen exporteren') },
   { name: 'admin/leden', title: t('Leden') },
   { name: 'admin/leden-import', title: t('Leden importeren') },
+  { name: 'admin/trainingen-import', title: t('Trainingen importeren') },
   { name: 'admin/ouders', title: t('Ouders en kinderen') },
   { name: 'admin/handleiding', title: t('Handleiding') },
   { name: 'kinderen', title: t('Mijn kinderen') },

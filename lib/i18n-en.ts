@@ -964,6 +964,105 @@ export const EN: Record<string, string> = {
     '{toegevoegd} added, {bijgewerkt} updated, {mislukt} failed. Nobody already there gets added '
     + 'twice if you try again.',
 
+  // --- trainingen importeren ----------------------------------------------
+  'Trainingen importeren': 'Import training sessions',
+  'Een seizoen uit Excel': 'A season from Excel',
+  'Trainingen importeren is alleen voor de beheerder.':
+    'Importing training sessions is for the administrator only.',
+  'Kies het Excel-bestand met een heel seizoen erin: één regel per les en per leerling. Verplicht zijn Datum, Uur, Groep, Coach en Leerling; Type les, Groep-ID, E-mail leerling en Baan mogen erbij.':
+    'Pick the Excel file with a whole season in it: one row per lesson and per student. '
+    + 'Datum, Uur, Groep, Coach and Leerling are required; Type les, Groep-ID, E-mail leerling '
+    + 'and Baan may be added.',
+  'Op een telefoon of tablet kan hier geen bestand gekozen worden, en een Excel-bestand valt niet te plakken. Doe deze import op een computer, in de browser.':
+    'On a phone or tablet no file can be picked here, and an Excel file cannot be pasted. '
+    + 'Do this import on a computer, in the browser.',
+  'Dit bestand heeft geen enkel blad met lessen erin.': 'This file has no sheet with lessons in it.',
+  'Dit is geen Excel-bestand dat ik kan lezen. Bewaar het in Excel als .xlsx en kies het opnieuw.':
+    'This is not an Excel file I can read. Save it in Excel as .xlsx and pick it again.',
+  '{nieuw} nieuwe lesgroepen, {bijgewerkt} bijgewerkt, {ongewijzigd} ongewijzigd.':
+    '{nieuw} new lesson groups, {bijgewerkt} updated, {ongewijzigd} unchanged.',
+  '{spelers} nieuwe spelers, {lessen} lessen ingepland.':
+    '{spelers} new players, {lessen} lessons scheduled.',
+  '{groepen} lesgroepen aangemaakt, {bijgewerkt} bijgewerkt, {spelers} spelers erbij, {lessen} lessen ingepland.':
+    '{groepen} lesson groups created, {bijgewerkt} updated, {spelers} players added, '
+    + '{lessen} lessons scheduled.',
+  '{n} lessen staan al goed en blijven zoals ze zijn.':
+    '{n} lessons are already correct and stay as they are.',
+  '{vakantie} vallen in een clubvakantie, {bezet} botsen met een bezette trainer of baan, {verleden} zijn al geweest.':
+    '{vakantie} fall in a club holiday, {bezet} clash with a busy coach or court, '
+    + '{verleden} have already taken place.',
+  'Deze lesgroepen worden niet aangemaakt': 'These lesson groups will not be created',
+  '{n} van de nieuwe lesgroepen hierboven komen er nu niet, en hun lessen dus ook niet.':
+    '{n} of the new lesson groups above will not be created now, and neither will their lessons.',
+  'Ontbreekt de trainer? Geef hem eerst een traineraccount in Beheer en kies daarna hetzelfde bestand opnieuw; dan komen deze groepen er alsnog bij.':
+    'Is the coach missing? Give them a coach account in Admin first, then pick the same file '
+    + 'again; these groups will be added after all.',
+  'Nieuwe lesgroepen': 'New lesson groups',
+  'Lesgroepen die bijgewerkt worden': 'Lesson groups that will be updated',
+  'Lesgroepen die niet veranderen': 'Lesson groups that do not change',
+  '1 nieuwe speler': '1 new player',
+  '{n} nieuwe spelers': '{n} new players',
+  'Met de hand verzet of afgezegd; dit blijft zoals het staat':
+    'Moved or cancelled by hand; this stays as it is',
+  '{groep} op {dag}: staat op {bestaandeTijd}, het bestand zegt {tijdInBestand}.':
+    '{groep} on {dag}: currently at {bestaandeTijd}, the file says {tijdInBestand}.',
+  'Deze lessen staan in de app maar niet meer in het bestand':
+    'These lessons are in the app but no longer in the file',
+  'Ze blijven staan; een import haalt nooit iets weg.':
+    'They stay; an import never removes anything.',
+  '{groep} op {dag} om {tijd}.': '{groep} on {dag} at {tijd}.',
+  'Zet in Supabase eerst "Confirm email" aan. Deze import maakt spelersaccounts aan voor die mensen zelf ooit ingelogd hebben, en zonder die instelling kan iemand met hun e-mailadres zo een account claimen.':
+    'Turn on “Confirm email” in Supabase first. This import creates player accounts before those '
+    + 'people have ever logged in, and without that setting anyone who knows their email address '
+    + 'can claim such an account.',
+  'Eerst gaan de spelers weg, dan de lesgroepen, dan de lessen. Gaat er onderweg iets mis, dan blijft staan wat er al stond en komt er niets dubbel bij: hetzelfde bestand nog een keer inlezen maakt het af. Het is dus veilig om opnieuw te draaien, maar het is geen import die zichzelf in één keer terugdraait.':
+    'The players are saved first, then the lesson groups, then the lessons. If something goes '
+    + 'wrong along the way, whatever was already saved stays and nothing is added twice: reading '
+    + 'the same file again finishes the job. So it is safe to re-run, but it is not an import '
+    + 'that rolls itself back in one go.',
+  'Zeker weten?': 'Are you sure?',
+  'Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app.':
+    'After this the players, lesson groups and lessons above are really in the app.',
+  'Ja, nu importeren': 'Yes, import now',
+  'Nee, toch niet': 'No, never mind',
+  'Dit is niet weggeschreven': 'This was not saved',
+  'Het wegschrijven is halverwege misgegaan': 'Saving went wrong halfway',
+  'Het wegschrijven is mislukt.': 'Saving failed.',
+  'Wat er al weggeschreven was, blijft staan. Er komt niets dubbel bij: kies hieronder Opnieuw proberen, dan zie je wat er nog openstaat.':
+    'Whatever was already saved stays. Nothing is added twice: choose Try again below to see '
+    + 'what is still outstanding.',
+
+  // --- redenen uit de trainingenimport, ingevuld op het scherm --------------
+  'De koprij mist een verplichte kolom: Datum, Uur, Groep, Coach of Leerling.':
+    'The header row is missing a required column: Datum, Uur, Groep, Coach or Leerling.',
+  'Geen datum ingevuld.': 'No date filled in.',
+  'Geen uur ingevuld.': 'No time filled in.',
+  'Geen coach ingevuld.': 'No coach filled in.',
+  'Geen leerling ingevuld.': 'No student filled in.',
+  'Deze datum kon niet gelezen worden: {waarde}': 'This date could not be read: {waarde}',
+  'Dit uur kon niet gelezen worden: {waarde}': 'This time could not be read: {waarde}',
+  'Deze groep heeft een Groep-ID dat ik niet ken: {waarde}. Ik zoek de groep op naam, dag en uur.':
+    'This group has a Groep-ID I do not know: {waarde}. I look the group up by name, day and time.',
+  'De groep {groep} heeft meer dan één coach: {gekozen} en {andere}. Ik neem {gekozen}.':
+    'Group {groep} has more than one coach: {gekozen} and {andere}. I use {gekozen}.',
+  'De groep {groep} heeft meer dan één Type les: {gekozen} en {andere}. Ik neem {gekozen}.':
+    'Group {groep} has more than one Type les: {gekozen} and {andere}. I use {gekozen}.',
+  'Er staan al meerdere leden die {naam} kunnen zijn; koppel deze leerling zelf, ik laat hem staan.':
+    'Several members could be {naam}; link this student yourself, I leave them alone.',
+  'Ik ken geen trainer {naam}; koppel hem aan een account, anders worden de lessen van {groep} niet ingepland.':
+    'I do not know a coach {naam}; link them to an account, otherwise the lessons of {groep} '
+    + 'are not scheduled.',
+  'Bij {groep} staat geen trainer; zonder trainer worden haar lessen niet ingepland.':
+    'There is no coach for {groep}; without a coach its lessons are not scheduled.',
+  'Ik ken geen baan {waarde}; koppel er een aan {groep}, anders worden haar lessen niet ingepland.':
+    'I do not know a court {waarde}; link one to {groep}, otherwise its lessons are not scheduled.',
+  'Bij {groep} staat geen baan; koppel er een, anders worden haar lessen niet ingepland.':
+    'There is no court for {groep}; link one, otherwise its lessons are not scheduled.',
+  'Ik kan de lesgroep {groep} niet aanmaken: {reden} Haar lessen gaan dus ook niet door.':
+    'I cannot create lesson group {groep}: {reden} So its lessons do not go ahead either.',
+  'De lessen van {groep} worden niet ingepland: er ontbreekt een trainer, een baan of een leerling.':
+    'The lessons of {groep} are not scheduled: a coach, a court or a student is missing.',
+
   // --- redenen waarom een regel wordt overgeslagen -------------------------
   'Dit bestand is leeg.': 'This file is empty.',
   'De kopregel mist de kolom "naam" of "email".':

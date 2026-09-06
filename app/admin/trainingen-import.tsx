@@ -41,20 +41,33 @@ import { spacing, typography } from '../../constants/theme';
 // de uitslag spoorloos laten verdwijnen.
 let importDraait = false;
 let laatsteUitslag: ImportUitslagLessen | null = null;
+let laatsteMislukking: string | null = null;
 
-type ImportGebeurtenis = { type: 'klaar'; uitslag: ImportUitslagLessen };
+type ImportGebeurtenis =
+  | { type: 'klaar'; uitslag: ImportUitslagLessen }
+  | { type: 'mislukt'; melding: string };
 
 const importLuisteraars = new Set<(gebeurtenis: ImportGebeurtenis) => void>();
 
 function meldImportKlaar(uitslag: ImportUitslagLessen): void {
   importDraait = false;
   laatsteUitslag = uitslag;
+  laatsteMislukking = null;
   importLuisteraars.forEach((fn) => fn({ type: 'klaar', uitslag }));
+}
+
+/** Ook een mislukking hoort een her-mount te overleven: anders blijft "Bezig" voor altijd staan. */
+function meldImportMislukt(melding: string): void {
+  importDraait = false;
+  laatsteUitslag = null;
+  laatsteMislukking = melding;
+  importLuisteraars.forEach((fn) => fn({ type: 'mislukt', melding }));
 }
 
 /** Wist wat er nog van een eerdere beurt in het geheugen stond, bij elke nieuwe stap. */
 function wisLaatsteUitslag(): void {
   laatsteUitslag = null;
+  laatsteMislukking = null;
 }
 
 export default function TrainingenImport(): React.JSX.Element {
@@ -81,29 +94,40 @@ function uurTekst(uur: number, minuut: number): string {
 
 function ImportInhoud(): React.JSX.Element {
   const t = useT();
-  const { users, courts, bookings, lesGroepen, settings } = useSimpleData();
+  const { users, courts, bookings, lesGroepen, settings, importeerTrainingen } = useSimpleData();
 
   const [bestandsnaam, setBestandsnaam] = useState<string>('');
+  // De bytes blijven staan zolang het scherm openstaat, en dat is precies wat "opnieuw proberen"
+  // mogelijk maakt: het plan wordt dan opnieuw uitgerekend tegen de intussen bijgewerkte lijsten,
+  // zonder de beheerder zijn bestand nog eens te laten zoeken.
+  const [bytes, setBytes] = useState<Uint8Array | null>(null);
   const [plan, setPlan] = useState<ImportPlanLessen | null>(null);
   const [leesFout, setLeesFout] = useState<string | null>(null);
   const [bezig, setBezig] = useState<boolean>(importDraait);
   const [uitkomst, setUitkomst] = useState<ImportUitslagLessen | null>(null);
+  const [mislukking, setMislukking] = useState<string | null>(null);
 
   useEffect(() => {
     const onGebeurtenis = (g: ImportGebeurtenis): void => {
       setBezig(false);
-      setUitkomst(g.uitslag);
+      if (g.type === 'klaar') { setMislukking(null); setUitkomst(g.uitslag); return; }
+      setUitkomst(null);
+      setMislukking(g.melding);
     };
     importLuisteraars.add(onGebeurtenis);
     // Hermontage tijdens, of vlak ná, het wegschrijven: haal op wat er al bekend is in plaats
-    // van bij nul te beginnen.
+    // van bij nul te beginnen. Eenmalig afleveren: eenmaal getoond hoort een latere, losse
+    // opening van dit scherm deze oude uitslag niet nog eens te zien.
     if (!importDraait && laatsteUitslag) {
-      // Eenmalig afleveren: eenmaal getoond hoort een latere, losse opening van dit scherm deze
-      // oude uitslag niet nog eens te zien.
       const uitslag = laatsteUitslag;
       laatsteUitslag = null;
       setBezig(false);
       setUitkomst(uitslag);
+    } else if (!importDraait && laatsteMislukking) {
+      const melding = laatsteMislukking;
+      laatsteMislukking = null;
+      setBezig(false);
+      setMislukking(melding);
     }
     return () => { importLuisteraars.delete(onGebeurtenis); };
   }, []);
@@ -124,19 +148,23 @@ function ImportInhoud(): React.JSX.Element {
   const opnieuw = (): void => {
     wisLaatsteUitslag();
     setBestandsnaam('');
+    setBytes(null);
     setPlan(null);
     setLeesFout(null);
     setUitkomst(null);
+    setMislukking(null);
   };
 
-  const toonPlan = (naam: string, bytes: Uint8Array): void => {
+  const toonPlan = (naam: string, inhoud: Uint8Array): void => {
     wisLaatsteUitslag();
     setBestandsnaam(naam);
+    setBytes(inhoud);
     setUitkomst(null);
+    setMislukking(null);
     // Eén melding over het hele bestand als het niet eens een werkmap blijkt: dat is iets
     // anders dan een regel die niet deugt, en het hoort ook anders op het scherm te staan.
     try {
-      const blad = kiesLessenBlad(leesWerkmap(bytes));
+      const blad = kiesLessenBlad(leesWerkmap(inhoud));
       if (!blad) {
         setPlan(null);
         setLeesFout(t('Dit bestand heeft geen enkel blad met lessen erin.'));
@@ -149,6 +177,32 @@ function ImportInhoud(): React.JSX.Element {
     } catch {
       setPlan(null);
       setLeesFout(t('Dit is geen Excel-bestand dat ik kan lezen. Bewaar het in Excel als .xlsx en kies het opnieuw.'));
+    }
+  };
+
+  /**
+   * Het plan opnieuw uitrekenen tegen de lijsten zoals ze nú zijn, uit dezelfde bytes.
+   *
+   * Dat is D-21 op het scherm: mislukte het wegschrijven halverwege, dan staan de spelers er al
+   * en de groepen misschien niet. Dit toont dan wat er nog openstaat, in plaats van de beheerder
+   * hetzelfde bestand nog eens te laten zoeken en hem te laten raden of hij nu alles dubbel doet.
+   */
+  const probeerOpnieuw = (): void => {
+    if (bytes !== null) toonPlan(bestandsnaam, bytes);
+  };
+
+  const voerUit = async (): Promise<void> => {
+    if (!plan || bezig || importDraait) return;
+    importDraait = true;
+    setBezig(true);
+    setMislukking(null);
+    try {
+      meldImportKlaar(await importeerTrainingen(plan));
+    } catch (e) {
+      // `commit` zet de lokale opslag terug en gooit de fout door, maar wat er al bij Supabase
+      // stond blijft daar staan. Er wordt hier dus niet gezegd dat er niets gebeurd is — het
+      // scherm biedt "Opnieuw proberen" aan en zegt waarom dat het afmaakt (D-21).
+      meldImportMislukt(e instanceof Error ? e.message : t('Het wegschrijven is mislukt.'));
     }
   };
 
@@ -240,8 +294,11 @@ function ImportInhoud(): React.JSX.Element {
           plan={plan}
           bestandsnaam={bestandsnaam}
           uitkomst={uitkomst}
+          mislukking={mislukking}
           groepenKaart={groepenKaart}
           onAnderBestand={opnieuw}
+          onImporteren={() => { void voerUit(); }}
+          onOpnieuwProberen={probeerOpnieuw}
         />
       ) : null}
     </Screen>
@@ -256,16 +313,27 @@ function ImportInhoud(): React.JSX.Element {
  * de lessen, dan wat de beheerder met de hand moet nakijken, en pas daarna wat er misging.
  */
 function PlanInBeeld({
-  plan, bestandsnaam, uitkomst, groepenKaart, onAnderBestand,
+  plan, bestandsnaam, uitkomst, mislukking, groepenKaart,
+  onAnderBestand, onImporteren, onOpnieuwProberen,
 }: {
   plan: ImportPlanLessen;
   bestandsnaam: string;
   uitkomst: ImportUitslagLessen | null;
+  mislukking: string | null;
   groepenKaart: (kop: string, groepen: GroepInPlan[]) => React.JSX.Element | null;
   onAnderBestand: () => void;
+  onImporteren: () => void;
+  onOpnieuwProberen: () => void;
 }): React.JSX.Element {
   const t = useT();
+  // De bevestiging staat hier en niet in de provider: er wordt pas iets weggeschreven nadat de
+  // beheerder deze droogloop gezien heeft én daarna nog een keer uitdrukkelijk ja zegt.
+  const [bevestigen, setBevestigen] = useState<boolean>(false);
   const overgeslagen = overgeslagenPerReden(plan);
+  const nietsNieuws = plan.groepenNieuw.length === 0
+    && plan.groepenBijgewerkt.length === 0
+    && plan.spelersNieuw.length === 0
+    && plan.nieuweLessen.length === 0;
   // Deze tien zinnen horen náást de tien nieuwe groepen te staan en niet erna. Zonder ze leest
   // een beheerder "tien nieuwe lesgroepen", drukt hij op Importeren en krijgt hij er nul.
   const geweigerd = geweigerdeNieuweGroepen(plan);
@@ -412,9 +480,75 @@ function PlanInBeeld({
         </Card>
       ) : null}
 
-      <Card>
-        <Button label={t('Ander bestand')} variant="secondary" onPress={onAnderBestand} />
-      </Card>
+      {uitkomst && uitkomst.fouten.length > 0 ? (
+        <Card>
+          <Text style={styles.foutKop}>{t('Dit is niet weggeschreven')}</Text>
+          {uitkomst.fouten.map((f) => (
+            <Text key={`u-${f.regel}-${f.reden}`} style={styles.fout}>
+              {t('Regel {regel}', { regel: f.regel })}: {t(f.reden, f.vars)}
+            </Text>
+          ))}
+        </Card>
+      ) : null}
+
+      {mislukking !== null ? (
+        <Card>
+          <Text style={styles.foutKop}>{t('Het wegschrijven is halverwege misgegaan')}</Text>
+          <Text style={styles.fout}>{mislukking}</Text>
+          <Text style={styles.uitleg}>
+            {t('Wat er al weggeschreven was, blijft staan. Er komt niets dubbel bij: kies hieronder Opnieuw proberen, dan zie je wat er nog openstaat.')}
+          </Text>
+        </Card>
+      ) : null}
+
+      {uitkomst || mislukking !== null ? (
+        <Card>
+          {/* Opnieuw proberen rekent het plan opnieuw uit tegen de intussen bijgewerkte lijsten,
+              uit dezelfde bytes. Zo staat er precies wat er nog te doen is: elke speler wordt op
+              zijn naam herkend, elke groep op haar sleutel of haar Groep-ID, en elke les op groep
+              + dag + beginuur. Niets wordt blind toegevoegd. */}
+          {mislukking !== null || (uitkomst && uitkomst.fouten.length > 0) ? (
+            <Button label={t('Opnieuw proberen')} onPress={onOpnieuwProberen} />
+          ) : null}
+          <Button
+            label={t('Nieuwe import')}
+            variant="secondary"
+            onPress={onAnderBestand}
+            style={styles.knop}
+          />
+        </Card>
+      ) : bevestigen ? (
+        <Card>
+          <Text style={styles.kop}>{t('Zeker weten?')}</Text>
+          <Text style={styles.uitleg}>
+            {t('Hierna staan de spelers, de lesgroepen en de lessen hierboven echt in de app.')}
+          </Text>
+          <Button label={t('Ja, nu importeren')} onPress={onImporteren} />
+          <Button
+            label={t('Nee, toch niet')}
+            variant="secondary"
+            onPress={() => setBevestigen(false)}
+            style={styles.knop}
+          />
+        </Card>
+      ) : (
+        <Card>
+          {/* De operationele afspraak van de ledenimport geldt hier net zo goed, en zwaarder: dit
+              maakt in één keer tientallen spelersaccounts aan. Zie .planning/codebase/CONCERNS.md
+              — de app kan die instelling niet zelf nakijken, dus staat ze hier als herinnering. */}
+          <Text style={styles.mededeling}>
+            {t('Zet in Supabase eerst "Confirm email" aan. Deze import maakt spelersaccounts aan voor die mensen zelf ooit ingelogd hebben, en zonder die instelling kan iemand met hun e-mailadres zo een account claimen.')}
+          </Text>
+          <Button label={t('Importeren')} disabled={nietsNieuws} onPress={() => setBevestigen(true)} />
+          {/* Geen belofte over een transactie die deze app niet heeft (D-21): er is geen
+              kruistabel-transactie, en die kan er niet komen zonder SQL. Wat er wél is, is dat
+              opnieuw inlezen het afmaakt — en dat staat er dus in gewone taal. */}
+          <Text style={styles.uitleg}>
+            {t('Eerst gaan de spelers weg, dan de lesgroepen, dan de lessen. Gaat er onderweg iets mis, dan blijft staan wat er al stond en komt er niets dubbel bij: hetzelfde bestand nog een keer inlezen maakt het af. Het is dus veilig om opnieuw te draaien, maar het is geen import die zichzelf in één keer terugdraait.')}
+          </Text>
+          <Button label={t('Ander bestand')} variant="secondary" onPress={onAnderBestand} />
+        </Card>
+      )}
     </>
   );
 }
@@ -428,6 +562,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     marginBottom: spacing.md,
   },
+  knop: { marginTop: spacing.md },
   telling: { ...typography.h3, color: tennisColors.primary, marginBottom: spacing.sm },
   regel: { fontSize: 14, color: tennisColors.text, marginTop: spacing.xs },
   mededeling: { fontSize: 14, color: tennisColors.textMuted, marginBottom: spacing.sm },

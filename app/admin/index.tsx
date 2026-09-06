@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import {
   CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, UserPlus, Target, Ticket,
   Upload, Users, UserCog, BookOpen, CalendarOff, Clock, GraduationCap, FileSpreadsheet,
-  Thermometer,
+  Thermometer, FileUp,
   type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
@@ -104,6 +104,12 @@ export default function Admin() {
         // en het is deze fase de enige grens, want er is geen tabel en dus geen policy achter.
         ...(isAdmin(currentUser)
           ? [{ key: 'export', title: t('Trainingen exporteren'), subtitle: t('Eén Excel-bestand per periode'), icon: FileSpreadsheet, onPress: () => router.push('/admin/export') } as Tile]
+          : []),
+        // De tegenhanger van de export, en om dezelfde reden alleen voor de beheerder: dit
+        // bestand gaat over de hele club en maakt in één beurt lesgroepen, spelers en lessen
+        // aan. Het scherm zelf bewaakt die grens ook (D-06); dit is de wellevendheid.
+        ...(isAdmin(currentUser)
+          ? [{ key: 'import-trainingen', title: t('Trainingen importeren'), subtitle: t('Een seizoen uit Excel'), icon: FileUp, onPress: () => router.push('/admin/trainingen-import') } as Tile]
           : []),
         // Het aantal op de tegel is het aantal beslissingen dat op iemand ligt te wachten:
         // zolang er niets gebeurt, ziet een ouder een lege app.
