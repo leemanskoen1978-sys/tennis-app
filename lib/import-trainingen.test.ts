@@ -4,10 +4,10 @@ import { join } from 'path';
 import { GROEPSLES_METHOD } from './beurtenkaart';
 import { bladLessen, opzoektabellen } from './export-trainingen';
 import {
-  alsBezet, bestandAfgekeurdLessen, deelnemersVoorLes, groepenUitRegels, groepRosterVerschil,
-  kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
+  alsBezet, bestandAfgekeurdLessen, bouwImportWijziging, deelnemersVoorLes, groepenUitRegels,
+  groepRosterVerschil, kiesLessenBlad, koppelingVoorGroep, leesDatumCel, leesKopregelLessen,
   leesLesRegels, leesUurCel, lesduurVan, lesSleutel, lessenUitGroep, nieuwLidUitSpeler,
-  planImportLessen, spelerSleutel,
+  NIEUWE_SPELER, planImportLessen, spelerSleutel,
   groepWijzigingen, spelersUitRegels, voorbeeldTrainingenXlsx, zoekBaan, zoekTrainer,
   type GeplandeGroep, type GeplandeLes, type GroepKoppeling, type ImportBoeking,
   type ImportPlanLessen, type LesRegel,
@@ -1869,5 +1869,238 @@ describe('heen en terug met de export van fase 4', () => {
     expect(plan.groepenBijgewerkt).toEqual([]);
     expect(plan.groepenOngewijzigd).toEqual([]);
     expect(plan.nieuweLessen).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Van plan naar rijen (plan 05-08, taak 1)
+//
+// Hier houdt het rekenwerk op en begint het wegschrijven — maar nog steeds zonder databank.
+// `bouwImportWijziging` zet het goedgekeurde plan om in de exacte rijen die de provider straks
+// in één opslag wegschrijft. De ids komen als parameter binnen, zodat de uitkomst hier te
+// voorspellen valt en de test niet hoeft te raden wat `newId` verzint.
+// ---------------------------------------------------------------------------
+
+/** De koprij met alles erin wat een lesgroep nodig heeft, `Type les` incluis: dat wordt haar niveau. */
+const KOP_VOLLEDIG = ['Datum', 'Uur', 'Type les', 'Groep', 'Coach', 'Leerling', 'Baan'];
+
+/** Eén rij met een niveau erbij; zonder `Type les` heeft een groep geen niveau en weigert `lesGroepFout` haar. */
+function volleRij(
+  datum: string, uur: string, groep: string, leerling: string,
+  over: { niveau?: string; coach?: string; baan?: string } = {},
+): string[] {
+  return [
+    datum, uur, over.niveau ?? 'Kidstennis oranje', groep,
+    over.coach ?? 'Leemans Koen', leerling, over.baan ?? 'Baan 1',
+  ];
+}
+
+/**
+ * Een teller per voorvoegsel: `u-1`, `u-2`, `lg-1`, `b-1`. Dat is precies waarom
+ * `bouwImportWijziging` zijn ids als parameter krijgt — met `newId` erin zou geen enkele
+ * bewering hieronder te schrijven zijn.
+ */
+function teller(): (voorvoegsel: string) => string {
+  const standen = new Map<string, number>();
+  return (voorvoegsel) => {
+    const volgende = (standen.get(voorvoegsel) ?? 0) + 1;
+    standen.set(voorvoegsel, volgende);
+    return `${voorvoegsel}-${volgende}`;
+  };
+}
+
+describe('bouwImportWijziging', () => {
+  const RIJEN_NIEUW = [
+    KOP_VOLLEDIG,
+    volleRij('09/09/2026', '17:00', 'Groep 8', 'Peferoen Astor'),
+    volleRij('09/09/2026', '17:00', 'Groep 8', 'Martens Clara'),
+    volleRij('16/09/2026', '17:00', 'Groep 8', 'Peferoen Astor'),
+    volleRij('16/09/2026', '17:00', 'Groep 8', 'Martens Clara'),
+  ];
+  const planNieuw = () => planImportLessen(RIJEN_NIEUW, [], [KOEN], [BAAN], [], {}, NU);
+
+  it('geeft vier lijsten met rijen plus wat er niet doorging', () => {
+    const uit = bouwImportWijziging(planNieuw(), teller());
+    expect(Object.keys(uit).sort()).toEqual([
+      'fouten', 'gewijzigdeGroepen', 'nieuweBoekingen', 'nieuweGroepen', 'nieuweUsers',
+    ]);
+    expect(uit.fouten).toEqual([]);
+  });
+
+  it('maakt van elke onbekende leerling één lid, met een voorspelbaar id en zonder lege sleutels', () => {
+    const uit = bouwImportWijziging(planNieuw(), teller());
+    expect(uit.nieuweUsers).toEqual([
+      { id: 'u-1', name: 'Peferoen Astor', email: '', role: 'player' },
+      { id: 'u-2', name: 'Martens Clara', email: '', role: 'player' },
+    ]);
+  });
+
+  it('maakt de groep aan met haar trainer, haar baan, haar seizoen en haar rooster van echte ids', () => {
+    const uit = bouwImportWijziging(planNieuw(), teller());
+    expect(uit.nieuweGroepen).toEqual([{
+      id: 'lg-1',
+      name: 'Groep 8',
+      level: 'Kidstennis oranje',
+      weekday: 3,
+      start_hour: 17,
+      start_minute: 0,
+      coach_id: KOEN.id,
+      court_id: BAAN.id,
+      season_start: '2026-09-09',
+      season_end: '2026-09-16',
+      roster: ['u-1', 'u-2'],
+      archived: false,
+    }]);
+    expect(uit.gewijzigdeGroepen).toEqual([]);
+  });
+
+  it('hangt de lessen aan het id van díé groep en aan de ids van haar spelers', () => {
+    const uit = bouwImportWijziging(planNieuw(), teller());
+    expect(uit.nieuweBoekingen).toHaveLength(2);
+    expect(uit.nieuweBoekingen[0]).toEqual({
+      id: 'b-1',
+      group_id: 'lg-1',
+      player_id: 'u-1',
+      participant_ids: ['u-2'],
+      coach_id: KOEN.id,
+      court_id: BAAN.id,
+      start_time: new Date(2026, 8, 9, 17, 0).toISOString(),
+      end_time: new Date(2026, 8, 9, 18, 0).toISOString(),
+      status: 'confirmed',
+      payment_method: GROEPSLES_METHOD,
+    });
+    expect(uit.nieuweBoekingen[1].id).toBe('b-2');
+    expect(uit.nieuweBoekingen[1].start_time).toBe(new Date(2026, 8, 16, 17, 0).toISOString());
+  });
+
+  it('laat geen enkele plaatshouder van een nieuwe speler achter', () => {
+    const uit = bouwImportWijziging(planNieuw(), teller());
+    const ids = [
+      ...uit.nieuweGroepen.flatMap((g) => g.roster),
+      ...uit.nieuweBoekingen.flatMap((b) => [b.player_id, ...(b.participant_ids ?? [])]),
+    ];
+    expect(ids.filter((id) => id.startsWith(NIEUWE_SPELER))).toEqual([]);
+  });
+
+  it('geeft twee keer op dezelfde invoer twee keer exact dezelfde rijen', () => {
+    expect(bouwImportWijziging(planNieuw(), teller()))
+      .toEqual(bouwImportWijziging(planNieuw(), teller()));
+  });
+
+  it('geeft een les met één speler geen groepsbetaalwijze maar laat hem open', () => {
+    const uit = bouwImportWijziging(planImportLessen([
+      KOP_VOLLEDIG,
+      volleRij('09/09/2026', '18:00', 'Groep 4', 'Peferoen Astor', { niveau: 'Privéles' }),
+    ], [], [KOEN], [BAAN], [], {}, NU), teller());
+
+    expect(uit.nieuweBoekingen).toHaveLength(1);
+    expect(uit.nieuweBoekingen[0].payment_method).toBe('open');
+    expect(uit.nieuweBoekingen[0].player_id).toBe('u-1');
+    // Geen lege sleutel: de betaler staat nooit óók in `participant_ids`, en een leeg lijstje
+    // is het verschil tussen "niet ingevuld" en "leeggemaakt" (dezelfde regel als import-leden).
+    expect('participant_ids' in uit.nieuweBoekingen[0]).toBe(false);
+  });
+
+  it('weigert een groep die lesGroepFout niet doorstaat, en schrijft dan ook haar lessen niet weg', () => {
+    // Geen trainer in de ledenlijst: `koppelingVoorGroep` vindt er geen, de groep krijgt dus
+    // geen `coach_id`, en dat is precies waar `addLesGroep` haar op zou weigeren. Beter hier
+    // dan halverwege de opslag.
+    const uit = bouwImportWijziging(
+      planImportLessen(RIJEN_NIEUW, [], [], [BAAN], [], {}, NU), teller(),
+    );
+    expect(uit.nieuweGroepen).toEqual([]);
+    expect(uit.nieuweBoekingen).toEqual([]);
+    expect(uit.fouten).toHaveLength(1);
+    expect(uit.fouten[0].vars).toMatchObject({ groep: 'Groep 8' });
+    // De spelers gaan wél door: die staan los van de groep en zijn bij een volgende inleesbeurt
+    // gewoon herkend. Dat is de volgorde die een halve import herstelbaar houdt (D-21).
+    expect(uit.nieuweUsers).toHaveLength(2);
+  });
+
+  it('schrijft geen les weg waarvan de baan in het plan ontbreekt', () => {
+    // De uitvoerder rekent niets opnieuw uit: hij past toe wat het plan zei. Zegt het plan dat
+    // deze groep geen baan heeft, dan is er geen `Booking.court_id` en bestaat de les niet.
+    const plan = planNieuw();
+    plan.groepenNieuw[0].baan = null;
+    const uit = bouwImportWijziging(plan, teller());
+    expect(uit.nieuweGroepen).toHaveLength(1);
+    expect(uit.nieuweGroepen[0].court_id).toBeUndefined();
+    expect(uit.nieuweBoekingen).toEqual([]);
+    expect(uit.fouten).toHaveLength(1);
+  });
+
+  it('werkt een bestaande groep bij in plaats van haar opnieuw aan te maken', () => {
+    const astor = userVan({ id: 'u-astor', name: 'Astor Peferoen' });
+    const club = groepVan({
+      id: 'g-8', coach_id: KOEN.id, court_id: BAAN.id, level: 'Oranje', roster: ['u-astor'],
+    });
+    const plan = planImportLessen(RIJEN_NIEUW, [club], [KOEN, astor], [BAAN], [], {}, NU);
+    expect(plan.groepenBijgewerkt).toHaveLength(1);
+
+    const uit = bouwImportWijziging(plan, teller());
+    expect(uit.nieuweGroepen).toEqual([]);
+    expect(uit.nieuweUsers.map((u) => u.name)).toEqual(['Martens Clara']);
+    expect(uit.gewijzigdeGroepen).toEqual([{
+      id: 'g-8',
+      patch: { level: 'Kidstennis oranje', roster: ['u-astor', 'u-1'] },
+    }]);
+    // De lessen van de bijgewerkte groep hangen aan het id dat de club al kende.
+    expect(uit.nieuweBoekingen.map((b) => b.group_id)).toEqual(['g-8', 'g-8']);
+  });
+
+  it('schrijft niets weg voor een groep die niet verandert', () => {
+    const spelers = [
+      userVan({ id: 'u-astor', name: 'Astor Peferoen' }),
+      userVan({ id: 'u-clara', name: 'Clara Martens' }),
+    ];
+    const club = groepVan({
+      id: 'g-8', coach_id: KOEN.id, court_id: BAAN.id, roster: ['u-astor', 'u-clara'],
+    });
+    const eerste = bouwImportWijziging(
+      planImportLessen(RIJEN_NIEUW, [club], [KOEN, ...spelers], [BAAN], [], {}, NU), teller(),
+    );
+    const boekingen: ImportBoeking[] = eerste.nieuweBoekingen.map((b) => ({
+      id: b.id,
+      group_id: b.group_id,
+      coach_id: b.coach_id,
+      court_id: b.court_id,
+      start_time: b.start_time,
+      end_time: b.end_time,
+      status: b.status,
+    }));
+
+    const tweede = bouwImportWijziging(planImportLessen(
+      RIJEN_NIEUW, [club], [KOEN, ...spelers], [BAAN], boekingen, {}, NU,
+    ), teller());
+    expect(tweede.nieuweUsers).toEqual([]);
+    expect(tweede.nieuweGroepen).toEqual([]);
+    expect(tweede.gewijzigdeGroepen).toEqual([]);
+    expect(tweede.nieuweBoekingen).toEqual([]);
+    expect(tweede.fouten).toEqual([]);
+  });
+
+  it('verwijdert nooit iets: een les die uit het bestand verdween blijft een melding', () => {
+    const spelers = [
+      userVan({ id: 'u-astor', name: 'Astor Peferoen' }),
+      userVan({ id: 'u-clara', name: 'Clara Martens' }),
+    ];
+    const club = groepVan({
+      id: 'g-8', coach_id: KOEN.id, court_id: BAAN.id, roster: ['u-astor', 'u-clara'],
+    });
+    // De club heeft een les op 23 september; het bestand kent alleen 9 en 16 september.
+    const weg: ImportBoeking = boekingVan({
+      id: 'b-weg',
+      group_id: 'g-8',
+      start_time: new Date(2026, 8, 23, 17, 0).toISOString(),
+      end_time: new Date(2026, 8, 23, 18, 0).toISOString(),
+    });
+    const plan = planImportLessen(RIJEN_NIEUW, [club], [KOEN, ...spelers], [BAAN], [weg], {}, NU);
+    expect(plan.verdwenenUitBestand.map((v) => v.id)).toEqual(['b-weg']);
+
+    const uit = bouwImportWijziging(plan, teller());
+    // Er is geen lijst met te verwijderen rijen, en dat is geen omissie maar de afspraak:
+    // een les die uit het bestand valt wordt gemeld, nooit gewist.
+    expect(Object.keys(uit)).not.toContain('verwijderdeBoekingen');
+    expect(uit.nieuweBoekingen).toEqual([]);
   });
 });
