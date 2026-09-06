@@ -3,8 +3,9 @@ import { join } from 'path';
 
 import {
   bestandAfgekeurdLessen, kiesLessenBlad, leesDatumCel, leesKopregelLessen, leesLesRegels,
-  leesUurCel,
+  leesUurCel, voorbeeldTrainingenXlsx,
 } from './import-trainingen';
+import { datumNaarSerie } from './xlsx';
 import { leesWerkmap } from './xlsx-lezen';
 
 // De koprij van `koen.xlsx`, letterlijk zoals plan 05-03 hem uit het echte bestand las. Vier
@@ -348,5 +349,72 @@ describe('leesLesRegels', () => {
       coach: 'Leemans Koen',
       leerling: 'de Clippele Antoine',
     });
+  });
+});
+
+describe('voorbeeldTrainingenXlsx', () => {
+  const bladVan = () => {
+    const bladen = leesWerkmap(voorbeeldTrainingenXlsx());
+    const blad = kiesLessenBlad(bladen);
+    if (!blad) throw new Error('het sjabloon heeft geen blad');
+    return blad;
+  };
+
+  it('levert een werkmap op die de eigen lezer weer opent, met het blad Lessen', () => {
+    expect(bladVan().naam).toBe('Lessen');
+  });
+
+  it('toont alle negen kolommen die de import leest', () => {
+    const koprij = bladVan().rijen[0];
+    for (const kop of [
+      'Datum', 'Uur', 'Groep', 'Coach', 'Leerling',
+      'Groep-ID', 'Type les', 'E-mail leerling', 'Baan',
+    ]) {
+      expect(koprij).toContain(kop);
+    }
+  });
+
+  it('heeft een koprij die de eigen import zonder ruis herkent', () => {
+    const kop = leesKopregelLessen(bladVan().rijen[0]);
+    expect(kop.kolommen).not.toBeNull();
+    expect(kop.nietHerkend).toEqual([]);
+    expect(kop.dubbel).toEqual([]);
+  });
+
+  it('laat met twee regels zien dat een lege cel gewoon mag', () => {
+    const rijen = bladVan().rijen;
+    expect(rijen).toHaveLength(3); // de koprij plus twee voorbeeldregels
+    const kolommen = leesKopregelLessen(rijen[0]).kolommen!;
+    expect(rijen[2][kolommen.baan!]).toBe('');
+    expect(rijen[2][kolommen.emailLeerling!]).toBe('');
+    expect(rijen[1][kolommen.baan!]).not.toBe('');
+    expect(rijen[1][kolommen.emailLeerling!]).not.toBe('');
+  });
+
+  it('wordt door de eigen import foutloos teruggelezen', () => {
+    const uitkomst = leesLesRegels(bladVan().rijen);
+    expect(uitkomst.fouten).toEqual([]);
+    expect(uitkomst.nietHerkend).toEqual([]);
+    expect(uitkomst.regels).toHaveLength(2);
+  });
+
+  it('legt met twee regels van dezelfde les de vorm uit die de import verwacht', () => {
+    // Eén regel per les × leerling (D-01): dezelfde datum, hetzelfde uur, dezelfde groep,
+    // twee verschillende leerlingen.
+    const [een, twee] = leesLesRegels(bladVan().rijen).regels;
+    expect(twee.datum).toEqual(een.datum);
+    expect(twee.uur).toEqual(een.uur);
+    expect(twee.groep).toBe(een.groep);
+    expect(twee.leerling).not.toBe(een.leerling);
+  });
+
+  it('schrijft de datum als datumcel en niet als tekst', () => {
+    const kolommen = leesKopregelLessen(bladVan().rijen[0]).kolommen!;
+    const cel = bladVan().rijen[1][kolommen.datum];
+    // Een datumcel komt er als het serienummer van Excel uit; een tekstcel zou "08/09/2027" geven.
+    expect(cel).toMatch(/^\d+$/);
+    const datum = leesDatumCel(cel)!;
+    expect(datum).toEqual({ jaar: 2027, maand: 9, dag: 8 });
+    expect(Number(cel)).toBe(datumNaarSerie(new Date(2027, 8, 8)));
   });
 });
