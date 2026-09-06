@@ -23,6 +23,8 @@ import {
   GROEPSLES_METHOD,
 } from '../lib/beurtenkaart';
 import { isGroupLesson } from '../lib/groups';
+import { bouwImportWijziging } from '../lib/import-trainingen';
+import type { ImportPlanLessen, ImportUitslagLessen } from '../lib/import-trainingen';
 import { zetAanwezigheid, magAanwezigheidZetten, type Aanwezigheid } from '../lib/aanwezigheid';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
@@ -226,6 +228,15 @@ interface DataShape {
    * niets gebeurd behalve dat de club deze groep niet meer inplant.
    */
   archiveLesGroep: (id: string, gearchiveerd: boolean) => Promise<void>;
+  /**
+   * Een goedgekeurd importplan van een seizoen trainingen wegschrijven: de nieuwe leerlingen,
+   * de nieuwe en gewijzigde lesgroepen en hun lessen, alles in één opslag.
+   *
+   * Het plan komt van `planImportLessen` (lib/import-trainingen) en is dat wat de beheerder in
+   * de droogloop gezien heeft. Er wordt hier niets aan bijgesteld — wat hij zag, is wat er
+   * gebeurt. De uitslag geeft de aantallen terug en wat er niet doorging.
+   */
+  importeerTrainingen: (plan: ImportPlanLessen) => Promise<ImportUitslagLessen>;
   /**
    * Een trainer ziek melden, van dag tot en met dag. Geeft de gemaakte melding terug, zodat
    * het scherm er meteen de werklijst van kan openen.
@@ -1176,6 +1187,72 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   }, [commit]);
 
   // ---------------------------------------------------------------------------
+  // De import van een seizoen trainingen (IMP-09)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Het hele goedgekeurde plan in één opslag.
+   *
+   * Waarom één `commit` en geen lus met `addUser` en `addLesGroep` per rij: die twee schrijven
+   * elk zelf weg, en `koen.xlsx` levert 42 leerlingen, tien groepen en 325 lessen op. Dat zijn
+   * 377 opslagbeurten, elk met een volledige vergelijking van de hele opslag en een ronde naar
+   * Supabase. Traag, maar vooral een slechter faalgeval: hij kan op rij 200 stranden. De regels
+   * van `lib/import-leden.ts` worden wél hergebruikt (hoe een nieuw lid eruitziet — zie
+   * `nieuwLidUitSpeler`), maar de schrijfbeurt volgt `addBookingSeries`: alles wordt in het
+   * geheugen opgebouwd en gaat in één keer weg.
+   *
+   * Wat er gebeurt als het tóch misgaat, eerlijk gezegd: `commit` zet de lokale opslag terug en
+   * gooit de fout door, maar `saveToSupabase` schrijft tabel voor tabel en er is geen
+   * kruistabel-transactie — die kan er ook niet komen zonder SQL te draaien. Breekt het tussen
+   * twee tabellen af, dan kunnen er leerlingen zonder groep achterblijven, of een groep zonder
+   * haar lessen.
+   *
+   * Waarom dat aanvaardbaar is en niet stilzwijgend: de volgorde is zo gekozen dat het minst
+   * schadelijke vooraan staat: leerlingen, dan groepen, dan lessen (zie de opbouwer in
+   * lib/import-trainingen),
+   * en hetzelfde bestand opnieuw inlezen maakt het af zonder iets te verdubbelen: elke leerling,
+   * elke groep en elke les wordt op haar sleutel herkend en nooit blind toegevoegd. Dát is wat
+   * IMP-09 hier betekent (D-21) — veilig opnieuw te draaien, niet één transactie — en het
+   * importscherm zegt het in die woorden tegen de beheerder (plan 05-09).
+   */
+  const importeerTrainingen = useCallback(async (
+    plan: ImportPlanLessen,
+  ): Promise<ImportUitslagLessen> => {
+    const store = storeRef.current;
+    if (!store) {
+      return { spelers: 0, nieuweGroepen: 0, bijgewerkteGroepen: 0, lessen: 0, fouten: [] };
+    }
+
+    // De provider rekent zelf niets uit: welke rijen dit worden, staat al vast in het plan dat
+    // de beheerder goedkeurde. Alleen de ids komen van hier.
+    const wijziging = bouwImportWijziging(plan, newId);
+    const patches = new Map(wijziging.gewijzigdeGroepen.map((g) => [g.id, g.patch]));
+
+    await commit({
+      ...store,
+      users: [...store.users, ...wijziging.nieuweUsers],
+      lesGroepen: [
+        ...store.lesGroepen.map((g) => {
+          const patch = patches.get(g.id);
+          return patch === undefined ? g : { ...g, ...patch };
+        }),
+        ...wijziging.nieuweGroepen,
+      ],
+      // Erbij, nooit eroverheen: een les die uit het bestand verdween staat in het plan als
+      // melding en wordt hier niet weggehaald (D-13).
+      bookings: [...store.bookings, ...wijziging.nieuweBoekingen],
+    });
+
+    return {
+      spelers: wijziging.nieuweUsers.length,
+      nieuweGroepen: wijziging.nieuweGroepen.length,
+      bijgewerkteGroepen: wijziging.gewijzigdeGroepen.length,
+      lessen: wijziging.nieuweBoekingen.length,
+      fouten: wijziging.fouten,
+    };
+  }, [commit]);
+
+  // ---------------------------------------------------------------------------
   // Ziekmeldingen
   //
   // Een ziekmelding is een periode op een trainer, en niets meer. Welke lessen ze raakt en
@@ -1401,6 +1478,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     updateLesGroep,
     updateLesGroepRoster,
     archiveLesGroep,
+    importeerTrainingen,
     meldZiek,
     trekZiekmeldingIn,
     addLesson,
@@ -1425,7 +1503,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setPaymentMethod, setTaughtBy, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
-    vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster, archiveLesGroep,
+    vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster,
+    archiveLesGroep, importeerTrainingen,
     meldZiek, trekZiekmeldingIn, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
     addMemo, deleteMemo, werkMemoUit,
