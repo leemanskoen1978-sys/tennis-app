@@ -90,10 +90,10 @@ describe('leesKopregelLessen', () => {
 
   it('vult nietHerkend en dubbel ook als een verplichte kolom ontbreekt', () => {
     // Juist dán heeft de beheerder die lijstjes nodig: "ik mis Coach, maar ik zag wel een
-    // kolom Trainer die ik niet herken" is bruikbaar, "verplichte kolom ontbreekt" niet.
-    const kop = leesKopregelLessen(['Datum', 'Uur', 'Groep', 'Leerling', 'Trainer', 'Datum']);
+    // kolom Lesbegeleider die ik niet herken" is bruikbaar, "verplichte kolom ontbreekt" niet.
+    const kop = leesKopregelLessen(['Datum', 'Uur', 'Groep', 'Leerling', 'Lesbegeleider', 'Datum']);
     expect(kop.kolommen).toBeNull();
-    expect(kop.nietHerkend).toEqual(['Trainer']);
+    expect(kop.nietHerkend).toEqual(['Lesbegeleider']);
     expect(kop.dubbel).toEqual(['Datum']);
   });
 });
