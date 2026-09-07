@@ -13,10 +13,11 @@ import {
 import { spacing, typography, radius, webCursor } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { ProgressForm } from '../../components/progress/ProgressForm';
 import { UserManagement } from '../../components/UserManagement';
 import { VoiceRecorder } from '../../components/VoiceRecorder';
 import { useT } from '../../lib/i18n';
-import type { TrainingType } from '../../lib/types';
+import type { StudentProgress, TrainingType } from '../../lib/types';
 import { isCoach } from '../../lib/rechten';
 import { playersOf } from '../../lib/hub';
 import { useKindkeuze } from '../../providers/kindkeuze';
@@ -43,6 +44,9 @@ export default function ProgressScreen(): React.JSX.Element {
   const [voiceUri, setVoiceUri] = useState<string | undefined>(undefined);
   const [addPlayerOpen, setAddPlayerOpen] = useState<boolean>(false);
   const [reportStudentId, setReportStudentId] = useState<string | null>(null);
+  // Welke beoordeling de speler of ouder openklapte; null = blad dicht. Zelfde blad als in
+  // het dossier van de trainer (app/players/[id]), maar op slot: hier wordt gelezen.
+  const [openEntry, setOpenEntry] = useState<StudentProgress | null>(null);
 
   const students = playersOf(users);
   const studentName = (id: string): string => users.find((x) => x.id === id)?.name ?? t('Onbekend');
@@ -175,9 +179,31 @@ export default function ProgressScreen(): React.JSX.Element {
           ) : (
             <>
               <ReportSummary entries={ownEntries} />
-              {ownEntries.map((p) => <ProgressEntryCard key={p.id} p={p} studentName={studentName(p.student_id)} showStudent={false} coachName={coachName(p.coach_id)} />)}
+              {ownEntries.map((p) => (
+                <ProgressEntryCard
+                  key={p.id}
+                  p={p}
+                  studentName={studentName(p.student_id)}
+                  showStudent={false}
+                  coachName={coachName(p.coach_id)}
+                  onPress={() => setOpenEntry(p)}
+                />
+              ))}
             </>
           )}
+
+          {/* Wat op de kaart niet past: de hele notitie, het huiswerk en de spraakmemo om
+              af te spelen. `canEdit` blijft uit — een speler leest zijn dossier, wijzigen
+              doet de trainer. */}
+          {speler ? (
+            <ProgressForm
+              visible={openEntry !== null}
+              onClose={() => setOpenEntry(null)}
+              studentId={speler.id}
+              entry={openEntry}
+              canEdit={false}
+            />
+          ) : null}
         </>
       )}
     </Screen>

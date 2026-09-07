@@ -146,6 +146,11 @@ export function ProgressForm({
   const lessonTitle = entry?.lesson_id
     ? lessons.find((l) => l.id === entry.lesson_id)?.title
     : undefined;
+  // Wie dit schreef. De kaart in de lijst zegt het al; in het blad ontbrak het, terwijl daar
+  // de hele notitie staat. Voor een ouder is "wie zegt dit over mijn kind" geen bijzaak.
+  const noteerder = entry?.coach_id
+    ? users.find((u) => u.id === entry.coach_id)?.name
+    : undefined;
 
   // Een speler leest zijn dossier; wijzigen doet de trainer. Dezelfde regel als bij de
   // doelen, waar het blad ook opengaat maar de velden dichtblijven.
@@ -189,6 +194,9 @@ export function ProgressForm({
             <Text style={styles.readType}>{t(TRAINING_LABELS[entry.training_type])}</Text>
             <Stars count={entry.rating ?? 0} />
             {entry.created_at ? <Text style={styles.readMuted}>{formatDate(entry.created_at)}</Text> : null}
+            {noteerder ? (
+              <Text style={styles.readMuted}>{t('Genoteerd door {naam}', { naam: noteerder })}</Text>
+            ) : null}
             {lessonTitle ? <Text style={styles.readMuted}>{t('Les')}: {lessonTitle}</Text> : null}
             {entry.notes ? (
               <>
