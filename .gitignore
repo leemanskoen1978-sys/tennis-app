@@ -24,3 +24,6 @@ KEYMOMENT 1.docx
 
 # Bevat het wachtwoord van een ouder in platte tekst: nooit committen.
 LESLIE-WACHTWOORD.sql
+
+# Eenmalige agenda-exports: de app maakt ze zelf (lib/ics), ze horen niet in de repo.
+*.ics
