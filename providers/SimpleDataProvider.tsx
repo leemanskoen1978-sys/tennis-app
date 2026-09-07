@@ -4,6 +4,7 @@ import React, {
 import { AppState, Platform } from 'react-native';
 import { pendingPaymentsFor } from '../lib/payments';
 import { loadCurrentUserId, saveCurrentUserId, clearCurrentUserId } from './session';
+import { maakBeurtenteller } from '../lib/loginbeurt';
 import { newId, type StoreData } from './mockStore';
 import { isCoach, magInElkeAgenda, magKaartenSchrijven } from '../lib/rechten';
 import { backend, type AuthMode } from './backend';
@@ -381,6 +382,11 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   const ladingBezig = useRef(false);
   const schrijfBezig = useRef(false);
 
+  // Welke aanmelding er loopt. Een ophaalronde onthoudt bij vertrek welke beurt het was en
+  // schrijft bij terugkomst alleen nog weg als het nog diezelfde is — zie lib/loginbeurt
+  // voor wat er misging zonder deze grens.
+  const beurt = useRef(maakBeurtenteller());
+
   // Persist then update state; surface any failure instead of swallowing it.
   const commit = useCallback(async (next: StoreData) => {
     const previous = storeRef.current;
@@ -448,6 +454,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   }, [withCatalogue]);
 
   const refresh = useCallback(async () => {
+    const mijnBeurt = beurt.current.nu();
     setLoading(true);
     setError(null);
     ladingBezig.current = true;
@@ -456,11 +463,14 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
         ? await backend.currentUserId()
         : currentUserId;
       const data = await loadFor(id);
+      // Wie tijdens het ophalen uitlogde, hoort niet door dit antwoord teruggezet te worden.
+      if (!beurt.current.geldig(mijnBeurt)) return;
       storeRef.current = data;
       setStore(data);
       setCurrentUserId(id);
       laatsteLading.current = Date.now();
     } catch (e: unknown) {
+      if (!beurt.current.geldig(mijnBeurt)) return;
       setError(e instanceof Error ? e.message : 'Kon data niet laden');
     } finally {
       ladingBezig.current = false;
@@ -488,9 +498,12 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       sindsLaatsteLading: Date.now() - laatsteLading.current,
     })) return;
 
+    const mijnBeurt = beurt.current.nu();
     ladingBezig.current = true;
     try {
       const data = await loadFor(currentUserId);
+      // Stil verversen mag al helemaal niets terugzetten: het is niet eens gevraagd.
+      if (!beurt.current.geldig(mijnBeurt)) return;
       storeRef.current = data;
       setStore(data);
       laatsteLading.current = Date.now();
@@ -535,6 +548,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     let stopped = false;
 
     const start = async (): Promise<void> => {
+      const mijnBeurt = beurt.current.nu();
       ladingBezig.current = true;
       try {
         const id = backend.authMode === 'wachtwoord'
@@ -546,6 +560,10 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
           ? null
           : await loadFor(id);
         if (stopped) return;
+        // Dit antwoord is van vóór het uitloggen: het klopte toen de vraag vertrok en niet
+        // meer nu. Wegschrijven zou de uitgelogde stand weer vullen — precies de fout waar
+        // je twee keer voor moest uitloggen.
+        if (!beurt.current.geldig(mijnBeurt)) return;
         if (data) {
           storeRef.current = data;
           setStore(data);
@@ -555,10 +573,14 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
         setCurrentUserId(known ? id : null);
         laatsteLading.current = Date.now();
       } catch (e: unknown) {
-        if (!stopped) setError(e instanceof Error ? e.message : 'Kon data niet laden');
+        if (!stopped && beurt.current.geldig(mijnBeurt)) {
+          setError(e instanceof Error ? e.message : 'Kon data niet laden');
+        }
       } finally {
         ladingBezig.current = false;
-        if (!stopped) setLoading(false);
+        // `loading` hoort ook bij deze beurt: een late ronde mag het laadscherm niet
+        // wegnemen van een verse aanmelding die nog bezig is.
+        if (!stopped && beurt.current.geldig(mijnBeurt)) setLoading(false);
       }
     };
 
@@ -580,6 +602,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
       // De vlag moet hier ook uit: anders blijft de indeling deze gebruiker naar
       // /nieuw-wachtwoord sturen terwijl er geen sessie meer is om iets in op te slaan.
       if (wat === 'weg') {
+        // Nieuwe beurt: wat er nog aan ophalen onderweg is, hoort bij de vorige aanmelding.
+        beurt.current.volgende();
         setHerstelBezig(false);
         storeRef.current = null;
         setStore(null);
@@ -629,6 +653,10 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const logout = useCallback(async () => {
+    // Vóór alles: vanaf hier telt geen enkel antwoord meer mee dat over de vorige
+    // aanmelding gaat. Het afmelden hieronder duurt even, en in dat gaatje kwam de
+    // ophaalronde terug die je weer op de hub zette.
+    beurt.current.volgende();
     setCurrentUserId(null);
     await clearCurrentUserId();
     if (backend.authMode === 'wachtwoord') {
