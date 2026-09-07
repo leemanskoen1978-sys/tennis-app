@@ -13,17 +13,23 @@ PHOTO-*.jpg
 
 # Bevat een wachtwoord in platte tekst: nooit committen.
 leslie-login.sql
+LESLIE-WACHTWOORD.sql
 koen-rooster.sql
-koen.xlsx
+
+# Te hermaken met `node scripts/gids-html.js`.
 trainersgids.html
+
+# NIET WEGGOOIEN. Dit is een testfixture: 40 tests in lib/import-trainingen en
+# lib/xlsx-lezen lezen dit bestand. Het staat hier omdat de repository publiek is en er
+# namen van echte leerlingen in staan -- het hoort dus op de schijf te blijven en nergens
+# anders. Is het weg, dan slaan die tests zichzelf stilzwijgend over en bewijzen ze niets.
+koen.xlsx
 
 # Het bronbestand van de keymoments: 25 MB aan foto's die verkleind in assets/ staan.
 # Word laat er ook een ~$-slotbestand naast liggen.
 KEYMOMENT 1.docx
 ~$*
 
-# Bevat het wachtwoord van een ouder in platte tekst: nooit committen.
-LESLIE-WACHTWOORD.sql
 
 # Eenmalige agenda-exports: de app maakt ze zelf (lib/ics), ze horen niet in de repo.
 *.ics
