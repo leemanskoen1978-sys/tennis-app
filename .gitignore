@@ -21,3 +21,6 @@ trainersgids.html
 # Word laat er ook een ~$-slotbestand naast liggen.
 KEYMOMENT 1.docx
 ~$*
+
+# Bevat het wachtwoord van een ouder in platte tekst: nooit committen.
+LESLIE-WACHTWOORD.sql
