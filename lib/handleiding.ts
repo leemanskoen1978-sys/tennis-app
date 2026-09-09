@@ -15,7 +15,16 @@
 // aanvraag".
 
 import { t } from './i18n';
-import type { Role } from './types';
+
+/**
+ * Voor wie een gids geschreven is.
+ *
+ * Dit is met opzet geen `Role`. Beheerder is in deze app geen rol maar een vinkje op een
+ * gebruiker (`is_admin`, zie lib/rechten): wie de club beheert is meestal óók gewoon trainer,
+ * met zijn eigen agenda en zijn eigen spelers. De beheerdersgids gaat dan ook alleen over wat
+ * dat vinkje erbij geeft — hij vervangt de trainersgids niet, hij komt erna.
+ */
+export type Gidssoort = 'coach' | 'player' | 'admin';
 
 /** Eén blokje uitleg: waar het staat, wat het is, en wat je ermee doet. */
 export interface Gidsdeel {
@@ -92,6 +101,20 @@ const TRAINER: Gidsstuk[] = [
           'Elke les van vandaag met het uur, de baan en wie erin staat. De les die nú bezig '
           + 'is staat open; wat geweest is blijft staan maar wordt grijs. Tik een les aan om '
           + 'hem open of dicht te klappen.',
+          'Bij een les die aan een lesgroep hangt staat het niveau met een gekleurd bolletje '
+          + 'ervoor — dezelfde kleur die je in de weekagenda als randje links van het blok '
+          + 'ziet. Hangt de les aan geen enkele groep, dan staat er geen kleur.',
+        ],
+      },
+      {
+        waar: 'Bovenaan',
+        kop: 'Aanvragen goedkeuren',
+        tekst: [
+          'Vraagt een speler een uur aan, dan staat die les bovenaan te wachten en gaat hij '
+          + 'niet door tot jij ja zegt. Het uur blijft ondertussen bezet, zodat niemand hem '
+          + 'inpikt.',
+          'Weiger je, dan hoort de speler dat. Een les die zonder bericht verdwijnt, laat hem '
+          + 'wachten op iets wat al beslist is.',
         ],
       },
       {
@@ -107,34 +130,28 @@ const TRAINER: Gidsstuk[] = [
       },
       {
         waar: 'Tegels',
-        kop: 'De vier ingangen, met tellers',
+        kop: 'Wat er onder je lesdag staat',
         tekst: [
-          'Het getal op een tegel is werk dat op je ligt te wachten: lessen die je moet '
-          + 'goedkeuren, betalingen die openstaan. Is er niets, dan staat er niets.',
+          'Voor een trainer twee tegels: Nieuwe afspraak, en Mijn kinderen als je zelf een '
+          + 'kind aan de club hebt. Spelers, Trainers en Beheer stonden hier ook, maar die '
+          + 'staan onderaan al in de balk — twee wegen naar hetzelfde scherm maken Home alleen '
+          + 'maar langer.',
+          'Staat er een getal op een tegel, dan is dat werk dat op je ligt te wachten. Is er '
+          + 'niets, dan staat er niets.',
         ],
       },
     ],
   },
   {
-    id: 'agenda',
-    plaats: 'Tabblad 2 — Agenda',
-    titel: 'Lessen inplannen en nakijken',
+    id: 'inplannen',
+    plaats: 'Lessen inplannen',
+    titel: 'Van aanvraag tot afvinken',
     leidraad: 'Je agenda is van jou. Een collega kan er niet in werken; alleen een beheerder '
-      + 'kan in elke agenda inplannen, omdat hij het rooster van de club maakt.',
+      + 'kan in elke agenda inplannen, omdat hij het rooster van de club maakt. Er is geen '
+      + 'tabblad Agenda meer: elk stuk staat nu waar je het nodig hebt.',
     delen: [
       {
-        waar: 'Agenda',
-        kop: 'Aanvragen goedkeuren',
-        tekst: [
-          'Vraagt een speler een uur aan, dan staat die les bovenaan te wachten en gaat hij '
-          + 'niet door tot jij ja zegt. Het uur blijft ondertussen bezet, zodat niemand hem '
-          + 'inpikt.',
-          'Weiger je, dan hoort de speler dat. Een les die zonder bericht verdwijnt, laat hem '
-          + 'wachten op iets wat al beslist is.',
-        ],
-      },
-      {
-        waar: 'Nieuwe afspraak',
+        waar: 'Home → Nieuwe afspraak',
         kop: 'Eén les of een hele reeks',
         tekst: [
           'Kies dag, uur, baan en speler. Geef bij "Hoeveel lessen?" een aantal op en de app '
@@ -144,7 +161,7 @@ const TRAINER: Gidsstuk[] = [
         ],
       },
       {
-        waar: 'Agenda → Afvinken',
+        waar: 'Spelers → Afvinken',
         kop: 'Wie is er vandaag?',
         tekst: [
           'Open dit bij het begin van de les en geef je gsm door: het scherm zoekt zelf de '
@@ -157,20 +174,13 @@ const TRAINER: Gidsstuk[] = [
         ],
       },
       {
-        waar: 'Spelers → een naam',
-        kop: 'Mailen of een WhatsApp sturen',
-        tekst: [
-          'Het e-mailadres en het gsm-nummer op een dossier zijn knoppen. Tik op het adres '
-          + 'en je mailprogramma opent met de geadresseerde al ingevuld; tik op het nummer '
-          + 'en je zit in een WhatsApp-gesprek. Wil je bellen, houd het nummer dan ingedrukt '
-          + 'en kopieer het.',
-        ],
-      },
-      {
-        waar: 'Beheer → Boekingstijden',
+        waar: 'Profiel → Boekingstijden',
         kop: 'Tussen welke uren er bij jou geboekt kan worden',
         tekst: [
-          'Elke trainer zet hier zijn eigen uren; een beheerder die van iedereen. Vul je '
+          'Dezelfde plek als Beheer → Kalender: de gesloten dagen van de club en de uren per '
+          + 'trainer staan op één scherm, want ze beantwoorden samen één vraag — wanneer kan '
+          + 'er les zijn.',
+          'Elke trainer zet er zijn eigen uren; een beheerder die van iedereen. Vul je '
           + 'niets in, dan geldt de tijd van de club (Beheer → Instellingen) — en anders '
           + 'gelden de jouwe, ook als je later doorgaat dan de club.',
           'Wijkt een stuk van het jaar af, zet er dan een periode bij: van datum tot datum '
@@ -179,31 +189,58 @@ const TRAINER: Gidsstuk[] = [
         ],
       },
       {
-        waar: 'Overzicht',
-        kop: 'Geweest en nog te komen',
+        waar: 'Een dossier → Weekagenda',
+        kop: 'Je week in één beeld',
         tekst: [
-          'Historiek kijkt terug per periode en heeft een knop om je selectie als Excel of CSV '
-          + 'te downloaden — precies de lessen die je op het scherm ziet. Nog te komen kijkt '
-          + 'vooruit, zonder periode, want daar wil je juist niets missen.',
+          'Het weekraster staat in het dossier van een speler en in dat van een trainer — dus '
+          + 'ook in dat van jezelf, via Trainers. Zeven dagkolommen met elke les als blok op '
+          + 'zijn plek; de hoogte is de duur, en het randje links is de kleur van de lesgroep. '
+          + 'Tik een blok aan en je hebt het lesdetail.',
+          'Dat is meteen de kortste weg naar een oude les: blader naar zijn week en tik hem '
+          + 'aan. Je hebt er geen lesgroep voor nodig.',
+        ],
+      },
+      {
+        waar: 'Beheer → Rapport',
+        kop: 'Wat geweest is, en het bestand eronder',
+        tekst: [
+          'Het rapport kijkt terug over een periode die je zelf kiest, en heeft een knop om '
+          + 'je selectie als Excel of CSV te downloaden — precies de lessen die je op het '
+          + 'scherm ziet. De lijst per persoon staat in zijn dossier, onder Lesdagen.',
         ],
       },
     ],
   },
   {
     id: 'spelers',
-    plaats: 'Tabblad 3 — Spelers',
+    plaats: 'Tabblad 2 — Spelers',
     titel: 'Het dossier van een speler',
-    leidraad: 'De lijst opent op drie stapels: iedereen, de spelers waar jij al mee werkte, en '
-      + 'wie je vandaag op de baan hebt. Zoeken mag op naam of e-mailadres, in willekeurige '
-      + 'volgorde van de woorden.',
+    leidraad: 'De lijst staat leeg tot je kiest wat je wil zien: iedereen, de spelers waar jij '
+      + 'al mee werkte, of wie je vandaag op de baan hebt. Een tweede tik op dezelfde tegel '
+      + 'sluit hem weer. Zoeken werkt wel meteen en gaat dan door de hele club — op naam of '
+      + 'e-mailadres, in willekeurige volgorde van de woorden.',
     delen: [
       {
         waar: 'Dossier',
-        kop: 'Vier bladen',
+        kop: 'Vijf tegels',
         tekst: [
-          'Lesdagen: wanneer je hem ziet en zag. Lesplan & voortgang: het materiaal dat je hem '
-          + 'toewees, met je notities eronder. Doelen: wat jullie afspraken, op drie '
-          + 'horizonten. Administratie: zijn betaalwijze, beurtenkaart en sponsorbudget.',
+          'Lesdagen: wanneer je hem ziet en zag. Weekagenda: zijn week als raster. Lesplan & '
+          + 'voortgang: het materiaal dat je hem toewees, met je notities eronder. Doelen: wat '
+          + 'jullie afspraken, op drie horizonten. Administratie: zijn betaalwijze, '
+          + 'beurtenkaart en sponsorbudget.',
+          'Een dossier gaat alleen open voor wie erbij hoort: de trainers, de speler zelf en '
+          + 'zijn gekoppelde ouder. Een medespeler uit een groepsles komt er niet in — hij '
+          + 'ziet in het lesdetail wel diens naam, maar zonder doorklik.',
+        ],
+      },
+      {
+        waar: 'Dossier',
+        kop: 'Mailen of een WhatsApp sturen',
+        tekst: [
+          'Het e-mailadres en het gsm-nummer op een dossier zijn knoppen. Tik op het adres '
+          + 'en je mailprogramma opent met de geadresseerde al ingevuld; tik op het nummer '
+          + 'en je zit in een WhatsApp-gesprek. Wil je bellen, houd het nummer dan ingedrukt '
+          + 'en kopieer het.',
         ],
       },
       {
@@ -219,8 +256,10 @@ const TRAINER: Gidsstuk[] = [
   },
   {
     id: 'trainers',
-    plaats: 'Tabblad 4 — Trainers',
+    plaats: 'Tabblad 3 — Trainers',
     titel: 'Lesmateriaal en tekenveld',
+    leidraad: 'Hier staan ook de dossiers van je collega\'s en dat van jezelf: je week, je '
+      + 'uren en — alleen in het jouwe — je uurtarief.',
     delen: [
       {
         waar: 'Lesmateriaal',
@@ -254,10 +293,11 @@ const TRAINER: Gidsstuk[] = [
   },
   {
     id: 'beheer',
-    plaats: 'Tabblad 5 — Beheer',
+    plaats: 'Tabblad 4 — Beheer',
     titel: 'De club, het geld en het systeem',
-    leidraad: 'Een deel hiervan is alleen voor wie de club beheert; wat je niet mag, staat er '
-      + 'niet.',
+    leidraad: 'Vier groepen: Geld, Tennisschool, Club en Systeem. Een deel is alleen voor wie '
+      + 'de club beheert; wat je niet mag, staat er niet — geen grijze tegel, geen melding. '
+      + 'Zie de beheerdersgids voor wat dat vinkje erbij geeft.',
     delen: [
       {
         waar: 'Geld',
@@ -266,17 +306,28 @@ const TRAINER: Gidsstuk[] = [
           'Betalingen zijn de lessen waarvoor nog geen betaalwijze is gekozen; je bladert er '
           + 'met de pijltjes doorheen in plaats van ze op volgorde af te moeten werken. '
           + 'Beurtenkaarten staan op één plek, met wat er nog op staat. Het rapport toont hoe '
-          + 'het loopt over een periode die je zelf kiest.',
+          + 'het loopt over een periode die je zelf kiest, met de knop om het te downloaden.',
+        ],
+      },
+      {
+        waar: 'Tennisschool',
+        kop: 'Lessen beheren',
+        tekst: [
+          'Eén tegel met vier schermen erachter: lesgroepen, ziekmelding, en de import en '
+          + 'export van het weekschema. Alleen voor een beheerder — de tennisschool is van de '
+          + 'club, en een gewone trainer houdt zijn eigen agenda.',
         ],
       },
       {
         waar: 'Club',
-        kop: 'Banen, doelen, leden',
+        kop: 'Kalender, banen, leden',
         tekst: [
-          'Baannamen en uurtarieven met een staffel per groepsgrootte, de woordenlijst voor '
-          + 'spelersdoelen, een speler toevoegen, en een hele ledenlijst importeren uit Excel. '
-          + 'Bij het importeren zie je eerst wat het bestand zou doen, en pas als je het '
-          + 'herkent gebeurt er iets.',
+          'De kalender staat er voor iedereen: de gesloten dagen van de club en de uren '
+          + 'waarop er bij jou geboekt kan worden. Blijft hij leeg, dan rekent de app met les '
+          + 'het hele jaar door — dat merk je pas als er lessen in de kerstvakantie staan.',
+          'Banen (namen en uurtarieven, met een staffel per groepsgrootte) en Leden (toevoegen, '
+          + 'importeren en gegevens bijwerken) zijn voor een beheerder. Bij het importeren zie '
+          + 'je eerst wat het bestand zou doen, en pas als je het herkent gebeurt er iets.',
         ],
       },
       {
@@ -285,6 +336,15 @@ const TRAINER: Gidsstuk[] = [
         tekst: [
           'Hier staan de aanvragen van ouders die het dossier van hun kind willen volgen, en '
           + 'de koppelingen die al gelegd zijn.',
+        ],
+      },
+      {
+        waar: 'Systeem',
+        kop: 'Instellingen, doelen, handleiding',
+        tekst: [
+          'De lesduur van de club, het thema en de taal; de woordenlijst waaruit je kiest als '
+          + 'je een doel op een speler zet; en deze gids, ook die van de speler en die van de '
+          + 'beheerder.',
         ],
       },
     ],
@@ -354,7 +414,7 @@ const TRAINER: Gidsstuk[] = [
         ],
       },
       {
-        waar: 'Historiek',
+        waar: 'Rapport',
         kop: 'Bedragen horen bij je eigen lessen',
         tekst: [
           'Kijk je naar de lessen van een collega, dan zie je zijn lessen wel en zijn bedragen '
@@ -447,8 +507,17 @@ const TRAINER: Gidsstuk[] = [
         waar: 'Speler ontbreekt',
         kop: 'Nog geen lid',
         tekst: [
-          'Voeg hem toe via Beheer → Speler toevoegen, of rechtstreeks vanuit de keuzelijst '
-          + 'waar je hem zocht: typ de naam en kies toevoegen.',
+          'Voeg hem rechtstreeks toe vanuit de keuzelijst waar je hem zocht: typ de naam en '
+          + 'kies toevoegen. Ben je beheerder, dan kan het ook via Beheer → Leden.',
+        ],
+      },
+      {
+        waar: 'Geen kleur bij een les',
+        kop: 'De les hangt aan geen enkele lesgroep',
+        tekst: [
+          'Het bolletje komt van de lesgroep, niet van de les. Open het lesdetail: staat er '
+          + 'onder Lesgroep niets, dan is dat het. Een beheerder hangt hem daar alsnog aan '
+          + 'zijn groep.',
         ],
       },
     ],
@@ -478,11 +547,15 @@ const SPELER: Gidsstuk[] = [
       },
       {
         waar: 'Home',
-        kop: 'Vier tegels',
+        kop: 'Je les van vandaag, en de tegels eronder',
         tekst: [
-          'Reserveren, Mijn agenda, Mijn lessen en Voortgang. Op Mijn agenda staat ook wat je '
-          + 'nog moet afrekenen, in euro’s en niet als een teller — je wilt weten hoeveel '
-          + 'het is, niet hoeveel lessen het zijn.',
+          'Bovenaan staat je les van vandaag — en heb je er vandaag geen, dan je '
+          + 'eerstvolgende, met de dag erbij. Bij een les die aan een lesgroep hangt staat het '
+          + 'niveau met een gekleurd bolletje ervoor.',
+          'Daaronder de tegels: Reserveren, Mijn agenda, Mijn lessen, Voortgang, en Mijn '
+          + 'kinderen als je kinderen aan de club hebt. Op Mijn agenda staat ook wat je nog '
+          + 'moet afrekenen, in euro’s en niet als een teller — je wilt weten hoeveel het is, '
+          + 'niet hoeveel lessen het zijn.',
         ],
       },
     ],
@@ -510,6 +583,34 @@ const SPELER: Gidsstuk[] = [
           'Keurt je trainer goed, dan staat de les gewoon in je agenda. Weigert hij, dan krijg '
           + 'je daar bericht van op je hoofdscherm — met een kruisje om het weg te klikken. Je '
           + 'mag gerust een ander uur aanvragen.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'mijnagenda',
+    plaats: 'Mijn agenda',
+    titel: 'Je eigen dossier',
+    leidraad: 'De tegel Mijn agenda opent je dossier: alles wat de club over jou bijhoudt, op '
+      + 'één plek.',
+    delen: [
+      {
+        waar: 'Mijn agenda',
+        kop: 'Wat erin staat',
+        tekst: [
+          'Lesdagen: wanneer je speelt en gespeeld hebt, met een knop om je aankomende lessen '
+          + 'als agendabestand te bewaren. Weekagenda: je week als raster, met elke les als '
+          + 'blok op zijn plek en de kleur van je lesgroep ernaast. Lesplan & voortgang, en '
+          + 'Doelen.',
+        ],
+      },
+      {
+        waar: 'Een groepsles',
+        kop: 'Wat je van je medespelers ziet',
+        tekst: [
+          'Hun naam, want je staat met hen op de baan. Verder niets: hun dossier gaat niet '
+          + 'voor je open, en hun gsm-nummer of e-mailadres krijg je niet te zien. Omgekeerd '
+          + 'geldt hetzelfde — jouw dossier is van jou, je ouder en je trainer.',
         ],
       },
     ],
@@ -672,20 +773,242 @@ const SPELER: Gidsstuk[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// De beheerder
+// ---------------------------------------------------------------------------
+//
+// Deze gids vervangt de trainersgids niet, hij komt erna: een beheerder is bijna altijd ook
+// trainer. Wat hier staat, is uitsluitend wat het vinkje `is_admin` erbij geeft — en waarom
+// de app dat achter een vinkje houdt in plaats van achter een aparte login.
+
+const BEHEERDER: Gidsstuk[] = [
+  {
+    id: 'wat',
+    plaats: 'Om te beginnen',
+    titel: 'Beheerder is geen aparte login',
+    leidraad: 'Je blijft trainer, met je eigen agenda, je eigen spelers en je eigen lesdag. '
+      + 'Het beheerdersvinkje voegt rechten toe; het neemt er geen af.',
+    delen: [
+      {
+        waar: 'Overal',
+        kop: 'Wat je merkt',
+        tekst: [
+          'Je logt in zoals iedereen en ziet dezelfde vier tabbladen. Op de plekken waar een '
+          + 'gewone trainer stopt, loop jij door: in Beheer staan er meer tegels, in het '
+          + 'rapport staat de hele club, en in de agenda van een collega mag je werken.',
+          'Op je eigen dossier staat achter je rol "· beheerder". Dat is de enige plek waar '
+          + 'het met zoveel woorden staat.',
+        ],
+      },
+      {
+        waar: 'Beheer → Leden',
+        kop: 'Wie het vinkje krijgt',
+        tekst: [
+          'Jij zet het, bij een lid in Beheer → Leden. Doe het bewust en spaarzaam: wie het '
+          + 'heeft, ziet wat elke collega verdient en kan elk lid verwijderen.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tennisschool',
+    plaats: 'Beheer → Tennisschool',
+    titel: 'De lessen van de school',
+    leidraad: 'Vier schermen achter één tegel, en ze zijn alle vier alleen van jou: het gaat '
+      + 'over alle trainers samen, en dat is de club en niet één agenda.',
+    delen: [
+      {
+        waar: 'Lesgroepen',
+        kop: 'De vaste ploegen van het seizoen',
+        tekst: [
+          'Een lesgroep is dezelfde ploeg die een heel seizoen op hetzelfde moment traint: een '
+          + 'naam, een niveau, een weekdag, een uur, een trainer, een baan en een seizoen. '
+          + 'Uit die gegevens zet de app de lessen van het hele seizoen klaar.',
+          'Het niveau is meteen de kleur die overal in de app bij die lessen verschijnt — '
+          + '"Kidstennis blauw" geeft een blauw bolletje. Staat er geen kleurnaam in, dan '
+          + 'staat er alleen de tekst.',
+          'Aan het eind van het seizoen archiveer je een groep. Dat is één vinkje en raakt geen '
+          + 'enkele boeking aan: de gegeven lessen en hun geschiedenis blijven staan.',
+        ],
+      },
+      {
+        waar: 'Ziekmelding',
+        kop: 'Een trainer valt uit',
+        tekst: [
+          'Meld je hem ziek, dan komen zijn lessen op de lijst "zoekt vervanger" te staan — '
+          + 'zichtbaar gemarkeerd tot ze geregeld of afgezegd zijn. Een les verdwijnt nooit '
+          + 'stil: een les die er gewoon uitziet terwijl er niemand komt, is precies de fout '
+          + 'die dit moet voorkomen.',
+          'De vervanger komt náást de vaste trainer te staan, nooit in zijn plaats. Zo blijft '
+          + 'achteraf leesbaar van wie de les was en wie hem gaf.',
+        ],
+      },
+      {
+        waar: 'Import en export',
+        kop: 'Het weekschema uit de clublijst',
+        tekst: [
+          'Je leest het weekschema van de school in uit een bestand: per regel de doelgroep, '
+          + 'de groep, de dag, het uur, het terrein, de trainers en de spelers. Je ziet eerst '
+          + 'wat het bestand zou doen — welke groepen erbij komen, welke er wijzigen, welke '
+          + 'regels hij niet begrijpt — en pas als je het herkent gebeurt er iets.',
+          'Groepen worden herkend aan hun sleutel, niet aan hun volgorde in het bestand. Een '
+          + 'tweede keer inlezen maakt dus geen dubbele groepen aan.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'geld',
+    plaats: 'Beheer → Geld',
+    titel: 'Wat jij ziet en een trainer niet',
+    delen: [
+      {
+        waar: 'Rapport',
+        kop: 'De hele club',
+        tekst: [
+          'Een trainer ziet zijn eigen lessen, zijn eigen omzet en zijn eigen loon. Jij ziet de '
+          + 'tabel "Per trainer" en de balk waarmee je naar een andere trainer kijkt — met zijn '
+          + 'bedragen erbij, en met de export.',
+        ],
+      },
+      {
+        waar: 'Banen',
+        kop: 'De uurtarieven',
+        tekst: [
+          'Het uurtarief van een baan is wat een speler per uur betaalt, met een staffel per '
+          + 'groepsgrootte. Dat is geld, dus dit scherm is van jou alleen.',
+          'De omzet loopt op dat tarief; het loon van een trainer loopt op zíjn uurtarief, dat '
+          + 'jij op zijn dossier zet. Het verschil houdt de club over.',
+        ],
+      },
+      {
+        waar: 'Een uurtarief zetten',
+        kop: 'Alleen jij kunt het',
+        tekst: [
+          'Een trainer kan zijn eigen tarief niet zetten — het is wat de club hem uitbetaalt. '
+          + 'Staat zijn loon op nul, dan is dit doorgaans de reden. Een ledenlijst die je '
+          + 'importeert laat de kolom uurtarief liggen als je hem niet mag zetten.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'agendas',
+    plaats: 'Agenda',
+    titel: 'In elke agenda werken',
+    delen: [
+      {
+        waar: 'Nieuwe afspraak',
+        kop: 'Ook voor een collega',
+        tekst: [
+          'Jij kiest bij het inplannen welke trainer de les geeft; een gewone trainer plant '
+          + 'alleen bij zichzelf. Dat is het verschil tussen het rooster van de club maken en '
+          + 'je eigen week invullen.',
+          'Een collega kan jouw lessen dus niet schrappen zonder dat je het merkt. Jij kunt dat '
+          + 'wel — wees daar voorzichtig mee.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'leden',
+    plaats: 'Beheer → Leden',
+    titel: 'De ledenlijst',
+    delen: [
+      {
+        waar: 'Leden',
+        kop: 'Toevoegen, importeren, bijwerken',
+        tekst: [
+          'Eén lid met de hand, of een hele lijst uit een bestand met naam, e-mailadres, rol, '
+          + 'telefoon en uurtarief — alleen naam en e-mailadres zijn verplicht. Wie zo is '
+          + 'ingevoerd, stelt op het loginscherm zelf zijn wachtwoord in ("Eerste keer hier?") '
+          + 'en krijgt zijn bestaande dossier en lessen mee.',
+          'De import verwijdert nooit iemand. Een naam die uit het bestand valt, blijft gewoon '
+          + 'lid van de club.',
+        ],
+      },
+      {
+        waar: 'Leden',
+        kop: 'Een lid verwijderen',
+        tekst: [
+          'Dit is de enige plek waar een lid met zijn hele geschiedenis verdwijnt. Een gewone '
+          + 'trainer maakt spelers aan en houdt het daarbij.',
+        ],
+      },
+    ],
+    waarschuwing: {
+      kop: 'Zet "Confirm email" aan',
+      tekst: [
+        'Voordat je leden importeert: staat de e-mailbevestiging uit, dan kan iemand die het '
+        + 'adres van een clublid kent dat account claimen voordat het lid zelf komt. Het staat '
+        + 'in de instellingen van de databank, niet in deze app.',
+      ],
+    },
+  },
+  {
+    id: 'grenzen',
+    plaats: 'Regels',
+    titel: 'Wat het vinkje níét doet',
+    leidraad: 'Een paar grenzen gelden ook voor jou. Ze staan in de databank en niet alleen op '
+      + 'het scherm, dus je kunt er niet per ongeluk omheen werken.',
+    delen: [
+      {
+        waar: 'Spraakmemo',
+        kop: 'Blijft van de trainer',
+        tekst: [
+          'De opname die een collega inspreekt, is van hem — een speler ziet hem niet, een '
+          + 'collega niet, en jij ook niet. Wat de speler wél ziet, is de notitie die de '
+          + 'trainer eruit uitwerkt.',
+        ],
+      },
+      {
+        waar: 'Groepsles',
+        kop: 'Gaat altijd op factuur',
+        tekst: [
+          'Een beurt op een tienbeurtenkaart staat voor één privéles, en het sponsorbudget net '
+          + 'zo. Cash of QR laat zich niet over vier spelers verdelen. Ook jij kunt daar niet '
+          + 'omheen.',
+        ],
+      },
+      {
+        waar: 'Ouders en kinderen',
+        kop: 'Een aanvraag blijft een beslissing',
+        tekst: [
+          'Een ouder die het ouderschap aanvraagt, ziet niets tot iemand ja zegt. Aanvragen '
+          + 'alleen geeft geen enkel recht — anders volstond het aanvragen om aan het dossier '
+          + 'van een kind te komen.',
+        ],
+      },
+    ],
+    waarschuwing: {
+      kop: 'Noodopruiming',
+      tekst: [
+        'Onderaan Instellingen staat de enige knop in de hele app die gegevens onherstelbaar '
+        + 'wist. Hij vraagt altijd eerst om bevestiging en gebeurt nooit vanzelf. Gebruik hem '
+        + 'niet om "even op te ruimen".',
+      ],
+    },
+  },
+];
+
 /**
- * De gids die bij een rol hoort.
+ * De gids die bij een soort gebruiker hoort.
  *
  * Een trainer leest zijn eigen gids, maar hij moet ook die van een speler kunnen opslaan:
  * "wat ziet mijn speler eigenlijk" is een vraag die hij aan de baan krijgt, en dan is een
- * scherm waarop hij het kan laten zien meer waard dan een uitleg uit het hoofd.
+ * scherm waarop hij het kan laten zien meer waard dan een uitleg uit het hoofd. De
+ * beheerdersgids staat er om dezelfde reden naast, en omdat wie het vinkje net gekregen
+ * heeft nergens anders kan lezen wat het hem geeft.
  */
-export function gidsVoor(rol: Role): Gidsstuk[] {
-  return rol === 'coach' ? TRAINER : SPELER;
+export function gidsVoor(soort: Gidssoort): Gidsstuk[] {
+  if (soort === 'coach') return TRAINER;
+  return soort === 'admin' ? BEHEERDER : SPELER;
 }
 
-/** Hoe de keuze tussen de twee gidsen heet op het scherm. */
-export function gidsLabel(rol: Role): string {
-  return rol === 'coach' ? t('Voor trainers') : t('Voor spelers');
+/** Hoe de keuze tussen de gidsen heet op het scherm. */
+export function gidsLabel(soort: Gidssoort): string {
+  if (soort === 'coach') return t('Voor trainers');
+  return soort === 'admin' ? t('Voor beheerders') : t('Voor spelers');
 }
 
 /**
@@ -699,10 +1022,10 @@ export function gidsLabel(rol: Role): string {
  * Bewust hier en niet in het scherm: het is dezelfde tekst als op het scherm en op de
  * webpagina, en dat blijft alleen zo als er één plek is waar hij vandaan komt.
  */
-export function gidsAlsTekst(rol: Role): string {
-  const regels: string[] = [gidsLabel(rol).toUpperCase(), ''];
+export function gidsAlsTekst(soort: Gidssoort): string {
+  const regels: string[] = [gidsLabel(soort).toUpperCase(), ''];
 
-  for (const stuk of gidsVoor(rol)) {
+  for (const stuk of gidsVoor(soort)) {
     regels.push(`${t(stuk.plaats).toUpperCase()} — ${t(stuk.titel)}`);
     // Een streep onder de kop, precies zo lang als de kop zelf.
     regels.push('='.repeat(`${t(stuk.plaats)} — ${t(stuk.titel)}`.length));
