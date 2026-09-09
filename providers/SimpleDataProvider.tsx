@@ -30,6 +30,7 @@ import type { ImportKeuze, ImportPlanLessen, ImportUitslagLessen } from '../lib/
 import { zetAanwezigheid, magAanwezigheidZetten, bevestigAanwezigheid, magLesBevestigen, type Aanwezigheid } from '../lib/aanwezigheid';
 import { lesgeverId } from '../lib/lesgever';
 import { herstelNaVerwijdering } from '../lib/ziekmelding';
+import type { Lesplanning } from '../lib/types';
 import { claimBezwaar, teruggeefBezwaar } from '../lib/openstaand';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
@@ -54,6 +55,7 @@ interface DataShape {
   lesGroepen: LesGroep[];
   /** De ziekmeldingen van de trainers, open én ingetrokken. Zie lib/ziekmelding. */
   sickLeaves: SickLeave[];
+  lesPlanning: Lesplanning[];
   settings: Settings;
   currentUser: User | null;
   loading: boolean;
@@ -305,6 +307,21 @@ interface DataShape {
    * Dit raakt geen enkele boeking, en dat is geen vergetelheid — zie de actie zelf.
    */
   verwijderZiekmelding: (id: string) => Promise<void>;
+  /**
+   * Lesmateriaal doorsturen voor een periode, aan een trainer en/of een groep.
+   *
+   * Of de invoer deugt is al gevraagd door het scherm (`lesplanningFout` in lib/lesplanning);
+   * hier wordt de rij alleen weggeschreven. De id wordt op één plek gemaakt, net als bij elke
+   * andere `add*`-actie.
+   */
+  voegLesplanningToe: (p: Omit<Lesplanning, 'id' | 'created_at'>) => Promise<void>;
+  /**
+   * Een doorsturing weghalen. Raakt geen enkele boeking: welk materiaal er geldt, wordt afgeleid
+   * door `materiaalVoor` — zodra de rij weg is, is dat antwoord vanzelf overal nee, overal waar
+   * iemand het opnieuw vraagt. Wie hier "even netjes opruimt" met een map over de boekingen,
+   * wist iets wat er nooit op stond.
+   */
+  verwijderLesplanning: (id: string) => Promise<void>;
   addLesson: (l: Omit<Lesson, 'id'>) => Promise<void>;
   updateLesson: (id: string, patch: Partial<Lesson>) => Promise<void>;
   deleteLesson: (id: string) => Promise<void>;
@@ -1544,6 +1561,29 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [commit]);
 
+  // Lesmateriaal doorsturen
+  //
+  // Een doorsturing is een periode op een trainer en/of een groep, en niets meer. Welke lessen
+  // ze raakt wordt nergens opgeslagen maar uitgerekend in lib/lesplanning — hier wordt de rij
+  // alleen aangemaakt en weggehaald. Daarom raakt weghalen ook geen enkele boeking: zodra de rij
+  // weg is, geeft `materiaalVoor` vanzelf niets meer terug.
+  // ---------------------------------------------------------------------------
+
+  const voegLesplanningToe = useCallback(async (
+    planning: Omit<Lesplanning, 'id' | 'created_at'>,
+  ): Promise<void> => {
+    const store = storeRef.current;
+    if (!store) return;
+    const aangemaakt: Lesplanning = { ...planning, id: newId('lp'), created_at: nowISO() };
+    await commit({ ...store, lesPlanning: [...store.lesPlanning, aangemaakt] });
+  }, [commit]);
+
+  const verwijderLesplanning = useCallback(async (id: string): Promise<void> => {
+    const store = storeRef.current;
+    if (!store) return;
+    await commit({ ...store, lesPlanning: store.lesPlanning.filter((p) => p.id !== id) });
+  }, [commit]);
+
   const addLesson = useCallback(async (l: Omit<Lesson, 'id'>) => {
     const store = storeRef.current;
     if (!store) return;
@@ -1669,6 +1709,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     relaties: store?.relaties ?? [],
     lesGroepen: store?.lesGroepen ?? [],
     sickLeaves: store?.sickLeaves ?? [],
+    lesPlanning: store?.lesPlanning ?? [],
     // Zolang de opslag nog niet geladen is: dezelfde waarden als een club die het veld nog
     // niet kent. Ook `lesson_duration_minutes`, want een scherm dat er `undefined` uit haalt
     // rekent met niets in plaats van met een lesuur van 60 minuten.
@@ -1727,6 +1768,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     importeerTrainingen,
     meldZiek,
     verwijderZiekmelding,
+    voegLesplanningToe,
+    verwijderLesplanning,
     addLesson,
     updateLesson,
     deleteLesson,
@@ -1752,7 +1795,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
     vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster,
     archiveLesGroep, importeerTrainingen,
-    meldZiek, verwijderZiekmelding, addLesson,
+    meldZiek, verwijderZiekmelding, voegLesplanningToe, verwijderLesplanning, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
     addMemo, deleteMemo, werkMemoUit,
     saveGoal, deleteGoal, saveSettings, emergencyCleanup,
