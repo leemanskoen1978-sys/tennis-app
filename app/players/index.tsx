@@ -49,7 +49,11 @@ export default function Players() {
   // hem openen om te zien of hij op het juiste moment kijkt.
   const nu = coach && currentUser ? lessenNu(bookings, currentUser.id, new Date()) : [];
   const [progressOpen, setProgressOpen] = useState(false);
-  const [scope, setScope] = useState<PlayerScope>('all');
+  // Niets gekozen = geen lijst. Dit stond op 'all' en dan rolden er 555 namen uit die niemand
+  // gevraagd had; de tegels eronder waren dan een filter op iets wat er al stond in plaats van
+  // een keuze. Nu kies je eerst een stapel — of je typt een naam, want wie iemand zoekt weet
+  // zelf wel wie.
+  const [scope, setScope] = useState<PlayerScope | null>(null);
   const [query, setQuery] = useState('');
 
   // Eén moment voor de hele lijst: anders zou de ene speler op een andere "nu" beoordeeld
@@ -87,7 +91,11 @@ export default function Players() {
     );
   }
 
-  const shown = scoped[scope];
+  // Zoeken gaat altijd door de hele club, ook zonder gekozen tegel: wie een naam intikt is
+  // iemand aan het zoeken en niet aan het bladeren. Staat er niets gekozen én niets getypt,
+  // dan blijft de lijst leeg en zeggen de tegels wat je kunt openen.
+  const zoekt = query.trim() !== '';
+  const shown = scope ? scoped[scope] : (zoekt ? scoped.all : []);
   const visible = searchPlayers(shown, query);
 
   return (
@@ -128,34 +136,37 @@ export default function Players() {
             />
           </TileGrid>
 
+          {/* Een tegel die al openstaat, sluit weer bij een tweede tik. Zonder dat kun je een
+              lijst wel openen maar nooit meer wegdoen, en dat is precies wat er mis was. */}
           <TileGrid>
             <ActionTile
               title={t('Alle spelers')}
               subtitle={playerCountLabel(scoped.all.length)}
               icon={Users}
               selected={scope === 'all'}
-              onPress={() => setScope('all')}
+              onPress={() => setScope(scope === 'all' ? null : 'all')}
             />
             <ActionTile
               title={t('Mijn spelers')}
               subtitle={playerCountLabel(scoped.mine.length)}
               icon={UserCheck}
               selected={scope === 'mine'}
-              onPress={() => setScope('mine')}
+              onPress={() => setScope(scope === 'mine' ? null : 'mine')}
             />
             <ActionTile
               title={t('Spelers vandaag')}
               subtitle={playerCountLabel(scoped.today.length)}
               icon={CalendarDays}
               selected={scope === 'today'}
-              onPress={() => setScope('today')}
+              onPress={() => setScope(scope === 'today' ? null : 'today')}
             />
           </TileGrid>
         </>
       ) : null}
 
       {/* Zoeken in de stapel die je bekijkt. Staat onder de tegels, want de tegel bepaalt
-          waarin je zoekt en niet andersom. */}
+          waarin je zoekt en niet andersom — en zonder gekozen tegel doorzoek je de hele club,
+          want dan is de zoekregel zelf de keuze. */}
       <View style={styles.searchField}>
         <Search size={18} color={tennisColors.textMuted} />
         <TextInput
@@ -183,11 +194,15 @@ export default function Players() {
 
       {visible.length === 0 ? (
         <Text style={styles.muted}>
-          {/* Twee redenen om niets te zien, en ze vragen om een ander antwoord: de stapel is
-              leeg, of je zoekterm past op niemand in die stapel. */}
-          {query !== ''
+          {/* Drie redenen om niets te zien, en ze vragen elk om een ander antwoord: je hebt
+              nog niets gekozen, je zoekterm past op niemand, of de gekozen stapel is leeg.
+              Die eerste is geen lege lijst maar een uitnodiging, dus staat er geen
+              "geen spelers" maar wat je kunt doen. */}
+          {zoekt
             ? t('Geen speler gevonden voor "{q}".', { q: query.trim() })
-            : emptyScopeLine(coach ? scope : 'all')}
+            : scope === null
+              ? t('Kies hierboven welke spelers je wil zien, of zoek er een op naam.')
+              : emptyScopeLine(scope)}
         </Text>
       ) : (
         visible.map((p) => (
