@@ -27,6 +27,7 @@ import {
   buildLesplan, coachesForPlayer, lesplanSummary, type LessonWithProgress,
 } from '../../lib/relations';
 import { filledGoalCount, goalCountLabel } from '../../lib/goals';
+import { isMijnKind } from '../../lib/ouderkind';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
 import { groupSize, groupSizeLabel, isGroupLesson, playsIn } from '../../lib/groups';
 import { parseSponsorBudget, sponsorHint, sponsorState } from '../../lib/sponsor';
@@ -41,7 +42,7 @@ import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
 import type { Booking, GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
-import { isCoach, magContactZien, magDossierZien, rolLabel } from '../../lib/rechten';
+import { isCoach, magContactZien, rolLabel } from '../../lib/rechten';
 import { icsFilename, toIcs } from '../../lib/ics';
 import { shareIcs } from '../../lib/share';
 
@@ -108,25 +109,6 @@ export default function PlayerDossier() {
     return (
       <Screen scroll={false}>
         <Text style={styles.muted}>{t('Speler niet gevonden.')}</Text>
-      </Screen>
-    );
-  }
-
-  // Een trainer beheert de spelers waar hij mee werkt — hij maakt ze ook aan. Een speler die
-  // zijn eigen dossier opent, bewerkt zichzelf; een ouder komt voor de opmerking bij zijn
-  // kind. Wie daar niet bij hoort, komt niet binnen: zie `magDossierZien` voor waarom deze
-  // vraag de deur bewaakt en niet alleen de knoppen.
-  const magDossier = magDossierZien(currentUser, player, relaties);
-
-  if (!magDossier) {
-    // Wel de naam, niet de inhoud. De naam kent hij al — hij staat met deze speler op de
-    // baan, en zonder naam leest dit als een fout in plaats van als een grens.
-    return (
-      <Screen scroll={false}>
-        <Text style={styles.name}>{player.name}</Text>
-        <Text style={styles.muted}>
-          {t('Dit dossier is alleen voor de speler zelf, zijn ouder en zijn trainer.')}
-        </Text>
       </Screen>
     );
   }
@@ -206,6 +188,12 @@ export default function PlayerDossier() {
   const goalCount = filledGoalCount(goals.filter((g) => g.student_id === player.id));
   const doelenSummary = goalCount === 0 ? t('nog geen doel') : goalCountLabel(goalCount);
   const betaalwijze = t(PAYMENT_LABELS[player.default_payment_method ?? 'open']);
+  // Een trainer beheert de spelers waar hij mee werkt — hij maakt ze ook aan. Een speler die
+  // zijn eigen dossier opent, bewerkt zichzelf; wat hij dan mag, beslist het blad.
+  const magBewerken = !!coach || currentUser?.id === player.id
+    // Een ouder komt hier voor het blad met de opmerking: dat is het enige dat hij op het
+    // account van zijn kind mag schrijven, en zonder knop komt hij er niet aan.
+    || isMijnKind(currentUser?.id, player.id, relaties);
 
   // Het sponsorbudget: wat er in het contract staat en wat er nog van over is. De rest
   // rekent lib/sponsor uit de gesponsorde lessen — er is geen tweede saldo dat kan gaan
@@ -278,11 +266,12 @@ export default function PlayerDossier() {
     // badges: een badge vraagt aandacht voor iets wat af moet (openstaande betalingen in
     // Beheer), en in een dossier is niets dringend.
     { key: 'lesdagen', title: t('Lesdagen'), subtitle: lesdagenSummary, icon: CalendarDays },
-    // De Weekagenda stond hier een tijd achter een eigen rechtentest, omdat dit scherm nog
-    // openstond voor medespelers en het weekritme van een kind daar zeker niet bij hoorde.
-    // Die test staat nu op de deur (`magDossierZien` hierboven) en geldt dus voor het hele
-    // dossier; hem hier herhalen zou suggereren dat de rest wél open is.
-    { key: 'week', title: t('Weekagenda'), subtitle: t('{uren} deze week', { uren: weekUren }), icon: CalendarRange },
+    // Alleen voor wie dit dossier hoort te zien. Het scherm zelf staat vandaag nog open voor
+    // medespelers (punt 10 in OPENSTAAND.md); daar hoort niet ook nog het weekritme van een
+    // kind bij te komen. `magBewerken` is precies die test: trainer, jezelf, of de ouder.
+    ...(magBewerken
+      ? [{ key: 'week' as const, title: t('Weekagenda'), subtitle: t('{uren} deze week', { uren: weekUren }), icon: CalendarRange }]
+      : []),
     { key: 'lesplan', title: t('Lesplan & voortgang'), subtitle: lesplanSummary(plan), icon: BookOpen },
     { key: 'doelen', title: t('Doelen'), subtitle: doelenSummary, icon: Target },
   ];
@@ -302,9 +291,8 @@ export default function PlayerDossier() {
             erachter als hij dat heeft. */}
         <Badge label={rolLabel(player)} color={tennisColors.primaryFill} />
         {/* Eén tik opent de mail of een WhatsApp-gesprek; zie components/ui/ContactRegels.
-            De deur van dit scherm laat vandaag niemand binnen die deze regels niet mag zien,
-            dus deze test staat er altijd waar. Toch blijft hij staan: wordt het adres ooit
-            krapper gezet dan het dossier zelf, dan is dit de plek waar dat moet werken. */}
+            Alleen voor wie het aangaat: dit scherm is vanuit een groepsles bereikbaar, en
+            dan keek een kind naar de gegevens van een ander kind. Zie `magContactZien`. */}
         {magContactZien(currentUser, player, relaties)
           ? <ContactRegels email={player.email} phone={player.phone} />
           : null}
@@ -338,24 +326,26 @@ export default function PlayerDossier() {
 
         {/* Hetzelfde blad als op je eigen profiel en in Beheer → Leden: één formulier voor
             naam, e-mailadres en gsm-nummer, waar je het ook opent. Zonder deze knop kwam een
-            trainer die geen beheerder is er niet aan — Beheer → Leden is niet van hem.
-            Onvoorwaardelijk: wie binnen is, is de trainer, de speler zelf of zijn ouder, en
-            welke velden elk van hen mag wijzigen beslist het blad. */}
-        <Button
-          label={t('Gegevens bewerken')}
-          variant="secondary"
-          fullWidth={false}
-          icon={<Pencil size={16} color={tennisColors.text} />}
-          onPress={() => setGegevensOpen(true)}
-          style={styles.editButton}
-        />
+            trainer die geen beheerder is er niet aan — Beheer → Leden is niet van hem. */}
+        {magBewerken ? (
+          <Button
+            label={t('Gegevens bewerken')}
+            variant="secondary"
+            fullWidth={false}
+            icon={<Pencil size={16} color={tennisColors.text} />}
+            onPress={() => setGegevensOpen(true)}
+            style={styles.editButton}
+          />
+        ) : null}
       </Card>
 
-      <LidBewerken
-        lid={player}
-        visible={gegevensOpen}
-        onClose={() => setGegevensOpen(false)}
-      />
+      {magBewerken ? (
+        <LidBewerken
+          lid={player}
+          visible={gegevensOpen}
+          onClose={() => setGegevensOpen(false)}
+        />
+      ) : null}
 
       <TileGrid>
         {tiles.map((tile) => (

@@ -17,7 +17,7 @@ import {
 import { tennisColors } from '../../constants/tennis-colors';
 import { radius, minTapTarget, spacing, typography, webCursor } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
-import { isCoach, magContactZien, magDossierZien } from '../../lib/rechten';
+import { isCoach, magContactZien } from '../../lib/rechten';
 import { playersOf } from '../../lib/hub';
 import { lessenNu } from '../../lib/afvinken';
 import { formatTimeRange } from '../../lib/datetime';
@@ -172,19 +172,8 @@ export default function Players() {
             : emptyScopeLine(coach ? scope : 'all')}
         </Text>
       ) : (
-        visible.map((p) => {
-          // Voor een speler is dit de ledenlijst: hij hoort te kunnen opzoeken wie er in de
-          // club zit, maar niet in elk dossier te kunnen kijken. Het dossier weigert hem
-          // sinds `magDossierZien`; zonder deze test bleef de regel wel aanklikbaar, en dan
-          // is de hele lijst één rij deuren die niet opengaan.
-          const magOpenen = magDossierZien(currentUser, p, relaties);
-          return (
-          <Card
-            key={p.id}
-            onPress={magOpenen ? () => router.push(`/players/${p.id}`) : undefined}
-            accessibilityLabel={p.name}
-            style={styles.row}
-          >
+        visible.map((p) => (
+          <Card key={p.id} onPress={() => router.push(`/players/${p.id}`)} accessibilityLabel={p.name} style={styles.row}>
             <View style={styles.rowContent}>
               <View style={styles.avatar}><UserIcon size={20} color={tennisColors.primary} /></View>
               <View style={styles.info}>
@@ -202,12 +191,10 @@ export default function Players() {
                   )}
                 </Text>
               </View>
-              {/* Geen pijltje waar niets achter zit. */}
-              {magOpenen ? <ChevronRight size={20} color={tennisColors.textMuted} /> : null}
+              <ChevronRight size={20} color={tennisColors.textMuted} />
             </View>
           </Card>
-          );
-        })
+        ))
       )}
 
       {/* Hetzelfde blad als in het dossier, alleen zonder speler: die kies je bovenin. */}

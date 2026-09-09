@@ -113,35 +113,25 @@ export function magLoonZien(
 }
 
 /**
- * Mag deze kijker het dossier van dit lid openen?
+ * Mag deze kijker het e-mailadres en het gsm-nummer van dit lid zien?
  *
  * Alleen een trainer of beheerder, jijzelf, en een ouder van dít kind.
  *
  * De aanleiding: in het detailblad van een groepsles is elke medespeler aanklikbaar
- * (`components/BookingDetailSheet.tsx`, "Open dossier van {naam}") en het dossier had geen
- * enkele rolcontrole. Een kind dat zijn eigen les opende, tikte op een medespeler en las
- * diens adres, nummer, de opmerking voor de trainer, zijn doelen en zijn voortgangsnotities.
- * Dat is geen deep link of een truc maar een gewone knop, en het gaat om gegevens van
- * minderjarigen.
- *
- * Deze regel stond al in het scherm zelf, maar één laag te laat: hij bepaalde welke
- * knoppen er in het dossier verschenen, niet of je het dossier mocht ópenen. Wie geen knop
- * kreeg, las alles er nog steeds. Daarom staat hij hier, met tests, en leest het scherm hem
- * vóór het iets tekent.
+ * (`components/BookingDetailSheet.tsx`, "Open dossier van {naam}") en het dossier toonde de
+ * contactregels onvoorwaardelijk. Een kind dat zijn eigen les opende, kon zo het adres en
+ * het nummer van elk ander kind in zijn groep lezen. Dat is geen deep link of een truc maar
+ * een gewone knop, en het gaat om gegevens van minderjarigen.
  *
  * Een aanvraag die nog niet goedgekeurd is telt niet mee (`isMijnKind` bewaakt dat): anders
- * volstaat het aanvragen van ouderschap om in een dossier te komen.
+ * volstaat het aanvragen van ouderschap om aan iemands nummer te komen.
  *
- * Wie binnen mag, mag ook bewerken: er is niemand die een dossier wél hoort te lezen maar
- * er niets in mag. Voor een ouder is dat één veld — de opmerking voor de trainer — en welk
- * veld dat is, beslist het blad (`components/LidBewerken.tsx`), niet deze deur.
- *
- * Let op wat dit NIET is: de databank geeft de rij van elk lid nog steeds aan iedereen die
- * inlogt, want `users_select` staat op `using (true)` zodat leden elkaars naam kunnen zien,
- * en RLS schermt rijen af en geen kolommen. Dit sluit de dagelijkse weg, niet de API. Zie
+ * Let op wat dit NIET is: de databank geeft deze velden nog steeds aan iedereen die inlogt,
+ * want `users_select` staat op `using (true)` zodat leden elkaars naam kunnen zien, en RLS
+ * schermt rijen af en geen kolommen. Dit sluit de dagelijkse weg, niet de API. Zie
  * OPENSTAAND.md voor wat er nodig is om dat wél dicht te zetten.
  */
-export function magDossierZien(
+export function magContactZien(
   kijker: User | null | undefined,
   lid: User | null | undefined,
   relaties: OuderKind[],
@@ -150,27 +140,6 @@ export function magDossierZien(
   if (isAdmin(kijker) || isCoach(kijker)) return true;
   if (kijker.id === lid.id) return true;
   return isMijnKind(kijker.id, lid.id, relaties);
-}
-
-/**
- * Mag deze kijker het e-mailadres en het gsm-nummer van dit lid zien?
- *
- * Vandaag exact dezelfde kring als hierboven, en met opzet niet nog eens uitgeschreven: de
- * contactregels staan ín het dossier, dus wie er niet binnen mag komen kan ze per definitie
- * niet lezen. Twee kopieën van dezelfde vier voorwaarden lopen vroeg of laat uiteen, en dan
- * is de vraag welke van de twee de bedoeling was.
- *
- * Het blijft een eigen naam omdat het een engere vraag is dan de deur. Wordt het adres ooit
- * krapper gezet — een trainer alleen voor zijn eigen spelers, bijvoorbeeld — dan gebeurt dat
- * hier, en blijft het dossier zelf open zoals het was. De testen leggen die gelijkheid vast,
- * zodat dat een bewuste stap is en geen ongeluk.
- */
-export function magContactZien(
-  kijker: User | null | undefined,
-  lid: User | null | undefined,
-  relaties: OuderKind[],
-): boolean {
-  return magDossierZien(kijker, lid, relaties);
 }
 
 /**

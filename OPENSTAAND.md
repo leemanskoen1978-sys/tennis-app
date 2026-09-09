@@ -244,39 +244,25 @@ Op volgorde van wat ik als eerste zou doen:
 
    Nog open voor het ontwerp: waar de trainer het te zien krijgt (op Home bij zijn lesdag,
    of onder Mijn lessen), en of een toewijzing aan een weeknummer hangt of aan een datum.
-10. ~~**Het spelersdossier staat open voor medespelers.**~~ Gevonden op 9 september 2026,
-    dicht op 9 september 2026 — in de app. In de databank nog niet; zie het staartje hieronder.
+10. **Het spelersdossier staat open voor medespelers.** Gevonden op 9 september 2026.
 
-    Wat er was: in een groepsles is elke medespeler aanklikbaar in het lesdetail ("Open
-    dossier van {naam}") en `app/players/` had geen enkele rolcontrole. Een speler opende
-    dus zijn eigen les, tikte op een medespeler, en zag diens e-mailadres, telefoonnummer,
-    de opmerking voor de trainer, zijn doelen en zijn voortgangsnotities. Bij 555 leden,
-    veel kinderen.
+    In een groepsles is elke medespeler aanklikbaar in het lesdetail
+    (`components/BookingDetailSheet.tsx:313`, "Open dossier van {naam}"), en `app/players/`
+    heeft geen enkele rolcontrole. Een speler opent dus zijn eigen les, tikt op een
+    medespeler, en ziet diens naam, e-mailadres, telefoonnummer, de opmerking voor de
+    trainer, zijn doelen en zijn voortgangsnotities. Bij 555 leden, veel kinderen.
 
-    Wat het geworden is: `magDossierZien(kijker, lid, relaties)` in `lib/rechten.ts` —
-    trainer of beheerder, jezelf, of de ouder van dít kind, met een goedgekeurde aanvraag.
-    Diezelfde regel stond al in het scherm, maar één laag te laat: hij bepaalde welke
-    knoppen er verschenen en niet of je binnen mocht. Nu leest `app/players/[id].tsx` hem
-    vóór het iets tekent en toont het anders alleen de naam met één zin erbij.
+    De databank houdt het niet tegen: `users_select` staat op `using (true)`
+    (`supabase-schema.sql:584`) omdat iedereen elkaars naam moet kunnen zien. Maar dezelfde
+    rij draagt ook e-mail, telefoon, bio en sponsorbudget mee.
 
-    Drie plekken die erop aansluiten:
-    - `components/BookingDetailSheet.tsx` toont een medespeler nog steeds bij naam — je
-      speelt samen — maar zonder doorklik en zonder chevron voor wie hem niet mag volgen.
-    - `app/players/index.tsx` blijft voor een speler de ledenlijst, alleen zijn de regels
-      die nergens heen gaan niet meer aanklikbaar.
-    - `magContactZien` is nu één regel die `magDossierZien` doorgeeft, in plaats van
-      dezelfde vier voorwaarden een tweede keer. Een test legt die gelijkheid vast, zodat
-      het adres later bewust krapper gezet kan worden en niet per ongeluk ruimer.
+    Sinds stuk 3 staat de tegel Weekagenda alleen in het dossier voor wie het hoort te zien
+    (`magBewerken`); de rest van het scherm is nog niet dicht.
 
-    De tegel Weekagenda had sinds stuk 3 een eigen rechtentest omdat het scherm nog openstond;
-    die is weg, want hij zit nu in de deur.
-
-    **Wat hier níét mee opgelost is:** de databank geeft de rij van elk lid nog aan iedereen
-    die inlogt. `users_select` staat op `using (true)` (`supabase-schema.sql:584`) omdat
-    iedereen elkaars naam moet kunnen zien, en RLS schermt rijen af en geen kolommen —
-    dezelfde rij draagt e-mail, telefoon, bio en sponsorbudget mee. Dit sluit de dagelijkse
-    weg, niet de API. Het patroon om dat wél dicht te zetten staat in punt 11 hieronder
-    (`coach_rates`: een eigen tabel met een eigen select-policy).
+    De regel die dit moet afdwingen bestaat al, één laag te laat: `app/players/[id].tsx:194`
+    berekent `magBewerken` als "trainer, of jezelf, of de ouder van dit kind". Dat hoort te
+    bepalen of je het scherm mag ópenen. Verplaatsen naar `lib/rechten.ts`, met tests, en de
+    doorklik in het lesdetail verbergen voor wie hem niet mag volgen.
 
 11. **Sponsor en betaalwijzen uit de app.** Op de plank gezet op 9 september 2026: hoe een
     les betaald wordt gebeurt buiten deze app, dus dit heeft geen prioriteit.
