@@ -6,12 +6,10 @@
 // er gebeurt bij twee lessen tegelijk rekent lib/week uit (`weekRooster`); hier staat alleen
 // hoe het eruitziet.
 
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 
-import { BookingDetailSheet } from './BookingDetailSheet';
 import { useSimpleData } from '../providers/SimpleDataProvider';
-import { useKindkeuze } from '../providers/kindkeuze';
 import { formatDay, formatTime, formatTimeRange } from '../lib/datetime';
 import { groupSize, shortGroupLabel } from '../lib/groups';
 import { isCoach } from '../lib/rechten';
@@ -42,17 +40,22 @@ function isVandaag(dag: Date, now: Date): boolean {
 export function WeekRaster({
   rooster,
   now,
+  onBookingPress,
 }: {
   rooster: Rooster;
   now: Date;
+  /**
+   * Een lesblok is aangetikt. Het raster opent het lesdetail niet zelf: het staat straks in
+   * een blad, en een Modal binnen een gesloten Modal wordt niet meer getekend. Wie het
+   * raster plaatst, tekent het lesdetail op schermniveau.
+   */
+  onBookingPress: (booking: Booking) => void;
 }): React.JSX.Element {
   const t = useT();
-  const { currentUser, users, courts, settings, clearError } = useSimpleData();
+  const { currentUser, users, courts, settings } = useSimpleData();
   // De clubkalender: op een gesloten dag hoort het raster niet te doen alsof er uren vrij zijn.
   const vakanties = settings.vakanties ?? [];
-  const { kijktNaarZichzelf } = useKindkeuze();
   const { width } = useWindowDimensions();
-  const [openBooking, setOpenBooking] = useState<Booking | null>(null);
 
   const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
   const courtName = (id: string): string =>
@@ -83,8 +86,7 @@ export function WeekRaster({
   }
 
   return (
-    <>
-      <View style={styles.raster}>
+    <View style={styles.raster}>
         {/* De uren-as staat buiten het zijwaartse schuiven: schuif je naar zondag, dan wil
             je nog steeds kunnen zien hoe laat het daar is. */}
         <View style={styles.as}>
@@ -159,10 +161,7 @@ export function WeekRaster({
                           tijd: formatTimeRange(b.start_time, b.end_time),
                           ander,
                         })}
-                        onPress={() => {
-                          clearError();
-                          setOpenBooking(b);
-                        }}
+                        onPress={() => onBookingPress(b)}
                         style={[
                           styles.blok,
                           plaats(blok) as object,
@@ -186,18 +185,7 @@ export function WeekRaster({
             </View>
           </View>
         </ScrollView>
-      </View>
-
-      <BookingDetailSheet
-        booking={openBooking}
-        visible={openBooking !== null}
-        canManage={isCoach(currentUser) && kijktNaarZichzelf}
-        onClose={() => {
-          clearError();
-          setOpenBooking(null);
-        }}
-      />
-    </>
+    </View>
   );
 }
 

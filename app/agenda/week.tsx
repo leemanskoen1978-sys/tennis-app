@@ -16,6 +16,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 import { WeekRaster } from '../../components/WeekRaster';
+import { BookingDetailSheet } from '../../components/BookingDetailSheet';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -23,17 +24,22 @@ import { Chip } from '../../components/ui/Chip';
 import { CoachFilter } from '../../components/ui/CoachFilter';
 import { useSchoneLei, useSimpleData } from '../../providers/SimpleDataProvider';
 import { useAgendaScope } from '../../providers/agendaScope';
+import { useKindkeuze } from '../../providers/kindkeuze';
 import { periodLabel, shiftPeriod, type Period } from '../../lib/period';
 import {
   formatUren, isDezeWeek, weekAgenda, weekLessen, weekMinuten, weekPeriod, weekRooster,
 } from '../../lib/week';
+import { isCoach } from '../../lib/rechten';
+import type { Booking } from '../../lib/types';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
 
 export default function WeekScreen(): React.JSX.Element {
   const t = useT();
-  const { error } = useSimpleData();
+  const { currentUser, error, clearError } = useSimpleData();
+  const { kijktNaarZichzelf } = useKindkeuze();
+  const [openBooking, setOpenBooking] = useState<Booking | null>(null);
   const { coachId, setCoachId, coaches, bookings } = useAgendaScope();
   useSchoneLei();
 
@@ -96,7 +102,18 @@ export default function WeekScreen(): React.JSX.Element {
 
       {/* Het raster tekent alle zeven dagen, ook de lege: juist het gat op donderdag is
           iets wat je wilt zien als je naar je week kijkt. */}
-      <WeekRaster rooster={rooster} now={now} />
+      <WeekRaster
+        rooster={rooster}
+        now={now}
+        onBookingPress={(b) => { clearError(); setOpenBooking(b); }}
+      />
+
+      <BookingDetailSheet
+        booking={openBooking}
+        visible={openBooking !== null}
+        canManage={isCoach(currentUser) && kijktNaarZichzelf}
+        onClose={() => { clearError(); setOpenBooking(null); }}
+      />
 
       {lessen === 0 ? (
         <Text style={styles.leeg}>{t('Geen lessen deze week.')}</Text>
