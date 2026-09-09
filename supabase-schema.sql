@@ -1249,3 +1249,55 @@ create policy bookings_update on bookings for update
     )
     or (is_coach() and (taught_by_id = app_user_id() or taught_by_id is null))
   );
+
+-- ---------------------------------------------------------------------------
+-- Lesmateriaal doorsturen voor een periode
+-- ---------------------------------------------------------------------------
+
+-- Onderaan en niet hoger in dit bestand, om dezelfde harde reden als bij `les_staat_open`: deze
+-- tabel verwijst naar `lessons` en naar `lesson_groups`, en die worden verderop aangemaakt dan
+-- de plek waar dit thematisch zou passen. Dezelfde inhoud staat in LESPLANNING.sql, dat de
+-- gebruiker draait op de databank die er al staat.
+
+create table if not exists les_planning (
+  id text primary key,
+  lesson_id text not null references lessons(id) on delete cascade,
+  coach_id text references users(id) on delete cascade,
+  group_id text references lesson_groups(id) on delete cascade,
+  van date not null,
+  tot date not null,
+  created_at timestamptz not null default now(),
+  -- Dezelfde regel als `lesplanningFout` in lib/lesplanning: beide leeg zou stilzwijgend "de
+  -- hele club" betekenen. De app zorgt dat er geen knop is die hier geweigerd wordt; dit is de
+  -- bewaking (zie het kopcommentaar van lib/rechten.ts).
+  constraint les_planning_doelwit check (coach_id is not null or group_id is not null)
+);
+
+-- `on delete cascade` op alle drie de verwijzingen, en met opzet niet `set null` zoals bij
+-- `bookings.taught_by_id`. Dat verschil zit hierin: een boeking blijft bestaan en valt bij een
+-- lege waarde terug op een geldige toestand ("de vaste trainer gaf hem zelf"). Een planningrij
+-- heeft die terugval niet — zonder materiaal, of zonder de trainer of groep waar ze over ging,
+-- betekent ze niets meer en hoort ze weg.
+
+create index if not exists les_planning_coach_idx on les_planning (coach_id);
+create index if not exists les_planning_group_idx on les_planning (group_id);
+create index if not exists les_planning_lesson_idx on les_planning (lesson_id);
+
+alter table les_planning enable row level security;
+
+-- Lezen: elke trainer, want hij moet de planning van zijn eigen lessen zien. Dat is dezelfde
+-- grens die `lessons_select` al hanteert voor de bibliotheek.
+--
+-- DE SPELER STAAT HIER MET OPZET NIET BIJ (beslist op 9 september 2026). Dit is werkinstructie
+-- voor de trainer. Zou een speler het moeten zien, dan kost dat twee openingen in de bestaande
+-- bewaking in plaats van nul: `lessons_select` laat hem alleen materiaal lezen dat aan hemzelf
+-- hangt, en `lesson_groups_select` is alleen voor de beheerder.
+drop policy if exists les_planning_select on les_planning;
+create policy les_planning_select on les_planning for select
+  to authenticated using (is_coach() or is_admin());
+
+-- Schrijven: alleen de beheerder, zoals bij `lesson_groups` en `sick_leaves`. Wat de club die
+-- periode geeft, beslist de tennisschool en niet een trainer voor zichzelf.
+drop policy if exists les_planning_write on les_planning;
+create policy les_planning_write on les_planning for all
+  to authenticated using (is_admin()) with check (is_admin());
