@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-  CalendarDays, ChevronRight, CreditCard, NotebookPen, Search, Users, UserCheck,
+  CalendarDays, ChevronRight, ClipboardCheck, CreditCard, NotebookPen, Search, Users, UserCheck,
   User as UserIcon, X,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
@@ -19,6 +19,8 @@ import { radius, minTapTarget, spacing, typography, webCursor } from '../../cons
 import { useT } from '../../lib/i18n';
 import { isCoach, magContactZien } from '../../lib/rechten';
 import { playersOf } from '../../lib/hub';
+import { lessenNu } from '../../lib/afvinken';
+import { formatTimeRange } from '../../lib/datetime';
 
 /**
  * De spelerslijst is ook de plek waar een trainer na zijn lesdag zijn notities kwijt kan:
@@ -43,6 +45,9 @@ export default function Players() {
   const coach = isCoach(currentUser);
   const players = playersOf(users);
   const pending = usePendingPaymentBookings();
+  // Loopt er nu een les, dan zegt de tegel Afvinken meteen welke — anders moet de trainer
+  // hem openen om te zien of hij op het juiste moment kijkt.
+  const nu = coach && currentUser ? lessenNu(bookings, currentUser.id, new Date()) : [];
   const [progressOpen, setProgressOpen] = useState(false);
   const [scope, setScope] = useState<PlayerScope>('all');
   const [query, setQuery] = useState('');
@@ -79,6 +84,20 @@ export default function Players() {
               icon={NotebookPen}
               primary
               onPress={() => setProgressOpen(true)}
+            />
+            {/* Afvinken hoort bij de spelers: het gaat over wie er is. De regel eronder zegt
+                welke les er nú loopt, zodat je het scherm niet hoeft te openen om te zien of
+                je op het juiste moment kijkt. Een eigen icoon, want UserCheck staat op dit
+                scherm al voor "mijn spelers". */}
+            <ActionTile
+              title={t('Afvinken')}
+              subtitle={nu.length > 0
+                ? t('Nu: {tijd} · geef je gsm door', {
+                  tijd: formatTimeRange(nu[0].start_time, nu[0].end_time),
+                })
+                : t('Wie is er? Bij het begin van de les')}
+              icon={ClipboardCheck}
+              onPress={() => router.push('/afvinken')}
             />
             {/* Openstaande betalingen gaan over mensen, dus ze horen ook hier te vinden te
                 zijn — niet alleen in Beheer. Het scherm erachter is hetzelfde. */}

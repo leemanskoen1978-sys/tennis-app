@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronRight, GraduationCap, Pencil, BookOpen, UserPlus } from 'lucide-react-native';
+import { CalendarDays, ChevronRight, GraduationCap, Pencil, BookOpen, UserPlus } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -12,12 +12,19 @@ import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { useT, useLanguage } from '../../lib/i18n';
 import { coachesOf } from '../../lib/hub';
+import { dossierPad } from '../../lib/dossier';
+import { useActieveSpeler } from '../../providers/kindkeuze';
 
 export default function Coaches() {
   const t = useT();
   const lang = useLanguage();
   const router = useRouter();
-  const { users, bookings, lessons, progress } = useSimpleData();
+  const { currentUser, users, bookings, lessons, progress } = useSimpleData();
+  const speler = useActieveSpeler();
+  // Je eigen dossier: je agenda, je week en je spelers staan daar bij elkaar. Stond eerder
+  // als tegel op Home, maar dat scherm droeg tegels naar plekken die ook al in de tabbalk
+  // stonden; wat over jezelf gaat hoort bij de trainers.
+  const dossier = dossierPad(currentUser, speler);
   const [addOpen, setAddOpen] = useState(false);
 
   const coaches = coachesOf(users)
@@ -25,6 +32,18 @@ export default function Coaches() {
 
   return (
     <Screen>
+      {/* Boven het gereedschap en niet erin: dat kopje gaat over materiaal, en dit gaat
+          over jou. */}
+      {dossier ? (
+        <Card onPress={() => router.push(dossier)} accessibilityLabel={t('Mijn agenda')} style={styles.row}>
+          <View style={styles.rowContent}>
+            <View style={styles.icon}><CalendarDays size={20} color={tennisColors.primary} /></View>
+            <Text style={styles.rowLabel}>{t('Mijn agenda')}</Text>
+            <ChevronRight size={20} color={tennisColors.textMuted} />
+          </View>
+        </Card>
+      ) : null}
+
       {/* A coach's tools belong with Trainers, not as separate main entrances. */}
       <Text style={styles.section}>{t('Gereedschap')}</Text>
       <Card onPress={() => router.push('/coaches/lessons')} accessibilityLabel={t('Lesmateriaal')} style={styles.row}>
