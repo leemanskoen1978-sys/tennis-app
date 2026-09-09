@@ -1,5 +1,5 @@
 import { diffStores, sameRow, type SyncableStore } from './sync';
-import type { Booking, LesGroep, Memo, Settings, SickLeave, User } from './types';
+import type { Booking, LesGroep, Lesplanning, Memo, Settings, SickLeave, User } from './types';
 
 const settings: Settings = { booking_end_time: '21:00', theme: 'light', language: 'nl' };
 
@@ -24,6 +24,7 @@ const store = (extra: Partial<SyncableStore> = {}): SyncableStore => ({
   relaties: [],
   lesGroepen: [],
   sickLeaves: [],
+  lesPlanning: [],
   settings,
   installed_catalogues: ['u9-kdt-v1'],
   ...extra,
@@ -247,5 +248,52 @@ describe('diffStores — sickLeaves', () => {
     const verschil = diffStores(null, store({ sickLeaves: [ziek('z1')] }));
     const tabel = verschil.tables.find((tb) => tb.table === 'sickLeaves');
     expect(tabel?.upsert.map((r) => r.id)).toEqual(['z1']);
+  });
+});
+
+const gestuurd = (id: string, extra: Partial<Lesplanning> = {}): Lesplanning => ({
+  id, lesson_id: 'l-1', coach_id: 'u-koen',
+  van: '2027-03-01', tot: '2027-03-14',
+  created_at: '2027-02-20T09:00:00.000Z',
+  ...extra,
+});
+
+describe('diffStores — lesPlanning', () => {
+  it('ziet een nieuwe doorsturing', () => {
+    const verschil = diffStores(store(), store({ lesPlanning: [gestuurd('p1')] }));
+    const tabel = verschil.tables.find((tb) => tb.table === 'lesPlanning');
+    expect(tabel?.upsert.map((r) => r.id)).toEqual(['p1']);
+  });
+
+  it('ziet een verwijderde doorsturing', () => {
+    const verschil = diffStores(store({ lesPlanning: [gestuurd('p1')] }), store({ lesPlanning: [] }));
+    const tabel = verschil.tables.find((tb) => tb.table === 'lesPlanning');
+    expect(tabel?.remove).toEqual(['p1']);
+  });
+
+  it('ziet een gewijzigde periode', () => {
+    const verschil = diffStores(
+      store({ lesPlanning: [gestuurd('p1')] }),
+      store({ lesPlanning: [gestuurd('p1', { tot: '2027-03-21' })] }),
+    );
+    const tabel = verschil.tables.find((tb) => tb.table === 'lesPlanning');
+    expect(tabel?.upsert.map((r) => r.id)).toEqual(['p1']);
+  });
+
+  it('meldt niets als er niets veranderde', () => {
+    const zelfde = diffStores(
+      store({ lesPlanning: [gestuurd('p1')] }),
+      store({ lesPlanning: [gestuurd('p1')] }),
+    );
+    expect(zelfde.tables.find((tb) => tb.table === 'lesPlanning')).toBeUndefined();
+  });
+
+  it('geeft de allereerste doorsturing door, ook zonder vorige toestand', () => {
+    // Zonder `lesPlanning: []` in de lege `before` leest hij als undefined in plaats van als
+    // een lege lijst, en dan valt het verschil weg dat er nu wél een doorsturing is — dezelfde
+    // val als bij `lesGroepen` en `sickLeaves`.
+    const verschil = diffStores(null, store({ lesPlanning: [gestuurd('p1')] }));
+    const tabel = verschil.tables.find((tb) => tb.table === 'lesPlanning');
+    expect(tabel?.upsert.map((r) => r.id)).toEqual(['p1']);
   });
 });

@@ -14,14 +14,14 @@
 // verdwijnen in plaats van hem door te geven.
 
 import type {
-  Beurtenkaart, Booking, Court, LesGroep, Lesson, Memo, OuderKind, PlayerGoal, Settings,
+  Beurtenkaart, Booking, Court, LesGroep, Lesplanning, Lesson, Memo, OuderKind, PlayerGoal, Settings,
   SickLeave, StudentProgress, User,
 } from './types';
 
 /** De verzamelingen die als rijen in een tabel leven. */
 export type SyncTable =
   | 'users' | 'courts' | 'bookings' | 'lessons' | 'progress' | 'goals' | 'beurtenkaarten'
-  | 'memos' | 'relaties' | 'lesGroepen' | 'sickLeaves';
+  | 'memos' | 'relaties' | 'lesGroepen' | 'sickLeaves' | 'lesPlanning';
 
 /** Alles wat een rij moet hebben om bij te werken te zijn. */
 interface Row {
@@ -63,6 +63,8 @@ export interface SyncableStore {
   lesGroepen: LesGroep[];
   /** De ziekmeldingen van de trainers, open én ingetrokken. Zie lib/types: SickLeave. */
   sickLeaves: SickLeave[];
+  /** Het doorgestuurde lesmateriaal per periode. Zie lib/types: Lesplanning. */
+  lesPlanning: Lesplanning[];
   settings: Settings;
   installed_catalogues?: string[];
 }
@@ -128,6 +130,7 @@ export function diffStores(
     // `sickLeaves`: de allereerste ziekmelding zou anders stil nergens terechtkomen.
     lesGroepen: [],
     sickLeaves: [],
+    lesPlanning: [],
     installed_catalogues: [],
   };
 
@@ -150,6 +153,9 @@ export function diffStores(
     changeFor('memos', before.memos, next.memos),
     changeFor('relaties', before.relaties, next.relaties),
     changeFor('sickLeaves', before.sickLeaves, next.sickLeaves),
+    // Achteraan: een planningrij verwijst naar `lessons(id)` en naar `lesson_groups(id)`, dus
+    // die twee moeten al geschreven zijn — anders weigert Postgres de hele rij.
+    changeFor('lesPlanning', before.lesPlanning, next.lesPlanning),
   ].filter((c) => c.upsert.length > 0 || c.remove.length > 0);
 
   const settings = previous === null || !sameRow(before.settings, next.settings)

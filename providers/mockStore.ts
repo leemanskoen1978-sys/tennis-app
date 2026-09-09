@@ -2,7 +2,7 @@
 // Same shape the Supabase layer will later return, so screens don't change.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {
-  Beurtenkaart, Booking, Court, LesGroep, Lesson, Memo, OuderKind, PlayerGoal,
+  Beurtenkaart, Booking, Court, LesGroep, Lesplanning, Lesson, Memo, OuderKind, PlayerGoal,
   SickLeave, StudentProgress, User, Settings,
 } from '../lib/types';
 import {
@@ -30,6 +30,7 @@ export interface StoreData {
   lesGroepen: LesGroep[];
   /** De ziekmeldingen van de trainers, open én ingetrokken. Zie lib/types: SickLeave. */
   sickLeaves: SickLeave[];
+  lesPlanning: Lesplanning[];
   settings: Settings;
   /** Which shipped lesson catalogues have already been added, so a deleted
    *  training stays deleted instead of reappearing on the next load. */
@@ -51,6 +52,7 @@ function freshSeed(): StoreData {
     lesGroepen: [],
     // Ook hier geen zaaigegevens: een club die begint heeft nog niemand ziek gemeld.
     sickLeaves: [],
+    lesPlanning: [],
     settings: { ...defaultSettings },
     installed_catalogues: [],
   };
@@ -81,6 +83,7 @@ function withDefaults(data: StoreData): StoreData {
     // elk scherm dat er straks over mapt `undefined` in plaats van een lege lijst, en dan
     // crasht het bij de eerste `.map(...)` — voor iedereen die de app al gebruikte.
     sickLeaves: data.sickLeaves ?? [],
+    lesPlanning: data.lesPlanning ?? [],
     settings: { ...defaultSettings, ...data.settings },
   };
 }
