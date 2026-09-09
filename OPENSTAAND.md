@@ -190,6 +190,12 @@ botsing pas als de aanvraag bij hem binnenkomt. Er is ook geen grendel in de dat
 `bookings` staat geen enkele unieke index of exclusion constraint op (trainer, tijd), alleen
 gewone indexen (`:88`).
 
+**Wat er intussen wél staat.** Het scherm zegt niet langer "vrij" waar het "ik weet het niet"
+bedoelt: kijk je niet in je eigen agenda en ben je geen beheerder, dan staat er onder het
+rooster dat je niet ziet wat anderen bij deze trainer boekten, en dat de trainer bij de
+aanvraag bevestigt of het uur echt vrij is. Wie dat is, beantwoordt `bezetIsVolledig` in
+`lib/slots.ts`. Die regel hoort weg zodra de echte bron er staat.
+
 Dat blokkeren zou trouwens verkeerd zijn: sinds 6 september 2026 geldt dat een overlap nooit
 blokkeert en altijd waarschuwt (zie `addBooking` in `providers/SimpleDataProvider.tsx`), want
 op Terrein 7 draait dezelfde trainer blauw en rood naast elkaar. Het gaat er dus niet om dat

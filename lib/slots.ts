@@ -83,6 +83,31 @@ export function slotsStillToCome(slots: string[], day: Date, now: Date): string[
   return slots.filter((slot) => slot > nu);
 }
 
+/**
+ * Weet dit scherm zeker welke uren bij deze trainer bezet zijn?
+ *
+ * Alleen als je zijn hele agenda te zien krijgt, en dat zijn er twee: een beheerder, en de
+ * trainer zelf. Voor alle anderen geeft de databank maar een deel van zijn lessen mee —
+ * `bookings_select` in supabase-schema.sql laat je je eigen lessen zien, die van je kind, en
+ * verder niets. Een ouder die naar de agenda van zijn trainer kijkt, ziet dus een lege
+ * woensdag terwijl die vol staat. Een trainer die naar de agenda van een collega kijkt, ook.
+ *
+ * Waarom dat niet met een ruimere policy op te lossen is: dan leest hij mee wie er bij zijn
+ * trainer les heeft, en dat is precies wat die regel afschermt. Wat er nodig is, is een
+ * smalle bron die per trainer en dag alleen begin- en eindtijd teruggeeft, zonder namen. Zie
+ * OPENSTAAND.md punt 1e.
+ *
+ * Zolang die er niet is, hoort het scherm niet "vrij" te zeggen waar het "ik weet het niet"
+ * bedoelt. Deze functie is de vraag die het scherm daarvoor stelt.
+ */
+export function bezetIsVolledig(
+  kijker: Pick<User, 'id' | 'is_admin'> | null | undefined,
+  coachId: string | null | undefined,
+): boolean {
+  if (!kijker || !coachId) return false;
+  return kijker.is_admin === true || kijker.id === coachId;
+}
+
 /** Hoeveel minuten één slot uit `generateSlots` beslaat. Die staan op het hele uur. */
 const SLOT_MINUTEN = 60;
 

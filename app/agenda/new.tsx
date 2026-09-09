@@ -11,7 +11,7 @@ import {
 } from '../../constants/theme';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import {
-  bezetteSlots, generateSlots, isDateBookable, slotsStillToCome, worksOnDay,
+  bezetIsVolledig, bezetteSlots, generateSlots, isDateBookable, slotsStillToCome, worksOnDay,
   formatWorkingDays, bookingDays, DAGEN_TERUG, DAGEN_VOORUIT, DAY_LABELS,
 } from '../../lib/slots';
 import { Screen } from '../../components/ui/Screen';
@@ -127,6 +127,10 @@ export default function HomeScreen(): JSX.Element {
     if (selectedDate === null || bookingCoachId === null) return new Set<string>();
     return bezetteSlots(slots, bookings, bookingCoachId, selectedDate);
   }, [slots, bookings, selectedDate, bookingCoachId]);
+
+  // Krijg je van deze trainer élke les te zien, of maar een deel? Bepaalt of "vrij" hier iets
+  // belooft dat het scherm kan waarmaken. Zie de regel onder het rooster.
+  const alleLessenZichtbaar = bezetIsVolledig(currentUser, bookingCoachId);
 
   function openSlot(slot: string): void {
     setSelectedSlot(slot);
@@ -341,6 +345,24 @@ export default function HomeScreen(): JSX.Element {
           );
         })}
       </View>
+
+      {/* Wat dit scherm níét weet, en dat hoort erbij te staan.
+
+          De databank geeft je alleen de lessen die van jou zijn (`bookings_select`): je eigen
+          lessen en die van je kind. Van wat andere spelers bij deze trainer boekten, weet dit
+          scherm dus niets — en dan staat er "vrij" waar het "ik weet het niet" bedoelt. Een
+          ouder zag zo een woensdag helemaal open staan terwijl die vol zat.
+
+          Alleen als je de hele agenda te zien krijgt (je eigen agenda, of je bent beheerder)
+          klopt "vrij" ook echt; zie `bezetIsVolledig`. Dit is een tussenoplossing: de echte
+          is een smalle bron die per trainer en dag alleen begin- en eindtijd teruggeeft,
+          zonder namen. Zie OPENSTAAND.md punt 1e — en haal deze regel weg zodra die er is. */}
+      {selectedDate !== null && bookingCoachId !== null && !alleLessenZichtbaar ? (
+        <Text style={styles.hint}>
+          {t('Wat andere spelers bij deze trainer boekten, zie je hier niet. Of een uur echt '
+            + 'vrij is, bevestigt de trainer bij je aanvraag.')}
+        </Text>
+      ) : null}
 
       <BookingModal
         visible={modalOpen}

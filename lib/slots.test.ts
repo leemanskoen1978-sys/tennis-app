@@ -1,4 +1,5 @@
 import {
+  bezetIsVolledig,
   bezetteSlots,
   generateSlots,
   isDateBookable,
@@ -208,5 +209,34 @@ describe('bezetteSlots', () => {
     // Bij twijfel liever een uur te veel dicht dan een speler op een bezette baan.
     const kapot = { coach_id: 'ann', start_time: '2026-09-09T14:00:00', end_time: 'geen datum', status: 'confirmed' as const };
     expect([...bezetteSlots(slots, [kapot as Parameters<typeof bezetteSlots>[1][number]], 'ann', dag)]).toEqual(['14:00']);
+  });
+});
+
+describe('bezetIsVolledig', () => {
+  const ann = { id: 'ann', is_admin: undefined };
+  const baas = { id: 'koen', is_admin: true };
+  const ouder = { id: 'wim', is_admin: undefined };
+
+  it('is waar voor een beheerder: die krijgt elke les mee', () => {
+    expect(bezetIsVolledig(baas, 'ann')).toBe(true);
+  });
+
+  it('is waar voor de trainer in zijn eigen agenda', () => {
+    expect(bezetIsVolledig(ann, 'ann')).toBe(true);
+  });
+
+  it('is onwaar voor een ouder of speler', () => {
+    // Dit is de reden dat deze functie bestaat: hij ziet alleen zijn eigen lessen, dus een
+    // volle woensdag staat er voor hem leeg bij.
+    expect(bezetIsVolledig(ouder, 'ann')).toBe(false);
+  });
+
+  it('is onwaar voor een trainer in de agenda van een collega', () => {
+    expect(bezetIsVolledig(ann, 'sanne')).toBe(false);
+  });
+
+  it('is onwaar zonder kijker of zonder gekozen trainer', () => {
+    expect(bezetIsVolledig(null, 'ann')).toBe(false);
+    expect(bezetIsVolledig(baas, null)).toBe(false);
   });
 });
