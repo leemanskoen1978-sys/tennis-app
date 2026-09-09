@@ -119,6 +119,32 @@ Met de hand doorlopen op de echte site, door de gebruiker:
 - **Een trainer kan een les van vandaag én van vorige week nog inzetten**; een speler begint
   bij morgen.
 
+### 1c. Lessen zonder trainer overnemen — af, op het handwerk na
+
+Een trainer ziet onder **Trainers → Lessen zonder trainer** elke les die zonder trainer staat
+en neemt er zelf een over. Twee manieren waarop een les daar komt: de vaste trainer is ziek
+gemeld, of iemand heeft de les vrijgegeven met de knop op het lesdetail (`bookings.zoekt_trainer`).
+
+- **Wie de vraag beantwoordt:** `lib/openstaand.ts` — `staatOpen`, `openstaandeLessen`,
+  `claimBezwaar`, `teruggeefBezwaar`, met 24 tests. De ziektekant komt uit `zoektVervanger`
+  (`lib/ziekmelding.ts`) en wordt niet nagebouwd.
+- **Schrijfwegen:** `claimLes` en `geefLesTerug` in de provider. Ze geven de reden terug als het
+  niet mag — een collega die je voor was, een les die al begonnen is — en nooit stil niets.
+- **Er wordt niets weggefilterd.** Een les die niet bij je uren past staat er ook, met de reden
+  van `kanVervangen` eronder, en claimen mag toch. Een les die niemand ziet blijft zonder
+  trainer staan, en dat is precies de fout die dit moet voorkomen.
+- **De databank:** `ZOEKT-TRAINER.sql`. Eén nauwe opening in `bewaak_betaalvelden` — een trainer
+  mag `taught_by_id` van leeg naar zichzelf zetten op een openstaande les die nog moet beginnen,
+  en terug naar leeg — met de harde eis dat er verder niets aan de rij verandert. Nagekeken op
+  een echte Postgres 16 met vijftien scenario's, inclusief de bestaande wegen (beheerder wijst
+  aan, trainer verzet zijn baan, speler zet zijn betaalwijze).
+
+**Wat de gebruiker nog met de hand moet doen.** `ZOEKT-TRAINER.sql` draaien in de Supabase
+SQL-editor — ná `AANWEZIGHEID-VERLEDEN.sql`, want die herschikte dezelfde trigger — en daarna de
+app hard herladen. Vóór die SQL werkt het scherm wel en het claimen niet. Daarna met de hand
+doorlopen: een les vrijgeven, met een tweede traineraccount de lijst openen, de les nemen, en
+hem teruggeven.
+
 ### 2. Achterstallig klein werk
 
 - **Verwijderen in het detailblad** verschijnt alleen bij een les uit een reeks. Bij een losse
