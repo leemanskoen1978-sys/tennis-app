@@ -144,7 +144,41 @@ Op volgorde van wat ik als eerste zou doen:
 
    Nog open voor het ontwerp: waar de trainer het te zien krijgt (op Home bij zijn lesdag,
    of onder Mijn lessen), en of een toewijzing aan een weeknummer hangt of aan een datum.
-10. **Tests op de schermen** — alle 676 tests zitten in `lib/`, geen enkele op een scherm. Twee
+10. **Het spelersdossier staat open voor medespelers.** Gevonden op 9 september 2026.
+
+    In een groepsles is elke medespeler aanklikbaar in het lesdetail
+    (`components/BookingDetailSheet.tsx:313`, "Open dossier van {naam}"), en `app/players/`
+    heeft geen enkele rolcontrole. Een speler opent dus zijn eigen les, tikt op een
+    medespeler, en ziet diens naam, e-mailadres, telefoonnummer, de opmerking voor de
+    trainer, zijn doelen en zijn voortgangsnotities. Bij 555 leden, veel kinderen.
+
+    De databank houdt het niet tegen: `users_select` staat op `using (true)`
+    (`supabase-schema.sql:584`) omdat iedereen elkaars naam moet kunnen zien. Maar dezelfde
+    rij draagt ook e-mail, telefoon, bio en sponsorbudget mee.
+
+    De regel die dit moet afdwingen bestaat al, één laag te laat: `app/players/[id].tsx:143`
+    berekent `magBewerken` als "trainer, of jezelf, of de ouder van dit kind". Dat hoort te
+    bepalen of je het scherm mag ópenen. Verplaatsen naar `lib/rechten.ts`, met tests, en de
+    doorklik in het lesdetail verbergen voor wie hem niet mag volgen.
+
+11. **Sponsor en betaalwijzen uit de app.** Op de plank gezet op 9 september 2026: hoe een
+    les betaald wordt gebeurt buiten deze app, dus dit heeft geen prioriteit.
+
+    Wat er ligt als het ooit opgepakt wordt: `sponsor_budget` staat als kolom op `users` en
+    is daardoor voor elk ingelogd lid leesbaar — het zegt in feite welke gezinnen niet de
+    volle prijs betalen. Het patroon om dat af te schermen bestaat al in dit schema
+    (`coach_rates`, `supabase-schema.sql:187` en de policy op `:640`): een eigen tabel met
+    een eigen select-policy, want RLS schermt rijen af en geen kolommen.
+
+    Eén valstrik voor wie dat doet: `LEEGMAAKBAAR` in `providers/supabaseStore.ts:250` noemt
+    `sponsor_budget`. Verdwijnt de kolom zonder dat die lijst meeverandert, dan faalt élke
+    schrijfactie op `users` — ook een trainer die alleen zijn telefoonnummer bijwerkt.
+
+    Het telefoonnummer zit in dezelfde categorie: 47 plekken, nergens een controle
+    (`app/players/[id].tsx:226` toont het onvoorwaardelijk). `magLoonZien` in
+    `lib/rechten.ts` is het bewijs dat het patroon voor zo'n check hier al bestaat.
+
+12. **Tests op de schermen** — alle 676 tests zitten in `lib/`, geen enkele op een scherm. Twee
    echte fouten van vandaag zaten daar: een opslagknop die op web nooit vuurde
    (`onEndEditing` bestaat niet in react-native-web) en een stijl die niet geïmporteerd was.
 
