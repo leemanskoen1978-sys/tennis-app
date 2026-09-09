@@ -1514,4 +1514,5 @@ export const EN: Record<string, string> = {
   'Door mij overgenomen': 'Taken over by me',
   'Vaste trainer: {naam}': 'Regular coach: {naam}',
   'Teruggeven': 'Give back',
+  'geen': 'none',
 };
