@@ -54,3 +54,42 @@ export function openReden(les: OpenBoeking, open: OpenZiekmelding[]): OpenReden 
 export function staatOpen(les: OpenBoeking, open: OpenZiekmelding[]): boolean {
   return openReden(les, open) !== null;
 }
+
+/**
+ * De lessen die deze kijker kan overnemen, op tijd gesorteerd — zo werkt hij de lijst van boven
+ * naar beneden af. Het scherm sorteert niet nog eens.
+ *
+ * Wat er afvalt en waarom:
+ *  - wat al begonnen is: daar valt niets meer over te beslissen;
+ *  - een dag dat de club dicht is: die les gaat sowieso niet door, dezelfde regel als
+ *    `lessenVoorZiekmelding`;
+ *  - de eigen lessen van de kijker: jezelf overnemen betekent niets.
+ *
+ * Er staat met opzet GEEN bovengrens op hoe ver vooruit gekeken wordt. Een venster van een paar
+ * weken is precies hoe een les blijft liggen tot hij te dichtbij is om nog op te lossen.
+ *
+ * Generiek in `T`, zodat het scherm er volle `Booking`-rijen in stopt en er volle rijen uit
+ * krijgt — met baan, groep en spelers erin — zonder dat dit bestand daarvan hoeft te weten.
+ */
+export function openstaandeLessen<T extends OpenBoeking>(
+  bookings: T[],
+  open: OpenZiekmelding[],
+  vakanties: Vakantie[],
+  nu: Date,
+  kijkerId: string,
+): OpenstaandeLes<T>[] {
+  const rijen: OpenstaandeLes<T>[] = [];
+  for (const les of bookings) {
+    if (les.coach_id === kijkerId) continue;
+    // Een onleesbare begintijd geeft NaN, en NaN is nooit groter: bij twijfel valt de les uit
+    // de lijst in plaats van het scherm te laten struikelen op een datum die niet bestaat.
+    if (!(Date.parse(les.start_time) > nu.getTime())) continue;
+    if (vakantieOpMoment(vakanties, les.start_time) !== null) continue;
+    const reden = openReden(les, open);
+    if (reden === null) continue;
+    rijen.push({ les, reden });
+  }
+  // `rijen` is hier zelf opgebouwd, dus deze sortering raakt de meegegeven lijst niet aan.
+  // `Date.parse` en niet de tekst: een tijdstip met een zone-aanduiding sorteert als tekst fout.
+  return rijen.sort((a, b) => Date.parse(a.les.start_time) - Date.parse(b.les.start_time));
+}

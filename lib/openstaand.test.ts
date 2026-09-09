@@ -1,5 +1,5 @@
-import { openReden, staatOpen } from './openstaand';
-import type { Booking, SickLeave } from './types';
+import { openReden, openstaandeLessen, staatOpen } from './openstaand';
+import type { Booking, SickLeave, Vakantie } from './types';
 
 const ziekmelding: SickLeave = {
   id: 'z-1', coach_id: 'c-1', van: '2027-03-01', tot: '2027-03-05',
@@ -64,5 +64,45 @@ describe('staatOpen', () => {
     expect(staatOpen(les(), [ziekmelding])).toBe(true);
     expect(staatOpen(les({ zoekt_trainer: true }), [])).toBe(true);
     expect(staatOpen(les(), [])).toBe(false);
+  });
+});
+
+describe('openstaandeLessen', () => {
+  const nu = new Date('2027-03-01T08:00:00.000Z');
+  const vrij = (patch: Partial<Booking>): Booking => les({ zoekt_trainer: true, ...patch });
+
+  it('geeft de openstaande lessen op tijd gesorteerd, met hun reden', () => {
+    // Een andere trainer, want een les van de zieke `c-1` zou 'ziek' als reden krijgen:
+    // ziekte gaat voor het merkteken als ze allebei gelden.
+    const laat = vrij({ id: 'b-laat', coach_id: 'c-2', start_time: '2027-03-04T17:00:00.000Z' });
+    const vroeg = les({ id: 'b-vroeg', start_time: '2027-03-02T17:00:00.000Z' });
+    const rijen = openstaandeLessen([laat, vroeg], [ziekmelding], [], nu, 'c-9');
+    expect(rijen.map((r) => r.les.id)).toEqual(['b-vroeg', 'b-laat']);
+    expect(rijen.map((r) => r.reden)).toEqual(['ziek', 'vrijgegeven']);
+  });
+
+  it('laat wat al begonnen is weg', () => {
+    // Een les die loopt of geweest is valt niet meer over te nemen; daar valt niets te
+    // beslissen en hij zou de lijst alleen vervuilen.
+    const voorbij = vrij({ id: 'b-oud', start_time: '2027-02-27T17:00:00.000Z' });
+    expect(openstaandeLessen([voorbij], [], [], nu, 'c-9')).toEqual([]);
+  });
+
+  it('laat een les weg op een dag dat de club dicht is', () => {
+    // Die les gaat sowieso niet door: er een trainer voor zoeken is werk voor niets. Dezelfde
+    // regel als `lessenVoorZiekmelding` in lib/ziekmelding.
+    const vakanties: Vakantie[] = [{ id: 'v-1', van: '2027-03-03', tot: '2027-03-03', naam: 'Feestdag' }];
+    expect(openstaandeLessen([vrij({ id: 'b-1' })], [], vakanties, nu, 'c-9')).toEqual([]);
+  });
+
+  it('laat de eigen lessen van de kijker weg', () => {
+    // Jezelf overnemen betekent niets: `taught_by_id` gelijk aan `coach_id` is precies de
+    // toestand die "de vaste trainer gaf hem zelf" al uitdrukt met leeg.
+    expect(openstaandeLessen([vrij({ id: 'b-1' })], [], [], nu, 'c-1')).toEqual([]);
+  });
+
+  it('laat een onleesbare begintijd weg in plaats van te crashen', () => {
+    const kapot = vrij({ id: 'b-kapot', start_time: 'geen datum' });
+    expect(openstaandeLessen([kapot], [], [], nu, 'c-9')).toEqual([]);
   });
 });
