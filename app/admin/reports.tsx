@@ -7,13 +7,16 @@
 
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { AlertCircle, CalendarDays, Euro, Wallet } from 'lucide-react-native';
+import {
+  AlertCircle, CalendarDays, Download, Euro, Wallet,
+} from 'lucide-react-native';
 
 import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography } from '../../constants/theme';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
 import { BarChart, type Bar } from '../../components/ui/BarChart';
 import { CoachFilter } from '../../components/ui/CoachFilter';
 import { PeriodPicker } from '../../components/ui/PeriodPicker';
@@ -21,8 +24,10 @@ import { StatCard, StatCardRow } from '../../components/ui/StatCard';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { useAgendaScope } from '../../providers/agendaScope';
 import { useKindkeuze } from '../../providers/kindkeuze';
+import { csvRows, toCsv, toXlsx } from '../../lib/csv';
 import { formatEuro } from '../../lib/money';
 import { isCoach, magClubcijfersZien } from '../../lib/rechten';
+import { shareCsv, shareXlsx, xlsxWordtOndersteund } from '../../lib/share';
 import {
   PAYMENT_METHODS,
   PAYMENT_LABELS,
@@ -32,7 +37,7 @@ import {
   totalRevenue,
 } from '../../lib/payments';
 import {
-  bookingsInPeriod, currentPeriod, periodLabel, shortMonthName, type Period,
+  bookingsInPeriod, currentPeriod, periodFilename, periodLabel, shortMonthName, type Period,
 } from '../../lib/period';
 import {
   countByPaymentMethod, countedBookings, monthlySeries, payoutsByCoach, totalsByPlayer,
@@ -112,6 +117,25 @@ export default function ReportsScreen(): React.JSX.Element {
 
   const firstMonth = series.length > 0 ? series[0] : null;
   const lastMonth = series.length > 0 ? series[series.length - 1] : null;
+
+  // Eigen state: een mislukte download is geen opslagfout, dus hij hoort niet in de globale
+  // error van de provider thuis. Zelfde keuze als op Historiek, waar deze knoppen vandaan
+  // komen.
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const rows = useMemo(() => csvRows(shown, users, courts), [shown, users, courts]);
+  const csvNaam = periodFilename(period, 'csv');
+  const xlsxNaam = periodFilename(period, 'xlsx');
+
+  // Twee vormen van dezelfde selectie, dus ook één plek waar het misgaan opgevangen wordt.
+  async function exporteer(maak: () => Promise<void>): Promise<void> {
+    try {
+      await maak();
+      setExportError(null);
+    } catch {
+      setExportError(t('Exporteren is niet gelukt. Probeer het opnieuw.'));
+    }
+  }
 
   if (!currentUser) {
     return (
@@ -284,6 +308,38 @@ export default function ReportsScreen(): React.JSX.Element {
           </Text>
         </Card>
       ) : null}
+
+      {/* De export draagt dezelfde bedragen als het scherm — prijs per les en loon van de
+          trainer — dus hij staat achter dezelfde grens als de omzetkaarten. Een speler die
+          dit scherm opent, krijgt zijn eigen cijfers en geen bestand. */}
+      {coach ? (
+        <View style={styles.exportBlock}>
+          {/* Excel voorop: dat is wat een trainer opent. De CSV blijft ernaast staan voor
+              wie het bestand ergens anders in laadt — een boekhoudpakket vraagt er nog vaak
+              om. */}
+          <View style={styles.exportRow}>
+            {xlsxWordtOndersteund ? (
+              <Button
+                label={t('Excel')}
+                variant="secondary"
+                fullWidth={false}
+                disabled={rows.length === 0}
+                icon={<Download size={16} color={tennisColors.text} />}
+                onPress={() => { void exporteer(() => shareXlsx(xlsxNaam, toXlsx(rows))); }}
+              />
+            ) : null}
+            <Button
+              label={t('CSV')}
+              variant="secondary"
+              fullWidth={false}
+              disabled={rows.length === 0}
+              icon={<Download size={16} color={tennisColors.text} />}
+              onPress={() => { void exporteer(() => shareCsv(csvNaam, toCsv(rows))); }}
+            />
+          </View>
+          {exportError ? <Text style={styles.error}>{exportError}</Text> : null}
+        </View>
+      ) : null}
     </Screen>
   );
 }
@@ -394,4 +450,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
   },
+  exportBlock: { gap: spacing.xs },
+  exportRow: { flexDirection: 'row', gap: spacing.sm },
+  error: { color: tennisColors.danger, fontSize: 14 },
 });

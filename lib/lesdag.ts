@@ -6,7 +6,7 @@
 // om kwart voor vijf, tussen twee lessen in of om negen uur 's avonds kijkt.
 
 import { bookingsOnDay } from './hub';
-import { lessonPlayerIds } from './groups';
+import { lessonPlayerIds, playsIn } from './groups';
 import type { Booking } from './types';
 
 /** Eén les van vandaag, met de spelers die erin staan. */
@@ -63,4 +63,40 @@ export function lesdagVan(bookings: Booking[], coachId: string, now: Date): Lesu
   uren[gekozen].open = true;
 
   return uren;
+}
+
+/** Wat het lesdagblok van een speler toont. Precies één van de twee draagt inhoud. */
+export interface Spelerdag {
+  /** Zijn lessen van vandaag, op tijd oplopend. Geannuleerde niet. */
+  vandaag: Booking[];
+  /** De eerstvolgende les, en alleen als er vandaag niets staat. */
+  volgende: Booking | null;
+}
+
+/**
+ * De lesdag van een speler: wat hij op Home ziet.
+ *
+ * Anders dan bij een trainer is dit blok op de meeste dagen leeg — een speler heeft
+ * doorgaans één les per week. Een kop met "geen lessen vandaag" eronder is dan zes dagen op
+ * zeven dode ruimte, en daarom valt dit terug op zijn eerstvolgende les: "wanneer heb ik
+ * les" is de vraag die hij echt stelt.
+ *
+ * Meespelen telt, net als in zijn dossier: een deelnemer aan een groepsles betaalt niet en
+ * staat niet als `player_id` genoteerd, maar het is wel zijn les.
+ */
+export function lesdagVanSpeler(bookings: Booking[], spelerId: string, now: Date): Spelerdag {
+  const mijne = bookings.filter((b) => playsIn(b, spelerId) && b.status !== 'cancelled');
+
+  const vandaag = bookingsOnDay(mijne, now);
+  if (vandaag.length > 0) return { vandaag, volgende: null };
+
+  const moment = now.getTime();
+  const volgende = mijne
+    .filter((b) => {
+      const start = new Date(b.start_time).getTime();
+      return Number.isFinite(start) && start >= moment;
+    })
+    .sort((a, b) => a.start_time.localeCompare(b.start_time))[0] ?? null;
+
+  return { vandaag: [], volgende };
 }

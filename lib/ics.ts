@@ -158,6 +158,30 @@ export function toIcs(bookings: Booking[], ctx: IcsContext, now: Date = new Date
 }
 
 /**
+ * De lessen voor de clubbrede export: alles wat nog moet komen, van de hele club of van één
+ * trainer.
+ *
+ * Anders dan de persoonlijke export gaat deze niet over wie er kijkt maar over wie er
+ * lesgeeft — de beheerder maakt hem voor de club of voor één collega. Wat geweest is gaat er
+ * niet in: dit bestand komt in een agenda terecht, en een agenda gaat vooruit.
+ */
+export function clubAgenda(
+  bookings: Booking[],
+  coachId: string | null,
+  now: Date = new Date(),
+): Booking[] {
+  const moment = now.getTime();
+  return bookings
+    .filter((b) => b.status !== 'cancelled')
+    .filter((b) => coachId === null || b.coach_id === coachId)
+    .filter((b) => {
+      const start = new Date(b.start_time).getTime();
+      return Number.isFinite(start) && start >= moment;
+    })
+    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+}
+
+/**
  * De bestandsnaam. De dag van de export staat erin, want in een map met downloads is
  * "lessen.ics" naast "lessen (3).ics" niets waard — net als bij `periodFilename`.
  */

@@ -24,12 +24,13 @@
 
 import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { CalendarOff, Clock, Plus, Trash2 } from 'lucide-react-native';
+import { CalendarOff, CalendarPlus, Clock, Plus, Trash2 } from 'lucide-react-native';
 
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Chip } from '../../components/ui/Chip';
 import { Button } from '../../components/ui/Button';
+import { CoachFilter } from '../../components/ui/CoachFilter';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { newId } from '../../providers/mockStore';
 import { formatDayInput, parseDayInput } from '../../lib/period';
@@ -40,6 +41,8 @@ import {
   keuzeUren, periodeFout, sorteerPeriodes, urenTekst, CLUB_START, type Uren,
 } from '../../lib/boekingstijd';
 import { coachesOf } from '../../lib/hub';
+import { clubAgenda, icsFilename, toIcs } from '../../lib/ics';
+import { shareIcs } from '../../lib/share';
 import { isAdmin, isCoach } from '../../lib/rechten';
 import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
@@ -65,7 +68,34 @@ function SectieKop({ titel, icoon }: { titel: string; icoon: React.ReactNode }):
 
 export default function KalenderScreen(): React.JSX.Element {
   const t = useT();
-  const { currentUser } = useSimpleData();
+  const { currentUser, users, courts, bookings } = useSimpleData();
+
+  const [exportCoach, setExportCoach] = useState<string | null>(null);
+  const [exportFout, setExportFout] = useState<string | null>(null);
+  const coaches = useMemo(() => coachesOf(users), [users]);
+
+  const teExporteren = useMemo(
+    () => clubAgenda(bookings, exportCoach, new Date()),
+    [bookings, exportCoach],
+  );
+
+  async function exporteerAgenda(): Promise<void> {
+    try {
+      // Het moment van exporteren zit in het bestand (DTSTAMP en het volgnummer), dus dat is
+      // `new Date()`: een bestand dat een uur oud zegt te zijn wint het niet van wat er al in
+      // de agenda staat.
+      await shareIcs(icsFilename(), toIcs(teExporteren, {
+        users,
+        courts,
+        // De beheerder maakt dit bestand voor de club: in de titel hoort de speler te staan,
+        // net als bij een trainer die zijn eigen agenda exporteert.
+        viewerIsCoach: true,
+      }));
+      setExportFout(null);
+    } catch {
+      setExportFout(t('Exporteren is niet gelukt. Probeer het opnieuw.'));
+    }
+  }
 
   // Beide helften waren voor een trainer; de tegel staat er alleen voor hem, maar een adres is
   // te typen. Wie hier buiten zijn recht komt, krijgt te lezen waarom.
@@ -90,6 +120,33 @@ export default function KalenderScreen(): React.JSX.Element {
         icoon={<Clock size={18} color={tennisColors.primary} />}
       />
       <Boekingstijden />
+
+      <SectieKop titel={t('Agenda-bestand')} icoon={<CalendarPlus size={18} color={tennisColors.primary} />} />
+
+      <Card style={styles.exportKaart}>
+        {/* Alle lessen van de club, of die van één trainer. De persoonlijke variant staat in
+            het dossier van de speler zelf: die gaat over jouw lessen, deze over de club. */}
+        <CoachFilter coaches={coaches} value={exportCoach} onChange={setExportCoach} />
+        <Text style={styles.exportTelling}>
+          {teExporteren.length === 1
+            ? t('1 geplande les')
+            : t('{n} geplande lessen', { n: teExporteren.length })}
+        </Text>
+        <Button
+          label={t('Agenda-bestand (.ics)')}
+          variant="secondary"
+          disabled={teExporteren.length === 0}
+          icon={<CalendarPlus size={16} color={tennisColors.text} />}
+          onPress={() => { void exporteerAgenda(); }}
+        />
+        {exportFout ? <Text style={styles.exportFout}>{exportFout}</Text> : null}
+        <Text style={styles.exportNoot}>
+          {t('Het bestand bevat precies de lessen die hierboven geteld zijn, klaar om in '
+            + 'Outlook, Google Agenda of Apple Agenda te openen. Exporteer je later opnieuw, '
+            + 'dan werkt je agenda dezelfde afspraken bij in plaats van ze een tweede keer '
+            + 'toe te voegen.')}
+        </Text>
+      </Card>
     </Screen>
   );
 }
@@ -545,6 +602,12 @@ const styles = StyleSheet.create({
   regelTekst: { flexShrink: 1 },
   periodeTijden: { ...typography.body, fontWeight: '600', color: tennisColors.text },
   periodeOnder: { fontSize: 13, color: tennisColors.textMuted },
+
+  // --- agenda-bestand --------------------------------------------------------
+  exportKaart: { gap: spacing.sm },
+  exportTelling: { ...typography.body, color: tennisColors.text, fontWeight: '600' },
+  exportFout: { color: tennisColors.danger, fontSize: 14 },
+  exportNoot: { ...typography.label, color: tennisColors.textMuted },
 
   // --- gedeeld -------------------------------------------------------------
   datumRij: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },

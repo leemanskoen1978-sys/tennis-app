@@ -8,24 +8,28 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import {
   CalendarDays, CalendarPlus, Users, GraduationCap, SlidersHorizontal,
-  BookOpen, TrendingUp, Wallet, ChevronRight, X, XCircle, type LucideIcon,
+  BookOpen, TrendingUp, Wallet, ChevronRight, X, XCircle, BellRing, UserCheck, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ActionTile, TileGrid } from '../components/ui/ActionTile';
 import { Lesdag } from '../components/lesdag/Lesdag';
+import { Lesdagspeler } from '../components/lesdag/Lesdagspeler';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { useKindkeuze, useOpenstaandeBetalingen } from '../providers/kindkeuze';
 import { SpelerKiezer } from '../components/ui/SpelerKiezer';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
+import { lessenNu } from '../lib/afvinken';
 import { awaitingApprovalFor, awaitingApprovalOf, recentGeweigerd } from '../lib/inbox';
 import { isCoach, magInElkeAgenda } from '../lib/rechten';
 import { zonderWeggeklikt } from '../lib/weggeklikt';
 import { useWeggeklikt } from '../providers/weggeklikt';
 import { bookingsFor, filterPendingPayment, openBalanceFor } from '../lib/payments';
 import { formatEuro } from '../lib/money';
-import { formatDayTimeRange } from '../lib/datetime';
+import { formatDayTimeRange, formatDayTime, formatTimeRange } from '../lib/datetime';
+import { groupSize, shortGroupLabel } from '../lib/groups';
+import { dossierPad } from '../lib/dossier';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
 import { useT } from '../lib/i18n';
@@ -43,7 +47,7 @@ interface Tile {
 export default function Hub() {
   const t = useT();
   const router = useRouter();
-  const { currentUser, users, bookings, courts } = useSimpleData();
+  const { currentUser, users, bookings, courts, approveBooking, rejectBooking, error } = useSimpleData();
   const pending = useOpenstaandeBetalingen();
   // Wiens gegevens dit scherm toont: jijzelf, of het kind dat je bovenaan koos. Zie
   // providers/kindkeuze.
@@ -53,6 +57,17 @@ export default function Hub() {
   const coach = isCoach(currentUser) && kijktNaarZichzelf;
 
   if (!currentUser) return <Redirect href="/login" />;
+
+  // Waar "mijn agenda" heen gaat: een trainer naar zijn trainersdossier, iedereen anders naar
+  // zijn spelersdossier, en een ouder naar het kind dat hij koos. De regel staat in
+  // lib/dossier, zodat elk scherm dezelfde bestemming kiest.
+  const dossier = dossierPad(currentUser, speler);
+
+  // Loopt er nu een les, dan zegt de tegel Afvinken meteen welke — anders moet de trainer
+  // hem openen om te zien of hij op het juiste moment kijkt.
+  const nu = coach && currentUser
+    ? lessenNu(bookings, currentUser.id, new Date())
+    : [];
 
   // `bookingsFor` en niet zelf filteren: zo ziet een speler ook de groepslessen waarin
   // hij meespeelt zonder te betalen.
@@ -64,14 +79,16 @@ export default function Hub() {
   // Wat er in euro's nog openstaat. Een teller zegt "2 lessen"; wat een speler wil weten is
   // hoeveel dat is, en dat staat daarom voluit op zijn hoofdscherm in plaats van als badge.
   const balance = openBalanceFor(speler, bookings, courts);
-  // Wat op een beslissing van deze trainer wacht. De badge staat op Agenda, want daar staat
-  // de lijst zelf ook — een melding die naar een ander scherm wijst dan waar je hem
-  // afhandelt, laat je zoeken.
+  // Niet langer alleen een getal: de lijst staat sinds vandaag hier, dus de kaarten hebben de
+  // lessen zelf nodig.
   const teKeuren = coach
-    ? awaitingApprovalFor(bookings, currentUser.id, magInElkeAgenda(currentUser)).length
-    : 0;
+    ? awaitingApprovalFor(bookings, currentUser.id, magInElkeAgenda(currentUser))
+    : [];
   // En andersom: waar de speler zelf nog op wacht.
-  const gevraagd = coach ? 0 : awaitingApprovalOf(bookings, speler?.id).length;
+  const gevraagd = coach ? [] : awaitingApprovalOf(bookings, speler?.id);
+
+  const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
+  const courtName = (id: string): string => courts.find((c) => c.id === id)?.name ?? t('Onbekende baan');
   // Een geweigerde aanvraag is het enige dat anders nergens te zien is: de les verdwijnt
   // en niemand zegt waarom. Een goedgekeurde les staat gewoon in zijn agenda.
   const geweigerd = coach ? [] : recentGeweigerd(bookings, speler?.id, new Date());
@@ -83,15 +100,32 @@ export default function Hub() {
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? t(one) : t(many)}`;
 
   const coachTiles: Tile[] = [
+    // Bovenaan, want dit is de tegel die je aantikt terwijl de kinderen voor je staan.
     {
-      key: 'agenda',
-      title: t('Agenda'),
-      subtitle: teKeuren > 0
-        ? plural(teKeuren, 'les goed te keuren', 'lessen goed te keuren')
-        : plural(today, 'vandaag', 'vandaag'),
+      key: 'afvinken',
+      title: t('Afvinken'),
+      subtitle: nu.length > 0
+        ? t('Nu: {tijd} · geef je gsm door', {
+          tijd: formatTimeRange(nu[0].start_time, nu[0].end_time),
+        })
+        : t('Wie is er? Bij het begin van de les'),
+      icon: UserCheck,
+      onPress: () => router.push('/afvinken'),
+    },
+    {
+      key: 'new',
+      title: t('Nieuwe afspraak'),
+      subtitle: t('Les inplannen voor een speler'),
+      icon: CalendarPlus,
+      onPress: () => router.push('/agenda/new'),
+    },
+    {
+      key: 'mijn',
+      title: t('Mijn agenda'),
+      subtitle: plural(today, 'vandaag', 'vandaag'),
       icon: CalendarDays,
-      onPress: () => router.push('/agenda'),
-      badge: teKeuren,
+      // Zijn eigen dossier: zijn agenda, zijn week en zijn spelers staan daar bij elkaar.
+      onPress: () => { if (dossier) router.push(dossier); },
     },
     { key: 'spelers', title: t('Spelers'), subtitle: plural(countPlayers(users), 'actief', 'actief'), icon: Users, onPress: () => router.push('/players') },
     { key: 'trainers', title: t('Trainers'), subtitle: plural(countCoaches(users), 'trainer', 'trainers'), icon: GraduationCap, onPress: () => router.push('/coaches') },
@@ -105,11 +139,11 @@ export default function Hub() {
       title: t('Mijn agenda'),
       // Wacht er nog een aanvraag op zijn trainer, dan is dát wat hij wil weten — niet
       // hoeveel lessen hij vandaag heeft.
-      subtitle: gevraagd > 0
-        ? plural(gevraagd, 'wacht op goedkeuring', 'wachten op goedkeuring')
+      subtitle: gevraagd.length > 0
+        ? plural(gevraagd.length, 'wacht op goedkeuring', 'wachten op goedkeuring')
         : plural(today, 'vandaag', 'vandaag'),
       icon: CalendarDays,
-      onPress: () => router.push('/agenda'),
+      onPress: () => { if (dossier) router.push(dossier); },
       badge: myOpen,
     },
     { key: 'les', title: t('Mijn lessen'), subtitle: t('Lesmateriaal van je trainers'), icon: BookOpen, onPress: () => router.push('/coaches/lessons') },
@@ -145,9 +179,92 @@ export default function Hub() {
           eronder volgt die keuze. Zie providers/kindkeuze. */}
       <SpelerKiezer />
 
+      {/* Wat op een beslissing wacht, staat boven de lesdag: zolang de trainer niets zegt,
+          gaat die les niet door. Vroeger stond deze lijst op de Agenda-tab terwijl de badge
+          op Home stond — een melding die naar een ander scherm wijst dan waar je hem
+          afhandelt, laat je zoeken. */}
+      {teKeuren.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{t('Goed te keuren')}</Text>
+          {teKeuren.map((b) => (
+            <Card key={b.id} style={styles.newCard}>
+              <View style={styles.newRow}>
+                <View style={styles.newIcon}>
+                  <BellRing size={20} color={tennisColors.warning} />
+                </View>
+                <View style={styles.newBody}>
+                  <Text style={styles.lessonTime}>
+                    {t('{naam} vraagt een les', {
+                      naam: shortGroupLabel(nameOf(b.player_id), groupSize(b)),
+                    })}
+                  </Text>
+                  <Text style={styles.lessonCourt}>
+                    {formatDayTime(b.start_time)} · {courtName(b.court_id)}
+                  </Text>
+                  {/* Een beheerder ziet ook de aanvragen van collega's. Dan moet erbij
+                      staan wiens agenda het is, anders keurt hij iets goed voor iemand
+                      anders zonder het te weten. */}
+                  {b.coach_id !== currentUser?.id ? (
+                    <Text style={styles.lessonCourt}>
+                      {t('In de agenda van {trainer}', { trainer: nameOf(b.coach_id) })}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+              {/* Goedkeuren is de knop die je meestal wilt, dus die is de nadrukkelijke;
+                  weigeren annuleert de les en geeft het uur weer vrij. */}
+              <View style={styles.decide}>
+                <Button
+                  label={t('Goedkeuren')}
+                  variant="primary"
+                  style={styles.decideButton}
+                  onPress={() => {
+                    void approveBooking(b.id).catch(() => undefined);
+                  }}
+                />
+                <Button
+                  label={t('Weigeren')}
+                  variant="secondary"
+                  style={styles.decideButton}
+                  onPress={() => {
+                    void rejectBooking(b.id).catch(() => undefined);
+                  }}
+                />
+              </View>
+
+              {/* Mislukt het opslaan, dan hoort dat hier te staan en niet alleen in de
+                  console. Zonder deze regel drukte je op Goedkeuren, gebeurde er niets,
+                  en was er niets dat je vertelde waarom. */}
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+            </Card>
+          ))}
+        </View>
+      ) : null}
+
+      {gevraagd.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{t('Wacht op goedkeuring')}</Text>
+          {gevraagd.map((b) => (
+            <Card key={b.id} style={styles.newCard}>
+              <Text style={styles.lessonTime}>
+                {formatDayTime(b.start_time)} · {nameOf(b.coach_id)}
+              </Text>
+              <Text style={styles.lessonCourt}>
+                {t('{baan} — je trainer moet deze les nog bevestigen.', {
+                  baan: courtName(b.court_id),
+                })}
+              </Text>
+            </Card>
+          ))}
+        </View>
+      ) : null}
+
       {/* De lesdag hoort bovenaan: wat een trainer om vijf voor vijf wil zien, is de les
-          van vijf uur — niet een keuzemenu. De tegels blijven eronder staan. */}
-      {coach ? <Lesdag coachId={currentUser.id} /> : null}
+          van vijf uur — niet een keuzemenu. Voor een speler is dat dezelfde vraag met een
+          ander antwoord: hoe laat, bij wie, op welke baan. */}
+      {coach
+        ? <Lesdag coachId={currentUser.id} />
+        : speler ? <Lesdagspeler spelerId={speler.id} /> : null}
 
       {/* Wat er met een aanvraag gebeurde. Staat bovenaan en verdwijnt na een week vanzelf:
           er valt niets weg te klikken, en een bericht van drie weken oud is geen bericht. */}
@@ -195,7 +312,7 @@ export default function Hub() {
           Staat er niets open, dan staat er ook niets: een kaart met "€ 0,00" is ruis. */}
       {!coach && balance.amount > 0 ? (
         <Card
-          onPress={() => router.push('/agenda/overzicht')}
+          onPress={() => { if (dossier) router.push(dossier); }}
           accessibilityLabel={t('Openstaand saldo € {bedrag}', { bedrag: formatEuro(balance.amount) })}
           style={styles.balance}
         >
@@ -268,4 +385,25 @@ const styles = StyleSheet.create({
   },
   balanceAmount: { ...typography.h1, color: tennisColors.text },
   balanceSub: { fontSize: 13, color: tennisColors.textMuted },
+  error: { color: tennisColors.danger, fontSize: 13 },
+  section: { gap: spacing.md },
+  sectionLabel: {
+    ...typography.label,
+    color: tennisColors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  decide: { flexDirection: 'row', gap: spacing.sm },
+  decideButton: { flex: 1 },
+  // Zelfde randje als het openstaande saldo op dit scherm: het vraagt aandacht zonder
+  // de rest van het scherm te overschreeuwen.
+  newCard: { borderWidth: 1, borderColor: tennisColors.warning },
+  newRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  newIcon: {
+    width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: tennisColors.warningTint,
+  },
+  newBody: { flex: 1 },
+  lessonTime: { ...typography.h3, color: tennisColors.text },
+  lessonCourt: { fontSize: 13, color: tennisColors.textMuted },
 });

@@ -2,14 +2,14 @@ import { useMemo, useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-  CalendarDays, ChevronRight, NotebookPen, Search, Users, UserCheck,
+  CalendarDays, ChevronRight, CreditCard, NotebookPen, Search, Users, UserCheck,
   User as UserIcon, X,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { ProgressForm } from '../../components/progress/ProgressForm';
-import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { useSimpleData, usePendingPaymentBookings } from '../../providers/SimpleDataProvider';
 import {
   emptyScopeLine, nextBookingFor, playerCountLabel, playerListLine, playersInScope,
   searchPlayers, type PlayerScope,
@@ -42,6 +42,7 @@ export default function Players() {
   const { currentUser, users, bookings, lessons, progress, relaties } = useSimpleData();
   const coach = isCoach(currentUser);
   const players = playersOf(users);
+  const pending = usePendingPaymentBookings();
   const [progressOpen, setProgressOpen] = useState(false);
   const [scope, setScope] = useState<PlayerScope>('all');
   const [query, setQuery] = useState('');
@@ -78,6 +79,15 @@ export default function Players() {
               icon={NotebookPen}
               primary
               onPress={() => setProgressOpen(true)}
+            />
+            {/* Openstaande betalingen gaan over mensen, dus ze horen ook hier te vinden te
+                zijn — niet alleen in Beheer. Het scherm erachter is hetzelfde. */}
+            <ActionTile
+              title={t('Betalingen')}
+              subtitle={t('Openstaande lessen afhandelen')}
+              icon={CreditCard}
+              badge={pending.length}
+              onPress={() => router.push('/admin/payments')}
             />
           </TileGrid>
 

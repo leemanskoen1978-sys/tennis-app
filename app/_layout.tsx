@@ -34,17 +34,16 @@ const headerBase = {
   headerShadowVisible: false,
 } as const;
 
-// Wie het scherm ook opent, de tabbalk zegt al "Agenda" / "Spelers" / "Trainers" / "Beheer";
+// Wie het scherm ook opent, de tabbalk zegt al "Home" / "Spelers" / "Trainers" / "Beheer";
 // een kop met precies dezelfde tekst erboven is dan alleen nog verspilde ruimte. Dieper dan
 // dat hoofdscherm is de kop juist het enige dat nog zegt waar je bent, dus die blijft staan.
 //
 // agenda/new en coaches/lessons zijn voor een speler wél een eigen tabblad (Reserveren,
-// Mijn lessen) maar voor een trainer een scherm ónder Agenda resp. Trainers. De titel op die
+// Mijn lessen) maar voor een trainer een scherm ónder Home resp. Trainers. De titel op die
 // schermen ("Nieuwe afspraak", "Lesmateriaal") is geen letterlijke herhaling van het tabblad
 // waar hij vandaan komt, en een trainer heeft daar juist wél houvast aan nodig — dus de kop
 // blijft op deze twee staan, voor beide rollen.
 const HEADLESS = new Set([
-  'agenda/index',
   // Het afvinkscherm draagt zijn eigen kop (het uur van de les) en verder niets: zolang de
   // gsm rondgaat in de groep hoort er geen enkele weg naar een ander scherm op te staan.
   'afvinken',
@@ -54,16 +53,12 @@ const HEADLESS = new Set([
   'admin/index',
 ]);
 
-/** Screens in the order of the hub: Agenda, Spelers, Trainers, Beheer. */
+/** Screens in the order of the hub: Home, Spelers, Trainers, Beheer. */
 const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> => [
   { name: 'profile', title: t('Profiel') },
   { name: 'nieuw-wachtwoord', title: t('Nieuw wachtwoord') },
-  { name: 'agenda/index', title: t('Agenda') },
   { name: 'agenda/new', title: t('Nieuwe afspraak') },
   { name: 'afvinken', title: t('Afvinken') },
-  { name: 'agenda/overzicht', title: t('Overzicht') },
-  { name: 'agenda/historiek', title: t('Historiek') },
-  { name: 'agenda/komend', title: t('Nog te komen') },
   { name: 'players/index', title: t('Spelers') },
   { name: 'players/[id]', title: t('Speler-dossier') },
   // Geen trainer bereikt dit scherm — een voortgangsverslag over een speler vult een
