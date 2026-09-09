@@ -1517,4 +1517,8 @@ export const EN: Record<string, string> = {
   'geen': 'none',
   'Deze les zoekt een trainer': 'This lesson needs a coach',
   'Toch zelf geven': 'Teach it myself after all',
+  // --- lesmateriaal doorsturen -------------------------------------------
+  'Kies welk lesmateriaal je doorstuurt.': 'Choose which lesson material you are sending on.',
+  'Kies een trainer, een groep, of beide.': 'Choose a coach, a group, or both.',
+  'De periode eindigt voor ze begint.': 'The period ends before it starts.',
 };
