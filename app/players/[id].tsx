@@ -24,11 +24,16 @@ import {
   buildLesplan, coachesForPlayer, lesplanSummary, type LessonWithProgress,
 } from '../../lib/relations';
 import { filledGoalCount, goalCountLabel } from '../../lib/goals';
-import { isMijnKind } from '../../lib/ouderkind';
+import { isMijnKind, kinderenVan } from '../../lib/ouderkind';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
 import { groupSize, groupSizeLabel, isGroupLesson, playsIn } from '../../lib/groups';
 import { parseSponsorBudget, sponsorHint, sponsorState } from '../../lib/sponsor';
 import { useT, type Translate } from '../../lib/i18n';
+import { PeriodPicker } from '../../components/ui/PeriodPicker';
+import { currentPeriod, bookingsInPeriod, type Period } from '../../lib/period';
+import {
+  aanwezigheidVan, aanwezigheidOverzicht, volgendeStand, magAanwezigheidZetten,
+} from '../../lib/aanwezigheid';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
 import type { GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
@@ -61,7 +66,7 @@ export default function PlayerDossier() {
   const router = useRouter();
   const {
     currentUser, users, bookings, courts, lessons, progress, goals, relaties,
-    updateLesson, updateUser,
+    updateLesson, updateUser, setAanwezigheid,
   } = useSimpleData();
   const coach = isCoach(currentUser);
 
@@ -82,6 +87,9 @@ export default function PlayerDossier() {
   // dan komt de waarde uit de speler zelf.
   const [budgetTyped, setBudgetTyped] = useState<string | null>(null);
   const [gegevensOpen, setGegevensOpen] = useState(false);
+  // De periode geldt alleen voor wat geweest is. "Aankomend" is onbegrensd: je wilt niet dat
+  // een les van volgende maand uit beeld valt omdat de kiezer op deze maand staat.
+  const [periode, setPeriode] = useState<Period>(() => currentPeriod());
 
   if (!player) {
     return (
@@ -120,8 +128,14 @@ export default function PlayerDossier() {
   };
   const upcoming = playerBookings.filter((b) => new Date(b.end_time).getTime() >= now)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
-  const past = playerBookings.filter((b) => new Date(b.end_time).getTime() < now)
+  const past = bookingsInPeriod(playerBookings, periode)
+    .filter((b) => new Date(b.end_time).getTime() < now)
     .sort((a, b) => b.start_time.localeCompare(a.start_time));
+  const overzicht = aanwezigheidOverzicht(past, player.id);
+  // Voor wie de kijker spreekt: zichzelf en zijn goedgekeurde kinderen. Niet `[player.id]` —
+  // dat is over wie het gaat, niet wie het doet. Met dat verschil bood het scherm een
+  // ingeschakelde knop aan een medespeler die daarna zwijgend niets deed.
+  const eigenIds = currentUser ? [currentUser.id, ...kinderenVan(currentUser.id, relaties)] : [];
 
   // Lesplan en voortgang zijn één lijst: elke notitie hangt onder de les waar hij bij hoort
   // (lib/relations legt die koppeling), en wat nergens bij hoort staat onderaan los.
@@ -301,7 +315,7 @@ export default function PlayerDossier() {
             onPress={() => goTo(`/agenda/new?playerId=${player.id}`)}
           />
         ) : null}
-        {upcoming.length === 0 && past.length === 0 ? (
+        {playerBookings.length === 0 ? (
           <Text style={styles.muted}>{t('Nog geen afspraken.')}</Text>
         ) : (
           <>
@@ -310,33 +324,62 @@ export default function PlayerDossier() {
                 <Text style={styles.subLabel}>{t('Aankomend')}</Text>
                 <Card style={styles.listCard}>
                   {upcoming.map((b, i) => (
-                    <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
+                    <Pressable
+                      key={b.id}
+                      onPress={() => {
+                        // `false` voor lesBegonnen: bij een les die nog moet komen schakelt
+                        // volgendeStand tussen afgemeld en niets, en schrijft hij dus nooit
+                        // een aanwezigheid weg voor iets dat nog niet gebeurd is.
+                        void setAanwezigheid(b.id, player.id, volgendeStand(aanwezigheidVan(b, player.id), false));
+                      }}
+                      disabled={!magAanwezigheidZetten(currentUser, b, player.id, eigenIds, new Date())}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('{naam} afmelden of terugzetten', { naam: player.name })}
+                      style={[styles.listRow, i > 0 && styles.divided, webCursor]}
+                    >
                       <View style={styles.rowLine}>
                         <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
                         <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
                       </View>
                       <Text style={styles.rowMeta}>{lessonMeta(b)}</Text>
-                    </View>
+                      {aanwezigheidVan(b, player.id) === 'afwezig' ? (
+                        <Text style={styles.rowStand}>{t('Afgemeld')}</Text>
+                      ) : null}
+                    </Pressable>
                   ))}
                 </Card>
               </>
             ) : null}
-            {past.length > 0 ? (
-              <>
-                <Text style={styles.subLabel}>{t('Geweest')}</Text>
-                <Card style={styles.listCard}>
-                  {past.slice(0, 6).map((b, i) => (
-                    <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
-                      <View style={styles.rowLine}>
-                        <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
-                        <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
-                      </View>
-                      <Text style={styles.rowMeta}>{lessonMeta(b)}</Text>
+            <Text style={styles.subLabel}>{t('Geweest')}</Text>
+            {/* Kop, kiezer en samenvatting staan er altijd, ook als deze periode leeg is.
+                Stond de kiezer binnen de lijst, dan zag een nieuwe leerling — of iedereen
+                in juli — geen enkele les én geen knop om een andere periode te kiezen. */}
+            <PeriodPicker value={periode} onChange={setPeriode} />
+            {/* De drie standen blijven gescheiden. "Niet afgevinkt" bij "aanwezig" optellen
+                zou een controle claimen die niemand deed — precies wat het driestandenmodel
+                moet voorkomen. */}
+            <Text style={styles.overzicht}>
+              {t('{a} van {n} aanwezig · {b} keer afwezig · {o} niet afgevinkt', {
+                a: overzicht.aanwezig, n: overzicht.totaal,
+                b: overzicht.afwezig, o: overzicht.open,
+              })}
+            </Text>
+            {past.length === 0 ? (
+              <Text style={styles.muted}>{t('Geen lessen in deze periode.')}</Text>
+            ) : (
+              <Card style={styles.listCard}>
+                {past.map((b, i) => (
+                  <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
+                    <View style={styles.rowLine}>
+                      <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
+                      <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
                     </View>
-                  ))}
-                </Card>
-              </>
-            ) : null}
+                    <Text style={styles.rowMeta}>{lessonMeta(b)}</Text>
+                    <Text style={styles.rowStand}>{standTekst(aanwezigheidVan(b, player.id), t)}</Text>
+                  </View>
+                ))}
+              </Card>
+            )}
           </>
         )}
       </DetailSheet>
@@ -499,6 +542,19 @@ function PlanRow({ lesson, onOpen, onToggle, canEdit, given, ownerName, divided 
   );
 }
 
+/**
+ * Hoe een aanwezigheid op een verleden lesregel leest.
+ *
+ * Een streepje voor een les die niemand afvinkte, en met opzet niet "aanwezig": een leeg
+ * vakje betekent dat er niet gekeken is, en dat is iets anders dan een vastgestelde
+ * aanwezigheid. Hetzelfde onderscheid dat het uitprintbare invalblad maakt.
+ */
+function standTekst(stand: 'aanwezig' | 'afwezig' | null, t: (nl: string) => string): string {
+  if (stand === 'aanwezig') return t('Aanwezig');
+  if (stand === 'afwezig') return t('Afwezig');
+  return t('—  niet afgevinkt');
+}
+
 const styles = StyleSheet.create({
   name: { ...typography.h1, color: tennisColors.text },
   opmerking: {
@@ -521,6 +577,8 @@ const styles = StyleSheet.create({
   rowDay: { fontSize: 15, fontWeight: '700', color: tennisColors.text, textTransform: 'capitalize' },
   rowTime: { fontSize: 14, color: tennisColors.text },
   rowMeta: { fontSize: 13, color: tennisColors.textMuted, marginTop: 2 },
+  overzicht: { fontSize: 13, color: tennisColors.textMuted, marginTop: spacing.xs, marginBottom: spacing.sm },
+  rowStand: { fontSize: 13, fontWeight: '600', color: tennisColors.text, marginTop: 2 },
   planRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   planOpen: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   planTitleWrap: { flex: 1 },
