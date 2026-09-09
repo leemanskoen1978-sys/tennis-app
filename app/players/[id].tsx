@@ -33,7 +33,7 @@ import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
 import type { GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
-import { isCoach, rolLabel } from '../../lib/rechten';
+import { isCoach, magContactZien, rolLabel } from '../../lib/rechten';
 
 /**
  * Het dossier is een kop-kaart met de speler en daaronder een raster tegels — dezelfde
@@ -222,8 +222,12 @@ export default function PlayerDossier() {
         {/* Dezelfde regel als op het trainersdossier: de rol, met het beheerdersvinkje
             erachter als hij dat heeft. */}
         <Badge label={rolLabel(player)} color={tennisColors.primaryFill} />
-        {/* Eén tik opent de mail of een WhatsApp-gesprek; zie components/ui/ContactRegels. */}
-        <ContactRegels email={player.email} phone={player.phone} />
+        {/* Eén tik opent de mail of een WhatsApp-gesprek; zie components/ui/ContactRegels.
+            Alleen voor wie het aangaat: dit scherm is vanuit een groepsles bereikbaar, en
+            dan keek een kind naar de gegevens van een ander kind. Zie `magContactZien`. */}
+        {magContactZien(currentUser, player, relaties)
+          ? <ContactRegels email={player.email} phone={player.phone} />
+          : null}
 
         {/* Wat de speler of zijn ouder kwijt wil. Staat hier, boven de tegels: een blessure
             of een week afwezigheid moet je zien zonder ergens op te klikken. */}

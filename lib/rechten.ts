@@ -11,7 +11,8 @@
 // iets aanbiedt wat de databank daarna weigert.
 
 import { t } from './i18n';
-import type { Booking, Role, User } from './types';
+import { isMijnKind } from './ouderkind';
+import type { Booking, OuderKind, Role, User } from './types';
 
 /** Beheert deze gebruiker de club? */
 export function isAdmin(user: User | null | undefined): boolean {
@@ -109,6 +110,36 @@ export function magLoonZien(
 ): boolean {
   if (!kijker || !trainer) return false;
   return isAdmin(kijker) || kijker.id === trainer.id;
+}
+
+/**
+ * Mag deze kijker het e-mailadres en het gsm-nummer van dit lid zien?
+ *
+ * Alleen een trainer of beheerder, jijzelf, en een ouder van dít kind.
+ *
+ * De aanleiding: in het detailblad van een groepsles is elke medespeler aanklikbaar
+ * (`components/BookingDetailSheet.tsx`, "Open dossier van {naam}") en het dossier toonde de
+ * contactregels onvoorwaardelijk. Een kind dat zijn eigen les opende, kon zo het adres en
+ * het nummer van elk ander kind in zijn groep lezen. Dat is geen deep link of een truc maar
+ * een gewone knop, en het gaat om gegevens van minderjarigen.
+ *
+ * Een aanvraag die nog niet goedgekeurd is telt niet mee (`isMijnKind` bewaakt dat): anders
+ * volstaat het aanvragen van ouderschap om aan iemands nummer te komen.
+ *
+ * Let op wat dit NIET is: de databank geeft deze velden nog steeds aan iedereen die inlogt,
+ * want `users_select` staat op `using (true)` zodat leden elkaars naam kunnen zien, en RLS
+ * schermt rijen af en geen kolommen. Dit sluit de dagelijkse weg, niet de API. Zie
+ * OPENSTAAND.md voor wat er nodig is om dat wél dicht te zetten.
+ */
+export function magContactZien(
+  kijker: User | null | undefined,
+  lid: User | null | undefined,
+  relaties: OuderKind[],
+): boolean {
+  if (!kijker || !lid) return false;
+  if (isAdmin(kijker) || isCoach(kijker)) return true;
+  if (kijker.id === lid.id) return true;
+  return isMijnKind(kijker.id, lid.id, relaties);
 }
 
 /**

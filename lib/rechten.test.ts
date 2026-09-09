@@ -1,8 +1,8 @@
 import {
-  isAdmin, isCoach, magClubcijfersZien, magInElkeAgenda, magKaartenSchrijven, magLesVerwijderen,
-  magLoonZien, roleLabel, rolLabel,
+  isAdmin, isCoach, magClubcijfersZien, magContactZien, magInElkeAgenda, magKaartenSchrijven,
+  magLesVerwijderen, magLoonZien, roleLabel, rolLabel,
 } from './rechten';
-import type { Booking, User } from './types';
+import type { Booking, OuderKind, User } from './types';
 
 const speler: User = { id: 'p1', email: 'p@x.be', name: 'Mathis', role: 'player' };
 const trainer: User = { id: 'koen', email: 'k@x.be', name: 'Koen', role: 'coach' };
@@ -187,5 +187,50 @@ describe('magKaartenSchrijven', () => {
   it('is niet voor een speler: die zou zijn eigen beurten kunnen terugzetten', () => {
     expect(magKaartenSchrijven(speler)).toBe(false);
     expect(magKaartenSchrijven(null)).toBe(false);
+  });
+});
+
+describe('magContactZien', () => {
+  const beheerder: User = baas;
+  const andereSpeler: User = { id: 'p2', email: 'p2@x.be', name: 'Nova', role: 'player' };
+  const ouder: User = { id: 'ouder', email: 'ouder@x.be', name: 'Wim', role: 'player' };
+  const kind: User = { id: 'kind', email: 'kind@x.be', name: 'Nova', role: 'player' };
+  const vreemde: User = { id: 'vreemde', email: 'vreemde@x.be', name: 'Iemand', role: 'player' };
+
+  const relaties: OuderKind[] = [
+    { id: 'r1', parent_id: 'ouder', child_id: 'kind', status: 'approved' as const },
+    { id: 'r2', parent_id: 'ouder', child_id: 'vreemde', status: 'pending' as const },
+  ];
+
+  it('laat een trainer alles zien', () => {
+    expect(magContactZien(trainer, speler, relaties)).toBe(true);
+  });
+
+  it('laat een beheerder alles zien', () => {
+    expect(magContactZien(beheerder, speler, relaties)).toBe(true);
+  });
+
+  it('laat je je eigen gegevens zien', () => {
+    expect(magContactZien(speler, speler, relaties)).toBe(true);
+  });
+
+  it('houdt een speler weg bij de gegevens van een medespeler', () => {
+    // Dit is de reden dat deze functie bestaat: in een groepsles is elke medespeler
+    // aanklikbaar, en daarachter stonden naam, adres en nummer van andermans kind.
+    expect(magContactZien(speler, andereSpeler, relaties)).toBe(false);
+  });
+
+  it('laat een ouder de gegevens van zijn goedgekeurde kind zien', () => {
+    expect(magContactZien(ouder, kind, relaties)).toBe(true);
+  });
+
+  it('laat een ouder niets zien bij een aanvraag die nog niet goedgekeurd is', () => {
+    // Anders is "ik vraag het ouderschap aan" genoeg om aan een nummer te komen.
+    expect(magContactZien(ouder, vreemde, relaties)).toBe(false);
+  });
+
+  it('weigert als er niemand is', () => {
+    expect(magContactZien(null, speler, relaties)).toBe(false);
+    expect(magContactZien(speler, null, relaties)).toBe(false);
   });
 });
