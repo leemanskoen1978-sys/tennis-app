@@ -27,7 +27,8 @@ import {
 import { isGroupLesson } from '../lib/groups';
 import { bouwImportWijziging } from '../lib/import-trainingen';
 import type { ImportKeuze, ImportPlanLessen, ImportUitslagLessen } from '../lib/import-trainingen';
-import { zetAanwezigheid, magAanwezigheidZetten, type Aanwezigheid } from '../lib/aanwezigheid';
+import { zetAanwezigheid, magAanwezigheidZetten, bevestigAanwezigheid, magLesBevestigen, type Aanwezigheid } from '../lib/aanwezigheid';
+import { lesgeverId } from '../lib/lesgever';
 import { herstelNaVerwijdering } from '../lib/ziekmelding';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
@@ -132,6 +133,15 @@ interface DataShape {
     playerId: string,
     waarde: Aanwezigheid | null,
   ) => Promise<void>;
+  /**
+   * De hele les afvinken in één keer: wie geen aantekening heeft, was er. Dit is de
+   * Klaar-knop van het afvinkscherm. Alleen de trainer van de les en de beheerder — een
+   * speler mag zichzelf afmelden, niet de hele groep aanwezig verklaren.
+   *
+   * Geeft terug of het gelukt is. Het scherm mag niet wegnavigeren op een schrijfactie die
+   * geweigerd werd — dan denkt de trainer dat hij afgevinkt heeft.
+   */
+  bevestigLes: (bookingId: string) => Promise<boolean>;
   deleteBooking: (id: string) => Promise<void>;
   /**
    * De trainer keurt een aangevraagde les goed; pas daarna gaat hij door. Alleen de trainer
@@ -975,6 +985,32 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [commit, currentUserId]);
 
+  const bevestigLes = useCallback(async (bookingId: string): Promise<boolean> => {
+    const store = storeRef.current;
+    if (!store || !currentUserId) return false;
+    const booking = store.bookings.find((b) => b.id === bookingId);
+    if (!booking) return false;
+    // Strenger dan `setAanwezigheid`: dáár mag een speler zichzelf zetten, hier gaat het
+    // over de hele groep. Dat is het oordeel van wie er stond, en dat is de trainer.
+    const kijker = store.users.find((u) => u.id === currentUserId);
+    // `lesgeverId` en niet `coach_id`: een vervanger die de les overnam, ziet hem op het
+    // afvinkscherm (lib/afvinken kiest zijn lessen met diezelfde functie) en moet hem dus
+    // ook kunnen afsluiten. Stond hier `coach_id`, dan tikte hij op Klaar en gebeurde er
+    // niets — zonder dat het scherm dat zei.
+    const magHet = kijker?.is_admin === true || lesgeverId(booking) === currentUserId;
+    if (!magHet) return false;
+    // En alleen voor een les die begonnen is. Het afvinkscherm toont ook komende lessen;
+    // daar mag een trainer wel iemand losse afmelden, maar niet de hele groep aanwezig
+    // verklaren voor iets dat nog niet gebeurd is. Zie `magLesBevestigen`.
+    if (!magLesBevestigen(booking, new Date())) return false;
+    const patch = bevestigAanwezigheid(booking);
+    await commit({
+      ...store,
+      bookings: store.bookings.map((b) => (b.id === bookingId ? { ...b, ...patch } : b)),
+    });
+    return true;
+  }, [commit, currentUserId]);
+
   const setPaymentMethod = useCallback(async (bookingId: string, method: PaymentMethod): Promise<boolean> => {
     const store = storeRef.current;
     if (!store) return false;
@@ -1615,6 +1651,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setParticipants,
     setPaymentSplit,
     setAanwezigheid,
+    bevestigLes,
     setPaymentMethod,
     setTaughtBy,
     zetVervangerVoorLessen,
@@ -1656,7 +1693,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     herstelBezig, stuurHerstelmail, zetNieuwWachtwoord, logout, refresh,
     addCourt, updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
     updateBooking, deleteBooking, approveBooking, rejectBooking,
-    setParticipants, setPaymentSplit, setAanwezigheid,
+    setParticipants, setPaymentSplit, setAanwezigheid, bevestigLes,
     setPaymentMethod, setTaughtBy, zetVervangerVoorLessen, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,

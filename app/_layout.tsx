@@ -47,7 +47,7 @@ const HEADLESS = new Set([
   'agenda/index',
   // Het afvinkscherm draagt zijn eigen kop (het uur van de les) en verder niets: zolang de
   // gsm rondgaat in de groep hoort er geen enkele weg naar een ander scherm op te staan.
-  'agenda/afvinken',
+  'afvinken',
   'players/index',
   'players/progress',
   'coaches/index',
@@ -60,7 +60,7 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   { name: 'nieuw-wachtwoord', title: t('Nieuw wachtwoord') },
   { name: 'agenda/index', title: t('Agenda') },
   { name: 'agenda/new', title: t('Nieuwe afspraak') },
-  { name: 'agenda/afvinken', title: t('Afvinken') },
+  { name: 'afvinken', title: t('Afvinken') },
   { name: 'agenda/overzicht', title: t('Overzicht') },
   { name: 'agenda/historiek', title: t('Historiek') },
   { name: 'agenda/komend', title: t('Nog te komen') },
@@ -175,7 +175,7 @@ function Root() {
   // tekent.
   const route = segments.join('/');
   const showMenu = segments[0] !== 'login' && segments[0] !== 'nieuw-wachtwoord'
-    && route !== 'agenda/afvinken';
+    && route !== 'afvinken';
 
   return (
     <View style={{ flex: 1, backgroundColor: tennisColors.background }}>

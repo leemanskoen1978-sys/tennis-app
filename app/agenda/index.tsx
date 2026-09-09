@@ -93,7 +93,7 @@ export default function BookingsScreen(): React.JSX.Element {
           })
           : t('Wie is er? Bij het begin van de les'),
         icon: UserCheck,
-        onPress: () => router.push('/agenda/afvinken'),
+        onPress: () => router.push('/afvinken'),
       },
       { key: 'new', title: t('Nieuwe afspraak'), subtitle: t('Les inplannen voor een speler'), icon: CalendarPlus, onPress: () => router.push('/agenda/new') },
       { key: 'pay', title: t('Betalingen'), subtitle: t('Openstaande lessen afhandelen'), icon: CreditCard, onPress: () => router.push('/admin/payments'), badge: pending.length },

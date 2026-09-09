@@ -20,28 +20,34 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Check, X, Circle, ArrowLeft } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Check, X, ArrowLeft } from 'lucide-react-native';
 
-import { Screen } from '../../components/ui/Screen';
-import { Chip } from '../../components/ui/Chip';
-import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { komendeLessen, lessenNu, toonDagErbij } from '../../lib/afvinken';
+import { Screen } from '../components/ui/Screen';
+import { Chip } from '../components/ui/Chip';
+import { Button } from '../components/ui/Button';
+import { useSimpleData } from '../providers/SimpleDataProvider';
+import { komendeLessen, lessenNu, toonDagErbij } from '../lib/afvinken';
 import {
-  aanwezigheidRegel, aanwezigheidVan, volgendeStand, type Aanwezigheid,
-} from '../../lib/aanwezigheid';
-import { groupSize, groupSizeLabel, lessonPlayerIds } from '../../lib/groups';
-import { formatDayTimeRange, formatTimeRange } from '../../lib/datetime';
-import type { Booking } from '../../lib/types';
-import { isCoach } from '../../lib/rechten';
-import { tennisColors } from '../../constants/tennis-colors';
-import { radius, spacing, typography, minTapTarget, webCursor, noSelect } from '../../constants/theme';
-import { useT } from '../../lib/i18n';
+  aanwezigheidRegel, aanwezigheidVan, getoondeStand, magLesBevestigen, volgendeStand,
+  type Aanwezigheid,
+} from '../lib/aanwezigheid';
+import { groupSize, groupSizeLabel, lessonPlayerIds } from '../lib/groups';
+import { formatDayTimeRange, formatTimeRange } from '../lib/datetime';
+import type { Booking } from '../lib/types';
+import { isCoach } from '../lib/rechten';
+import { tennisColors } from '../constants/tennis-colors';
+import { radius, spacing, typography, minTapTarget, webCursor, noSelect } from '../constants/theme';
+import { useT } from '../lib/i18n';
 
 export default function AfvinkenScreen(): React.JSX.Element {
   const t = useT();
   const router = useRouter();
-  const { currentUser, bookings, users, courts, setAanwezigheid, error } = useSimpleData();
+  const { currentUser, bookings, users, courts, setAanwezigheid, bevestigLes, error } = useSimpleData();
+
+  // Welke les er afgevinkt wordt. Komt mee vanaf Home; zonder parameter kiest het scherm
+  // zelf de les die nu bezig is, zoals het altijd deed.
+  const { lesId } = useLocalSearchParams<{ lesId?: string }>();
 
   // De klok loopt door terwijl het scherm openstaat: begint de volgende groep, dan hoort
   // die er te staan zonder dat de trainer het scherm eerst dicht en weer open doet.
@@ -68,13 +74,20 @@ export default function AfvinkenScreen(): React.JSX.Element {
   // Verdwijnt de gekozen les uit beide lijsten (ze is voorbij, of geannuleerd), dan valt het
   // scherm terug op de eerste die nú loopt in plaats van leeg te blijven staan. Terugvallen
   // op een les van morgen doet het nooit: dit scherm gaat over het uur dat bezig is.
-  const les = lessen.find((b) => b.id === gekozen)
-    ?? komend.find((b) => b.id === gekozen)
+  // `gekozen` eerst: tikt de trainer boven op een andere les, dan wint dat van waar hij
+  // vandaan kwam. Daarna `lesId` — de les die hij op Home aantikte. En pas als die twee
+  // allebei niets opleveren, de oude automatische keuze: de les die nu bezig is.
+  const gevraagd = gekozen ?? lesId ?? null;
+  const les = lessen.find((b) => b.id === gevraagd)
+    ?? komend.find((b) => b.id === gevraagd)
     ?? lessen[0] ?? null;
 
   // Staat er een les van later boven? Dan moet het scherm dat zeggen, want de namen eronder
   // zien er precies hetzelfde uit als die van de groep die nu voor de trainer staat.
   const vanLater = les !== null && !lessen.some((b) => b.id === les.id);
+
+  // Eén keer berekenen: hij stuurt zowel wat een tik doet als of de Klaar-knop er staat.
+  const lesBegonnen = les !== null && magLesBevestigen(les, now);
 
   const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
   const courtName = (id: string): string =>
@@ -89,13 +102,21 @@ export default function AfvinkenScreen(): React.JSX.Element {
     [les, users],
   );
 
-  const sluiten = (): void => router.replace('/agenda');
+  const sluiten = (): void => router.replace('/');
+
+  const bevestigen = async (): Promise<void> => {
+    if (!les) return;
+    // Alleen wegnavigeren als het echt weggeschreven is. Lukte het niet, dan blijft het
+    // scherm staan met zijn foutmelding, in plaats van de trainer met een gerust hart
+    // weg te sturen terwijl er niets genoteerd is.
+    if (await bevestigLes(les.id)) router.replace('/');
+  };
 
   if (!coach) {
     // Een speler of ouder hoort hier niet: afvinken doet de trainer die erbij stond.
     return (
       <Screen>
-        <Terug label={t('Terug naar de agenda')} onPress={sluiten} />
+        <Terug label={t('Terug naar het begin')} onPress={sluiten} />
         <Text style={styles.leeg}>{t('Afvinken doet de trainer van de les.')}</Text>
       </Screen>
     );
@@ -103,7 +124,7 @@ export default function AfvinkenScreen(): React.JSX.Element {
 
   return (
     <Screen>
-      <Terug label={t('Terug naar de agenda')} onPress={sluiten} />
+      <Terug label={t('Terug naar het begin')} onPress={sluiten} />
 
       {les ? (
         <>
@@ -145,12 +166,12 @@ export default function AfvinkenScreen(): React.JSX.Element {
           <Text style={styles.telling}>{aanwezigheidRegel(les)}</Text>
 
           {spelers.map(({ id, naam }) => {
-            const stand = aanwezigheidVan(les, id);
+            const stand = getoondeStand(aanwezigheidVan(les, id));
             return (
               <Pressable
                 key={id}
                 onPress={() => {
-                  void setAanwezigheid(les.id, id, volgendeStand(stand));
+                  void setAanwezigheid(les.id, id, volgendeStand(stand, lesBegonnen));
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={`${naam}, ${standLabel(stand, t)}`}
@@ -165,12 +186,12 @@ export default function AfvinkenScreen(): React.JSX.Element {
               >
                 <View style={styles.naamIcoon}>{standIcoon(stand)}</View>
                 <Text
-                  style={[styles.naam, noSelect, stand ? styles.naamOpVulling : null]}
+                  style={[styles.naam, noSelect, styles.naamOpVulling]}
                   numberOfLines={1}
                 >
                   {naam}
                 </Text>
-                <Text style={[styles.stand, noSelect, stand ? styles.naamOpVulling : null]}>
+                <Text style={[styles.stand, noSelect, styles.naamOpVulling]}>
                   {standLabel(stand, t)}
                 </Text>
               </Pressable>
@@ -178,9 +199,31 @@ export default function AfvinkenScreen(): React.JSX.Element {
           })}
 
           <Text style={styles.uitleg}>
-            {t('Tik op je naam: één keer voor aanwezig, nog eens voor afwezig, nog eens om '
-              + 'hem leeg te maken.')}
+            {t('Iedereen staat op aanwezig. Tik alleen wie er niet is; nog een tik zet hem terug.')}
           </Text>
+
+          {lesBegonnen ? (
+            <>
+              {/* Dit is de handeling, niet een sierknop: pas hier wordt "niemand heeft
+                  gekeken" een echte aanwezigheid. Wie het scherm sluit zonder te tikken,
+                  legt niets vast — openen is geen controleren. Vandaar de zin eronder. */}
+              <Button
+                label={t('Klaar')}
+                variant="primary"
+                onPress={() => { void bevestigen(); }}
+                style={styles.klaar}
+              />
+              <Text style={styles.uitleg}>
+                {t('Iedereen die je niet aantikte, staat dan op aanwezig.')}
+              </Text>
+            </>
+          ) : (
+            // Een les die nog moet beginnen kun je wel alvast iemand van afmelden, maar niet
+            // in één keer bevestigen: er valt nog niets waar te nemen. Zie `magLesBevestigen`.
+            <Text style={styles.uitleg}>
+              {t('Deze les is nog niet begonnen. Afvinken kan zodra hij loopt.')}
+            </Text>
+          )}
         </>
       ) : (
         <>
@@ -265,22 +308,18 @@ function lesWanneer(b: Booking, now: Date): string {
 }
 
 /** Wat er rechts op de rij staat, en wat een schermlezer voorleest. */
-function standLabel(stand: Aanwezigheid | null, t: (nl: string) => string): string {
-  if (stand === 'aanwezig') return t('Aanwezig');
-  if (stand === 'afwezig') return t('Afwezig');
-  return t('Nog niet afgevinkt');
+function standLabel(stand: Aanwezigheid, t: (nl: string) => string): string {
+  return stand === 'aanwezig' ? t('Aanwezig') : t('Afwezig');
 }
 
-function standIcoon(stand: Aanwezigheid | null): React.JSX.Element {
-  if (stand === 'aanwezig') return <Check size={28} color={tennisColors.onFill} />;
-  if (stand === 'afwezig') return <X size={28} color={tennisColors.onFill} />;
-  return <Circle size={28} color={tennisColors.textMuted} />;
+function standIcoon(stand: Aanwezigheid): React.JSX.Element {
+  return stand === 'aanwezig'
+    ? <Check size={28} color={tennisColors.onFill} />
+    : <X size={28} color={tennisColors.onFill} />;
 }
 
-function standStijl(stand: Aanwezigheid | null): object {
-  if (stand === 'aanwezig') return styles.rijAanwezig;
-  if (stand === 'afwezig') return styles.rijAfwezig;
-  return styles.rijLeeg;
+function standStijl(stand: Aanwezigheid): object {
+  return stand === 'aanwezig' ? styles.rijAanwezig : styles.rijAfwezig;
 }
 
 const styles = StyleSheet.create({
@@ -295,7 +334,6 @@ const styles = StyleSheet.create({
     minHeight: 64, paddingHorizontal: spacing.lg, marginTop: spacing.sm,
     borderRadius: radius.lg, borderWidth: 1,
   },
-  rijLeeg: { backgroundColor: tennisColors.surface, borderColor: tennisColors.border },
   rijAanwezig: { backgroundColor: tennisColors.successFill, borderColor: tennisColors.successFill },
   rijAfwezig: { backgroundColor: tennisColors.warningFill, borderColor: tennisColors.warningFill },
   gedrukt: { opacity: 0.85 },
@@ -304,6 +342,7 @@ const styles = StyleSheet.create({
   naamOpVulling: { color: tennisColors.onFill },
   stand: { fontSize: 13, color: tennisColors.textMuted },
   uitleg: { fontSize: 13, color: tennisColors.textMuted, fontStyle: 'italic', marginTop: spacing.md },
+  klaar: { marginTop: spacing.lg },
   laterBlok: {
     flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm,
     marginTop: spacing.sm,
