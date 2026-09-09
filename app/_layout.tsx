@@ -91,6 +91,7 @@ const screens = (t: Translate): ReadonlyArray<{ name: string; title: string }> =
   // straks geen kop.
   { name: 'admin/lesgroepen/[id]', title: t('Lesgroep') },
   { name: 'admin/ziekmelding/index', title: t('Ziekmelding') },
+  { name: 'admin/lesplanning/index', title: t('Lesplanning') },
   // Vooruit geregistreerd, net als het groepsscherm hierboven: de werklijst van één melding
   // komt in het volgende plan, en zonder deze regel krijgt ze straks geen kop.
   { name: 'admin/ziekmelding/[id]', title: t('Werklijst') },

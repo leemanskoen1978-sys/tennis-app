@@ -1521,4 +1521,19 @@ export const EN: Record<string, string> = {
   'Kies welk lesmateriaal je doorstuurt.': 'Choose which lesson material you are sending on.',
   'Kies een trainer, een groep, of beide.': 'Choose a coach, a group, or both.',
   'De periode eindigt voor ze begint.': 'The period ends before it starts.',
+  'Lesplanning': 'Lesson planning',
+  'Materiaal per periode en groep': 'Material per period and group',
+  'Lesplanning is alleen voor de beheerder.': 'Lesson planning is for the administrator only.',
+  'Kies lesmateriaal en een periode, en zeg voor wie het geldt: een trainer, een groep, of een groep bij een trainer. De trainer ziet het bij zijn les staan.':
+    'Choose lesson material and a period, and say who it applies to: a coach, a group, or a group with a coach. The coach sees it with their lesson.',
+  'Er staat nog geen lesmateriaal in de bibliotheek.':
+    'There is no lesson material in the library yet.',
+  'Doorsturen': 'Send on',
+  'Doorgestuurd': 'Sent on',
+  'Er is nog niets doorgestuurd.': 'Nothing has been sent on yet.',
+  '{groep} bij {trainer}': '{groep} with {trainer}',
+  'Onbekend lesmateriaal': 'Unknown lesson material',
+  'Onbekende groep': 'Unknown group',
+  'Ja, weghalen': 'Yes, remove it',
+  'Deze periode: {titel}': 'This period: {titel}',
 };
