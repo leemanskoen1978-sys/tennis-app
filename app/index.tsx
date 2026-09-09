@@ -8,7 +8,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import {
   CalendarDays, CalendarPlus, Users, GraduationCap, SlidersHorizontal,
-  BookOpen, TrendingUp, Wallet, ChevronRight, X, XCircle, BellRing, type LucideIcon,
+  BookOpen, TrendingUp, Wallet, ChevronRight, X, XCircle, BellRing, UserCheck, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
@@ -20,14 +20,16 @@ import { useSimpleData } from '../providers/SimpleDataProvider';
 import { useKindkeuze, useOpenstaandeBetalingen } from '../providers/kindkeuze';
 import { SpelerKiezer } from '../components/ui/SpelerKiezer';
 import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
+import { lessenNu } from '../lib/afvinken';
 import { awaitingApprovalFor, awaitingApprovalOf, recentGeweigerd } from '../lib/inbox';
 import { isCoach, magInElkeAgenda } from '../lib/rechten';
 import { zonderWeggeklikt } from '../lib/weggeklikt';
 import { useWeggeklikt } from '../providers/weggeklikt';
 import { bookingsFor, filterPendingPayment, openBalanceFor } from '../lib/payments';
 import { formatEuro } from '../lib/money';
-import { formatDayTimeRange, formatDayTime } from '../lib/datetime';
+import { formatDayTimeRange, formatDayTime, formatTimeRange } from '../lib/datetime';
 import { groupSize, shortGroupLabel } from '../lib/groups';
+import { dossierPad } from '../lib/dossier';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
 import { useT } from '../lib/i18n';
@@ -55,6 +57,17 @@ export default function Hub() {
   const coach = isCoach(currentUser) && kijktNaarZichzelf;
 
   if (!currentUser) return <Redirect href="/login" />;
+
+  // Waar "mijn agenda" heen gaat: een trainer naar zijn trainersdossier, iedereen anders naar
+  // zijn spelersdossier, en een ouder naar het kind dat hij koos. De regel staat in
+  // lib/dossier, zodat elk scherm dezelfde bestemming kiest.
+  const dossier = dossierPad(currentUser, speler);
+
+  // Loopt er nu een les, dan zegt de tegel Afvinken meteen welke — anders moet de trainer
+  // hem openen om te zien of hij op het juiste moment kijkt.
+  const nu = coach && currentUser
+    ? lessenNu(bookings, currentUser.id, new Date())
+    : [];
 
   // `bookingsFor` en niet zelf filteren: zo ziet een speler ook de groepslessen waarin
   // hij meespeelt zonder te betalen.
@@ -87,15 +100,32 @@ export default function Hub() {
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? t(one) : t(many)}`;
 
   const coachTiles: Tile[] = [
+    // Bovenaan, want dit is de tegel die je aantikt terwijl de kinderen voor je staan.
     {
-      key: 'agenda',
-      title: t('Agenda'),
-      subtitle: teKeuren.length > 0
-        ? plural(teKeuren.length, 'les goed te keuren', 'lessen goed te keuren')
-        : plural(today, 'vandaag', 'vandaag'),
+      key: 'afvinken',
+      title: t('Afvinken'),
+      subtitle: nu.length > 0
+        ? t('Nu: {tijd} · geef je gsm door', {
+          tijd: formatTimeRange(nu[0].start_time, nu[0].end_time),
+        })
+        : t('Wie is er? Bij het begin van de les'),
+      icon: UserCheck,
+      onPress: () => router.push('/afvinken'),
+    },
+    {
+      key: 'new',
+      title: t('Nieuwe afspraak'),
+      subtitle: t('Les inplannen voor een speler'),
+      icon: CalendarPlus,
+      onPress: () => router.push('/agenda/new'),
+    },
+    {
+      key: 'mijn',
+      title: t('Mijn agenda'),
+      subtitle: plural(today, 'vandaag', 'vandaag'),
       icon: CalendarDays,
-      onPress: () => router.push('/agenda'),
-      badge: teKeuren.length,
+      // Zijn eigen dossier: zijn agenda, zijn week en zijn spelers staan daar bij elkaar.
+      onPress: () => { if (dossier) router.push(dossier); },
     },
     { key: 'spelers', title: t('Spelers'), subtitle: plural(countPlayers(users), 'actief', 'actief'), icon: Users, onPress: () => router.push('/players') },
     { key: 'trainers', title: t('Trainers'), subtitle: plural(countCoaches(users), 'trainer', 'trainers'), icon: GraduationCap, onPress: () => router.push('/coaches') },
@@ -113,7 +143,7 @@ export default function Hub() {
         ? plural(gevraagd.length, 'wacht op goedkeuring', 'wachten op goedkeuring')
         : plural(today, 'vandaag', 'vandaag'),
       icon: CalendarDays,
-      onPress: () => router.push('/agenda'),
+      onPress: () => { if (dossier) router.push(dossier); },
       badge: myOpen,
     },
     { key: 'les', title: t('Mijn lessen'), subtitle: t('Lesmateriaal van je trainers'), icon: BookOpen, onPress: () => router.push('/coaches/lessons') },
@@ -282,7 +312,7 @@ export default function Hub() {
           Staat er niets open, dan staat er ook niets: een kaart met "€ 0,00" is ruis. */}
       {!coach && balance.amount > 0 ? (
         <Card
-          onPress={() => router.push('/agenda/overzicht')}
+          onPress={() => { if (dossier) router.push(dossier); }}
           accessibilityLabel={t('Openstaand saldo € {bedrag}', { bedrag: formatEuro(balance.amount) })}
           style={styles.balance}
         >
