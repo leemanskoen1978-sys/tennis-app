@@ -1,6 +1,6 @@
 import {
   aanwezigheidVan, zetAanwezigheid, aanwezigheidTelling, aanwezigheidRegel, volgendeStand, magAanwezigheidZetten,
-  getoondeStand, bevestigAanwezigheid,
+  getoondeStand, bevestigAanwezigheid, magLesBevestigen,
 } from './aanwezigheid';
 import type { Booking } from './types';
 
@@ -102,8 +102,9 @@ describe('volgendeStand', () => {
   });
 
   it('komt nooit meer op niets genoteerd uit', () => {
-    // De weg terug naar "leeg" is met opzet uit het scherm gehaald; hij bestaat nog wel
-    // via zetAanwezigheid(b, id, null), waar het detailblad van de les gebruik van maakt.
+    // De weg terug naar "leeg" is met opzet uit het scherm gehaald; hij bestaat nog wel via
+    // zetAanwezigheid: `null` doorgeven, of opnieuw tikken op de stand die er al staat. Het
+    // detailblad van de les gebruikt die tweede weg.
     for (const stand of [null, 'aanwezig', 'afwezig'] as const) {
       expect(volgendeStand(stand)).not.toBeNull();
     }
@@ -211,5 +212,30 @@ describe('bevestigAanwezigheid', () => {
   it('verandert niets meer als je twee keer bevestigt', () => {
     const eenmaal = { ...groep, ...bevestigAanwezigheid(groep) };
     expect(bevestigAanwezigheid(eenmaal).attendance).toEqual(eenmaal.attendance);
+  });
+});
+
+describe('magLesBevestigen', () => {
+  const nu = new Date('2026-09-01T10:30:00.000Z');
+
+  it('mag een les die bezig is', () => {
+    expect(magLesBevestigen({ start_time: '2026-09-01T10:00:00.000Z' }, nu)).toBe(true);
+  });
+
+  it('mag een les die geweest is', () => {
+    expect(magLesBevestigen({ start_time: '2026-08-25T10:00:00.000Z' }, nu)).toBe(true);
+  });
+
+  it('mag een les die nog moet beginnen niet', () => {
+    // Het "Hierna"-blok van het afvinkscherm toont komende lessen zodat een trainer alvast
+    // iemand kan afmelden. Die ene aantekening mag, maar de hele groep aanwezig verklaren
+    // voor een les die nog niet gebeurd is niet: dan is "niemand heeft gekeken" weg terwijl
+    // er nog niets te zien was.
+    expect(magLesBevestigen({ start_time: '2026-09-08T10:00:00.000Z' }, nu)).toBe(false);
+  });
+
+  it('weigert bij een onleesbare begintijd', () => {
+    // Bij twijfel niet bevestigen: een aantekening terugdraaien kan niet vanaf dit scherm.
+    expect(magLesBevestigen({ start_time: 'geen datum' }, nu)).toBe(false);
   });
 });

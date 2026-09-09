@@ -27,7 +27,7 @@ import {
 import { isGroupLesson } from '../lib/groups';
 import { bouwImportWijziging } from '../lib/import-trainingen';
 import type { ImportKeuze, ImportPlanLessen, ImportUitslagLessen } from '../lib/import-trainingen';
-import { zetAanwezigheid, magAanwezigheidZetten, bevestigAanwezigheid, type Aanwezigheid } from '../lib/aanwezigheid';
+import { zetAanwezigheid, magAanwezigheidZetten, bevestigAanwezigheid, magLesBevestigen, type Aanwezigheid } from '../lib/aanwezigheid';
 import { herstelNaVerwijdering } from '../lib/ziekmelding';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
@@ -991,6 +991,10 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     const kijker = store.users.find((u) => u.id === currentUserId);
     const magHet = kijker?.is_admin === true || booking.coach_id === currentUserId;
     if (!magHet) return;
+    // En alleen voor een les die begonnen is. Het afvinkscherm toont ook komende lessen;
+    // daar mag een trainer wel iemand losse afmelden, maar niet de hele groep aanwezig
+    // verklaren voor iets dat nog niet gebeurd is. Zie `magLesBevestigen`.
+    if (!magLesBevestigen(booking, new Date())) return;
     const patch = bevestigAanwezigheid(booking);
     await commit({
       ...store,

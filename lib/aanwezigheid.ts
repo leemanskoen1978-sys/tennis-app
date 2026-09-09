@@ -104,10 +104,31 @@ export function zetAanwezigheid(
 export function bevestigAanwezigheid(b: AanwezigheidBooking): { attendance: Aanwezigheden } {
   const uit: Aanwezigheden = {};
   for (const id of lessonPlayerIds(b)) {
-    const bestaand = b.attendance?.[id];
-    uit[id] = bestaand === 'afwezig' ? 'afwezig' : 'aanwezig';
+    uit[id] = getoondeStand(aanwezigheidVan(b, id));
   }
   return { attendance: uit };
+}
+
+/**
+ * Mag deze les in één keer bevestigd worden — de Klaar-knop van het afvinkscherm?
+ *
+ * Alleen als hij begonnen is. Afvinken is vaststellen wie er stond, en dat kun je pas zien
+ * als de les bezig is. Het scherm toont met opzet ook lessen die nog moeten komen, zodat een
+ * trainer alvast iemand kan afmelden die zich afmeldde; die ene aantekening is een mededeling
+ * en mag. De hele groep aanwezig verklaren is een waarneming, en die kan nog niet gedaan zijn.
+ *
+ * Zonder deze grens zou één tik op Klaar bij een les van volgende week "hier heeft niemand
+ * naar gekeken" wegnemen voor die hele groep — precies wat de derde stand moet bewaken, en
+ * vanaf dit scherm niet meer terug te draaien.
+ */
+export function magLesBevestigen(
+  booking: { start_time: string },
+  now: Date,
+): boolean {
+  const start = new Date(booking.start_time);
+  // Een onleesbare begintijd telt als "nog niet begonnen": bij twijfel niets vastleggen.
+  if (Number.isNaN(start.getTime())) return false;
+  return start.getTime() <= now.getTime();
 }
 
 /** Hoeveel spelers er aanwezig, afwezig en nog niet ingevuld zijn. Telt alleen wie meespeelt. */
@@ -153,8 +174,11 @@ export function aanwezigheidRegel(b: AanwezigheidBooking): string {
  * Nu vertrekt alles vanuit aanwezig (zie `getoondeStand`) en zet één tik iemand op afwezig,
  * de volgende weer terug. Herstellen kan dus nog steeds door door te tikken.
  *
- * De weg terug naar "niets genoteerd" is uit het scherm verdwenen maar niet uit de app:
- * `zetAanwezigheid(b, id, null)` doet het nog, en het detailblad van een les gebruikt dat.
+ * De weg terug naar "niets genoteerd" is uit het scherm verdwenen maar niet uit de app.
+ * `zetAanwezigheid` kent er twee: `null` doorgeven, en opnieuw tikken op de stand die er al
+ * staat (de test `uit[playerId] === waarde`). Het detailblad van een les gebruikt die tweede.
+ * Wie ooit die zelfwissende tak opruimt omdat hij op een ongelukje lijkt, haalt dus de enige
+ * weg terug weg die er in de app echt gebruikt wordt.
  */
 export function volgendeStand(huidig: Aanwezigheid | null): Aanwezigheid {
   return getoondeStand(huidig) === 'aanwezig' ? 'afwezig' : 'aanwezig';
