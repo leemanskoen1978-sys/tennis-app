@@ -93,3 +93,53 @@ export function openstaandeLessen<T extends OpenBoeking>(
   // `Date.parse` en niet de tekst: een tijdstip met een zone-aanduiding sorteert als tekst fout.
   return rijen.sort((a, b) => Date.parse(a.les.start_time) - Date.parse(b.les.start_time));
 }
+
+/**
+ * Waarom deze trainer deze les niet kan overnemen, of `null` als het mag.
+ *
+ * Een zin en geen boolean, en nooit stil niets doen: twee trainers kunnen tegelijk naar dezelfde
+ * lijst kijken, en wie op een knop drukt die niets doet, drukt hem nog eens en gaat daarna bellen.
+ *
+ * De volgorde van de controles ligt vast en de eerste die nee zegt wint — dezelfde afspraak als
+ * `kanVervangen` in lib/vervanger. "Er staat al een lesgever" wordt vóór "staat niet open"
+ * gevraagd, want dat is de reden die de kijker moet lezen: een collega was hem voor.
+ *
+ * Dit is het bezwaar van de app. De databank stelt dezelfde vragen nog eens in `les_staat_open()`
+ * en in `bewaak_betaalvelden` (ZOEKT-TRAINER.sql) — dezelfde verdeling als tussen lib/rechten en
+ * de policies: hier zodat er geen knop staat die daarna geweigerd wordt, daar omdat dát de
+ * bewaking is.
+ */
+export function claimBezwaar(
+  les: OpenBoeking | undefined,
+  kijkerId: string,
+  open: OpenZiekmelding[],
+  nu: Date,
+): string | null {
+  if (!les) return t('Deze les bestaat niet meer.');
+  if (les.coach_id === kijkerId) return t('Dit is je eigen les.');
+  if (les.taught_by_id) return t('Een collega was je voor: deze les heeft al een lesgever.');
+  if (!(Date.parse(les.start_time) > nu.getTime())) return t('Deze les is al begonnen.');
+  if (!staatOpen(les, open)) return t('Deze les zoekt geen trainer meer.');
+  return null;
+}
+
+/**
+ * Waarom deze trainer deze les niet kan teruggeven, of `null` als het mag.
+ *
+ * Alleen wie er zelf als lesgever op staat, en alleen zolang de les nog moet beginnen. Wat
+ * geweest is blijft staan zoals het was: `taught_by_id` bepaalt wie er betaald wordt, en een
+ * gegeven les laat je niet achteraf van naam wisselen.
+ *
+ * Ook een les die de beheerder toewees mag terug. Teruggeven maakt een les niet onzichtbaar maar
+ * juist weer zichtbaar: hij komt terug in deze lijst en op de werklijst van de beheerder.
+ */
+export function teruggeefBezwaar(
+  les: OpenBoeking | undefined,
+  kijkerId: string,
+  nu: Date,
+): string | null {
+  if (!les) return t('Deze les bestaat niet meer.');
+  if (les.taught_by_id !== kijkerId) return t('Deze les staat niet op jouw naam.');
+  if (!(Date.parse(les.start_time) > nu.getTime())) return t('Deze les is al begonnen.');
+  return null;
+}

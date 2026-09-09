@@ -1,4 +1,6 @@
-import { openReden, openstaandeLessen, staatOpen } from './openstaand';
+import {
+  claimBezwaar, openReden, openstaandeLessen, staatOpen, teruggeefBezwaar,
+} from './openstaand';
 import type { Booking, SickLeave, Vakantie } from './types';
 
 const ziekmelding: SickLeave = {
@@ -104,5 +106,60 @@ describe('openstaandeLessen', () => {
   it('laat een onleesbare begintijd weg in plaats van te crashen', () => {
     const kapot = vrij({ id: 'b-kapot', start_time: 'geen datum' });
     expect(openstaandeLessen([kapot], [], [], nu, 'c-9')).toEqual([]);
+  });
+});
+
+describe('claimBezwaar', () => {
+  const nu = new Date('2027-03-01T08:00:00.000Z');
+
+  it('geeft null voor een openstaande les van een collega', () => {
+    expect(claimBezwaar(les(), 'c-9', [ziekmelding], nu)).toBeNull();
+  });
+
+  it('klaagt als de les niet meer bestaat', () => {
+    expect(claimBezwaar(undefined, 'c-9', [], nu)).not.toBeNull();
+  });
+
+  it('klaagt over je eigen les', () => {
+    expect(claimBezwaar(les(), 'c-1', [ziekmelding], nu)).not.toBeNull();
+  });
+
+  it('zegt dat een collega je voor was als er al een lesgever op staat', () => {
+    // Twee trainers kunnen tegelijk naar dezelfde lijst kijken. De tweede hoort te lezen wat
+    // er gebeurd is, en niet een knop in te drukken die stil niets doet.
+    const bezwaar = claimBezwaar(les({ taught_by_id: 'c-2' }), 'c-9', [ziekmelding], nu);
+    expect(bezwaar).not.toBeNull();
+    expect(bezwaar).toContain('collega');
+  });
+
+  it('klaagt over een les die al begonnen is', () => {
+    const laat = new Date('2027-03-03T17:30:00.000Z');
+    expect(claimBezwaar(les(), 'c-9', [ziekmelding], laat)).not.toBeNull();
+  });
+
+  it('klaagt over een les die niet openstaat', () => {
+    expect(claimBezwaar(les(), 'c-9', [], nu)).not.toBeNull();
+  });
+});
+
+describe('teruggeefBezwaar', () => {
+  const nu = new Date('2027-03-01T08:00:00.000Z');
+
+  it('geeft null voor je eigen overgenomen les', () => {
+    expect(teruggeefBezwaar(les({ taught_by_id: 'c-9' }), 'c-9', nu)).toBeNull();
+  });
+
+  it('klaagt als de les niet meer bestaat', () => {
+    expect(teruggeefBezwaar(undefined, 'c-9', nu)).not.toBeNull();
+  });
+
+  it('klaagt over de les van iemand anders', () => {
+    expect(teruggeefBezwaar(les({ taught_by_id: 'c-2' }), 'c-9', nu)).not.toBeNull();
+    expect(teruggeefBezwaar(les(), 'c-9', nu)).not.toBeNull();
+  });
+
+  it('klaagt over een les die al begonnen is', () => {
+    const laat = new Date('2027-03-03T17:30:00.000Z');
+    expect(teruggeefBezwaar(les({ taught_by_id: 'c-9' }), 'c-9', laat)).not.toBeNull();
   });
 });

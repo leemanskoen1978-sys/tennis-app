@@ -1486,4 +1486,12 @@ export const EN: Record<string, string> = {
   'Baan {nr} bestaat al.': 'Court {nr} already exists.',
   'Vul een uurtarief in, bijvoorbeeld 30 of 22,50.':
     'Fill in an hourly rate, for example 30 or 22.50.',
+  // --- lessen zonder trainer ---------------------------------------------
+  'Deze les bestaat niet meer.': 'This lesson no longer exists.',
+  'Dit is je eigen les.': 'This is your own lesson.',
+  'Een collega was je voor: deze les heeft al een lesgever.':
+    'A colleague beat you to it: this lesson already has a coach.',
+  'Deze les is al begonnen.': 'This lesson has already started.',
+  'Deze les zoekt geen trainer meer.': 'This lesson is no longer looking for a coach.',
+  'Deze les staat niet op jouw naam.': 'This lesson is not in your name.',
 };
