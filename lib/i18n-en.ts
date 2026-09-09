@@ -1302,6 +1302,23 @@ export const EN: Record<string, string> = {
   'Voor spelers': 'For players',
   'Voor beheerders': 'For admins',
 
+  // --- Het verloop van een speler (components/progress/VoortgangVerloop) ---
+  // 'Verloop', '1 notitie' en '{n} notities' staan hierboven al: het omzetverloop en de
+  // spelerslijst gebruiken dezelfde woorden, en dat hoort ook zo.
+  'Gemiddelde score per maand.': 'Average score per month.',
+  '{maand}: geen notities': '{maand}: no notes',
+  '{maand}: {score} uit {n}': '{maand}: {score} from {n}',
+  'Gemiddeld {score} uit {n}': 'Average {score} from {n}',
+  ' · 1 notitie': ' · 1 note',
+  ' · {n} notities': ' · {n} notes',
+  '{n} hoger dan bij de start': '{n} higher than at the start',
+  '{n} lager dan bij de start': '{n} lower than at the start',
+  'gelijk gebleven': 'unchanged',
+  'Nog geen scores. Zodra je bij een notitie sterren zet, verschijnt hier het verloop.':
+    'No scores yet. As soon as you add stars to a note, the trend appears here.',
+  'De laatste {n} maanden. Een maand zonder notities blijft leeg staan — dat gat is zelf informatie.':
+    'The last {n} months. A month without notes stays empty — that gap is information in itself.',
+
   // --- Een les verzetten (components/VerzetLes) ---
   'Les verzetten': 'Move lesson',
   'Verzetten': 'Move',

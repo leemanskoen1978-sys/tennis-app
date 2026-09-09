@@ -6,6 +6,8 @@ import { spacing } from '../../constants/theme';
 import { tennisColors } from '../../constants/tennis-colors';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { ProgressForm } from '../../components/progress/ProgressForm';
+import { VoortgangVerloop } from '../../components/progress/VoortgangVerloop';
+import { Card } from '../../components/ui/Card';
 import { useT } from '../../lib/i18n';
 import type { StudentProgress } from '../../lib/types';
 import { useKindkeuze } from '../../providers/kindkeuze';
@@ -57,6 +59,16 @@ export default function ProgressScreen(): React.JSX.Element {
       ) : (
         <>
           <ReportSummary entries={eigenBeoordelingen} />
+
+          {/* Het verloop staat vóór de losse notities: "gaat het beter" is de vraag waarmee
+              een speler dit scherm opent, en die stond tot nu toe in vijftig losse sterren
+              verspreid. De notities eronder zeggen daarna waaróm. */}
+          {speler ? (
+            <Card>
+              <Text style={styles.cardTitle}>{t('Verloop')}</Text>
+              <VoortgangVerloop progress={progress} studentId={speler.id} />
+            </Card>
+          ) : null}
           {eigenBeoordelingen.map((p) => (
             <ProgressEntryCard
               key={p.id}
@@ -90,4 +102,5 @@ const styles = StyleSheet.create({
   error: { color: tennisColors.danger, marginBottom: spacing.md, fontSize: 14 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: tennisColors.text, marginTop: spacing.sm, marginBottom: spacing.sm },
   muted: { color: tennisColors.textMuted, fontSize: 14 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: tennisColors.text, marginBottom: spacing.sm },
 });

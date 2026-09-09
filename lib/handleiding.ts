@@ -263,6 +263,20 @@ const TRAINER: Gidsstuk[] = [
         ],
       },
       {
+        waar: 'Lesplan & voortgang',
+        kop: 'Het verloop bovenaan',
+        tekst: [
+          'Boven de lessen staat een staafje per maand: de gemiddelde score die je die maand '
+          + 'gaf, over de laatste tien maanden. Daaronder wat het in het kort zegt — het '
+          + 'gemiddelde, en hoeveel hoger of lager dan bij de start.',
+          'Een maand zonder notities blijft leeg staan. Dat gat is zelf informatie: het zegt '
+          + 'dat er die maand niets genoteerd is, en dat is iets anders dan een slechte score. '
+          + 'Notities zonder sterren tellen niet mee — "huiswerk meegegeven" is geen nul.',
+          'Staan er meer soorten training in, dan zie je er ook het gemiddelde per soort bij. '
+          + 'Een 3,2 zegt niet waaraan gewerkt moet worden; "techniek 4,1 en fysiek 2,4" wel.',
+        ],
+      },
+      {
         waar: 'Voortgang',
         kop: 'Noteren en uitwerken',
         tekst: [
@@ -736,6 +750,15 @@ const SPELER: Gidsstuk[] = [
         tekst: [
           'Per les: het type training, een score, wat er opviel en wat je huiswerk is. Je leest '
           + 'het; invullen doet je trainer.',
+        ],
+      },
+      {
+        waar: 'Voortgang',
+        kop: 'Hoe het loopt',
+        tekst: [
+          'Boven je notities staat je verloop: per maand de gemiddelde score van je trainer, '
+          + 'over de laatste tien maanden. Een maand waarin hij niets noteerde blijft leeg — '
+          + 'dat is geen slechte score, daar is gewoon niets opgeschreven.',
         ],
       },
       {

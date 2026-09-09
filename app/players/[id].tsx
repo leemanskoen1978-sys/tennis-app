@@ -21,6 +21,7 @@ import { LidBewerken } from '../../components/LidBewerken';
 import { GoalHorizonRows, PlayerGoalSheet } from '../../components/PlayerGoals';
 import { ProgressForm } from '../../components/progress/ProgressForm';
 import { ProgressEntryCard } from '../../components/progress/ProgressViews';
+import { VoortgangVerloop } from '../../components/progress/VoortgangVerloop';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { useKindkeuze } from '../../providers/kindkeuze';
 import {
@@ -512,6 +513,13 @@ export default function PlayerDossier() {
           </View>
         ) : null}
 
+        {/* Het verloop bovenaan, boven de losse lessen en notities: "gaat het beter" is de
+            vraag waarmee een trainer dit blad opent, en het antwoord stond tot nu toe
+            verspreid over vijftig losse sterren. Wat eronder staat, zegt waaróm. */}
+        <View style={styles.verloop}>
+          <VoortgangVerloop progress={progress} studentId={player.id} />
+        </View>
+
         {/* Eén rustige regel als er in het geheel nog niets is. Per les geen "geen
             notities"-regel: dat maakt de lijst alleen maar langer. */}
         {nothingYet ? <Text style={styles.muted}>{t('Nog geen lessen of notities.')}</Text> : null}
@@ -682,6 +690,8 @@ const styles = StyleSheet.create({
   coachLink: { fontSize: 14, fontWeight: '600', color: tennisColors.primary, textDecorationLine: 'underline' },
   subLabel: { fontSize: 13, fontWeight: '700', color: tennisColors.textMuted, marginTop: spacing.sm, textTransform: 'uppercase' },
   muted: { color: tennisColors.textMuted, fontSize: 14 },
+  // Lucht onder het verloop, zodat de grafiek niet aan de eerste leskaart plakt.
+  verloop: { marginBottom: spacing.md },
   icsFout: { color: tennisColors.danger, fontSize: 14 },
   listCard: { gap: 0, paddingVertical: spacing.xs },
   listRow: { paddingVertical: spacing.md },
