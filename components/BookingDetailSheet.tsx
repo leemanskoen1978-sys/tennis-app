@@ -19,6 +19,7 @@ import { DetailSheet } from './ui/DetailSheet';
 import { ParticipantPicker } from './ParticipantPicker';
 import { PaymentMethodSheet } from './PaymentMethodSheet';
 import { useSimpleData } from '../providers/SimpleDataProvider';
+import { materiaalVoor } from '../lib/lesplanning';
 import { useActieveSpeler } from '../providers/kindkeuze';
 import { cardsFor, remaining, GROEPSLES_ALLEEN_FACTUUR } from '../lib/beurtenkaart';
 import { formatDayTimeRange } from '../lib/datetime';
@@ -110,6 +111,9 @@ export function BookingDetailSheet({
   const speler = useActieveSpeler();
   const {
     currentUser, bookings, users, courts, beurtenkaarten, relaties, lesGroepen, sickLeaves,
+    // `lessons` is in dit bestand al een functie die "3 lessen" opmaakt (zie boven), dus het
+    // lesmateriaal krijgt hier een eigen naam.
+    lessons: lesmateriaal, lesPlanning,
     updateBooking, deleteBooking, cancelSeriesFrom, deleteSeriesFrom,
     approveBooking, rejectBooking,
     setPaymentMethod, setParticipants, setPaymentSplit, setAanwezigheid, setTaughtBy,
@@ -361,6 +365,19 @@ export function BookingDetailSheet({
         {zoektNogIemand && isAdmin(currentUser) ? (
           <Text style={styles.hint}>{t('Je regelt hem op de werklijst, onder Beheer bij Ziekmelding.')}</Text>
         ) : null}
+
+        {/* Wat de tennisschool voor deze periode doorstuurde; zie `materiaalVoor` in
+            lib/lesplanning. Tekst zonder tik, met opzet: dit blad is zelf een blad, en een blad
+            binnen een blad is precies wat de betaalwijze hierboven met een schakelaar omzeilt.
+            Wie het materiaal wil openen, doet dat op zijn lesdag of in Lesmateriaal.
+
+            Geen kop als er niets geldt, om dezelfde reden als op de lesdag: een kop zonder
+            inhoud leest als "er is niets gepland". */}
+        {materiaalVoor(booking, lesPlanning, lesmateriaal).map((l) => (
+          <Text key={l.id} style={styles.hint}>
+            {t('Deze periode: {titel}', { titel: l.title })}
+          </Text>
+        ))}
 
         {/* "Deze les zoekt een trainer": het merkteken buiten ziekte om, dat de les in de lijst
             onder Trainers → Lessen zonder trainer zet. Alleen de trainer van de les en de

@@ -1536,4 +1536,5 @@ export const EN: Record<string, string> = {
   'Onbekende groep': 'Unknown group',
   'Ja, weghalen': 'Yes, remove it',
   'Deze periode: {titel}': 'This period: {titel}',
+  'Lesmateriaal {titel} openen': 'Open lesson material {titel}',
 };
