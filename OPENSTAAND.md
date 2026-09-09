@@ -174,9 +174,26 @@ Op volgorde van wat ik als eerste zou doen:
     `sponsor_budget`. Verdwijnt de kolom zonder dat die lijst meeverandert, dan faalt élke
     schrijfactie op `users` — ook een trainer die alleen zijn telefoonnummer bijwerkt.
 
-    Het telefoonnummer zit in dezelfde categorie: 47 plekken, nergens een controle
-    (`app/players/[id].tsx:226` toont het onvoorwaardelijk). `magLoonZien` in
-    `lib/rechten.ts` is het bewijs dat het patroon voor zo'n check hier al bestaat.
+    **De grootste valkuil zit niet in het budget maar in de betaalwijze.** Haal je
+    `'sponsor'` uit `PAYMENT_METHODS` (`lib/payments.ts:11`), dan valt elke bestaande boeking
+    met die betaalwijze door `isPaymentMethod` heen (`lib/migrate.ts:26`) en zet
+    `migrateBooking` hem **stilzwijgend terug op `'open'`** bij het laden. Historische
+    sponsorlessen verliezen zo hun betaalwijze en verdwijnen uit de omzet, zonder
+    foutmelding. Wie dit oppakt moet `PAYMENT_METHODS` (de keuzelijst) en de lijst die
+    `isPaymentMethod` toetst uit elkaar trekken.
+
+    Tweede gevolg van dezelfde ingreep: de betaalwijze-chips markeren de huidige waarde met
+    `selected={m === method}` en voegen geen chip toe voor een waarde die niet in de lijst
+    staat. Een bestaande sponsorles toont dan een kiezer waarin níéts aangevinkt lijkt.
+    Vier schermen doen dat zo (`app/players/[id].tsx:402`, `components/BookingModal.tsx:516`,
+    `components/PaymentMethodSheet.tsx:48`, `components/LidBewerken.tsx:325`).
+
+    En `lib/sponsor.ts` komt volledig dood te staan zodra de betaalwijze verdwijnt: al zijn
+    oproepers hangen aan `method === 'sponsor'`. Dat is ruim 40 tests over vijf bestanden.
+
+    Het telefoonnummer zit in dezelfde categorie als het budget: 47 plekken. Het scherm is
+    inmiddels wel dicht (`magContactZien` in `lib/rechten.ts`), maar de databank geeft het
+    veld nog aan elk ingelogd lid.
 
 12. **Tests op de schermen** — alle 676 tests zitten in `lib/`, geen enkele op een scherm. Twee
    echte fouten van vandaag zaten daar: een opslagknop die op web nooit vuurde
