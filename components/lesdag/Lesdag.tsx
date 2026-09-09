@@ -10,6 +10,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import { Card } from '../ui/Card';
+import { GroepStip } from '../ui/GroepStip';
 import { MemoKnop } from './MemoKnop';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import { materiaalVoor } from '../../lib/lesplanning';
@@ -26,7 +27,7 @@ export function Lesdag({ coachId }: { coachId: string }) {
   const t = useT();
   const router = useRouter();
   const {
-    users, courts, bookings, memos, lessons, lesPlanning, addMemo,
+    users, courts, bookings, memos, lessons, lesPlanning, lesGroepen, addMemo,
   } = useSimpleData();
 
   // Welk doorgestuurd lesmateriaal er open staat; null = niets. Dit blok zit niet in een blad,
@@ -50,6 +51,13 @@ export function Lesdag({ coachId }: { coachId: string }) {
     users.find((u) => u.id === id)?.name ?? t('Onbekend');
   const baanVan = (id: string): string =>
     courts.find((c) => c.id === id)?.name ?? t('Onbekend');
+  /**
+   * De groep waar een les bij hoort. Een trainer draait op één dag verschillende niveaus na
+   * elkaar, en met vier lessen onder elkaar is de kleur wat je zoekt: welke van deze uren is
+   * de blauwe. Een les die los van een groep bestaat heeft er geen; dan staat er niets.
+   */
+  const groepVan = (groupId?: string) =>
+    (groupId ? lesGroepen.find((g) => g.id === groupId) ?? null : null);
 
   const werkregel = werk.length > 0 ? (
     <Pressable
@@ -80,6 +88,11 @@ export function Lesdag({ coachId }: { coachId: string }) {
     <View style={styles.blok}>
       {dag.map((uur) => {
         const open = uur.booking.id === openId;
+        const groep = groepVan(uur.booking.group_id);
+        // De groep hoort in de voorgelezen regel mee: een schermlezer krijgt het bolletje
+        // niet te zien, en "09:00–10:00" alleen zegt niet welke van de vier lessen dit is.
+        const tijd = formatTimeRange(uur.booking.start_time, uur.booking.end_time);
+        const label = groep?.level ? `${tijd} · ${groep.level}` : tijd;
         return (
           <Card
             key={uur.booking.id}
@@ -88,15 +101,17 @@ export function Lesdag({ coachId }: { coachId: string }) {
             <Pressable
               onPress={() => setGekozen(open ? '' : uur.booking.id)}
               accessibilityRole="button"
-              accessibilityLabel={formatTimeRange(uur.booking.start_time, uur.booking.end_time)}
+              accessibilityLabel={label}
               accessibilityState={{ expanded: open }}
               style={[styles.kop, webCursor]}
             >
               {uur.loopt ? <View style={styles.nuStip} /> : null}
-              <Text style={styles.tijd}>
-                {formatTimeRange(uur.booking.start_time, uur.booking.end_time)}
-              </Text>
+              <Text style={styles.tijd}>{tijd}</Text>
               <Text style={styles.baan}>{baanVan(uur.booking.court_id)}</Text>
+              {/* Dezelfde stip als op het spelersblok. De kop wikkelt (`flexWrap`), dus op een
+                  telefoon zakt de groep naar de tweede regel in plaats van het aantal spelers
+                  weg te duwen. */}
+              <GroepStip niveau={groep?.level} naam={groep?.name} />
               <Text style={styles.aantal}>
                 {uur.playerIds.length === 1
                   ? naamVan(uur.playerIds[0])
