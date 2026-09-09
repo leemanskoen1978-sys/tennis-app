@@ -17,7 +17,7 @@ import {
 import { tennisColors } from '../../constants/tennis-colors';
 import { radius, minTapTarget, spacing, typography, webCursor } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
-import { isCoach } from '../../lib/rechten';
+import { isCoach, magContactZien } from '../../lib/rechten';
 import { playersOf } from '../../lib/hub';
 
 /**
@@ -39,7 +39,7 @@ import { playersOf } from '../../lib/hub';
 export default function Players() {
   const t = useT();
   const router = useRouter();
-  const { currentUser, users, bookings, lessons, progress } = useSimpleData();
+  const { currentUser, users, bookings, lessons, progress, relaties } = useSimpleData();
   const coach = isCoach(currentUser);
   const players = playersOf(users);
   const [progressOpen, setProgressOpen] = useState(false);
@@ -149,7 +149,12 @@ export default function Players() {
               <View style={styles.avatar}><UserIcon size={20} color={tennisColors.primary} /></View>
               <View style={styles.info}>
                 <Text style={styles.name}>{p.name}</Text>
-                {p.email ? <Text style={styles.email}>{p.email}</Text> : null}
+                {/* Het adres alleen voor wie het aangaat. Deze lijst heeft geen
+                    rolcontrole: wie de URL rechtstreeks opent, kreeg hier anders het
+                    adres van elk lid van de club op een rij. Zie `magContactZien`. */}
+                {p.email && magContactZien(currentUser, p, relaties)
+                  ? <Text style={styles.email}>{p.email}</Text>
+                  : null}
                 <Text style={styles.line}>
                   {playerListLine(
                     nextBookingFor(p.id, bookings, now),
