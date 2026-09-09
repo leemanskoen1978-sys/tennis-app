@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { View, Text, Pressable, StyleSheet, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  Plus, CheckCircle2, Circle, BookOpen, CalendarPlus, CalendarDays, Target,
+  Plus, CheckCircle2, Circle, BookOpen, CalendarPlus, CalendarDays, CalendarRange, Target,
   SlidersHorizontal, Pencil, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
@@ -15,11 +15,14 @@ import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { DetailSheet } from '../../components/ui/DetailSheet';
 import { LessonDetailModal } from '../../components/LessonDetailModal';
 import { AssignLessonModal } from '../../components/AssignLessonModal';
+import { BookingDetailSheet } from '../../components/BookingDetailSheet';
+import { Weekagenda } from '../../components/Weekagenda';
 import { LidBewerken } from '../../components/LidBewerken';
 import { GoalHorizonRows, PlayerGoalSheet } from '../../components/PlayerGoals';
 import { ProgressForm } from '../../components/progress/ProgressForm';
 import { ProgressEntryCard } from '../../components/progress/ProgressViews';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { useKindkeuze } from '../../providers/kindkeuze';
 import {
   buildLesplan, coachesForPlayer, lesplanSummary, type LessonWithProgress,
 } from '../../lib/relations';
@@ -34,9 +37,11 @@ import { currentPeriod, bookingsInPeriod, type Period } from '../../lib/period';
 import {
   aanwezigheidVan, aanwezigheidOverzicht, volgendeStand, magAanwezigheidZetten,
 } from '../../lib/aanwezigheid';
+import { formatUren, weekAgenda, weekMinuten, weekPeriod } from '../../lib/week';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
 import type { GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
+import type { Booking } from '../../lib/types';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
 import { isCoach, magContactZien, rolLabel } from '../../lib/rechten';
 
@@ -58,7 +63,7 @@ import { isCoach, magContactZien, rolLabel } from '../../lib/rechten';
  */
 
 /** De onderdelen van het dossier; elk krijgt een tegel en een blad. */
-type SectionKey = 'lesdagen' | 'lesplan' | 'doelen' | 'administratie';
+type SectionKey = 'lesdagen' | 'week' | 'lesplan' | 'doelen' | 'administratie';
 
 export default function PlayerDossier() {
   const t = useT();
@@ -69,12 +74,17 @@ export default function PlayerDossier() {
     updateLesson, updateUser, setAanwezigheid,
   } = useSimpleData();
   const coach = isCoach(currentUser);
+  const { kijktNaarZichzelf } = useKindkeuze();
 
   const player = users.find((u) => u.id === id) ?? null;
 
   // Welk onderdeel openstaat; null = je kijkt naar het raster. Niet onthouden tussen
   // bezoeken — dat zou state zijn die niemand beheert.
   const [openSection, setOpenSection] = useState<SectionKey | null>(null);
+  // De week woont hier en niet in het blad: een blad wordt weggegooid als het sluit, en het
+  // sluit zodra je een les opent. Anders stond je daarna weer op deze week.
+  const [week, setWeek] = useState<Period>(() => weekPeriod(new Date()));
+  const [weekBooking, setWeekBooking] = useState<Booking | null>(null);
 
   const [progressOpen, setProgressOpen] = useState(false);
   // Welke voortgangsnotitie openstaat; null = blad dicht.
@@ -148,6 +158,9 @@ export default function PlayerDossier() {
   const lesdagenSummary = upcoming.length > 0
     ? t('{n} aankomend', { n: upcoming.length })
     : past.length > 0 ? t('niets aankomend') : t('geen afspraken');
+  // Dezelfde som als in het blad erachter (lib/week), zodat de tegel geen ander aantal uren
+  // belooft dan wat je erachter te zien krijgt.
+  const weekUren = formatUren(weekMinuten(weekAgenda(playerBookings, week)));
   // Zelfde telling als de badges bij de horizonnen zelf: een leeg doel telt niet mee.
   const goalCount = filledGoalCount(goals.filter((g) => g.student_id === player.id));
   const doelenSummary = goalCount === 0 ? t('nog geen doel') : goalCountLabel(goalCount);
@@ -205,7 +218,7 @@ export default function PlayerDossier() {
   // bovenste openstaat (zelfde truc als BookingDetailSheet met de betaalwijze). `openSection`
   // blijft ondertussen staan, dus je komt terug in het blad waar je vandaan kwam.
   const stacked = progressOpen || openEntry !== null || openHorizon !== null
-    || assignOpen || detailOpen;
+    || assignOpen || detailOpen || weekBooking !== null;
   const sheetOpen = (key: SectionKey) => openSection === key && !stacked;
   const closeSheet = () => setOpenSection(null);
 
@@ -218,6 +231,12 @@ export default function PlayerDossier() {
     // badges: een badge vraagt aandacht voor iets wat af moet (openstaande betalingen in
     // Beheer), en in een dossier is niets dringend.
     { key: 'lesdagen', title: t('Lesdagen'), subtitle: lesdagenSummary, icon: CalendarDays },
+    // Alleen voor wie dit dossier hoort te zien. Het scherm zelf staat vandaag nog open voor
+    // medespelers (punt 10 in OPENSTAAND.md); daar hoort niet ook nog het weekritme van een
+    // kind bij te komen. `magBewerken` is precies die test: trainer, jezelf, of de ouder.
+    ...(magBewerken
+      ? [{ key: 'week' as const, title: t('Weekagenda'), subtitle: t('{uren} deze week', { uren: weekUren }), icon: CalendarRange }]
+      : []),
     { key: 'lesplan', title: t('Lesplan & voortgang'), subtitle: lesplanSummary(plan), icon: BookOpen },
     { key: 'doelen', title: t('Doelen'), subtitle: doelenSummary, icon: Target },
   ];
@@ -384,6 +403,17 @@ export default function PlayerDossier() {
         )}
       </DetailSheet>
 
+      {/* De week zoals ze ligt. Een les aantikken opent het lesdetail; dit blad sluit
+          daarvoor, zie `stacked`. */}
+      <DetailSheet title={t('Weekagenda')} visible={sheetOpen('week')} onClose={closeSheet}>
+        <Weekagenda
+          bookings={playerBookings}
+          week={week}
+          onWeek={setWeek}
+          onBookingPress={setWeekBooking}
+        />
+      </DetailSheet>
+
       {/* Het werk: waar het naartoe gaat */}
       <DetailSheet title={t('Doelen')} visible={sheetOpen('doelen')} onClose={closeSheet}>
         <GoalHorizonRows studentId={player.id} onOpen={setOpenHorizon} />
@@ -497,6 +527,14 @@ export default function PlayerDossier() {
         studentId={player.id}
         entry={openEntry}
         canEdit={!!coach}
+      />
+      {/* Het lesdetail hoort bij het scherm en niet in het weekblad: een Modal binnen een
+          gesloten Modal wordt niet meer getekend. Zelfde reden als de bladen hierboven. */}
+      <BookingDetailSheet
+        booking={weekBooking}
+        visible={weekBooking !== null}
+        canManage={!!coach && kijktNaarZichzelf}
+        onClose={() => setWeekBooking(null)}
       />
     </Screen>
   );
