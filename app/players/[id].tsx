@@ -42,7 +42,7 @@ import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
 import type { Booking, GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
-import { isCoach, magContactZien, rolLabel } from '../../lib/rechten';
+import { isCoach, magContactZien, magDossierZien, rolLabel } from '../../lib/rechten';
 import { icsFilename, toIcs } from '../../lib/ics';
 import { shareIcs } from '../../lib/share';
 
@@ -109,6 +109,22 @@ export default function PlayerDossier() {
     return (
       <Screen scroll={false}>
         <Text style={styles.muted}>{t('Speler niet gevonden.')}</Text>
+      </Screen>
+    );
+  }
+
+  // Vóór alles wat uit de rij van dit lid leest — de kop-kaart, de tegels, `magBewerken` —
+  // want anders staat zijn naam en zijn nummer al op het scherm van iemand die hier niet
+  // hoort. In een groepsles is elke medespeler aanklikbaar, dus dit is geen deep link maar
+  // een gewone knop. Zie `magDossierZien` in lib/rechten voor wie er wél binnenmag.
+  //
+  // Alleen de melding, zonder naam: die zou zelf al verklappen wiens dossier je te pakken
+  // had. Bestaat het lid niet, dan is dat hierboven al afgehandeld — de twee zinnen mogen
+  // van elkaar verschillen, want de databank vertelt dat verschil toch aan wie het vraagt.
+  if (!magDossierZien(currentUser, player, relaties)) {
+    return (
+      <Screen scroll={false}>
+        <Text style={styles.muted}>{t('Dit dossier is niet van jou.')}</Text>
       </Screen>
     );
   }
@@ -190,6 +206,9 @@ export default function PlayerDossier() {
   const betaalwijze = t(PAYMENT_LABELS[player.default_payment_method ?? 'open']);
   // Een trainer beheert de spelers waar hij mee werkt — hij maakt ze ook aan. Een speler die
   // zijn eigen dossier opent, bewerkt zichzelf; wat hij dan mag, beslist het blad.
+  //
+  // Dit blijft een eigen vraag naast `magDossierZien` hierboven, ook al vallen ze vandaag
+  // samen: dat beslist of je binnenkomt, dit of je hier iets áán mag wijzigen.
   const magBewerken = !!coach || currentUser?.id === player.id
     // Een ouder komt hier voor het blad met de opmerking: dat is het enige dat hij op het
     // account van zijn kind mag schrijven, en zonder knop komt hij er niet aan.

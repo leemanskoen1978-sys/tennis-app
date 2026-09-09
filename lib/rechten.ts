@@ -113,6 +113,41 @@ export function magLoonZien(
 }
 
 /**
+ * Mag deze kijker het dossier van dit lid openen?
+ *
+ * Alleen een trainer of beheerder, jijzelf, en een ouder van dít kind.
+ *
+ * Deze regel bestond al, één laag te laat. `app/players/[id].tsx` rekende dezelfde set uit
+ * onder de naam `magBewerken` en gebruikte hem om te beslissen of er knoppen bij mochten —
+ * terwijl hij had moeten beslissen of het scherm überhaupt opengaat. Wie er niet bij hoorde,
+ * kreeg het hele dossier te lézen: e-mailadres, nummer, de opmerking voor de trainer, de
+ * doelen en elke voortgangsnotitie. Drie tikken vanaf het hoofdscherm, want in een groepsles
+ * is elke medespeler aanklikbaar (`components/BookingDetailSheet.tsx`).
+ *
+ * Waarom niet gewoon `magContactZien` hierónder, want de set is vandaag dezelfde: het zijn
+ * twee vragen. "Mag hij het nummer zien" en "mag hij dit scherm openen" horen apart te kunnen
+ * bewegen; delen ze één functie, dan verruimt wie de ene oprekt stilzwijgend ook de andere.
+ *
+ * Een aanvraag die nog niet goedgekeurd is telt niet mee (`isMijnKind` bewaakt dat): anders
+ * volstaat het aanvragen van ouderschap om in het dossier van iemands kind te komen.
+ *
+ * Let op wat dit NIET is: de databank geeft de rij van elk lid nog steeds aan iedereen die
+ * inlogt, want `users_select` staat op `using (true)` zodat leden elkaars naam kunnen zien, en
+ * RLS schermt rijen af en geen kolommen. Dit sluit de dagelijkse weg, niet de API. Zie
+ * OPENSTAAND.md punt 11 voor wat er nodig is om dat wél dicht te zetten.
+ */
+export function magDossierZien(
+  kijker: User | null | undefined,
+  lid: User | null | undefined,
+  relaties: OuderKind[],
+): boolean {
+  if (!kijker || !lid) return false;
+  if (isAdmin(kijker) || isCoach(kijker)) return true;
+  if (kijker.id === lid.id) return true;
+  return isMijnKind(kijker.id, lid.id, relaties);
+}
+
+/**
  * Mag deze kijker het e-mailadres en het gsm-nummer van dit lid zien?
  *
  * Alleen een trainer of beheerder, jijzelf, en een ouder van dít kind.

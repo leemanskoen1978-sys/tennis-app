@@ -1,6 +1,6 @@
 import {
-  isAdmin, isCoach, magClubcijfersZien, magContactZien, magInElkeAgenda, magKaartenSchrijven,
-  magLesVerwijderen, magLoonZien, roleLabel, rolLabel,
+  isAdmin, isCoach, magClubcijfersZien, magContactZien, magDossierZien, magInElkeAgenda,
+  magKaartenSchrijven, magLesVerwijderen, magLoonZien, roleLabel, rolLabel,
 } from './rechten';
 import type { Booking, OuderKind, User } from './types';
 
@@ -187,6 +187,51 @@ describe('magKaartenSchrijven', () => {
   it('is niet voor een speler: die zou zijn eigen beurten kunnen terugzetten', () => {
     expect(magKaartenSchrijven(speler)).toBe(false);
     expect(magKaartenSchrijven(null)).toBe(false);
+  });
+});
+
+describe('magDossierZien', () => {
+  const andereSpeler: User = { id: 'p2', email: 'p2@x.be', name: 'Nova', role: 'player' };
+  const ouder: User = { id: 'ouder', email: 'ouder@x.be', name: 'Wim', role: 'player' };
+  const kind: User = { id: 'kind', email: 'kind@x.be', name: 'Nova', role: 'player' };
+  const aangevraagd: User = { id: 'vreemde', email: 'vreemde@x.be', name: 'Iemand', role: 'player' };
+
+  const relaties: OuderKind[] = [
+    { id: 'r1', parent_id: 'ouder', child_id: 'kind', status: 'approved' as const },
+    { id: 'r2', parent_id: 'ouder', child_id: 'vreemde', status: 'pending' as const },
+  ];
+
+  it('laat een trainer elk dossier openen', () => {
+    expect(magDossierZien(trainer, speler, relaties)).toBe(true);
+  });
+
+  it('laat een beheerder elk dossier openen', () => {
+    // Ook een beheerder die zelf geen trainer is: het vinkje voegt rechten toe.
+    expect(magDossierZien({ ...speler, id: 'baas2', is_admin: true }, andereSpeler, relaties)).toBe(true);
+  });
+
+  it('laat je je eigen dossier openen', () => {
+    expect(magDossierZien(speler, speler, relaties)).toBe(true);
+  });
+
+  it('houdt een speler uit het dossier van zijn medespeler', () => {
+    // Dit is waarvoor de functie bestaat: in een groepsles is elke medespeler aanklikbaar,
+    // en daarachter stond alles wat er over dat kind genoteerd staat.
+    expect(magDossierZien(speler, andereSpeler, relaties)).toBe(false);
+  });
+
+  it('laat een ouder het dossier van zijn goedgekeurde kind openen', () => {
+    expect(magDossierZien(ouder, kind, relaties)).toBe(true);
+  });
+
+  it('weigert een ouder van wie de aanvraag nog openstaat', () => {
+    // Anders is het aanvragen van ouderschap genoeg om in het dossier van een kind te komen.
+    expect(magDossierZien(ouder, aangevraagd, relaties)).toBe(false);
+  });
+
+  it('weigert als er niemand is', () => {
+    expect(magDossierZien(null, speler, relaties)).toBe(false);
+    expect(magDossierZien(speler, null, relaties)).toBe(false);
   });
 });
 

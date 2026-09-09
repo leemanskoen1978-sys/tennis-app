@@ -8,11 +8,11 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 
 *Bijgewerkt op 9 september 2026.*
 
-- **`main`** staat op `4f8dfdf` en is gepusht naar
+- **`main`** staat op `cbb29d8` en is gepusht naar
   <https://github.com/leemanskoen1978-sys/tennis-app>. Elke push naar `main` bouwt en zet de
   site online (`.github/workflows/deploy.yml`); de site draait op
   <https://leemanskoen1978-sys.github.io/tennis-app/>.
-- Testsuite: **1804 tests**, allemaal in `lib/`. `npx tsc --noEmit`, `npm test` en
+- Testsuite: **1865 tests**, allemaal in `lib/`. `npx tsc --noEmit`, `npm test` en
   `npx expo export -p web` horen bij elke oplevering.
 - `koen.xlsx` is een **testfixture** en moet op de schijf blijven staan — 40 tests lezen dat
   bestand en slaan zichzelf stilzwijgend over als het weg is. Zie `.gitignore`.
@@ -244,25 +244,37 @@ Op volgorde van wat ik als eerste zou doen:
 
    Nog open voor het ontwerp: waar de trainer het te zien krijgt (op Home bij zijn lesdag,
    of onder Mijn lessen), en of een toewijzing aan een weeknummer hangt of aan een datum.
-10. **Het spelersdossier staat open voor medespelers.** Gevonden op 9 september 2026.
+10. ~~**Het spelersdossier staat open voor medespelers.**~~ Gevonden en gedicht op
+    9 september 2026. Ontwerp: `docs/superpowers/specs/2026-09-09-dossier-afschermen-design.md`.
 
-    In een groepsles is elke medespeler aanklikbaar in het lesdetail
-    (`components/BookingDetailSheet.tsx:313`, "Open dossier van {naam}"), en `app/players/`
-    heeft geen enkele rolcontrole. Een speler opent dus zijn eigen les, tikt op een
-    medespeler, en ziet diens naam, e-mailadres, telefoonnummer, de opmerking voor de
-    trainer, zijn doelen en zijn voortgangsnotities. Bij 555 leden, veel kinderen.
+    Wat er mis was: in een groepsles is elke medespeler aanklikbaar in het lesdetail, en
+    `app/players/` had geen enkele rolcontrole. Een speler opende zijn eigen les, tikte op
+    een medespeler, en las diens e-mailadres, telefoonnummer, opmerking voor de trainer,
+    doelen en voortgangsnotities. Bij 555 leden, veel kinderen.
 
-    De databank houdt het niet tegen: `users_select` staat op `using (true)`
-    (`supabase-schema.sql:584`) omdat iedereen elkaars naam moet kunnen zien. Maar dezelfde
-    rij draagt ook e-mail, telefoon, bio en sponsorbudget mee.
+    - **`magDossierZien` in `lib/rechten.ts`**, met 7 tests: beheerder, elke trainer,
+      jezelf, of de ouder van dít kind (goedgekeurd — een openstaande aanvraag telt niet).
+      Bewust náást `magContactZien` en niet ermee samengevoegd: de set is vandaag dezelfde,
+      maar het zijn twee vragen, en gedeeld zou het verruimen van de ene de andere
+      stilzwijgend meenemen.
+    - **`app/players/[id].tsx`** stelt die vraag vóór alles wat uit de rij van dat lid
+      leest — dus vóór de kop-kaart en vóór `magBewerken`, dat de regel al uitrekende maar
+      hem één laag te laat gebruikte. Wie niet mag, krijgt één zin: "Dit dossier is niet
+      van jou.", zonder naam.
+    - **`app/players/index.tsx`** — de clublijst, 555 namen met per naam de volgende les en
+      het aantal notities — was langs de URL open voor elke speler. Nu alleen trainer en
+      beheerder.
+    - **`components/BookingDetailSheet.tsx`**: medespelers blijven met naam en bedrag staan,
+      maar zonder chevron en zonder doorklik voor wie hun dossier niet mag openen.
 
-    Sinds stuk 3 staat de tegel Weekagenda alleen in het dossier voor wie het hoort te zien
-    (`magBewerken`); de rest van het scherm is nog niet dicht.
+    **De databank blijft open, en dat is punt 11.** `users_select` staat op `using (true)`
+    zodat leden elkaars naam zien, en RLS schermt rijen af en geen kolommen: e-mail,
+    telefoon, bio en sponsorbudget gaan nog steeds mee naar elk lid dat de API zelf
+    aanspreekt. Dit sluit de dagelijkse weg, niet de API.
 
-    De regel die dit moet afdwingen bestaat al, één laag te laat: `app/players/[id].tsx:194`
-    berekent `magBewerken` als "trainer, of jezelf, of de ouder van dit kind". Dat hoort te
-    bepalen of je het scherm mag ópenen. Verplaatsen naar `lib/rechten.ts`, met tests, en de
-    doorklik in het lesdetail verbergen voor wie hem niet mag volgen.
+    **Met de hand na te lopen:** met een spelersaccount een groepsles openen (de
+    medespelers staan er, zonder doorklik), en `/players/<id>` van een medespeler
+    rechtstreeks in de adresbalk proberen.
 
 11. **Sponsor en betaalwijzen uit de app.** Op de plank gezet op 9 september 2026: hoe een
     les betaald wordt gebeurt buiten deze app, dus dit heeft geen prioriteit.
