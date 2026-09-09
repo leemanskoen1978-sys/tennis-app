@@ -87,104 +87,104 @@ export function WeekRaster({
 
   return (
     <View style={styles.raster}>
-        {/* De uren-as staat buiten het zijwaartse schuiven: schuif je naar zondag, dan wil
-            je nog steeds kunnen zien hoe laat het daar is. */}
-        <View style={styles.as}>
-          <View style={{ height: KOP_HOOGTE }} />
-          {uren.map((u) => (
-            <View key={u} style={styles.asCel}>
-              <Text style={styles.asTekst}>{formatTime(new Date(2000, 0, 1, u))}</Text>
-            </View>
-          ))}
-        </View>
+      {/* De uren-as staat buiten het zijwaartse schuiven: schuif je naar zondag, dan wil
+          je nog steeds kunnen zien hoe laat het daar is. */}
+      <View style={styles.as}>
+        <View style={{ height: KOP_HOOGTE }} />
+        {uren.map((u) => (
+          <View key={u} style={styles.asCel}>
+            <Text style={styles.asTekst}>{formatTime(new Date(2000, 0, 1, u))}</Text>
+          </View>
+        ))}
+      </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View>
-            <View style={styles.kopRij}>
-              {rooster.dagen.map((d) => {
-                const vakantie = vakantieOp(vakanties, d.dag);
-                return (
-                  <View
-                    key={d.dag.toISOString()}
-                    style={[
-                      styles.kop,
-                      { width: kolomBreedte },
-                      isVandaag(d.dag, now) && styles.vandaag,
-                      vakantie !== null && styles.gesloten,
-                    ]}
-                  >
-                    <Text style={styles.kopDag} numberOfLines={1}>{formatDay(d.dag)}</Text>
-                    {/* Op een gesloten dag zegt de naam van de vakantie meer dan "0 u": dat
-                        laatste leest als een lege agenda, en dit als een reden. */}
-                    {vakantie ? (
-                      <Text style={styles.kopVakantie} numberOfLines={1}>{vakantie.naam}</Text>
-                    ) : (
-                      <Text style={d.minuten === 0 ? styles.kopUrenLeeg : styles.kopUren}>
-                        {formatUren(d.minuten)}
-                      </Text>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-
-            <View style={styles.kolomRij}>
-              {rooster.dagen.map((d) => (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View>
+          <View style={styles.kopRij}>
+            {rooster.dagen.map((d) => {
+              const vakantie = vakantieOp(vakanties, d.dag);
+              return (
                 <View
                   key={d.dag.toISOString()}
                   style={[
-                    styles.kolom,
-                    { width: kolomBreedte, height: hoogte },
+                    styles.kop,
+                    { width: kolomBreedte },
                     isVandaag(d.dag, now) && styles.vandaag,
-                    vakantieOp(vakanties, d.dag) !== null && styles.gesloten,
+                    vakantie !== null && styles.gesloten,
                   ]}
                 >
-                  {/* De uurlijnen. Zonder die strepen zweeft een blok en lees je zijn hoogte
-                      niet meer als tijd. */}
-                  {uren.map((u) => (
-                    <View key={u} style={[styles.uurLijn, { top: (u - rooster.vanUur) * UUR_HOOGTE }]} />
-                  ))}
-
-                  {d.blokken.map((blok) => {
-                    const b = blok.booking;
-                    // Je eigen naam hoef je niet te lezen: een trainer ziet de speler, een
-                    // speler de trainer. Dezelfde regel als op de leskaarten.
-                    const ander = isCoach(currentUser)
-                      ? shortGroupLabel(nameOf(b.player_id), groupSize(b))
-                      : nameOf(b.coach_id);
-                    return (
-                      <Pressable
-                        key={b.id}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('Les van {dag} {tijd} met {ander}, details openen', {
-                          dag: formatDay(b.start_time),
-                          tijd: formatTimeRange(b.start_time, b.end_time),
-                          ander,
-                        })}
-                        onPress={() => onBookingPress(b)}
-                        style={[
-                          styles.blok,
-                          plaats(blok) as object,
-                          // Zolang de trainer niet beslist heeft, is dát het enige wat er
-                          // over deze les te zeggen valt — dus krijgt hij de kleur ervan.
-                          isAwaitingApproval(b) && styles.blokWacht,
-                        ]}
-                      >
-                        <Text style={styles.blokTijd} numberOfLines={1}>
-                          {formatTime(b.start_time)}
-                        </Text>
-                        <Text style={styles.blokNaam} numberOfLines={2}>{ander}</Text>
-                        <Text style={styles.blokBaan} numberOfLines={1}>
-                          {courtName(b.court_id)}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+                  <Text style={styles.kopDag} numberOfLines={1}>{formatDay(d.dag)}</Text>
+                  {/* Op een gesloten dag zegt de naam van de vakantie meer dan "0 u": dat
+                      laatste leest als een lege agenda, en dit als een reden. */}
+                  {vakantie ? (
+                    <Text style={styles.kopVakantie} numberOfLines={1}>{vakantie.naam}</Text>
+                  ) : (
+                    <Text style={d.minuten === 0 ? styles.kopUrenLeeg : styles.kopUren}>
+                      {formatUren(d.minuten)}
+                    </Text>
+                  )}
                 </View>
-              ))}
-            </View>
+              );
+            })}
           </View>
-        </ScrollView>
+
+          <View style={styles.kolomRij}>
+            {rooster.dagen.map((d) => (
+              <View
+                key={d.dag.toISOString()}
+                style={[
+                  styles.kolom,
+                  { width: kolomBreedte, height: hoogte },
+                  isVandaag(d.dag, now) && styles.vandaag,
+                  vakantieOp(vakanties, d.dag) !== null && styles.gesloten,
+                ]}
+              >
+                {/* De uurlijnen. Zonder die strepen zweeft een blok en lees je zijn hoogte
+                    niet meer als tijd. */}
+                {uren.map((u) => (
+                  <View key={u} style={[styles.uurLijn, { top: (u - rooster.vanUur) * UUR_HOOGTE }]} />
+                ))}
+
+                {d.blokken.map((blok) => {
+                  const b = blok.booking;
+                  // Je eigen naam hoef je niet te lezen: een trainer ziet de speler, een
+                  // speler de trainer. Dezelfde regel als op de leskaarten.
+                  const ander = isCoach(currentUser)
+                    ? shortGroupLabel(nameOf(b.player_id), groupSize(b))
+                    : nameOf(b.coach_id);
+                  return (
+                    <Pressable
+                      key={b.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('Les van {dag} {tijd} met {ander}, details openen', {
+                        dag: formatDay(b.start_time),
+                        tijd: formatTimeRange(b.start_time, b.end_time),
+                        ander,
+                      })}
+                      onPress={() => onBookingPress(b)}
+                      style={[
+                        styles.blok,
+                        plaats(blok) as object,
+                        // Zolang de trainer niet beslist heeft, is dát het enige wat er
+                        // over deze les te zeggen valt — dus krijgt hij de kleur ervan.
+                        isAwaitingApproval(b) && styles.blokWacht,
+                      ]}
+                    >
+                      <Text style={styles.blokTijd} numberOfLines={1}>
+                        {formatTime(b.start_time)}
+                      </Text>
+                      <Text style={styles.blokNaam} numberOfLines={2}>{ander}</Text>
+                      <Text style={styles.blokBaan} numberOfLines={1}>
+                        {courtName(b.court_id)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }
