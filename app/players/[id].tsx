@@ -27,7 +27,7 @@ import {
   buildLesplan, coachesForPlayer, lesplanSummary, type LessonWithProgress,
 } from '../../lib/relations';
 import { filledGoalCount, goalCountLabel } from '../../lib/goals';
-import { isMijnKind, kinderenVan } from '../../lib/ouderkind';
+import { isMijnKind } from '../../lib/ouderkind';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
 import { groupSize, groupSizeLabel, isGroupLesson, playsIn } from '../../lib/groups';
 import { parseSponsorBudget, sponsorHint, sponsorState } from '../../lib/sponsor';
@@ -35,7 +35,7 @@ import { useT, type Translate } from '../../lib/i18n';
 import { PeriodPicker } from '../../components/ui/PeriodPicker';
 import { currentPeriod, bookingsInPeriod, type Period } from '../../lib/period';
 import {
-  aanwezigheidVan, aanwezigheidOverzicht, volgendeStand, magAanwezigheidZetten,
+  aanwezigheidVan, aanwezigheidOverzicht,
 } from '../../lib/aanwezigheid';
 import { formatUren, weekAgenda, weekMinuten, weekPeriod } from '../../lib/week';
 import { tennisColors } from '../../constants/tennis-colors';
@@ -72,7 +72,7 @@ export default function PlayerDossier() {
   const router = useRouter();
   const {
     currentUser, users, bookings, courts, lessons, progress, goals, relaties,
-    updateLesson, updateUser, setAanwezigheid,
+    updateLesson, updateUser,
   } = useSimpleData();
   const coach = isCoach(currentUser);
   const { kijktNaarZichzelf } = useKindkeuze();
@@ -85,7 +85,7 @@ export default function PlayerDossier() {
   // De week woont hier en niet in het blad: een blad wordt weggegooid als het sluit, en het
   // sluit zodra je een les opent. Anders stond je daarna weer op deze week.
   const [week, setWeek] = useState<Period>(() => weekPeriod(new Date()));
-  const [weekBooking, setWeekBooking] = useState<Booking | null>(null);
+  const [gekozenLes, setGekozenLes] = useState<Booking | null>(null);
 
   const [progressOpen, setProgressOpen] = useState(false);
   // Welke voortgangsnotitie openstaat; null = blad dicht.
@@ -169,7 +169,6 @@ export default function PlayerDossier() {
   // Voor wie de kijker spreekt: zichzelf en zijn goedgekeurde kinderen. Niet `[player.id]` —
   // dat is over wie het gaat, niet wie het doet. Met dat verschil bood het scherm een
   // ingeschakelde knop aan een medespeler die daarna zwijgend niets deed.
-  const eigenIds = currentUser ? [currentUser.id, ...kinderenVan(currentUser.id, relaties)] : [];
 
   // Lesplan en voortgang zijn één lijst: elke notitie hangt onder de les waar hij bij hoort
   // (lib/relations legt die koppeling), en wat nergens bij hoort staat onderaan los.
@@ -242,9 +241,19 @@ export default function PlayerDossier() {
   // bovenste openstaat (zelfde truc als BookingDetailSheet met de betaalwijze). `openSection`
   // blijft ondertussen staan, dus je komt terug in het blad waar je vandaan kwam.
   const stacked = progressOpen || openEntry !== null || openHorizon !== null
-    || assignOpen || detailOpen || weekBooking !== null;
+    || assignOpen || detailOpen || gekozenLes !== null;
   const sheetOpen = (key: SectionKey) => openSection === key && !stacked;
   const closeSheet = () => setOpenSection(null);
+  /**
+   * Wat een regel in de lesdagenlijst voorleest. Letterlijk dezelfde zin als in het weekraster
+   * en in het trainersdossier: dezelfde handeling met hetzelfde gevolg hoort hetzelfde te heten,
+   * anders belooft een schermlezer per lijst iets anders.
+   */
+  const lesLabel = (b: Booking): string => t('Les van {dag} {tijd} met {ander}, details openen', {
+    dag: formatDay(b.start_time),
+    tijd: formatTimeRange(b.start_time, b.end_time),
+    ander: lessonMeta(b),
+  });
 
   /** Een blad verlaten om ergens anders heen te gaan: eerst dicht, dan pas navigeren. */
   const goTo = (path: string) => { closeSheet(); router.push(path); };
@@ -379,15 +388,9 @@ export default function PlayerDossier() {
                   {upcoming.map((b, i) => (
                     <Pressable
                       key={b.id}
-                      onPress={() => {
-                        // `false` voor lesBegonnen: bij een les die nog moet komen schakelt
-                        // volgendeStand tussen afgemeld en niets, en schrijft hij dus nooit
-                        // een aanwezigheid weg voor iets dat nog niet gebeurd is.
-                        void setAanwezigheid(b.id, player.id, volgendeStand(aanwezigheidVan(b, player.id), false));
-                      }}
-                      disabled={!magAanwezigheidZetten(currentUser, b, player.id, eigenIds, new Date())}
+                      onPress={() => setGekozenLes(b)}
                       accessibilityRole="button"
-                      accessibilityLabel={t('{naam} afmelden of terugzetten', { naam: player.name })}
+                      accessibilityLabel={lesLabel(b)}
                       style={[styles.listRow, i > 0 && styles.divided, webCursor]}
                     >
                       <View style={styles.rowLine}>
@@ -432,14 +435,20 @@ export default function PlayerDossier() {
             ) : (
               <Card style={styles.listCard}>
                 {past.map((b, i) => (
-                  <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
+                  <Pressable
+                    key={b.id}
+                    onPress={() => setGekozenLes(b)}
+                    accessibilityRole="button"
+                    accessibilityLabel={lesLabel(b)}
+                    style={[styles.listRow, i > 0 && styles.divided, webCursor]}
+                  >
                     <View style={styles.rowLine}>
                       <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
                       <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
                     </View>
                     <Text style={styles.rowMeta}>{lessonMeta(b)}</Text>
                     <Text style={styles.rowStand}>{standTekst(aanwezigheidVan(b, player.id), t)}</Text>
-                  </View>
+                  </Pressable>
                 ))}
               </Card>
             )}
@@ -454,7 +463,7 @@ export default function PlayerDossier() {
           bookings={playerBookings}
           week={week}
           onWeek={setWeek}
-          onBookingPress={setWeekBooking}
+          onBookingPress={setGekozenLes}
         />
       </DetailSheet>
 
@@ -575,10 +584,10 @@ export default function PlayerDossier() {
       {/* Het lesdetail hoort bij het scherm en niet in het weekblad: een Modal binnen een
           gesloten Modal wordt niet meer getekend. Zelfde reden als de bladen hierboven. */}
       <BookingDetailSheet
-        booking={weekBooking}
-        visible={weekBooking !== null}
+        booking={gekozenLes}
+        visible={gekozenLes !== null}
         canManage={!!coach && kijktNaarZichzelf}
-        onClose={() => setWeekBooking(null)}
+        onClose={() => setGekozenLes(null)}
       />
     </Screen>
   );
