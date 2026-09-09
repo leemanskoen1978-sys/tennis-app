@@ -53,7 +53,7 @@ export default function CoachDossier() {
   // De week woont hier en niet in het blad: een blad wordt weggegooid als het sluit, en het
   // sluit zodra je een les opent. Anders stond je daarna weer op deze week.
   const [week, setWeek] = useState<Period>(() => weekPeriod(new Date()));
-  const [weekBooking, setWeekBooking] = useState<Booking | null>(null);
+  const [gekozenLes, setGekozenLes] = useState<Booking | null>(null);
 
   const coach = users.find((u) => u.id === id && u.role === 'coach') ?? null;
 
@@ -117,9 +117,23 @@ export default function CoachDossier() {
   // elkaar is rommelig, en op Android sluit één druk op terug ze allebei. `openSection`
   // blijft ondertussen staan, dus je komt terug in het blad waar je vandaan kwam. Zelfde
   // truc als in het spelersdossier.
-  const stacked = weekBooking !== null;
+  //
+  // Zowel de agendalijst als de weekagenda openen datzelfde lesdetail, en daarom heet dit
+  // `gekozenLes` en niet naar één van de twee: één blad, één toestand. Wie er een tweede
+  // naast zet, krijgt twee lesdetails die elkaar kunnen overlappen.
+  const stacked = gekozenLes !== null;
   const sheetOpen = (key: SectionKey) => openSection === key && !stacked;
   const closeSheet = () => setOpenSection(null);
+  /**
+   * Wat een regel in de agendalijst voorleest. Letterlijk dezelfde zin als in het weekraster,
+   * want het is dezelfde handeling met hetzelfde gevolg: het lesdetail gaat open. Twee
+   * verschillende zinnen voor één handeling laten een schermlezer twee dingen beloven.
+   */
+  const lesLabel = (b: Booking): string => t('Les van {dag} {tijd} met {ander}, details openen', {
+    dag: formatDay(b.start_time),
+    tijd: formatTimeRange(b.start_time, b.end_time),
+    ander: shortGroupLabel(playerName(b.player_id), groupSize(b)),
+  });
   /** Een blad verlaten om ergens anders heen te gaan: eerst dicht, dan pas navigeren. */
   const goTo = (path: string) => { closeSheet(); router.push(path); };
 
@@ -215,35 +229,49 @@ export default function CoachDossier() {
             {upcoming.length > 0 ? <Text style={styles.subLabel}>{t('Aankomend')}</Text> : null}
             {upcoming.map((b) => (
               <Card key={b.id} style={styles.rowCard}>
-                <View style={styles.rowLine}>
-                  <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
-                  <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
-                </View>
-                <Text style={styles.rowMeta}>{courtName(b.court_id)} · {shortGroupLabel(playerName(b.player_id), groupSize(b))}</Text>
+                <Pressable
+                  onPress={() => setGekozenLes(b)}
+                  accessibilityRole="button"
+                  accessibilityLabel={lesLabel(b)}
+                  style={webCursor}
+                >
+                  <View style={styles.rowLine}>
+                    <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
+                    <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
+                  </View>
+                  <Text style={styles.rowMeta}>{courtName(b.court_id)} · {shortGroupLabel(playerName(b.player_id), groupSize(b))}</Text>
+                </Pressable>
               </Card>
             ))}
             {past.length > 0 ? <Text style={styles.subLabel}>{t('Geweest')}</Text> : null}
             {past.slice(0, 6).map((b) => (
               <Card key={b.id} style={styles.rowCard}>
-                <View style={styles.rowLine}>
-                  <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
-                  <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
-                </View>
-                <Text style={styles.rowMeta}>{courtName(b.court_id)} · {shortGroupLabel(playerName(b.player_id), groupSize(b))}</Text>
+                <Pressable
+                  onPress={() => setGekozenLes(b)}
+                  accessibilityRole="button"
+                  accessibilityLabel={lesLabel(b)}
+                  style={webCursor}
+                >
+                  <View style={styles.rowLine}>
+                    <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
+                    <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
+                  </View>
+                  <Text style={styles.rowMeta}>{courtName(b.court_id)} · {shortGroupLabel(playerName(b.player_id), groupSize(b))}</Text>
+                </Pressable>
               </Card>
             ))}
           </>
         )}
       </DetailSheet>
 
-      {/* De week zoals ze ligt. Een les aantikken opent het lesdetail; dit blad sluit
-          daarvoor, zie `stacked`. */}
+      {/* De week zoals ze ligt. Een les aantikken opent het lesdetail — net als een regel in
+          de agendalijst hierboven; dit blad sluit daarvoor, zie `stacked`. */}
       <DetailSheet title={t('Weekagenda')} visible={sheetOpen('week')} onClose={closeSheet}>
         <Weekagenda
           bookings={coachBookings}
           week={week}
           onWeek={setWeek}
-          onBookingPress={setWeekBooking}
+          onBookingPress={setGekozenLes}
         />
       </DetailSheet>
 
@@ -270,10 +298,10 @@ export default function CoachDossier() {
       {/* Op schermniveau en niet in het blad: een Modal binnen een gesloten Modal wordt
           niet meer getekend. */}
       <BookingDetailSheet
-        booking={weekBooking}
-        visible={weekBooking !== null}
+        booking={gekozenLes}
+        visible={gekozenLes !== null}
         canManage={isCoach(currentUser) && kijktNaarZichzelf}
-        onClose={() => setWeekBooking(null)}
+        onClose={() => setGekozenLes(null)}
       />
     </Screen>
   );
