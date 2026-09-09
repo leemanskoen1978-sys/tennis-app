@@ -7,8 +7,8 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import {
-  CalendarDays, CalendarPlus, Users, GraduationCap, SlidersHorizontal,
-  BookOpen, TrendingUp, Wallet, ChevronRight, X, XCircle, BellRing, UserCheck, type LucideIcon,
+  CalendarDays, CalendarPlus, Users, BookOpen, TrendingUp, Wallet, ChevronRight,
+  X, XCircle, BellRing, type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
@@ -17,17 +17,16 @@ import { ActionTile, TileGrid } from '../components/ui/ActionTile';
 import { Lesdag } from '../components/lesdag/Lesdag';
 import { Lesdagspeler } from '../components/lesdag/Lesdagspeler';
 import { useSimpleData } from '../providers/SimpleDataProvider';
-import { useKindkeuze, useOpenstaandeBetalingen } from '../providers/kindkeuze';
+import { useKindkeuze } from '../providers/kindkeuze';
 import { SpelerKiezer } from '../components/ui/SpelerKiezer';
-import { bookingsToday, countPlayers, countCoaches } from '../lib/hub';
-import { lessenNu } from '../lib/afvinken';
+import { bookingsToday } from '../lib/hub';
 import { awaitingApprovalFor, awaitingApprovalOf, recentGeweigerd } from '../lib/inbox';
 import { isCoach, magInElkeAgenda } from '../lib/rechten';
 import { zonderWeggeklikt } from '../lib/weggeklikt';
 import { useWeggeklikt } from '../providers/weggeklikt';
 import { bookingsFor, filterPendingPayment, openBalanceFor } from '../lib/payments';
 import { formatEuro } from '../lib/money';
-import { formatDayTimeRange, formatDayTime, formatTimeRange } from '../lib/datetime';
+import { formatDayTimeRange, formatDayTime } from '../lib/datetime';
 import { groupSize, shortGroupLabel } from '../lib/groups';
 import { dossierPad } from '../lib/dossier';
 import { tennisColors } from '../constants/tennis-colors';
@@ -48,7 +47,6 @@ export default function Hub() {
   const t = useT();
   const router = useRouter();
   const { currentUser, users, bookings, courts, approveBooking, rejectBooking, error } = useSimpleData();
-  const pending = useOpenstaandeBetalingen();
   // Wiens gegevens dit scherm toont: jijzelf, of het kind dat je bovenaan koos. Zie
   // providers/kindkeuze.
   const { speler, kinderen, kijktNaarZichzelf } = useKindkeuze();
@@ -63,11 +61,6 @@ export default function Hub() {
   // lib/dossier, zodat elk scherm dezelfde bestemming kiest.
   const dossier = dossierPad(currentUser, speler);
 
-  // Loopt er nu een les, dan zegt de tegel Afvinken meteen welke — anders moet de trainer
-  // hem openen om te zien of hij op het juiste moment kijkt.
-  const nu = coach && currentUser
-    ? lessenNu(bookings, currentUser.id, new Date())
-    : [];
 
   // `bookingsFor` en niet zelf filteren: zo ziet een speler ook de groepslessen waarin
   // hij meespeelt zonder te betalen.
@@ -99,19 +92,11 @@ export default function Hub() {
 
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? t(one) : t(many)}`;
 
+  // Wat een trainer op Home overhoudt, is wat géén tabblad heeft. Spelers, Trainers en
+  // Beheer stonden hier ook als tegel, maar die staan onderaan al in de balk: twee wegen
+  // naar hetzelfde scherm maken het hoofdscherm langer zonder er iets aan toe te voegen.
+  // Afvinken staat nu bij Spelers (het gaat over wie er is) en Mijn agenda bij Trainers.
   const coachTiles: Tile[] = [
-    // Bovenaan, want dit is de tegel die je aantikt terwijl de kinderen voor je staan.
-    {
-      key: 'afvinken',
-      title: t('Afvinken'),
-      subtitle: nu.length > 0
-        ? t('Nu: {tijd} · geef je gsm door', {
-          tijd: formatTimeRange(nu[0].start_time, nu[0].end_time),
-        })
-        : t('Wie is er? Bij het begin van de les'),
-      icon: UserCheck,
-      onPress: () => router.push('/afvinken'),
-    },
     {
       key: 'new',
       title: t('Nieuwe afspraak'),
@@ -119,17 +104,6 @@ export default function Hub() {
       icon: CalendarPlus,
       onPress: () => router.push('/agenda/new'),
     },
-    {
-      key: 'mijn',
-      title: t('Mijn agenda'),
-      subtitle: plural(today, 'vandaag', 'vandaag'),
-      icon: CalendarDays,
-      // Zijn eigen dossier: zijn agenda, zijn week en zijn spelers staan daar bij elkaar.
-      onPress: () => { if (dossier) router.push(dossier); },
-    },
-    { key: 'spelers', title: t('Spelers'), subtitle: plural(countPlayers(users), 'actief', 'actief'), icon: Users, onPress: () => router.push('/players') },
-    { key: 'trainers', title: t('Trainers'), subtitle: plural(countCoaches(users), 'trainer', 'trainers'), icon: GraduationCap, onPress: () => router.push('/coaches') },
-    { key: 'beheer', title: t('Beheer'), subtitle: plural(pending.length, 'openstaand', 'openstaand'), icon: SlidersHorizontal, onPress: () => router.push('/admin'), badge: pending.length },
   ];
 
   const playerTiles: Tile[] = [
