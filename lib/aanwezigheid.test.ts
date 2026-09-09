@@ -91,23 +91,22 @@ describe('aanwezigheidRegel', () => {
 });
 
 describe('volgendeStand', () => {
-  it('schakelt heen en weer tussen aanwezig en afwezig', () => {
-    expect(volgendeStand('aanwezig')).toBe('afwezig');
-    expect(volgendeStand('afwezig')).toBe('aanwezig');
+  it('schakelt heen en weer bij een les die bezig is', () => {
+    expect(volgendeStand('aanwezig', true)).toBe('afwezig');
+    expect(volgendeStand('afwezig', true)).toBe('aanwezig');
   });
 
   it('vertrekt vanuit aanwezig als er nog niets genoteerd staat', () => {
     // Het scherm toont zo iemand als aanwezig, dus de tik moet hem op afwezig zetten.
-    expect(volgendeStand(null)).toBe('afwezig');
+    expect(volgendeStand(null, true)).toBe('afwezig');
   });
 
-  it('komt nooit meer op niets genoteerd uit', () => {
-    // De weg terug naar "leeg" is met opzet uit het scherm gehaald; hij bestaat nog wel via
-    // zetAanwezigheid: `null` doorgeven, of opnieuw tikken op de stand die er al staat. Het
-    // detailblad van de les gebruikt die tweede weg.
-    for (const stand of [null, 'aanwezig', 'afwezig'] as const) {
-      expect(volgendeStand(stand)).not.toBeNull();
-    }
+  it('schrijft nooit een aanwezigheid weg voor een les die nog moet beginnen', () => {
+    // Daar valt nog niets waar te nemen. Afmelden mag — dat is een mededeling — maar de
+    // weg terug gaat naar niets-genoteerd en niet naar "ik heb gezien dat hij er was".
+    expect(volgendeStand(null, false)).toBe('afwezig');
+    expect(volgendeStand('afwezig', false)).toBeNull();
+    expect(volgendeStand('aanwezig', false)).toBe('afwezig');
   });
 
   it('laat de weg terug naar leeg bestaan buiten het scherm om', () => {

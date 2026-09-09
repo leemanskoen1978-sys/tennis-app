@@ -86,6 +86,9 @@ export default function AfvinkenScreen(): React.JSX.Element {
   // zien er precies hetzelfde uit als die van de groep die nu voor de trainer staat.
   const vanLater = les !== null && !lessen.some((b) => b.id === les.id);
 
+  // Eén keer berekenen: hij stuurt zowel wat een tik doet als of de Klaar-knop er staat.
+  const lesBegonnen = les !== null && magLesBevestigen(les, now);
+
   const nameOf = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
   const courtName = (id: string): string =>
     courts.find((c) => c.id === id)?.name ?? t('Onbekend terrein');
@@ -103,8 +106,10 @@ export default function AfvinkenScreen(): React.JSX.Element {
 
   const bevestigen = async (): Promise<void> => {
     if (!les) return;
-    await bevestigLes(les.id);
-    router.replace('/');
+    // Alleen wegnavigeren als het echt weggeschreven is. Lukte het niet, dan blijft het
+    // scherm staan met zijn foutmelding, in plaats van de trainer met een gerust hart
+    // weg te sturen terwijl er niets genoteerd is.
+    if (await bevestigLes(les.id)) router.replace('/');
   };
 
   if (!coach) {
@@ -166,7 +171,7 @@ export default function AfvinkenScreen(): React.JSX.Element {
               <Pressable
                 key={id}
                 onPress={() => {
-                  void setAanwezigheid(les.id, id, volgendeStand(stand));
+                  void setAanwezigheid(les.id, id, volgendeStand(stand, lesBegonnen));
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={`${naam}, ${standLabel(stand, t)}`}
@@ -197,7 +202,7 @@ export default function AfvinkenScreen(): React.JSX.Element {
             {t('Iedereen staat op aanwezig. Tik alleen wie er niet is; nog een tik zet hem terug.')}
           </Text>
 
-          {magLesBevestigen(les, now) ? (
+          {lesBegonnen ? (
             <>
               {/* Dit is de handeling, niet een sierknop: pas hier wordt "niemand heeft
                   gekeken" een echte aanwezigheid. Wie het scherm sluit zonder te tikken,

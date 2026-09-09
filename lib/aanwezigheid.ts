@@ -164,23 +164,35 @@ export function aanwezigheidRegel(b: AanwezigheidBooking): string {
 }
 
 /**
- * De volgende stand op het afvinkscherm: aanwezig ⇄ afwezig.
+ * De volgende stand op het afvinkscherm.
  *
  * Was een rondje van drie (leeg → aanwezig → afwezig → leeg), zodat een kind dat zijn eigen
  * naam aantikte zich kon herstellen door door te tikken. Dat rondje kostte een trainer drie
  * tikken per kind om bij "afwezig" te komen, terwijl hij er per les hooguit één of twee
  * nodig heeft: de rest staat er gewoon.
  *
- * Nu vertrekt alles vanuit aanwezig (zie `getoondeStand`) en zet één tik iemand op afwezig,
- * de volgende weer terug. Herstellen kan dus nog steeds door door te tikken.
+ * Bij een les die bezig is, is het daarom een schakelaar: alles vertrekt vanuit aanwezig
+ * (zie `getoondeStand`), één tik zet iemand op afwezig, de volgende weer terug.
  *
- * De weg terug naar "niets genoteerd" is uit het scherm verdwenen maar niet uit de app.
- * `zetAanwezigheid` kent er twee: `null` doorgeven, en opnieuw tikken op de stand die er al
- * staat (de test `uit[playerId] === waarde`). Het detailblad van een les gebruikt die tweede.
- * Wie ooit die zelfwissende tak opruimt omdat hij op een ongelukje lijkt, haalt dus de enige
- * weg terug weg die er in de app echt gebruikt wordt.
+ * Bij een les die nog moet beginnen niet. Het scherm toont die lessen met opzet, zodat een
+ * trainer alvast iemand kan afmelden die zich afmeldde. Zo'n afmelding is een mededeling en
+ * mag. Maar de weg terug mag daar géén 'aanwezig' wegschrijven: dat is een waarneming, en
+ * die kan nog niet gedaan zijn. Er zou dan een les van volgende maand een aanwezigheid
+ * claimen die niemand ooit vaststelde — precies wat de derde stand moet bewaken, en vanaf
+ * dit scherm niet meer terug te draaien. Daar gaat de tik dus terug naar niets-genoteerd,
+ * wat op het scherm weer als aanwezig leest. Voor de trainer voelt het identiek.
+ *
+ * De weg terug naar "niets genoteerd" bestaat verder in `zetAanwezigheid`, op twee manieren:
+ * `null` doorgeven, en opnieuw tikken op de stand die er al staat (de test
+ * `uit[playerId] === waarde`). Het detailblad van een les gebruikt die tweede. Wie ooit die
+ * zelfwissende tak opruimt omdat hij op een ongelukje lijkt, haalt de enige weg terug weg
+ * die er in de app echt gebruikt wordt.
  */
-export function volgendeStand(huidig: Aanwezigheid | null): Aanwezigheid {
+export function volgendeStand(
+  huidig: Aanwezigheid | null,
+  lesBegonnen: boolean,
+): Aanwezigheid | null {
+  if (!lesBegonnen) return huidig === 'afwezig' ? null : 'afwezig';
   return getoondeStand(huidig) === 'aanwezig' ? 'afwezig' : 'aanwezig';
 }
 
