@@ -229,6 +229,23 @@ export function volgendeStand(
 }
 
 /**
+ * De kalenderdag in Brussel, als `JJJJ-MM-DD`.
+ *
+ * De databank rekent hard in `Europe/Brussels` (`date_trunc('day', now() at time zone
+ * 'Europe/Brussels')` in `bewaak_betaalvelden`). Rekende de app in de tijdzone van het
+ * toestel, dan lopen de twee grenzen een dag uit elkaar voor wie van elders inlogt, en biedt
+ * het scherm een knop aan die de databank weigert. De club staat in België; dat is de dag
+ * die telt.
+ *
+ * Als tekst en niet als Date, zodat twee dagen met een gewone vergelijking te ordenen zijn.
+ */
+export function brusselseDag(d: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Brussels', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d);
+}
+
+/**
  * Mag deze gebruiker de aanwezigheid van deze speler in deze les zetten?
  *
  * De beheerder mag alles, altijd. Iedereen anders is gebonden aan de dag van de les: je mag
@@ -266,8 +283,7 @@ export function magAanwezigheidZetten(
   const start = new Date(booking.start_time);
   // Een onleesbare begintijd telt als "niet meer van jou": bij twijfel beslist de beheerder.
   if (Number.isNaN(start.getTime())) return false;
-  const vandaag = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (start.getTime() < vandaag.getTime()) return false;
+  if (brusselseDag(start) < brusselseDag(now)) return false;
 
   if (lesgeverId(booking) === kijker.id) return true;
   if (!eigenIds.includes(playerId)) return false;

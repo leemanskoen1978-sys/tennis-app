@@ -24,7 +24,7 @@ import {
   buildLesplan, coachesForPlayer, lesplanSummary, type LessonWithProgress,
 } from '../../lib/relations';
 import { filledGoalCount, goalCountLabel } from '../../lib/goals';
-import { isMijnKind } from '../../lib/ouderkind';
+import { isMijnKind, kinderenVan } from '../../lib/ouderkind';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../../lib/payments';
 import { groupSize, groupSizeLabel, isGroupLesson, playsIn } from '../../lib/groups';
 import { parseSponsorBudget, sponsorHint, sponsorState } from '../../lib/sponsor';
@@ -132,6 +132,10 @@ export default function PlayerDossier() {
     .filter((b) => new Date(b.end_time).getTime() < now)
     .sort((a, b) => b.start_time.localeCompare(a.start_time));
   const overzicht = aanwezigheidOverzicht(past, player.id);
+  // Voor wie de kijker spreekt: zichzelf en zijn goedgekeurde kinderen. Niet `[player.id]` —
+  // dat is over wie het gaat, niet wie het doet. Met dat verschil bood het scherm een
+  // ingeschakelde knop aan een medespeler die daarna zwijgend niets deed.
+  const eigenIds = currentUser ? [currentUser.id, ...kinderenVan(currentUser.id, relaties)] : [];
 
   // Lesplan en voortgang zijn één lijst: elke notitie hangt onder de les waar hij bij hoort
   // (lib/relations legt die koppeling), en wat nergens bij hoort staat onderaan los.
@@ -311,7 +315,7 @@ export default function PlayerDossier() {
             onPress={() => goTo(`/agenda/new?playerId=${player.id}`)}
           />
         ) : null}
-        {upcoming.length === 0 && past.length === 0 ? (
+        {playerBookings.length === 0 ? (
           <Text style={styles.muted}>{t('Nog geen afspraken.')}</Text>
         ) : (
           <>
@@ -328,7 +332,7 @@ export default function PlayerDossier() {
                         // een aanwezigheid weg voor iets dat nog niet gebeurd is.
                         void setAanwezigheid(b.id, player.id, volgendeStand(aanwezigheidVan(b, player.id), false));
                       }}
-                      disabled={!magAanwezigheidZetten(currentUser, b, player.id, [player.id], new Date())}
+                      disabled={!magAanwezigheidZetten(currentUser, b, player.id, eigenIds, new Date())}
                       accessibilityRole="button"
                       accessibilityLabel={t('{naam} afmelden of terugzetten', { naam: player.name })}
                       style={[styles.listRow, i > 0 && styles.divided, webCursor]}
@@ -346,33 +350,36 @@ export default function PlayerDossier() {
                 </Card>
               </>
             ) : null}
-            {past.length > 0 ? (
-              <>
-                <Text style={styles.subLabel}>{t('Geweest')}</Text>
-                <PeriodPicker value={periode} onChange={setPeriode} />
-                {/* De drie standen blijven gescheiden. "Niet afgevinkt" bij "aanwezig" optellen
-                    zou een controle claimen die niemand deed — precies wat het driestandenmodel
-                    moet voorkomen. */}
-                <Text style={styles.overzicht}>
-                  {t('{a} van {n} aanwezig · {b} keer afwezig · {o} niet afgevinkt', {
-                    a: overzicht.aanwezig, n: overzicht.totaal,
-                    b: overzicht.afwezig, o: overzicht.open,
-                  })}
-                </Text>
-                <Card style={styles.listCard}>
-                  {past.map((b, i) => (
-                    <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
-                      <View style={styles.rowLine}>
-                        <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
-                        <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
-                      </View>
-                      <Text style={styles.rowMeta}>{lessonMeta(b)}</Text>
-                      <Text style={styles.rowStand}>{standTekst(aanwezigheidVan(b, player.id), t)}</Text>
+            <Text style={styles.subLabel}>{t('Geweest')}</Text>
+            {/* Kop, kiezer en samenvatting staan er altijd, ook als deze periode leeg is.
+                Stond de kiezer binnen de lijst, dan zag een nieuwe leerling — of iedereen
+                in juli — geen enkele les én geen knop om een andere periode te kiezen. */}
+            <PeriodPicker value={periode} onChange={setPeriode} />
+            {/* De drie standen blijven gescheiden. "Niet afgevinkt" bij "aanwezig" optellen
+                zou een controle claimen die niemand deed — precies wat het driestandenmodel
+                moet voorkomen. */}
+            <Text style={styles.overzicht}>
+              {t('{a} van {n} aanwezig · {b} keer afwezig · {o} niet afgevinkt', {
+                a: overzicht.aanwezig, n: overzicht.totaal,
+                b: overzicht.afwezig, o: overzicht.open,
+              })}
+            </Text>
+            {past.length === 0 ? (
+              <Text style={styles.muted}>{t('Geen lessen in deze periode.')}</Text>
+            ) : (
+              <Card style={styles.listCard}>
+                {past.map((b, i) => (
+                  <View key={b.id} style={[styles.listRow, i > 0 && styles.divided]}>
+                    <View style={styles.rowLine}>
+                      <Text style={styles.rowDay}>{formatDay(b.start_time)}</Text>
+                      <Text style={styles.rowTime}>{formatTimeRange(b.start_time, b.end_time)}</Text>
                     </View>
-                  ))}
-                </Card>
-              </>
-            ) : null}
+                    <Text style={styles.rowMeta}>{lessonMeta(b)}</Text>
+                    <Text style={styles.rowStand}>{standTekst(aanwezigheidVan(b, player.id), t)}</Text>
+                  </View>
+                ))}
+              </Card>
+            )}
           </>
         )}
       </DetailSheet>

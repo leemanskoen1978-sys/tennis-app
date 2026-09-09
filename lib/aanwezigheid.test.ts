@@ -1,6 +1,6 @@
 import {
   aanwezigheidVan, zetAanwezigheid, aanwezigheidTelling, aanwezigheidRegel, volgendeStand, magAanwezigheidZetten,
-  getoondeStand, bevestigAanwezigheid, magLesBevestigen, aanwezigheidOverzicht,
+  getoondeStand, bevestigAanwezigheid, magLesBevestigen, aanwezigheidOverzicht, brusselseDag,
 } from './aanwezigheid';
 import type { Booking } from './types';
 
@@ -10,6 +10,17 @@ const base: Booking = {
   status: 'confirmed', payment_method: 'open',
 };
 const groep: Booking = { ...base, participant_ids: ['p2', 'p3'] };
+
+describe('brusselseDag', () => {
+  it('geeft de kalenderdag in Brussel, niet die van het toestel', () => {
+    // 31 december 23:00 UTC is in Brussel al 1 januari.
+    expect(brusselseDag(new Date('2026-12-31T23:00:00.000Z'))).toBe('2027-01-01');
+  });
+
+  it('geeft dezelfde dag voor een moment midden op de dag', () => {
+    expect(brusselseDag(new Date('2026-09-09T12:00:00.000Z'))).toBe('2026-09-09');
+  });
+});
 
 describe('aanwezigheidVan', () => {
   it('is empty for a lesson nobody ticked off yet', () => {

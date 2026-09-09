@@ -436,7 +436,11 @@ begin
   -- De lesgever van deze les: alles mag, behalve de aanwezigheid van een oude les.
   -- `coalesce` omdat een vervanger op de baan stond en dus afvinkt.
   if coalesce(old.taught_by_id, old.coach_id) = app_user_id() then
-    if new.attendance is distinct from old.attendance and old.start_time < vandaag then
+    -- `least` en niet `old.start_time`: anders verzet een trainer een oude les eerst naar
+    -- vandaag — dat mag, de aanwezigheid verandert er niet door — en herschrijft hij hem in
+    -- een tweede update alsnog. De vroegste van de twee telt.
+    if new.attendance is distinct from old.attendance
+       and least(old.start_time, new.start_time) < vandaag then
       raise exception 'Wie er bij een les uit het verleden stond, zet de beheerder recht.';
     end if;
     return new;
@@ -1004,7 +1008,11 @@ begin
   -- De lesgever van deze les: alles mag, behalve de aanwezigheid van een oude les.
   -- `coalesce` omdat een vervanger op de baan stond en dus afvinkt.
   if coalesce(old.taught_by_id, old.coach_id) = app_user_id() then
-    if new.attendance is distinct from old.attendance and old.start_time < vandaag then
+    -- `least` en niet `old.start_time`: anders verzet een trainer een oude les eerst naar
+    -- vandaag — dat mag, de aanwezigheid verandert er niet door — en herschrijft hij hem in
+    -- een tweede update alsnog. De vroegste van de twee telt.
+    if new.attendance is distinct from old.attendance
+       and least(old.start_time, new.start_time) < vandaag then
       raise exception 'Wie er bij een les uit het verleden stond, zet de beheerder recht.';
     end if;
     return new;
