@@ -1301,6 +1301,21 @@ export const EN: Record<string, string> = {
   'Voor trainers': 'For coaches',
   'Voor spelers': 'For players',
   'Voor beheerders': 'For admins',
+
+  // --- Een les verzetten (components/VerzetLes) ---
+  'Les verzetten': 'Move lesson',
+  'Verzetten': 'Move',
+  'Nu: {moment}': 'Now: {moment}',
+  'Wordt: {moment}': 'Becomes: {moment}',
+  'Nieuwe dag': 'New day',
+  'Nieuw beginuur': 'New start time',
+  'Het blijft dezelfde les: de betaalwijze, de deelnemers en de aanwezigheid gaan mee.':
+    'It stays the same lesson: payment method, participants and attendance come along.',
+  'Dit is het moment waar de les nu al staat.': 'That is where the lesson already is.',
+  'Kies een geldige dag en een geldig uur.': 'Pick a valid day and time.',
+  'De tijden van deze les zijn onleesbaar.': 'The times of this lesson are unreadable.',
+  '{vakantie}: de club geeft die dag geen les.':
+    '{vakantie}: the club has no lessons that day.',
   'Wat andere spelers bij deze trainer boekten, zie je hier niet. Of een uur echt vrij is, bevestigt de trainer bij je aanvraag.':
     'You cannot see what other players booked with this coach. Your coach confirms whether the hour is really free when you request it.',
   'Kopieer als tekst': 'Copy as text',

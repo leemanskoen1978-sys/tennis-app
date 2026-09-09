@@ -117,4 +117,24 @@ describe('keuzeUren', () => {
     expect(uren[0]).toBe('06:00');
     expect(uren[uren.length - 1]).toBe('23:00');
   });
+
+  it('geeft hele uren zolang niemand om iets anders vraagt', () => {
+    expect(keuzeUren()).toHaveLength(18);
+    expect(keuzeUren().every((u) => u.endsWith(':00'))).toBe(true);
+  });
+
+  it('zet er halve uren tussen als dat gevraagd wordt', () => {
+    // Het verzetten van een les gebruikt dit: deze club heeft groepen van een half uur, en
+    // een les die om 14:30 begon moet naar 15:30 kunnen en niet alleen naar 15:00.
+    const uren = keuzeUren(30);
+    expect(uren[0]).toBe('06:00');
+    expect(uren[1]).toBe('06:30');
+    expect(uren[uren.length - 1]).toBe('23:00');
+  });
+
+  it('valt terug op hele uren bij een onbruikbare stap', () => {
+    expect(keuzeUren(0)).toEqual(keuzeUren());
+    expect(keuzeUren(-15)).toEqual(keuzeUren());
+    expect(keuzeUren(Number.NaN)).toEqual(keuzeUren());
+  });
 });

@@ -263,13 +263,40 @@ Op volgorde van wat ik als eerste zou doen:
    het lid zelf komt.
 4. **Herinneringen** naar spelers voor hun les, en naar de trainer voor lessen die te lang op
    Open staan.
-5. **Annuleringsregels** — te laat afgezegd is nu gratis en wist de betaalwijze.
-6. **Verzetten** in plaats van annuleren en opnieuw boeken (regen, binnenbaan).
-7. **Facturen** — "Factuur" bestaat als betaalwijze, maar er komt geen document uit.
+5. ~~**Annuleringsregels.**~~ Besloten op 10 september 2026: **annuleren is en blijft
+   gratis**, hoe laat ook. Er komt geen boeteregel en geen termijn. Dat te laat afzeggen de
+   betaalwijze wist, is daarmee ook geen fout meer maar het gevolg van de regel: een les die
+   niet doorgaat, is niets verschuldigd. Wie dit ooit omdraait, begint bij `cancelBooking` in
+   de provider en bij `countsAsRevenue` in `lib/payments.ts`.
+6. ~~**Verzetten**~~ in plaats van annuleren en opnieuw boeken (regen, binnenbaan). Af op
+   10 september 2026.
+
+   Twee keuzes die de gebruiker maakte: **alleen de trainer** (en de beheerder) verzet — een
+   speler ziet de nieuwe tijd verschijnen zoals hij nu ook niets aan een bestaande les wijzigt
+   — en het raakt **altijd precies één les**, ook als die bij een reeks of een lesgroep hoort.
+   Regen op dinsdag is één dinsdag; dezelfde grens als bij het schrappen.
+
+   Waar het staat: `verzetPlan` in `lib/verzetten.ts` rekent (nieuwe eindtijd uit de bewaarde
+   lesduur, vakantie weigert, botsing waarschuwt), `magVerzetten` in `lib/rechten.ts` beslist
+   wie mag, `components/VerzetLes.tsx` tekent het blad, en het lesdetail heeft de knop naast
+   Annuleren. Het is één `updateBooking` met begin- en eindtijd en eventueel een andere baan:
+   dezelfde rij, dus de betaalwijze, de beurtenkaart, de deelnemers, de aanwezigheid, de reeks
+   en de lesgroep blijven eraan hangen. Dat is het hele verschil met annuleren en opnieuw
+   boeken.
+
+   Verzetten kan ook bij een les die al geweest is (een trainer die zich in de dag vergiste),
+   maar niet bij een geannuleerde: die gaat niet door, en dan valt er niets te verplaatsen.
+   `keuzeUren` neemt sinds vandaag een stap in minuten, want deze club heeft groepen van een
+   half uur: een les van 14:30 moet naar 15:30 kunnen en niet alleen naar 15:00.
+7. ~~**Facturen.**~~ Vervalt. Besloten op 10 september 2026: er worden geen facturen gemaakt.
+   "Factuur" blijft bestaan als betaalwijze — het zegt hóé er betaald wordt, en dat gebeurt
+   buiten deze app (zie de afspraken over geld hierboven). Er komt dus geen document uit en
+   dat is de bedoeling.
 8. **Voortgang over tijd** — ratings staan er, maar het verloop per speler is nergens te zien.
+   Goedgekeurd op 10 september 2026.
 9. **Oefenstof toewijzen aan trainers.** De beheerder bepaalt voor meerdere trainers
-   tegelijk welke les ze die week geven. Gevraagd en uitgevraagd op 9 september 2026; nog
-   niet ontworpen.
+   tegelijk welke les ze die week geven. Gevraagd en uitgevraagd op 9 september 2026,
+   goedgekeurd om uit te werken op 10 september 2026.
 
    **Het gaat om lesmateriaal, niet om lesuren.** Een `Lesson` is in dit model een pagina
    uit het lessenboekje — titel, oefeningen, aandachtspunten, materiaal (`lib/types.ts:317`)

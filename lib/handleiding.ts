@@ -161,6 +161,25 @@ const TRAINER: Gidsstuk[] = [
         ],
       },
       {
+        waar: 'Een les → Verzetten',
+        kop: 'Regen, of een baan binnen',
+        tekst: [
+          'Open de les en kies Verzetten: een andere dag, een ander uur, desnoods een andere '
+          + 'baan. Het blijft dezelfde les — de betaalwijze, de beurt, de deelnemers en de '
+          + 'aanwezigheid gaan mee. Dat is precies waarom je hem niet moet afzeggen en '
+          + 'opnieuw boeken: dan ben je dat allemaal kwijt en ziet je speler een annulering '
+          + 'voor een les die gewoon doorgaat.',
+          'Botst het nieuwe uur met iets anders, dan zegt het scherm wáármee — en het houdt je '
+          + 'niet tegen. Op Terrein 7 staan blauw en rood samen op een halve baan en dat is '
+          + 'goed; twee volwassenengroepen op één terrein is dat niet, en dat verschil zie '
+          + 'alleen jij. Is de club die dag dicht, dan kan het wél niet.',
+          'Het raakt altijd deze ene les, ook als ze bij een reeks of een lesgroep hoort: '
+          + 'regen op dinsdag is één dinsdag. Verandert een groep echt van uur, dan zet je dat '
+          + 'bij de lesgroep zelf. En het gaat alleen bij jouw eigen lessen — de agenda van een '
+          + 'collega laat je met rust, tenzij je beheerder bent.',
+        ],
+      },
+      {
         waar: 'Spelers → Afvinken',
         kop: 'Wie is er vandaag?',
         tekst: [
@@ -626,6 +645,18 @@ const SPELER: Gidsstuk[] = [
     leidraad: 'Wie de rekening krijgt, kiest hoe hij betaalt. Voor je eigen les doe je dat dus '
       + 'zelf.',
     delen: [
+      {
+        waar: 'Je les',
+        kop: 'Als het uur je niet meer past',
+        tekst: [
+          'Zeg de les af. Dat kan altijd en het kost nooit iets, ook niet op het laatste '
+          + 'moment. Daarna vraag je gerust een ander uur aan.',
+          'Verzetten doe je niet zelf: dat is de agenda van je trainer, en die schuift hij bij '
+          + 'regen of een baanwissel zelf op. Staat je les ineens op een ander uur, dan is dat '
+          + 'wat er gebeurd is — het blijft dezelfde les, dus wat je al afsprak over betalen '
+          + 'blijft ook staan.',
+        ],
+      },
       {
         waar: 'Je les',
         kop: 'De betaalwijze zetten',

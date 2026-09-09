@@ -81,6 +81,35 @@ export function magLesVerwijderen(
 }
 
 /**
+ * Mag deze kijker deze les verzetten — hetzelfde uur naar een ander moment?
+ *
+ * De trainer van de les en de beheerder. Verder niemand, en met opzet niet de speler: hij kan
+ * aan een bestaande les sowieso niets wijzigen, en een agenda die door iemand anders omgegooid
+ * wordt is precies wat een trainer niet wil. Wil een speler een ander uur, dan zegt hij de les
+ * af — dat is en blijft gratis — en vraagt hij een nieuw uur aan. Besloten op 10 september 2026.
+ *
+ * Let op het verschil met `magLesVerwijderen` hierboven: dáár mag de speler wél, zolang de les
+ * nog moet beginnen, omdat hij de betaler is. Weghalen wat je zelf betaalde is iets anders dan
+ * de agenda van je trainer herschikken.
+ *
+ * Ook voor een les die al geweest is: een trainer die zich in de dag vergiste, hoort dat recht
+ * te kunnen zetten zonder de les af te zeggen en opnieuw in te voeren — want dan raakt hij de
+ * betaalwijze, de beurt en de aanwezigheid kwijt. Zie lib/verzetten.
+ */
+export function magVerzetten(
+  kijker: User | null | undefined,
+  booking: Pick<Booking, 'coach_id'>,
+): boolean {
+  if (!kijker) return false;
+  // `isCoach` staat er náást het id-vergelijk, en niet voor de sier: een `coach_id` hoort
+  // altijd naar een trainer te wijzen, maar dat is niets wat de databank afdwingt — het is een
+  // verwijzing naar `users`, niet naar "users met rol coach". Staat er ooit een spelers-id in,
+  // door een import of een handmatige ingreep, dan gaf een kaal `=== kijker.id` die speler de
+  // sleutel van een agenda. Dit kost niets en sluit dat af.
+  return isAdmin(kijker) || (isCoach(kijker) && booking.coach_id === kijker.id);
+}
+
+/**
  * Mag deze gebruiker beurtenkaarten bijwerken?
  *
  * Alleen de trainer en de beheerder — een speler die zijn eigen beurten kon terugzetten,

@@ -19,6 +19,7 @@ import { DetailSheet } from './ui/DetailSheet';
 import { GroepStip } from './ui/GroepStip';
 import { ParticipantPicker } from './ParticipantPicker';
 import { PaymentMethodSheet } from './PaymentMethodSheet';
+import { VerzetLes } from './VerzetLes';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { materiaalVoor } from '../lib/lesplanning';
 import { useActieveSpeler } from '../providers/kindkeuze';
@@ -44,7 +45,9 @@ import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, minTapTarget, webCursor } from '../constants/theme';
 import { playersOf } from '../lib/hub';
 import { kinderenVan } from '../lib/ouderkind';
-import { isAdmin, isCoach, magDossierZien, magLesVerwijderen } from '../lib/rechten';
+import {
+  isAdmin, isCoach, magDossierZien, magLesVerwijderen, magVerzetten,
+} from '../lib/rechten';
 
 /** De kleur bij een status; dezelfde die het maandoverzicht ooit op de kaart zette. */
 const STATUS_COLORS: Record<BookingStatus, string> = {
@@ -112,6 +115,7 @@ export function BookingDetailSheet({
   const speler = useActieveSpeler();
   const {
     currentUser, bookings, users, courts, beurtenkaarten, relaties, lesGroepen, sickLeaves,
+    settings,
     // `lessons` is in dit bestand al een functie die "3 lessen" opmaakt (zie boven), dus het
     // lesmateriaal krijgt hier een eigen naam.
     lessons: lesmateriaal, lesPlanning,
@@ -125,6 +129,9 @@ export function BookingDetailSheet({
   // een schakelaar en geen tweede laag — staat hij aan, dan is het detailblad even dicht en
   // heeft het gedeelde betaalwijze-blad het scherm alleen. Sluiten brengt de details terug.
   const [choosing, setChoosing] = useState(false);
+  // Verzetten staat in een eigen blad, om dezelfde reden als de betaalwijze hierboven: twee
+  // bladen over elkaar wordt rommelig, dus zolang dit openstaat is het detailblad even dicht.
+  const [verzetten, setVerzetten] = useState(false);
   // De medespelers bijstellen is een handeling met gevolgen voor het geld; die staat daarom
   // achter een knop en niet altijd open.
   const [editingPlayers, setEditingPlayers] = useState(false);
@@ -174,6 +181,14 @@ export function BookingDetailSheet({
   // hij niet als prop maar wordt hij uitgerekend, zodat een scherm dat het blad opent hem
   // niet stilzwijgend kan vergeten.
   const magWeg = magLesVerwijderen(currentUser, speler, booking, new Date());
+  // Verzetten is een eigen recht naast `canManage`: alleen de trainer van de les en de
+  // beheerder. Een ouder die hier via het dossier van zijn kind komt, beheert die les niet.
+  //
+  // Wel bij een les die geweest is, anders dan bij annuleren: een trainer die zich in de dag
+  // vergiste, hoort dat recht te kunnen zetten zonder de les af te zeggen en opnieuw in te
+  // voeren — want dan raakt hij de betaalwijze, de beurt en de aanwezigheid kwijt. Niet bij
+  // een geannuleerde les: die gaat niet door, en dan valt er ook niets te verplaatsen.
+  const magHerplannen = magVerzetten(currentUser, booking);
   // Alleen bij een lopende les: op een geannuleerde les valt niets meer te betalen.
   const canPay = (canManage || betaler) && !isCancelled;
   // De tennisschool-module is van de beheerder en niet van elke trainer (D-09), dus dit is
@@ -315,7 +330,7 @@ export function BookingDetailSheet({
     <>
       <DetailSheet
         title={formatDayTimeRange(booking.start_time, booking.end_time)}
-        visible={visible && !choosing}
+        visible={visible && !choosing && !verzetten}
         onClose={close}
       >
         <Text style={styles.court}>{courtName}</Text>
@@ -780,6 +795,21 @@ export function BookingDetailSheet({
             </View>
           ) : (
             <View style={[styles.actions, styles.confirmRow]}>
+              {/* Verzetten staat vóór annuleren, want dat is meestal wat je bedoelt: bij regen
+                  wil een trainer de les naar binnen halen, niet afzeggen. Stond het er niet,
+                  dan deed hij het met annuleren plus opnieuw boeken — en raakte hij de
+                  betaalwijze, de beurt en de aanwezigheid kwijt. Zie lib/verzetten. */}
+              {magHerplannen && !isCancelled ? (
+                <Button
+                  label={t('Verzetten')}
+                  variant="secondary"
+                  fullWidth={false}
+                  onPress={() => {
+                    clearError();
+                    setVerzetten(true);
+                  }}
+                />
+              ) : null}
               {canManage && canCancel ? (
                 <Button
                   label={t('Annuleren')}
@@ -882,6 +912,23 @@ export function BookingDetailSheet({
           )
         ) : null}
       </DetailSheet>
+
+      <VerzetLes
+        visible={visible && verzetten}
+        les={booking}
+        bookings={bookings}
+        vakanties={settings.vakanties ?? []}
+        courts={courts}
+        trainers={users}
+        error={error}
+        onVerzet={(patch) => {
+          void updateBooking(booking.id, patch).then(() => setVerzetten(false));
+        }}
+        onClose={() => {
+          clearError();
+          setVerzetten(false);
+        }}
+      />
 
       <PaymentMethodSheet
         visible={visible && choosing}
