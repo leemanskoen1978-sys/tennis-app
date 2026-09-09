@@ -16,6 +16,7 @@ import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Chip } from './ui/Chip';
 import { DetailSheet } from './ui/DetailSheet';
+import { GroepStip } from './ui/GroepStip';
 import { ParticipantPicker } from './ParticipantPicker';
 import { PaymentMethodSheet } from './PaymentMethodSheet';
 import { useSimpleData } from '../providers/SimpleDataProvider';
@@ -318,6 +319,13 @@ export function BookingDetailSheet({
         onClose={close}
       >
         <Text style={styles.court}>{courtName}</Text>
+        {/* Bij welke groep deze les hoort, met haar kleur ervoor — dezelfde stip als op Home
+            en hetzelfde randje als in het weekraster, zodat een les die je daar aantikte
+            zichzelf hier herkenbaar terugmeldt.
+
+            Bovenaan en voor iedereen die het blad opent. Verderop staat de lesgroep ook, maar
+            dat is de beheerdersknop om hem te veranderen; dit is wat er ís. */}
+        <GroepStip niveau={groepVanLes?.level} naam={groepVanLes?.name} />
         {/* Een les uit een reeks ziet er verder uit als elke andere les. Zeg het dus,
             vóór iemand hem annuleert in de veronderstelling dat het er één was. */}
         {inSeries ? (
