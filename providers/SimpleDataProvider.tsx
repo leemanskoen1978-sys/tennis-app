@@ -27,7 +27,7 @@ import {
 import { isGroupLesson } from '../lib/groups';
 import { bouwImportWijziging } from '../lib/import-trainingen';
 import type { ImportKeuze, ImportPlanLessen, ImportUitslagLessen } from '../lib/import-trainingen';
-import { zetAanwezigheid, magAanwezigheidZetten, type Aanwezigheid } from '../lib/aanwezigheid';
+import { zetAanwezigheid, magAanwezigheidZetten, bevestigAanwezigheid, type Aanwezigheid } from '../lib/aanwezigheid';
 import { herstelNaVerwijdering } from '../lib/ziekmelding';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
@@ -132,6 +132,12 @@ interface DataShape {
     playerId: string,
     waarde: Aanwezigheid | null,
   ) => Promise<void>;
+  /**
+   * De hele les afvinken in één keer: wie geen aantekening heeft, was er. Dit is de
+   * Klaar-knop van het afvinkscherm. Alleen de trainer van de les en de beheerder — een
+   * speler mag zichzelf afmelden, niet de hele groep aanwezig verklaren.
+   */
+  bevestigLes: (bookingId: string) => Promise<void>;
   deleteBooking: (id: string) => Promise<void>;
   /**
    * De trainer keurt een aangevraagde les goed; pas daarna gaat hij door. Alleen de trainer
@@ -975,6 +981,23 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [commit, currentUserId]);
 
+  const bevestigLes = useCallback(async (bookingId: string) => {
+    const store = storeRef.current;
+    if (!store || !currentUserId) return;
+    const booking = store.bookings.find((b) => b.id === bookingId);
+    if (!booking) return;
+    // Strenger dan `setAanwezigheid`: dáár mag een speler zichzelf zetten, hier gaat het
+    // over de hele groep. Dat is het oordeel van wie er stond, en dat is de trainer.
+    const kijker = store.users.find((u) => u.id === currentUserId);
+    const magHet = kijker?.is_admin === true || booking.coach_id === currentUserId;
+    if (!magHet) return;
+    const patch = bevestigAanwezigheid(booking);
+    await commit({
+      ...store,
+      bookings: store.bookings.map((b) => (b.id === bookingId ? { ...b, ...patch } : b)),
+    });
+  }, [commit, currentUserId]);
+
   const setPaymentMethod = useCallback(async (bookingId: string, method: PaymentMethod): Promise<boolean> => {
     const store = storeRef.current;
     if (!store) return false;
@@ -1615,6 +1638,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     setParticipants,
     setPaymentSplit,
     setAanwezigheid,
+    bevestigLes,
     setPaymentMethod,
     setTaughtBy,
     zetVervangerVoorLessen,
@@ -1656,7 +1680,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     herstelBezig, stuurHerstelmail, zetNieuwWachtwoord, logout, refresh,
     addCourt, updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
     updateBooking, deleteBooking, approveBooking, rejectBooking,
-    setParticipants, setPaymentSplit, setAanwezigheid,
+    setParticipants, setPaymentSplit, setAanwezigheid, bevestigLes,
     setPaymentMethod, setTaughtBy, zetVervangerVoorLessen, addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
