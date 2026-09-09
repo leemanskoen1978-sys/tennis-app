@@ -9,6 +9,7 @@ import { formatDayTime } from './datetime';
 import { lessonPlayerIds, playsIn } from './groups';
 import { bookingsOnDay } from './hub';
 import type { Booking, Lesson, StudentProgress, User } from './types';
+import { zoekOp } from './zoeken';
 
 /** Every coach that has a booking, lesson or progress note with this player. */
 export function coachesForPlayer(
@@ -235,15 +236,6 @@ export function emptyScopeLine(scope: PlayerScope): string {
 }
 
 /**
- * Een naam zoals je hem vergelijkt en niet zoals je hem schrijft: kleine letters, zonder
- * accenten. Anders vindt "noe" de speler Noë niet, terwijl een trainer die accent niet
- * intypt — en op een telefoon al helemaal niet.
- */
-function fold(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
-
-/**
  * Zoeken op naam of e-mailadres, binnen de stapel die je al bekeek.
  *
  * Elk woord uit de zoekregel moet ergens terugkomen, maar de volgorde doet er niet toe:
@@ -252,10 +244,8 @@ function fold(value: string): string {
  * niets — dan krijg je de stapel terug zoals hij was.
  */
 export function searchPlayers(players: User[], query: string): User[] {
-  const words = fold(query).split(/\s+/).filter((w) => w !== '');
-  if (words.length === 0) return players;
-  return players.filter((p) => {
-    const haystack = fold(`${p.name ?? ''} ${p.email ?? ''}`);
-    return words.every((w) => haystack.includes(w));
-  });
+  // Het zoekgedrag zelf staat in lib/zoeken en niet hier: het hoort overal in de app hetzelfde
+  // te zijn. `fold` stond hier ooit los uitgeschreven, en dat is precies hoe twee lijsten
+  // uiteen gaan lopen — de ene die accenten negeert en de andere niet.
+  return zoekOp(players, query, (p) => `${p.name ?? ''} ${p.email ?? ''}`);
 }
