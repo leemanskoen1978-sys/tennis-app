@@ -1,5 +1,7 @@
 import type { Booking, Court, User } from './types';
-import { icsFilename, icsMoment, icsSequence, icsTekst, toIcs, vouw, type IcsContext } from './ics';
+import {
+  clubAgenda, icsFilename, icsMoment, icsSequence, icsTekst, toIcs, vouw, type IcsContext,
+} from './ics';
 
 const users: User[] = [
   { id: 'koen', email: 'k@x.be', name: 'Koen', role: 'coach' },
@@ -196,5 +198,49 @@ describe('toIcs', () => {
 describe('icsFilename', () => {
   it('carries the day of the export, so two downloads stay apart', () => {
     expect(icsFilename(new Date(2026, 7, 25))).toBe('tennislessen-2026-08-25.ics');
+  });
+});
+
+describe('clubAgenda', () => {
+  const nu = new Date(2026, 8, 9, 12);
+  const les = (id: string, dag: number, coach: string, over: Partial<Booking> = {}): Booking => ({
+    id,
+    player_id: 'mathis',
+    coach_id: coach,
+    court_id: 'baan2',
+    start_time: new Date(2026, 8, dag, 17).toISOString(),
+    end_time: new Date(2026, 8, dag, 18).toISOString(),
+    status: 'confirmed',
+    payment_method: 'open',
+    ...over,
+  });
+
+  it('neemt alleen mee wat nog moet komen', () => {
+    const geweest = les('oud', 1, 'koen');
+    const komt = les('nieuw', 20, 'koen');
+    expect(clubAgenda([geweest, komt], null, nu).map((b) => b.id)).toEqual(['nieuw']);
+  });
+
+  it('laat geannuleerde lessen weg', () => {
+    const weg = les('weg', 20, 'koen', { status: 'cancelled' });
+    expect(clubAgenda([weg], null, nu)).toEqual([]);
+  });
+
+  it('geeft ze op tijd oplopend', () => {
+    const laat = les('laat', 25, 'koen');
+    const vroeg = les('vroeg', 20, 'koen');
+    expect(clubAgenda([laat, vroeg], null, nu).map((b) => b.id)).toEqual(['vroeg', 'laat']);
+  });
+
+  it('bakt af op één trainer als daarom gevraagd wordt', () => {
+    const vanKoen = les('k', 20, 'koen');
+    const vanJan = les('j', 21, 'jan');
+    expect(clubAgenda([vanKoen, vanJan], 'jan', nu).map((b) => b.id)).toEqual(['j']);
+  });
+
+  it('geeft alle trainers als er geen gekozen is', () => {
+    const vanKoen = les('k', 20, 'koen');
+    const vanJan = les('j', 21, 'jan');
+    expect(clubAgenda([vanKoen, vanJan], null, nu)).toHaveLength(2);
   });
 });
