@@ -121,7 +121,20 @@ Op volgorde van wat ik als eerste zou doen:
 6. **Verzetten** in plaats van annuleren en opnieuw boeken (regen, binnenbaan).
 7. **Facturen** — "Factuur" bestaat als betaalwijze, maar er komt geen document uit.
 8. **Voortgang over tijd** — ratings staan er, maar het verloop per speler is nergens te zien.
-9. **Tests op de schermen** — alle 676 tests zitten in `lib/`, geen enkele op een scherm. Twee
+9. **Lessen toewijzen aan trainers.** De beheerder bepaalt voor een aantal trainers tegelijk
+   welke les ze moeten geven. Gevraagd op 9 september 2026; nog niet ontworpen.
+
+   Wat er al ligt om op te bouwen: `lib/vervanger.ts` wijst al een vervanger aan voor
+   bestaande lessen, en `lib/lesgroepen.ts` kent het verband tussen een groep en zijn
+   trainer. Dit is dus eerder een uitbreiding van de lesgroepen dan iets nieuws.
+
+   Wat eerst beslist moet worden: gaat het om het toewijzen van een lesgroep aan een
+   trainer voor het hele seizoen, of om losse lessen per week? Wat gebeurt er met de lessen
+   die al in de agenda staan als een toewijzing verandert — schuiven die mee of blijft het
+   verleden staan? En krijgt de trainer het te zien of te bevestigen? Zolang die drie open
+   staan, valt hier niets te plannen.
+
+10. **Tests op de schermen** — alle 676 tests zitten in `lib/`, geen enkele op een scherm. Twee
    echte fouten van vandaag zaten daar: een opslagknop die op web nooit vuurde
    (`onEndEditing` bestaat niet in react-native-web) en een stijl die niet geïmporteerd was.
 
