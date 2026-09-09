@@ -171,6 +171,41 @@ SQL-editor en daarna de app hard herladen. Vóór die SQL werkt het scherm wel e
 Daarna doorlopen: materiaal doorsturen voor een groep en een periode, en met een traineraccount
 nakijken of het bij de juiste lessen staat en niet bij de andere.
 
+### 1e. Een speler ziet niet welke uren echt bezet zijn — open
+
+Gevonden op 9 september 2026, op Reserveren (`app/agenda/new.tsx`): bij een trainer stond een
+woensdag helemaal vrij terwijl er lessen op stonden.
+
+**Wat er wél opgelost is.** De uren werden berekend op de béginminuut van een les. Een les van
+een half uur (de club heeft die groepen) blokkeerde daardoor niets, en een les van anderhalf
+uur blokkeerde alleen zijn eerste uur — 16:00–17:30 liet 17:00 vrij staan. Een geannuleerde
+les hield haar uur juist voor altijd bezet. Dat rekenwerk staat nu als `bezetteSlots` in
+`lib/slots.ts`, met tests: overlap in plaats van gelijkheid, en afgezegde lessen tellen niet.
+
+**Wat er níét mee opgelost is, en het zwaarst weegt.** Het scherm kan alleen rekenen met de
+lessen die de kijker mág zien, en `bookings_select` (`supabase-schema.sql:731`) geeft een
+speler alleen zijn eigen lessen. Voor hem is de dag van elke trainer dus leeg, hoe vol die in
+werkelijkheid ook is. Hij kan een uur aanvragen dat allang bezet is; de trainer ziet de
+botsing pas als de aanvraag bij hem binnenkomt. Er is ook geen grendel in de databank: op
+`bookings` staat geen enkele unieke index of exclusion constraint op (trainer, tijd), alleen
+gewone indexen (`:88`).
+
+**Wat er intussen wél staat.** Het scherm zegt niet langer "vrij" waar het "ik weet het niet"
+bedoelt: kijk je niet in je eigen agenda en ben je geen beheerder, dan staat er onder het
+rooster dat je niet ziet wat anderen bij deze trainer boekten, en dat de trainer bij de
+aanvraag bevestigt of het uur echt vrij is. Wie dat is, beantwoordt `bezetIsVolledig` in
+`lib/slots.ts`. Die regel hoort weg zodra de echte bron er staat.
+
+Dat blokkeren zou trouwens verkeerd zijn: sinds 6 september 2026 geldt dat een overlap nooit
+blokkeert en altijd waarschuwt (zie `addBooking` in `providers/SimpleDataProvider.tsx`), want
+op Terrein 7 draait dezelfde trainer blauw en rood naast elkaar. Het gaat er dus niet om dat
+de speler tegengehouden wordt, maar dat hij ziet wat er al staat.
+
+De weg vooruit is dezelfde als bij punt 11: niet de policy verruimen — dan leest een speler
+mee met wie er bij zijn trainer les heeft — maar een eigen, smalle bron voor "welke uren zijn
+bezet". Een view of een functie die per trainer en dag alleen begin- en eindtijd teruggeeft,
+zonder namen, met een eigen select-policy.
+
 ### 2. Achterstallig klein werk
 
 - **Verwijderen in het detailblad** verschijnt alleen bij een les uit een reeks. Bij een losse

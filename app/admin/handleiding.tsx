@@ -17,22 +17,26 @@ import { Card } from '../../components/ui/Card';
 import { Chip } from '../../components/ui/Chip';
 import { Button } from '../../components/ui/Button';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { gidsVoor, gidsLabel, gidsAlsTekst } from '../../lib/handleiding';
+import { gidsVoor, gidsLabel, gidsAlsTekst, type Gidssoort } from '../../lib/handleiding';
 import { kopieerOfDeel } from '../../lib/share';
 import { isCoach } from '../../lib/rechten';
 import { useT } from '../../lib/i18n';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography } from '../../constants/theme';
-import type { Role } from '../../lib/types';
 
-const ROLLEN: Role[] = ['coach', 'player'];
+// De beheerdersgids staat erbij voor iedereen die dit scherm opent, ook voor een trainer
+// zonder het vinkje. Hij is geen geheim: er staat in wat een beheerder méér kan, en dat is
+// precies wat een trainer weleens wil weten als hij zich afvraagt waarom een tegel bij hem
+// ontbreekt. Wat hij niet mag, houdt de databank tegen — niet het verbergen van een tekst.
+const SOORTEN: Gidssoort[] = ['coach', 'player', 'admin'];
 
 export default function HandleidingScreen(): React.JSX.Element {
   const t = useT();
   const { currentUser } = useSimpleData();
-  // Je begint bij je eigen gids: dat is negen van de tien keer wat je zoekt. De andere staat
-  // ernaast, één tik ver.
-  const [rol, setRol] = useState<Role>(() => (isCoach(currentUser) ? 'coach' : 'player'));
+  // Je begint bij je eigen gids: dat is negen van de tien keer wat je zoekt. De andere staan
+  // ernaast, één tik ver. Een beheerder begint tóch bij de trainersgids — hij is in de eerste
+  // plaats trainer, en de beheerdersgids gaat alleen over wat er bovenop komt.
+  const [rol, setRol] = useState<Gidssoort>(() => (isCoach(currentUser) ? 'coach' : 'player'));
   // Wat er van de kopieerknop kwam. Verdwijnt zodra je van gids wisselt, want dan slaat hij
   // op de vorige.
   const [melding, setMelding] = useState<string | null>(null);
@@ -55,7 +59,7 @@ export default function HandleidingScreen(): React.JSX.Element {
   return (
     <Screen>
       <View style={styles.kiezer}>
-        {ROLLEN.map((r) => (
+        {SOORTEN.map((r) => (
           <Chip
             key={r}
             label={gidsLabel(r)}

@@ -1,4 +1,6 @@
 import {
+  bezetIsVolledig,
+  bezetteSlots,
   generateSlots,
   isDateBookable,
   worksOnDay,
@@ -157,5 +159,84 @@ describe('slotsStillToCome', () => {
   it('houdt niets over als de dag erop zit', () => {
     const vandaag = new Date(2026, 7, 22);
     expect(slotsStillToCome(uren, vandaag, new Date(2026, 7, 22, 23, 0))).toEqual([]);
+  });
+});
+
+describe('bezetteSlots', () => {
+  const slots = generateSlots('21:00');
+  const dag = new Date(2026, 8, 9); // woensdag 9 september 2026
+  const les = (van: string, tot: string, extra: Partial<{ coach_id: string; status: string }> = {}) => ({
+    coach_id: 'ann',
+    start_time: `2026-09-09T${van}:00`,
+    end_time: `2026-09-09T${tot}:00`,
+    status: 'confirmed' as const,
+    ...extra,
+  }) as Parameters<typeof bezetteSlots>[1][number];
+
+  it('zet het uur van een gewone les op bezet', () => {
+    expect([...bezetteSlots(slots, [les('14:00', '15:00')], 'ann', dag)]).toEqual(['14:00']);
+  });
+
+  it('blokkeert het hele uur bij een les van een half uur', () => {
+    // De club heeft groepen van dertig minuten. Vroeger blokkeerde zo'n les niets, want ze
+    // begon niet op het hele uur — en dan stond de trainer op de baan terwijl het uur vrij leek.
+    expect([...bezetteSlots(slots, [les('14:30', '15:00')], 'ann', dag)]).toEqual(['14:00']);
+  });
+
+  it('blokkeert twee uren bij een les van anderhalf uur', () => {
+    // 16:00-17:30 liet 17:00 vrij staan.
+    expect([...bezetteSlots(slots, [les('16:00', '17:30')], 'ann', dag)]).toEqual(['16:00', '17:00']);
+  });
+
+  it('laat het aansluitende uur vrij', () => {
+    // Een les tot 15:00 raakt het slot van 15:00 niet: aan elkaar grenzen is geen overlap.
+    expect(bezetteSlots(slots, [les('14:00', '15:00')], 'ann', dag).has('15:00')).toBe(false);
+  });
+
+  it('telt een geannuleerde les niet mee', () => {
+    expect(bezetteSlots(slots, [les('14:00', '15:00', { status: 'cancelled' })], 'ann', dag).size).toBe(0);
+  });
+
+  it('kijkt alleen naar de gekozen trainer', () => {
+    expect(bezetteSlots(slots, [les('14:00', '15:00', { coach_id: 'koen' })], 'ann', dag).size).toBe(0);
+  });
+
+  it('kijkt alleen naar de gekozen dag', () => {
+    expect(bezetteSlots(slots, [les('14:00', '15:00')], 'ann', new Date(2026, 8, 10)).size).toBe(0);
+  });
+
+  it('houdt een uur dicht als de eindtijd onbruikbaar is', () => {
+    // Bij twijfel liever een uur te veel dicht dan een speler op een bezette baan.
+    const kapot = { coach_id: 'ann', start_time: '2026-09-09T14:00:00', end_time: 'geen datum', status: 'confirmed' as const };
+    expect([...bezetteSlots(slots, [kapot as Parameters<typeof bezetteSlots>[1][number]], 'ann', dag)]).toEqual(['14:00']);
+  });
+});
+
+describe('bezetIsVolledig', () => {
+  const ann = { id: 'ann', is_admin: undefined };
+  const baas = { id: 'koen', is_admin: true };
+  const ouder = { id: 'wim', is_admin: undefined };
+
+  it('is waar voor een beheerder: die krijgt elke les mee', () => {
+    expect(bezetIsVolledig(baas, 'ann')).toBe(true);
+  });
+
+  it('is waar voor de trainer in zijn eigen agenda', () => {
+    expect(bezetIsVolledig(ann, 'ann')).toBe(true);
+  });
+
+  it('is onwaar voor een ouder of speler', () => {
+    // Dit is de reden dat deze functie bestaat: hij ziet alleen zijn eigen lessen, dus een
+    // volle woensdag staat er voor hem leeg bij.
+    expect(bezetIsVolledig(ouder, 'ann')).toBe(false);
+  });
+
+  it('is onwaar voor een trainer in de agenda van een collega', () => {
+    expect(bezetIsVolledig(ann, 'sanne')).toBe(false);
+  });
+
+  it('is onwaar zonder kijker of zonder gekozen trainer', () => {
+    expect(bezetIsVolledig(null, 'ann')).toBe(false);
+    expect(bezetIsVolledig(baas, null)).toBe(false);
   });
 });

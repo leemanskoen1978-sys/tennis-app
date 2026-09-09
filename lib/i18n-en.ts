@@ -1297,8 +1297,12 @@ export const EN: Record<string, string> = {
   // zinnen hier aan.
   'Handleiding': 'Manual',
   'Voor trainers en voor spelers': 'For coaches and for players',
+  'Voor trainers, spelers en beheerders': 'For coaches, players and admins',
   'Voor trainers': 'For coaches',
   'Voor spelers': 'For players',
+  'Voor beheerders': 'For admins',
+  'Wat andere spelers bij deze trainer boekten, zie je hier niet. Of een uur echt vrij is, bevestigt de trainer bij je aanvraag.':
+    'You cannot see what other players booked with this coach. Your coach confirms whether the hour is really free when you request it.',
   'Kopieer als tekst': 'Copy as text',
   'De hele gids staat op je klembord. Plak hem in een mail.':
     'The whole guide is on your clipboard. Paste it into an email.',

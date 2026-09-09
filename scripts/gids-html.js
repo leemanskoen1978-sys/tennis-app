@@ -41,6 +41,9 @@ function leesGids(naam) {
 const GIDSEN = [
   { rol: 'coach', label: 'Voor trainers', stukken: leesGids('TRAINER') },
   { rol: 'player', label: 'Voor spelers', stukken: leesGids('SPELER') },
+  // Beheerder is geen rol maar een vinkje; deze gids gaat alleen over wat dat vinkje erbij
+  // geeft en komt daarom ná die van de trainer. Zie lib/handleiding.
+  { rol: 'admin', label: 'Voor beheerders', stukken: leesGids('BEHEERDER') },
 ];
 
 const esc = (s) => String(s)
@@ -283,7 +286,7 @@ ${GIDSEN.map(gidsHtml).join('\n')}
 
     var bewaard = null;
     try { bewaard = localStorage.getItem('gids.rol'); } catch (e) { /* privévenster */ }
-    toon(bewaard === 'player' ? 'player' : 'coach');
+    toon(bewaard === 'player' || bewaard === 'admin' ? bewaard : 'coach');
 
     // De gids als platte tekst, om in een mail te plakken.
     //

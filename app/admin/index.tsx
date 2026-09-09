@@ -124,7 +124,7 @@ export default function Admin() {
         { key: 'goals', title: t('Doelen'), subtitle: t('Woordenlijst voor spelersdoelen'), icon: Target, onPress: () => router.push('/admin/goals') },
         // Ook de gids voor spelers staat erin: "wat ziet mijn speler eigenlijk" is een vraag
         // die je aan de baan krijgt, en dan wil je het kunnen laten zien.
-        { key: 'help', title: t('Handleiding'), subtitle: t('Voor trainers en voor spelers'), icon: BookOpen, onPress: () => router.push('/admin/handleiding') },
+        { key: 'help', title: t('Handleiding'), subtitle: t('Voor trainers, spelers en beheerders'), icon: BookOpen, onPress: () => router.push('/admin/handleiding') },
       ],
     },
   ];
