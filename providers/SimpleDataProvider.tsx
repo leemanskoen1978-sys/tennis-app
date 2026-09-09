@@ -30,6 +30,7 @@ import type { ImportKeuze, ImportPlanLessen, ImportUitslagLessen } from '../lib/
 import { zetAanwezigheid, magAanwezigheidZetten, bevestigAanwezigheid, magLesBevestigen, type Aanwezigheid } from '../lib/aanwezigheid';
 import { lesgeverId } from '../lib/lesgever';
 import { herstelNaVerwijdering } from '../lib/ziekmelding';
+import { claimBezwaar, teruggeefBezwaar } from '../lib/openstaand';
 import { needsApproval } from '../lib/inbox';
 import { seriesFrom } from '../lib/series';
 import { botstMet, planSeries, type OvergeslagenSlot, type RecurrenceRule } from '../lib/recurrence';
@@ -174,6 +175,21 @@ interface DataShape {
    * beslist het scherm met `planMassaVervanging`; deze functie schrijft alleen weg.
    */
   zetVervangerVoorLessen: (bookingIds: readonly string[], coachId: string) => Promise<void>;
+  /**
+   * Een trainer neemt zelf een openstaande les over: `taught_by_id` komt op hemzelf te staan.
+   *
+   * Geeft de reden terug als het niet mag, of `null` als het gelukt is. Nooit stil niets doen —
+   * twee trainers kunnen tegelijk naar dezelfde lijst kijken, en de tweede hoort te lezen dat
+   * een collega hem voor was. De beslissing zelf staat in `claimBezwaar` (lib/openstaand); hier
+   * wordt hij alleen gecommit.
+   *
+   * Raakt precies één boeking, ook als ze bij een reeks of een lesgroep hoort. Wie hier de hele
+   * reeks meeneemt, laat een half seizoen aan lessen van eigenaar wisselen voor lessen waar
+   * niemand voor uitviel — dezelfde regel als D-07 op de werklijst.
+   */
+  claimLes: (bookingId: string) => Promise<string | null>;
+  /** De trainer geeft een les die op zijn naam staat terug; zie `teruggeefBezwaar`. */
+  geefLesTerug: (bookingId: string) => Promise<string | null>;
   addBeurtenkaart: (playerId: string) => Promise<void>;
   updateBeurtenkaart: (id: string, patch: Pick<Beurtenkaart, 'remarks'>) => Promise<void>;
   /** Handmatig een beurt af- of bijboeken op het kaartscherm. */
@@ -1077,6 +1093,40 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     });
   }, [commit]);
 
+  // Claimen en teruggeven zetten hetzelfde veld als `setTaughtBy`, maar langs een eigen weg:
+  // `setTaughtBy` is de handeling van de beheerder ("ik wijs jou aan") en heeft geen bezwaar,
+  // deze twee zijn de handeling van de trainer zelf en hebben er wél een. Eén functie met een
+  // vlaggetje zou die twee regels in elkaar schuiven, en dan is niet meer te zien welke van de
+  // twee er ergens aangeroepen wordt.
+  const claimLes = useCallback(async (bookingId: string): Promise<string | null> => {
+    const store = storeRef.current;
+    if (!store || !currentUserId) return null;
+    const booking = store.bookings.find((b) => b.id === bookingId);
+    const bezwaar = claimBezwaar(booking, currentUserId, store.sickLeaves, new Date());
+    if (bezwaar !== null) return bezwaar;
+    await commit({
+      ...store,
+      bookings: store.bookings.map((b) =>
+        b.id === bookingId ? { ...b, taught_by_id: currentUserId } : b),
+    });
+    return null;
+  }, [commit, currentUserId]);
+
+  const geefLesTerug = useCallback(async (bookingId: string): Promise<string | null> => {
+    const store = storeRef.current;
+    if (!store || !currentUserId) return null;
+    const booking = store.bookings.find((b) => b.id === bookingId);
+    const bezwaar = teruggeefBezwaar(booking, currentUserId, new Date());
+    if (bezwaar !== null) return bezwaar;
+    await commit({
+      ...store,
+      bookings: store.bookings.map((b) =>
+        // Leeg is `undefined` op het type, niet `null` (D-02): zo leest `lesgeverId` het.
+        b.id === bookingId ? { ...b, taught_by_id: undefined } : b),
+    });
+    return null;
+  }, [commit, currentUserId]);
+
   const addBeurtenkaart = useCallback(async (playerId: string) => {
     const store = storeRef.current;
     if (!store) return;
@@ -1654,6 +1704,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     bevestigLes,
     setPaymentMethod,
     setTaughtBy,
+    claimLes,
+    geefLesTerug,
     zetVervangerVoorLessen,
     addBeurtenkaart,
     updateBeurtenkaart,
@@ -1694,7 +1746,8 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     addCourt, updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
     updateBooking, deleteBooking, approveBooking, rejectBooking,
     setParticipants, setPaymentSplit, setAanwezigheid, bevestigLes,
-    setPaymentMethod, setTaughtBy, zetVervangerVoorLessen, addBeurtenkaart,
+    setPaymentMethod, setTaughtBy, zetVervangerVoorLessen, claimLes, geefLesTerug,
+    addBeurtenkaart,
     updateBeurtenkaart, addCardSession, removeCardSession, deleteBeurtenkaart,
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
     vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster,

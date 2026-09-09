@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CalendarDays, ChevronRight, GraduationCap, Pencil, BookOpen, UserPlus } from 'lucide-react-native';
+import {
+  CalendarDays, CalendarSearch, ChevronRight, GraduationCap, Pencil, BookOpen, UserPlus,
+} from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -14,12 +16,17 @@ import { useT, useLanguage } from '../../lib/i18n';
 import { coachesOf } from '../../lib/hub';
 import { dossierPad } from '../../lib/dossier';
 import { useActieveSpeler } from '../../providers/kindkeuze';
+import { openstaandeLessen } from '../../lib/openstaand';
+import { openZiekmeldingen } from '../../lib/ziekmelding';
+import { isCoach } from '../../lib/rechten';
 
 export default function Coaches() {
   const t = useT();
   const lang = useLanguage();
   const router = useRouter();
-  const { currentUser, users, bookings, lessons, progress } = useSimpleData();
+  const {
+    currentUser, users, bookings, lessons, progress, sickLeaves, settings,
+  } = useSimpleData();
   const speler = useActieveSpeler();
   // Je eigen dossier: je agenda, je week en je spelers staan daar bij elkaar. Stond eerder
   // als tegel op Home, maar dat scherm droeg tegels naar plekken die ook al in de tabbalk
@@ -29,6 +36,15 @@ export default function Coaches() {
 
   const coaches = coachesOf(users)
     .sort((a, b) => a.name.localeCompare(b.name, lang));
+
+  // Alleen voor wie zelf lesgeeft. Een ouder die leest dat de les van zijn kind geen trainer
+  // heeft, belt de club over iets wat binnen het uur opgelost is.
+  const mijnOpenstaand = isCoach(currentUser)
+    ? openstaandeLessen(
+      bookings, openZiekmeldingen(sickLeaves), settings.vakanties ?? [], new Date(),
+      currentUser.id,
+    ).length
+    : 0;
 
   return (
     <Screen>
@@ -46,6 +62,26 @@ export default function Coaches() {
 
       {/* A coach's tools belong with Trainers, not as separate main entrances. */}
       <Text style={styles.section}>{t('Gereedschap')}</Text>
+      {isCoach(currentUser) && (
+        <Card
+          onPress={() => router.push('/coaches/openstaand')}
+          accessibilityLabel={t('Lessen zonder trainer')}
+          style={styles.row}
+        >
+          <View style={styles.rowContent}>
+            <View style={styles.icon}>
+              <CalendarSearch size={20} color={tennisColors.primary} />
+            </View>
+            <Text style={styles.rowLabel}>{t('Lessen zonder trainer')}</Text>
+            {/* Staat er niets open, dan staat er "geen" en verdwijnt de regel niet: een regel
+                die weggaat laat je twijfelen of je hem wel goed onthouden had. */}
+            <Text style={styles.meta}>
+              {mijnOpenstaand === 0 ? t('geen') : String(mijnOpenstaand)}
+            </Text>
+            <ChevronRight size={20} color={tennisColors.textMuted} />
+          </View>
+        </Card>
+      )}
       <Card onPress={() => router.push('/coaches/lessons')} accessibilityLabel={t('Lesmateriaal')} style={styles.row}>
         <View style={styles.rowContent}>
           <View style={styles.icon}><BookOpen size={20} color={tennisColors.primary} /></View>

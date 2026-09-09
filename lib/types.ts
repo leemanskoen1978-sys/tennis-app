@@ -193,6 +193,20 @@ export interface Booking {
    */
   cancelled_by_sick_leave?: string;
   /**
+   * Het merkteken "deze les zoekt een trainer", buiten ziekte om. Aangezet door de trainer
+   * van de les of door de beheerder, op het lesdetailblad.
+   *
+   * Het zegt niets over wie de les geeft. `coach_id` blijft van wie de les is en
+   * `taught_by_id` blijft het enige antwoord op wie er werkelijk op de baan stond — zie
+   * `lesgeverId` in lib/lesgever. Een tweede veld dat óók iets over de lesgever beweert, laat
+   * een trainer betaald worden voor een les die hij niet gaf.
+   *
+   * Leeg of afwezig is de normale toestand: elke les die niemand vrijgaf, en elke les van
+   * vóór dit veld. Of een les daarmee ook echt openstaat, beslist `staatOpen` in
+   * lib/openstaand — daar telt ook mee of er al een lesgever op staat en of de les afgezegd is.
+   */
+  zoekt_trainer?: boolean;
+  /**
    * De betaalwijze van de les. Bij een groepsles is dat altijd 'invoice': beurtenkaart en
    * sponsorbudget gelden alleen voor een privéles, en cash of QR laat zich niet over vier
    * spelers verdelen. Die regel wordt afgedwongen in `planMethodChange` (lib/beurtenkaart) —
