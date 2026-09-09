@@ -1526,8 +1526,6 @@ export const EN: Record<string, string> = {
   'Lesplanning is alleen voor de beheerder.': 'Lesson planning is for the administrator only.',
   'Kies lesmateriaal en een periode, en zeg voor wie het geldt: een trainer, een groep, of een groep bij een trainer. De trainer ziet het bij zijn les staan.':
     'Choose lesson material and a period, and say who it applies to: a coach, a group, or a group with a coach. The coach sees it with their lesson.',
-  'Er staat nog geen lesmateriaal in de bibliotheek.':
-    'There is no lesson material in the library yet.',
   'Doorsturen': 'Send on',
   'Doorgestuurd': 'Sent on',
   'Er is nog niets doorgestuurd.': 'Nothing has been sent on yet.',
@@ -1541,4 +1539,8 @@ export const EN: Record<string, string> = {
   'Zoek een groep…': 'Search for a group…',
   'Niets gevonden. Probeer een andere zoekterm.': 'Nothing found. Try a different search term.',
   'Nog {n} van de {totaal} — typ om te zoeken.': '{n} more of {totaal} — type to search.',
+  'Doorsturen naar…': 'Send on to…',
+  'Doorgestuurd: {periode} · {aanWie}': 'Sent on: {periode} · {aanWie}',
+  'Hier staat wat er aan wie is doorgestuurd, en voor welke periode. Doorsturen doe je in Lesmateriaal → Databank: zoek de training en gebruik "Doorsturen naar…".':
+    'This is what has been sent on to whom, and for which period. To send something on, go to Lesson material → Database: find the training and use "Send on to…".',
 };
