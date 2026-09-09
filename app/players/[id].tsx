@@ -40,8 +40,7 @@ import {
 import { formatUren, weekAgenda, weekMinuten, weekPeriod } from '../../lib/week';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
-import type { GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
-import type { Booking } from '../../lib/types';
+import type { Booking, GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
 import { isCoach, magContactZien, rolLabel } from '../../lib/rechten';
 
