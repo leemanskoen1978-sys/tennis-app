@@ -17,7 +17,7 @@ import {
 import { tennisColors } from '../../constants/tennis-colors';
 import { radius, minTapTarget, spacing, typography, webCursor } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
-import { isCoach, magContactZien } from '../../lib/rechten';
+import { isAdmin, isCoach, magContactZien } from '../../lib/rechten';
 import { playersOf } from '../../lib/hub';
 import { lessenNu } from '../../lib/afvinken';
 import { formatTimeRange } from '../../lib/datetime';
@@ -68,8 +68,26 @@ export default function Players() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [players, currentUser?.id, bookings, lessons, progress]);
 
-  // Een speler of ouder heeft geen "mijn spelers": voor hem is dit gewoon de ledenlijst.
-  const shown = coach ? scoped[scope] : scoped.all;
+  // Deze lijst is trainerswerk. Er staat voor een speler geen tab naartoe, maar het pad
+  // werkte wel, en dan las hij van elk van de 555 leden wanneer het weer les heeft en
+  // hoeveel er over hem genoteerd staat — plus een weg naar elk dossier. Dat is precies wat
+  // `magDossierZien` bij het dossier zelf tegenhoudt; hier hoort de deur dus ook dicht.
+  //
+  // Het is bewust geen `magDossierZien`: die vraag gaat over één lid, en deze over de hele
+  // club. Dezelfde grens als `magClubcijfersZien`, alleen dan met de trainer erbij — hij
+  // moet zijn eigen spelers kunnen opzoeken.
+  //
+  // Onder de hooks, niet erboven: React telt ze per beurt en een return ertussen laat die
+  // telling verspringen.
+  if (!coach && !isAdmin(currentUser)) {
+    return (
+      <Screen scroll={false}>
+        <Text style={styles.muted}>{t('De spelerslijst is alleen voor trainers.')}</Text>
+      </Screen>
+    );
+  }
+
+  const shown = scoped[scope];
   const visible = searchPlayers(shown, query);
 
   return (

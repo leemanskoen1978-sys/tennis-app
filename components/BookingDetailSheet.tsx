@@ -43,7 +43,7 @@ import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography, minTapTarget, webCursor } from '../constants/theme';
 import { playersOf } from '../lib/hub';
 import { kinderenVan } from '../lib/ouderkind';
-import { isAdmin, isCoach, magLesVerwijderen } from '../lib/rechten';
+import { isAdmin, isCoach, magDossierZien, magLesVerwijderen } from '../lib/rechten';
 
 /** De kleur bij een status; dezelfde die het maandoverzicht ooit op de kaart zette. */
 const STATUS_COLORS: Record<BookingStatus, string> = {
@@ -262,6 +262,41 @@ export function BookingDetailSheet({
     router.push(path);
   };
 
+  /**
+   * Eén naam in dit blad: de betaler, of iemand die meespeelt.
+   *
+   * Klikt door naar zijn dossier — een les is het raakpunt van Spelers en Trainers, dus dit
+   * is de natuurlijke sprong tussen die twee delen — maar alleen voor wie dat dossier mag
+   * openen. Voor de rest blijft het dezelfde regel met hetzelfde bedrag, zonder chevron en
+   * zonder tik.
+   *
+   * De naam zelf blijft dus staan, ook voor een medespeler. Je hoort te weten met wie je op
+   * de baan staat, en namen zijn in de club sowieso zichtbaar; het is het dossier eronder —
+   * adres, nummer, doelen, voortgangsnotities — dat niet van jou is. Zie `magDossierZien`.
+   */
+  const partijRegel = (id: string, tekst: string, label: string): React.JSX.Element => {
+    const mag = magDossierZien(currentUser, users.find((u) => u.id === id), relaties);
+    if (!mag) {
+      return (
+        <View key={id} style={styles.partyLine}>
+          <Text style={styles.partyName}>{tekst}</Text>
+        </View>
+      );
+    }
+    return (
+      <Pressable
+        key={id}
+        onPress={() => goTo(`/players/${id}`)}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        style={[styles.partyLine, webCursor]}
+      >
+        <Text style={styles.partyLink}>{tekst}</Text>
+        <ChevronRight size={16} color={tennisColors.textMuted} />
+      </Pressable>
+    );
+  };
+
   const pickMethod = async (method: PaymentMethod): Promise<void> => {
     clearError();
     try {
@@ -294,37 +329,22 @@ export function BookingDetailSheet({
           </Text>
         ) : null}
 
-        {/* Beide namen klikken door: een les is het raakpunt van Spelers en Trainers,
-            dus dit is de natuurlijke sprong tussen die twee delen. */}
-        <Pressable
-          onPress={() => goTo(`/players/${booking.player_id}`)}
-          accessibilityRole="button"
-          accessibilityLabel={t('Open dossier van {naam}', { naam: playerName })}
-          style={[styles.partyLine, webCursor]}
-        >
-          <Text style={styles.partyLink}>
-            {isGroup ? t('Betaalt') : t('Speler')}: {playerName}
-            {isGroup ? ` · € ${formatEuro(amountOf(booking.player_id) ?? 0)}` : ''}
-          </Text>
-          <ChevronRight size={16} color={tennisColors.textMuted} />
-        </Pressable>
+        {/* De naam van de trainer klikt altijd door; die van een speler alleen voor wie
+            zijn dossier mag openen — een les is het raakpunt van Spelers en Trainers, maar
+            een medespeler is geen reden om in andermans dossier te mogen. */}
+        {partijRegel(
+          booking.player_id,
+          `${isGroup ? t('Betaalt') : t('Speler')}: ${playerName}`
+            + (isGroup ? ` · € ${formatEuro(amountOf(booking.player_id) ?? 0)}` : ''),
+          t('Open dossier van {naam}', { naam: playerName }),
+        )}
         {isGroup ? (
           <>
             <Text style={styles.label}>{t('Medespelers')}</Text>
-            {participantIdsOf(booking).map((id) => (
-              <Pressable
-                key={id}
-                onPress={() => goTo(`/players/${id}`)}
-                accessibilityRole="button"
-                accessibilityLabel={t('Open dossier van {naam}', { naam: nameOf(id) })}
-                style={[styles.partyLine, webCursor]}
-              >
-                <Text style={styles.partyLink}>
-                  {nameOf(id)}
-                  {amountOf(id) !== null ? ` · € ${formatEuro(amountOf(id) as number)}` : ''}
-                </Text>
-                <ChevronRight size={16} color={tennisColors.textMuted} />
-              </Pressable>
+            {participantIdsOf(booking).map((id) => partijRegel(
+              id,
+              nameOf(id) + (amountOf(id) !== null ? ` · € ${formatEuro(amountOf(id) as number)}` : ''),
+              t('Open dossier van {naam}', { naam: nameOf(id) }),
             ))}
           </>
         ) : null}
@@ -878,6 +898,9 @@ const styles = StyleSheet.create({
   court: { ...typography.body, color: tennisColors.textMuted },
   partyLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: minTapTarget },
   partyLink: { ...typography.body, color: tennisColors.primary, fontWeight: '600' },
+  // Dezelfde regel zonder doorklik: gewone tekstkleur, want blauw en vet belooft een tik
+  // die er niet is.
+  partyName: { ...typography.body, color: tennisColors.text },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   // De badge zelf is maar ~22 px hoog; het raakvlak eromheen houdt de app-brede 44 px aan.
   paymentTap: { minHeight: minTapTarget, justifyContent: 'center' },
