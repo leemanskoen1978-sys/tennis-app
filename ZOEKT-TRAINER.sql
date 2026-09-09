@@ -9,8 +9,12 @@
 -- trainer zelf een openstaande les over, en daar hoort precies één opening bij — geen algemeen
 -- schrijfrecht op de lessen van collega's.
 --
--- Dezelfde inhoud staat in supabase-schema.sql, in de sectie "Wie gaf de les écht". Lopen die
--- twee uiteen, dan werkt de app bij de club anders dan bij een verse installatie.
+-- LET OP DE VOLGORDE. Dit hoort ná AANWEZIGHEID-VERLEDEN.sql te draaien: die herschikte dezelfde
+-- trigger, en de versie hieronder bouwt daarop verder. Andersom draaien zet die herschikking
+-- terug.
+--
+-- Dezelfde inhoud staat in supabase-schema.sql, onderaan. Lopen die twee uiteen, dan werkt de
+-- app bij de club anders dan bij een verse installatie.
 
 -- Het merkteken "deze les zoekt een trainer", buiten ziekte om — gezet door de trainer van de
 -- les of door de beheerder, op het lesdetailblad. Onwaar is de normale toestand, dus er hoeft
@@ -89,6 +93,14 @@ create policy bookings_update on bookings for update
     or (is_coach() and (taught_by_id = app_user_id() or taught_by_id is null))
   );
 
+-- Loongevoelig: wie er werkelijk lesgaf, vult de beheerder in — en sinds 9 september 2026 ook
+-- de trainer zelf, in precies twee gevallen: hij neemt een openstaande les over, of hij geeft
+-- een les die op zijn naam staat terug. Dit hoort bij bewaak_betaalvelden (dezelfde bewaking als
+-- payment_method), niet bij een nieuwe trigger ernaast (D-09). Belangrijk: dit MOET vóór de
+-- bestaande regel "de trainer van deze les mag alles" komen — die regel is precies waarom
+-- group_id destijds GEEN aanpassing nodig had (zie het commentaar boven `lesson_groups`
+-- hierboven) en waarom taught_by_id die WEL nodig heeft: ook de trainer van de les mag dit veld
+-- niet zelf zetten.
 create or replace function bewaak_betaalvelden()
 returns trigger
 language plpgsql
@@ -100,9 +112,17 @@ declare
   vandaag timestamptz;
   alleen_lesgever boolean;
 begin
+  -- Buiten een sessie om (een script, de SQL-editor) geldt deze grens niet.
   if auth.uid() is null then return new; end if;
 
-  if new.taught_by_id is distinct from old.taught_by_id and not is_admin() then
+  -- De beheerder mag alles. Hij is degene bij wie een trainer een vergissing meldt.
+  if is_admin() then return new; end if;
+
+  -- Wie de les werkelijk gaf, voedt de loonstaat; dat blijft beheerderswerk — met sinds
+  -- 9 september 2026 twee uitzonderingen die de trainer zelf mag doen: een openstaande les
+  -- overnemen, en een les die op zijn naam staat teruggeven. Zie lib/openstaand.ts, dat aan de
+  -- app-kant dezelfde twee gevallen toestaat en er een reden bij geeft.
+  if new.taught_by_id is distinct from old.taught_by_id then
     -- "Er verandert verder niets aan de rij" is het hart van deze uitzondering. Zonder die eis
     -- geeft de claimtak een trainer schrijfrecht op de hele boeking van een collega — het uur,
     -- de baan, de spelers, de betaalwijze.
@@ -121,16 +141,37 @@ begin
     ) then
       raise exception 'Alleen een beheerder kan invullen wie de les werkelijk gaf.';
     end if;
+    -- Er is verder niets veranderd (zie `alleen_lesgever`), dus de rest van deze bewaking
+    -- heeft hier niets meer te keuren.
     return new;
   end if;
 
-  if is_admin() or old.coach_id = app_user_id() then return new; end if;
+  -- "Vandaag" is een dag op de kalender hier, niet in UTC: een les van vanochtend om negen
+  -- uur hoort tot vanavond van de speler te blijven, en met de UTC-dag zou dat verschuiven.
+  vandaag := date_trunc('day', now() at time zone 'Europe/Brussels') at time zone 'Europe/Brussels';
 
+  -- De lesgever van deze les: alles mag, behalve de aanwezigheid van een oude les.
+  -- `coalesce` omdat een vervanger op de baan stond en dus afvinkt.
+  if coalesce(old.taught_by_id, old.coach_id) = app_user_id() then
+    -- `least` en niet `old.start_time`: anders verzet een trainer een oude les eerst naar
+    -- vandaag — dat mag, de aanwezigheid verandert er niet door — en herschrijft hij hem in
+    -- een tweede update alsnog. De vroegste van de twee telt.
+    if new.attendance is distinct from old.attendance
+       and least(old.start_time, new.start_time) < vandaag then
+      raise exception 'Wie er bij een les uit het verleden stond, zet de beheerder recht.';
+    end if;
+    return new;
+  end if;
+
+  -- Vanaf hier: een speler of een ouder.
   if (to_jsonb(new) - 'payment_method' - 'beurtenkaart_id' - 'attendance')
      is distinct from (to_jsonb(old) - 'payment_method' - 'beurtenkaart_id' - 'attendance') then
     raise exception 'Alleen de betaalwijze en je eigen aanwezigheid mag je zelf wijzigen.';
   end if;
 
+  -- De betaalvelden zijn van wie de rekening krijgt. Wie meespeelt maar niet betaalt, komt
+  -- sinds de aanwezigheid ook langs `bookings_update`, en die mag hier niet ineens de
+  -- betaalwijze van een ander zetten.
   if (new.payment_method is distinct from old.payment_method
       or new.beurtenkaart_id is distinct from old.beurtenkaart_id)
      and not (old.player_id = app_user_id() or is_mijn_kind(old.player_id)) then
@@ -138,10 +179,11 @@ begin
   end if;
 
   if new.attendance is distinct from old.attendance then
-    vandaag := date_trunc('day', now() at time zone 'Europe/Brussels') at time zone 'Europe/Brussels';
     if old.start_time < vandaag then
       raise exception 'Wie er bij een les uit het verleden stond, noteert de trainer.';
     end if;
+    -- Voor wie je spreekt: jezelf en je goedgekeurde kinderen. Al de rest van de lijst moet
+    -- na de wijziging nog letterlijk hetzelfde zijn.
     mijn := array(
       select coalesce(app_user_id(), '')
       union
