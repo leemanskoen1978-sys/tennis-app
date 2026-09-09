@@ -292,8 +292,29 @@ Op volgorde van wat ik als eerste zou doen:
    "Factuur" blijft bestaan als betaalwijze — het zegt hóé er betaald wordt, en dat gebeurt
    buiten deze app (zie de afspraken over geld hierboven). Er komt dus geen document uit en
    dat is de bedoeling.
-8. **Voortgang over tijd** — ratings staan er, maar het verloop per speler is nergens te zien.
-   Goedgekeurd op 10 september 2026.
+8. ~~**Voortgang over tijd**~~ — af op 10 september 2026.
+
+   De scores stonden alleen per notitie in de tijdlijn: om te zien of een speler vooruitging
+   moest je een half jaar notities naast elkaar leggen en de sterren uit je hoofd optellen. Nu
+   staat er een staafje per maand — het gemiddelde over de laatste tien maanden — bovenaan het
+   blad Lesplan & voortgang in het dossier, en bovenaan het Voortgang-scherm van de speler zelf.
+
+   Het rekenwerk staat in `lib/voortgangverloop.ts` met negentien tests, en de drie regels die
+   het draagt: **notities zonder sterren tellen niet mee** ("huiswerk meegegeven" is geen nul en
+   zou het gemiddelde omlaag trekken om een reden die niets met tennis te maken heeft), **een
+   lege maand blijft staan met `null` en niet met nul** (een score loopt van één tot vijf, dus
+   nul bestaat niet; het gat is zelf informatie), en het **gemiddelde weegt op het aantal
+   notities** en niet op de maanden — anders telt één notitie in juli even zwaar als zeven in
+   september.
+
+   Het verschil ("0,4 hoger dan bij de start") kijkt naar de eerste en de laatste maand mét
+   scores, niet naar de randen van de reeks, en staat er niet zolang er maar in één maand
+   gescoord is. Er staat bewust geen oordeel bij: wat een verschil van 0,3 betekent, is een
+   gesprek tussen trainer en speler en geen uitkomst van een som.
+
+   `components/progress/VoortgangVerloop.tsx` tekent het, met dezelfde `BarChart` als het
+   omzetverloop in Beheer → Rapport — twee grafieken die hetzelfde bedoelen horen hetzelfde
+   gelezen te worden.
 9. **Oefenstof toewijzen aan trainers.** De beheerder bepaalt voor meerdere trainers
    tegelijk welke les ze die week geven. Gevraagd en uitgevraagd op 9 september 2026,
    goedgekeurd om uit te werken op 10 september 2026.
