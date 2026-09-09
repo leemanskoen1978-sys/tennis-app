@@ -663,6 +663,39 @@ Dit getal hoort alleen te groeien met de lessen die je zelf met Klaar afsloot.
 
 ---
 
+## Wat de code-review erbij bracht
+
+Tijdens de uitvoering vond de kwaliteitscontrole drie dingen die in dit plan ontbraken. Ze
+zijn uitgevoerd in commit `c4520ca`; ze staan hier zodat het plan klopt met wat er gebouwd is.
+
+**Een vierde functie: `magLesBevestigen(booking, now)`.** De Klaar-knop had geen datumgrens.
+Het afvinkscherm toont met opzet ook lessen die nog moeten komen (het blok "Hierna", om
+alvast iemand af te melden), en zonder grens kon een trainer daar op Klaar tikken. Dan is
+"hier heeft niemand naar gekeken" voor die hele groep weg terwijl de les nog niet gebeurd
+is — precies wat het driestandenmodel moet voorkomen, en vanaf dat scherm niet meer terug
+te draaien. `magAanwezigheidZetten` had die grens al; `bevestigLes` erfde hem niet.
+
+Deze regel staat **alleen in de app** en heeft geen tegenhanger in `supabase-schema.sql`.
+Dat is een bewuste uitzondering op de huisregel in `lib/rechten.ts`. De databank laat de
+trainer van de les alles schrijven (regel 978: `if is_admin() or old.coach_id = app_user_id()
+then return new`), en dat hoort ook: dit is geen beveiligingsregel maar een zinnigheidsregel.
+De trainer mág het, we beletten alleen een handeling die niets betekent.
+
+**De uitlegzin op het scherm.** Er stond "Tik op je naam: één keer voor aanwezig, nog eens
+voor afwezig, nog eens om hem leeg te maken" — een belofte die na taak 2 niet meer klopt.
+Taak 7 vervangt hem door "Iedereen staat op aanwezig. Tik alleen wie er niet is; nog een tik
+zet hem terug."
+
+**`bevestigAanwezigheid` schreef een regel twee keer uit.** Het stond er als
+`bestaand === 'afwezig' ? 'afwezig' : 'aanwezig'`, wat opnieuw codeert dat leeg als aanwezig
+leest — terwijl de docstring van `getoondeStand` vier regels lang uitlegt waarom die regel op
+één plek hoort. Nu `uit[id] = getoondeStand(aanwezigheidVan(b, id))`. Alle vijf bestaande
+tests bleven ongewijzigd slagen, wat bewijst dat de vervanging equivalent was.
+
+Daarnaast is één commentaarregel rechtgezet die naar de verkeerde functie verwees: het
+detailblad van een les wist een aantekening niet door `null` door te geven, maar door
+opnieuw op de al gekozen stand te tikken (`uit[playerId] === waarde`).
+
 ## Wat dit plan bewust niet doet
 
 - **De Agenda-tab blijft staan**, inclusief de tegel Afvinken die nu naar `/afvinken` wijst.
