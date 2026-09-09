@@ -43,6 +43,8 @@ import { spacing, radius, typography, webCursor, minTapTarget } from '../../cons
 import type { Booking, GoalHorizon, Lesson, PaymentMethod, StudentProgress } from '../../lib/types';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
 import { isCoach, magContactZien, rolLabel } from '../../lib/rechten';
+import { icsFilename, toIcs } from '../../lib/ics';
+import { shareIcs } from '../../lib/share';
 
 /**
  * Het dossier is een kop-kaart met de speler en daaronder een raster tegels — dezelfde
@@ -99,6 +101,9 @@ export default function PlayerDossier() {
   // De periode geldt alleen voor wat geweest is. "Aankomend" is onbegrensd: je wilt niet dat
   // een les van volgende maand uit beeld valt omdat de kiezer op deze maand staat.
   const [periode, setPeriode] = useState<Period>(() => currentPeriod());
+  // Eigen state: een mislukte download is geen opslagfout, dus hij hoort niet in de globale
+  // error van de provider thuis. Zelfde keuze als op Nog te komen, waar deze knop vandaan komt.
+  const [icsFout, setIcsFout] = useState<string | null>(null);
 
   if (!player) {
     return (
@@ -137,6 +142,26 @@ export default function PlayerDossier() {
   };
   const upcoming = playerBookings.filter((b) => new Date(b.end_time).getTime() >= now)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+  /** Zijn aankomende lessen als agendabestand — precies de lijst die eronder staat. */
+  async function exporteerAgenda(): Promise<void> {
+    try {
+      // Het moment van exporteren zit in het bestand (DTSTAMP en het volgnummer), dus dat is
+      // `new Date()`: een bestand dat een uur oud zegt te zijn wint het niet van wat er al in
+      // de agenda staat.
+      await shareIcs(icsFilename(), toIcs(upcoming, {
+        users,
+        courts,
+        // Een trainer leest de naam van zijn speler in de titel, een speler die van zijn
+        // trainer — dezelfde regel als op de leskaarten.
+        viewerIsCoach: !!coach,
+      }));
+      setIcsFout(null);
+    } catch {
+      setIcsFout(t('Exporteren is niet gelukt. Probeer het opnieuw.'));
+    }
+  }
+
   const past = bookingsInPeriod(playerBookings, periode)
     .filter((b) => new Date(b.end_time).getTime() < now)
     .sort((a, b) => b.start_time.localeCompare(a.start_time));
@@ -340,6 +365,16 @@ export default function PlayerDossier() {
             {upcoming.length > 0 ? (
               <>
                 <Text style={styles.subLabel}>{t('Aankomend')}</Text>
+                {/* Boven de lijst: met een seizoen aan lessen erin scrol je anders langs
+                    tientallen regels voor je de knop ziet, en dan lijkt de export er niet te
+                    zijn. */}
+                <Button
+                  label={t('Agenda-bestand (.ics)')}
+                  variant="secondary"
+                  icon={<CalendarPlus size={16} color={tennisColors.text} />}
+                  onPress={() => { void exporteerAgenda(); }}
+                />
+                {icsFout ? <Text style={styles.icsFout}>{icsFout}</Text> : null}
                 <Card style={styles.listCard}>
                   {upcoming.map((b, i) => (
                     <Pressable
@@ -366,6 +401,16 @@ export default function PlayerDossier() {
                     </Pressable>
                   ))}
                 </Card>
+                <Text style={styles.muted}>
+                  {t('Het bestand bevat precies de lessen die je hier ziet, klaar om in '
+                    + 'Outlook, Google Agenda of Apple Agenda te openen. Exporteer je later '
+                    + 'opnieuw, dan werkt je agenda dezelfde afspraken bij in plaats van ze '
+                    + 'een tweede keer toe te voegen.')}
+                </Text>
+                <Text style={styles.muted}>
+                  {t('Een les die na je export geannuleerd wordt, verdwijnt niet vanzelf uit '
+                    + 'je agenda — die haal je daar zelf weg.')}
+                </Text>
               </>
             ) : null}
             <Text style={styles.subLabel}>{t('Geweest')}</Text>
@@ -607,6 +652,7 @@ const styles = StyleSheet.create({
   coachLink: { fontSize: 14, fontWeight: '600', color: tennisColors.primary, textDecorationLine: 'underline' },
   subLabel: { fontSize: 13, fontWeight: '700', color: tennisColors.textMuted, marginTop: spacing.sm, textTransform: 'uppercase' },
   muted: { color: tennisColors.textMuted, fontSize: 14 },
+  icsFout: { color: tennisColors.danger, fontSize: 14 },
   listCard: { gap: 0, paddingVertical: spacing.xs },
   listRow: { paddingVertical: spacing.md },
   divided: { borderTopWidth: 1, borderTopColor: tennisColors.border },
