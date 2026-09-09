@@ -1515,4 +1515,6 @@ export const EN: Record<string, string> = {
   'Vaste trainer: {naam}': 'Regular coach: {naam}',
   'Teruggeven': 'Give back',
   'geen': 'none',
+  'Deze les zoekt een trainer': 'This lesson needs a coach',
+  'Toch zelf geven': 'Teach it myself after all',
 };

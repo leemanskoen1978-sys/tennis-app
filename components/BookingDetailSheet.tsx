@@ -362,6 +362,33 @@ export function BookingDetailSheet({
           <Text style={styles.hint}>{t('Je regelt hem op de werklijst, onder Beheer bij Ziekmelding.')}</Text>
         ) : null}
 
+        {/* "Deze les zoekt een trainer": het merkteken buiten ziekte om, dat de les in de lijst
+            onder Trainers → Lessen zonder trainer zet. Alleen de trainer van de les en de
+            beheerder — bewust niet `canManage`, want dat is "de trainer die naar zijn eigen
+            agenda kijkt", en de beheerder hoort een les van een collega ook te kunnen vrijgeven
+            als die zelf niet meer aan zijn telefoon komt. De databank bewaakt dezelfde grens;
+            dit voorkomt alleen een knop die daarna geweigerd wordt.
+
+            Staat er al een lesgever op, dan is er geen knop: die les zoekt niemand meer. En bij
+            een ziekmelding staat hij er ook niet — de les staat dan al in de lijst, en een
+            merkteken dat niets verandert is een knop die de trainer één keer indrukt en daarna
+            wantrouwt. */}
+        {(isAdmin(currentUser) || booking.coach_id === currentUser?.id)
+          && !booking.taught_by_id && !isCancelled && !zoektNogIemand ? (
+            <Button
+              label={booking.zoekt_trainer === true
+                ? t('Toch zelf geven')
+                : t('Deze les zoekt een trainer')}
+              variant="secondary"
+              onPress={() => {
+                clearError();
+                void updateBooking(booking.id, {
+                  zoekt_trainer: booking.zoekt_trainer !== true,
+                });
+              }}
+            />
+          ) : null}
+
         {/* Invullen wie de les werkelijk gaf mag alleen de beheerder (D-08) — bewust niet
             `canManage`, want daar valt de trainer van de les zelf ook onder. Die grens loopt
             hier anders: dit veld beslist wie er uitbetaald wordt, dus een trainer die op zijn
