@@ -115,6 +115,19 @@ export function Lesdag({ coachId }: { coachId: string }) {
                     />
                   </View>
                 ))}
+
+                {/* Onder de namen, niet in plaats van het openklappen: de memoknoppen
+                    hierboven zijn de enige plek in de app waar een opname gemaakt kan
+                    worden, en die mogen niet onbereikbaar worden. */}
+                <Pressable
+                  onPress={() => router.push(`/afvinken?lesId=${uur.booking.id}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('Deze les afvinken')}
+                  style={[styles.afvinken, webCursor]}
+                >
+                  <Text style={styles.afvinkenTekst}>{t('Afvinken')}</Text>
+                  <ChevronRight size={18} color={tennisColors.primary} />
+                </Pressable>
               </View>
             ) : null}
           </Card>
@@ -142,6 +155,11 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   naam: { ...typography.h3, color: tennisColors.text, flexShrink: 1 },
+  afvinken: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 4, paddingVertical: spacing.sm, marginTop: spacing.xs,
+  },
+  afvinkenTekst: { fontSize: 14, fontWeight: '700', color: tennisColors.primary },
   werk: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: spacing.sm, paddingHorizontal: spacing.md,

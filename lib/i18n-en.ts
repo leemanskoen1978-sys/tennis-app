@@ -727,6 +727,7 @@ export const EN: Record<string, string> = {
     'Tapping the same button again clears the note.',
   'Nog niet afgevinkt': 'Not ticked off yet',
   'Afvinken': 'Roll call',
+  'Deze les afvinken': 'Check off this lesson',
   'Wie is er? Bij het begin van de les': 'Who is here? At the start of the lesson',
   'Nu: {tijd} · geef je gsm door': 'Now: {tijd} · pass your phone around',
   'Afvinken doet de trainer van de les.': 'The coach of the lesson does the roll call.',
