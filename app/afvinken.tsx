@@ -23,20 +23,20 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Check, X, Circle, ArrowLeft } from 'lucide-react-native';
 
-import { Screen } from '../../components/ui/Screen';
-import { Chip } from '../../components/ui/Chip';
-import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { komendeLessen, lessenNu, toonDagErbij } from '../../lib/afvinken';
+import { Screen } from '../components/ui/Screen';
+import { Chip } from '../components/ui/Chip';
+import { useSimpleData } from '../providers/SimpleDataProvider';
+import { komendeLessen, lessenNu, toonDagErbij } from '../lib/afvinken';
 import {
   aanwezigheidRegel, aanwezigheidVan, volgendeStand, type Aanwezigheid,
-} from '../../lib/aanwezigheid';
-import { groupSize, groupSizeLabel, lessonPlayerIds } from '../../lib/groups';
-import { formatDayTimeRange, formatTimeRange } from '../../lib/datetime';
-import type { Booking } from '../../lib/types';
-import { isCoach } from '../../lib/rechten';
-import { tennisColors } from '../../constants/tennis-colors';
-import { radius, spacing, typography, minTapTarget, webCursor, noSelect } from '../../constants/theme';
-import { useT } from '../../lib/i18n';
+} from '../lib/aanwezigheid';
+import { groupSize, groupSizeLabel, lessonPlayerIds } from '../lib/groups';
+import { formatDayTimeRange, formatTimeRange } from '../lib/datetime';
+import type { Booking } from '../lib/types';
+import { isCoach } from '../lib/rechten';
+import { tennisColors } from '../constants/tennis-colors';
+import { radius, spacing, typography, minTapTarget, webCursor, noSelect } from '../constants/theme';
+import { useT } from '../lib/i18n';
 
 export default function AfvinkenScreen(): React.JSX.Element {
   const t = useT();
@@ -89,13 +89,13 @@ export default function AfvinkenScreen(): React.JSX.Element {
     [les, users],
   );
 
-  const sluiten = (): void => router.replace('/agenda');
+  const sluiten = (): void => router.replace('/');
 
   if (!coach) {
     // Een speler of ouder hoort hier niet: afvinken doet de trainer die erbij stond.
     return (
       <Screen>
-        <Terug label={t('Terug naar de agenda')} onPress={sluiten} />
+        <Terug label={t('Terug naar het begin')} onPress={sluiten} />
         <Text style={styles.leeg}>{t('Afvinken doet de trainer van de les.')}</Text>
       </Screen>
     );
@@ -103,7 +103,7 @@ export default function AfvinkenScreen(): React.JSX.Element {
 
   return (
     <Screen>
-      <Terug label={t('Terug naar de agenda')} onPress={sluiten} />
+      <Terug label={t('Terug naar het begin')} onPress={sluiten} />
 
       {les ? (
         <>
