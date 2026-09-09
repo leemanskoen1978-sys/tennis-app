@@ -12,6 +12,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } fr
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { formatDay, formatTime, formatTimeRange } from '../lib/datetime';
 import { groupSize, shortGroupLabel } from '../lib/groups';
+import { groepskleur } from '../lib/groepskleur';
 import { isCoach } from '../lib/rechten';
 import { isAwaitingApproval } from '../lib/inbox';
 import { formatUren, type Blok, type Rooster } from '../lib/week';
@@ -52,7 +53,7 @@ export function WeekRaster({
   onBookingPress: (booking: Booking) => void;
 }): React.JSX.Element {
   const t = useT();
-  const { currentUser, users, courts, settings } = useSimpleData();
+  const { currentUser, users, courts, settings, lesGroepen } = useSimpleData();
   // De clubkalender: op een gesloten dag hoort het raster niet te doen alsof er uren vrij zijn.
   const vakanties = settings.vakanties ?? [];
   const { width } = useWindowDimensions();
@@ -152,6 +153,13 @@ export function WeekRaster({
                   const ander = isCoach(currentUser)
                     ? shortGroupLabel(nameOf(b.player_id), groupSize(b))
                     : nameOf(b.coach_id);
+                  // De kleur van de groep waar deze les bij hoort. Ze gaat naar het randje
+                  // links, want in een raster vol kleine blokken is dát wat je van een
+                  // afstand ziet — en er is in zo'n blok geen plek voor nog een woord.
+                  const groep = b.group_id
+                    ? lesGroepen.find((g) => g.id === b.group_id) ?? null
+                    : null;
+                  const kleur = groepskleur(groep?.level, groep?.name);
                   return (
                     <Pressable
                       key={b.id}
@@ -165,8 +173,12 @@ export function WeekRaster({
                       style={[
                         styles.blok,
                         plaats(blok) as object,
+                        // De kleur van de groep, als ze er een heeft. Zonder groep blijft het
+                        // groen van het huis staan.
+                        kleur ? { borderLeftColor: kleur.lijnHex } : null,
                         // Zolang de trainer niet beslist heeft, is dát het enige wat er
-                        // over deze les te zeggen valt — dus krijgt hij de kleur ervan.
+                        // over deze les te zeggen valt — dus krijgt hij de kleur ervan, en
+                        // gaat hij vóór de kleur van de groep. Daarom staat hij hieronder.
                         isAwaitingApproval(b) && styles.blokWacht,
                       ]}
                     >

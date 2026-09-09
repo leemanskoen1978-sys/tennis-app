@@ -23,6 +23,15 @@ describe('kleurIn', () => {
 
   it('geeft een kleur om mee te tekenen', () => {
     expect(kleurIn('blauw')?.hex).toMatch(/^#[0-9A-F]{6}$/i);
+    expect(kleurIn('blauw')?.lijnHex).toMatch(/^#[0-9A-F]{6}$/i);
+  });
+
+  it('tekent een lijn in dezelfde kleur als het vlak, behalve bij wit', () => {
+    // Het bolletje mag echt wit zijn, want het heeft een rand. Een streep van drie pixels
+    // op een witte kaart heeft die niet en zou verdwijnen.
+    expect(kleurIn('rood')?.lijnHex).toBe(kleurIn('rood')?.hex);
+    expect(kleurIn('wit')?.hex).toBe('#FFFFFF');
+    expect(kleurIn('wit')?.lijnHex).not.toBe('#FFFFFF');
   });
 
   it('zegt niets bij een tekst zonder kleur', () => {

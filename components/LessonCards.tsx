@@ -8,6 +8,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { BookingDetailSheet, paymentLabelFor } from './BookingDetailSheet';
 import { Badge } from './ui/Badge';
 import { Card } from './ui/Card';
+import { GroepStip } from './ui/GroepStip';
 import { useIsWide } from './ui/Screen';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { formatDay, formatTimeRange } from '../lib/datetime';
@@ -32,7 +33,9 @@ export function LessonCards({
   empty: string;
 }): React.JSX.Element {
   const t = useT();
-  const { currentUser, users, courts, beurtenkaarten, sickLeaves, clearError } = useSimpleData();
+  const {
+    currentUser, users, courts, beurtenkaarten, sickLeaves, lesGroepen, clearError,
+  } = useSimpleData();
   // Een trainer die naar zijn eigen kind kijkt, leest mee als ouder: hij ziet de les, maar
   // niet de knoppen waarmee een trainer hem verzet of annuleert.
   const { kijktNaarZichzelf } = useKindkeuze();
@@ -76,6 +79,9 @@ export function LessonCards({
             : booking.taught_by_id
               ? `${nameOf(booking.coach_id)} (${t('vervangen')})`
               : nameOf(booking.coach_id);
+          const groep = booking.group_id
+            ? lesGroepen.find((g) => g.id === booking.group_id) ?? null
+            : null;
           return (
             <View key={booking.id} style={isWide ? styles.cell : undefined}>
               <Card
@@ -91,6 +97,9 @@ export function LessonCards({
                 <Text style={styles.cardCourt}>
                   {formatDay(booking.start_time)} · {courtName(booking.court_id)}
                 </Text>
+                {/* Bij welke groep de les hoort, met haar kleur ervoor — dezelfde stip als op
+                    Home en in het detailblad dat deze kaart opent. */}
+                <GroepStip niveau={groep?.level} naam={groep?.name} />
                 <View style={styles.badgeRow}>
                   {/* Een les waarvan de trainer ziek is en die nog geen vervanger heeft,
                       blijft hier zichtbaar gemarkeerd staan tot hij geregeld of afgezegd is

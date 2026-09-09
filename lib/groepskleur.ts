@@ -28,7 +28,7 @@
  * Wit is de uitzondering die geen tint heeft: dat bolletje bestaat alleen dankzij zijn rand
  * (zie `components/ui/GroepStip`), want wit op een witte kaart is geen bolletje.
  */
-const KLEUREN: ReadonlyArray<readonly [RegExp, string, string]> = [
+const KLEUREN: ReadonlyArray<readonly [RegExp, string, string, string?]> = [
   // De patronen vangen de verbogen vormen mee: "rode groep", "witte les", "gele kaart".
   [/\brood\b|\brode\b/i, 'rood', '#D33A2C'],
   [/\boranje\b/i, 'oranje', '#E07B2A'],
@@ -40,15 +40,26 @@ const KLEUREN: ReadonlyArray<readonly [RegExp, string, string]> = [
   [/\bzwart(e)?\b/i, 'zwart', '#2B2B2B'],
   // Wit staat achteraan met opzet: een groep die zowel een echte kleur als het woord wit
   // draagt ("Wit-Rood") bedoelt die andere kleur.
-  [/\bwit(te)?\b/i, 'wit', '#FFFFFF'],
+  //
+  // En wit is de enige met een tweede waarde. Een bolletje mag echt wit zijn — het heeft zijn
+  // rand — maar een streep van drie pixels op een witte kaart heeft die niet en verdwijnt dan
+  // gewoon. Daar staat een grijs dat als "wit" leest naast blauw en rood, in plaats van een
+  // les die er als enige geen kleur lijkt te hebben.
+  [/\bwit(te)?\b/i, 'wit', '#FFFFFF', '#B7BDB0'],
 ];
 
 /** De kleur van een lesgroep: hoe hij heet en hoe hij eruitziet. */
 export interface Groepskleur {
   /** De kleurnaam zoals wij hem kennen, altijd in kleine letters: "blauw". */
   naam: string;
-  /** De kleur om mee te tekenen. */
+  /** De kleur om een vlak mee te vullen dat zelf een rand heeft — het bolletje. */
   hex: string;
+  /**
+   * Dezelfde kleur om een lijn mee te trekken die géén rand heeft: het randje links van een
+   * blok in het weekraster. Voor elke kleur is dat `hex`; alleen wit wijkt af, want wit op
+   * een witte kaart is geen lijn.
+   */
+  lijnHex: string;
 }
 
 /**
@@ -63,8 +74,8 @@ export interface Groepskleur {
  */
 export function kleurIn(tekst: string | null | undefined): Groepskleur | null {
   if (!tekst) return null;
-  for (const [patroon, naam, hex] of KLEUREN) {
-    if (patroon.test(tekst)) return { naam, hex };
+  for (const [patroon, naam, hex, lijnHex] of KLEUREN) {
+    if (patroon.test(tekst)) return { naam, hex, lijnHex: lijnHex ?? hex };
   }
   return null;
 }
