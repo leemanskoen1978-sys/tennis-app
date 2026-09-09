@@ -1,6 +1,7 @@
 import {
   bezetIsVolledig,
   bezetteSlots,
+  bezetteSlotsUit,
   generateSlots,
   isDateBookable,
   worksOnDay,
@@ -238,5 +239,49 @@ describe('bezetIsVolledig', () => {
   it('is onwaar zonder kijker of zonder gekozen trainer', () => {
     expect(bezetIsVolledig(null, 'ann')).toBe(false);
     expect(bezetIsVolledig(baas, null)).toBe(false);
+  });
+});
+
+describe('bezetteSlotsUit', () => {
+  const slots = generateSlots('21:00');
+  const dag = new Date(2026, 8, 9);
+
+  // Zo komen ze uit `bezette_uren` in de databank: twee tijdstippen, geen trainer, geen
+  // status, geen naam. Zie BEZETTE-UREN.sql.
+  const uur = (van: string, tot: string) => ({
+    start_time: `2026-09-09T${van}:00`,
+    end_time: `2026-09-09T${tot}:00`,
+  });
+
+  it('rekent hetzelfde als op boekingen', () => {
+    // Dezelfde les, de ene keer als boeking en de andere als kaal tijdvak: een speler hoort
+    // op Reserveren hetzelfde uur bezet te zien als zijn trainer.
+    const alsBoeking = bezetteSlots(
+      slots,
+      [{
+        coach_id: 'ann',
+        start_time: '2026-09-09T16:00:00',
+        end_time: '2026-09-09T17:30:00',
+        status: 'confirmed',
+      }] as Parameters<typeof bezetteSlots>[1],
+      'ann',
+      dag,
+    );
+    expect([...bezetteSlotsUit(slots, [uur('16:00', '17:30')], dag)]).toEqual([...alsBoeking]);
+  });
+
+  it('telt meer dan één tijdvak bij elkaar op', () => {
+    expect([...bezetteSlotsUit(slots, [uur('09:00', '10:00'), uur('14:30', '15:00')], dag)])
+      .toEqual(['09:00', '14:00']);
+  });
+
+  it('houdt niets bezet bij een lege lijst', () => {
+    // Leeg betekent hier écht leeg: de databank heeft geantwoord en er staat niets. Het
+    // scherm maakt zelf het onderscheid met "niet opgehaald" — dat is daar `null`.
+    expect(bezetteSlotsUit(slots, [], dag).size).toBe(0);
+  });
+
+  it('kijkt alleen naar de gekozen dag', () => {
+    expect(bezetteSlotsUit(slots, [uur('14:00', '15:00')], new Date(2026, 8, 10)).size).toBe(0);
   });
 });

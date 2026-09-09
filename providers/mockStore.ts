@@ -2,8 +2,8 @@
 // Same shape the Supabase layer will later return, so screens don't change.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {
-  Beurtenkaart, Booking, Court, LesGroep, Lesplanning, Lesson, Memo, OuderKind, PlayerGoal,
-  SickLeave, StudentProgress, User, Settings,
+  BezetUur, Beurtenkaart, Booking, Court, LesGroep, Lesplanning, Lesson, Memo, OuderKind,
+  PlayerGoal, SickLeave, StudentProgress, User, Settings,
 } from '../lib/types';
 import {
   seedUsers, seedCourts, seedBookings, seedLessons, seedProgress, seedRelaties,
@@ -134,4 +134,41 @@ export async function resetStore(): Promise<StoreData> {
   const seeded = withCatalogues(freshSeed());
   await saveStore(seeded);
   return seeded;
+}
+
+/**
+ * De bezette uren van één trainer, uit de opslag van dit toestel.
+ *
+ * Op de lokale opslag is er geen grens tussen wat je mag zien en wat er is: alles staat in
+ * deze browser en het is allemaal van jou. Deze functie kan de vraag dus gewoon beantwoorden,
+ * en dat is de bedoeling — Reserveren hoort in een demo net zo goed te werken als op de
+ * databank, en met dezelfde uitkomst.
+ *
+ * Waarom hij er dan überhaupt is, terwijl de app de lessen hier toch al heeft: zodat het
+ * scherm één weg heeft naar het antwoord in plaats van twee. Zonder deze zou Reserveren
+ * moeten weten welke opslag eronder zit, en dat is precies wat providers/backend voorkomt.
+ */
+export async function bezetteUrenLokaal(
+  coachId: string,
+  van: Date,
+  tot: Date,
+): Promise<BezetUur[]> {
+  const store = await loadStore();
+  const vanMs = van.getTime();
+  const totMs = tot.getTime();
+
+  return store.bookings
+    .filter((b) => {
+      if (b.coach_id !== coachId) return false;
+      // Zelfde regel als in de databank (BEZETTE-UREN.sql) en in lib/slots: een afgezegde
+      // les houdt geen uur meer bezet.
+      if (b.status === 'cancelled') return false;
+      const start = new Date(b.start_time).getTime();
+      const eind = new Date(b.end_time).getTime();
+      if (!Number.isFinite(start) || !Number.isFinite(eind)) return false;
+      // Overlap met het venster, niet "begint erin".
+      return start < totMs && eind > vanMs;
+    })
+    .map((b) => ({ start_time: b.start_time, end_time: b.end_time }))
+    .sort((a, b) => a.start_time.localeCompare(b.start_time));
 }

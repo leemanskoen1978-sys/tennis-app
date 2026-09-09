@@ -684,3 +684,17 @@ export interface LesGroep {
   archived: boolean;
   created_at?: string;
 }
+
+/**
+ * Eén bezet uur bij een trainer: alleen wannéér, nooit wie of wat.
+ *
+ * Dit is geen boeking en het hoort er ook niet op te lijken. Het komt uit de functie
+ * `bezette_uren` in de databank (zie BEZETTE-UREN.sql), die met opzet niets anders teruggeeft
+ * dan twee tijdstippen: een speler moet kunnen zien wanneer zijn trainer bezet is zonder te
+ * lezen wie er dan les heeft. Zou hier ooit een naam of een id bij komen, dan is dat precies
+ * het lek dat die functie bestaat om dicht te houden.
+ */
+export interface BezetUur {
+  start_time: string;
+  end_time: string;
+}

@@ -574,6 +574,10 @@ const SPELER: Gidsstuk[] = [
           'Kies een trainer, een dag, een uur en een baan. Je aanvraag krijgt de stand "wacht '
           + 'op goedkeuring" en het uur blijft ondertussen voor je vrijgehouden — niemand kan '
           + 'hem intussen inpikken.',
+          'Een uur dat "bezet" zegt, is bezet: je ziet de drukte van je trainer, ook van '
+          + 'lessen die niet van jou zijn. Wie daar dan les heeft, zie je niet — dat gaat je '
+          + 'niet aan. Staat er onder het rooster een regel dat je het niet ziet, dan kan de '
+          + 'app het die dag niet nagaan en bevestigt je trainer het bij je aanvraag.',
         ],
       },
       {

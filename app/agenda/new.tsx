@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View, Text, Pressable, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { RefreshCw } from 'lucide-react-native';
@@ -11,7 +11,8 @@ import {
 } from '../../constants/theme';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
 import {
-  bezetIsVolledig, bezetteSlots, generateSlots, isDateBookable, slotsStillToCome, worksOnDay,
+  bezetIsVolledig, bezetteSlots, bezetteSlotsUit, generateSlots, isDateBookable,
+  slotsStillToCome, worksOnDay,
   formatWorkingDays, bookingDays, DAGEN_TERUG, DAGEN_VOORUIT, DAY_LABELS,
 } from '../../lib/slots';
 import { Screen } from '../../components/ui/Screen';
@@ -24,13 +25,15 @@ import { useT } from '../../lib/i18n';
 import { shortMonthName } from '../../lib/period';
 import { vakantieOp } from '../../lib/vakanties';
 import { slotsOp, urenOp, boekbaarOp } from '../../lib/boekingstijd';
-import type { User } from '../../lib/types';
+import type { BezetUur, User } from '../../lib/types';
 import { isCoach } from '../../lib/rechten';
 import { coachesOf, playersOf } from '../../lib/hub';
 
 export default function HomeScreen(): JSX.Element {
   const t = useT();
-  const { currentUser, courts, bookings, users, settings, refresh } = useSimpleData();
+  const {
+    currentUser, courts, bookings, users, settings, refresh, laadBezetteUren,
+  } = useSimpleData();
   // Prefilled when you arrive from a player's dossier.
   const { playerId } = useLocalSearchParams<{ playerId?: string }>();
   const coach = isCoach(currentUser);
@@ -116,21 +119,61 @@ export default function HomeScreen(): JSX.Element {
   const vakanties = settings.vakanties ?? [];
   const vakantieVandaag = selectedDate ? vakantieOp(vakanties, selectedDate) : null;
 
-  // Welke uren al bezet zijn bij de trainer die geboekt wordt. Geen terugval op coaches[0]:
-  // zonder een gekozen trainer valt er toch niets te boeken.
-  //
-  // Het rekenwerk staat in lib/slots (`bezetteSlots`) en niet hier: het keek vroeger alleen
-  // naar het beginuur, waardoor een les van een half uur niets blokkeerde en een les van
-  // anderhalf uur maar één uur. Zulke fouten zie je niet aan het scherm — je ziet "vrij"
-  // staan — dus horen ze in een functie met testen ernaast.
-  const takenSlots: Set<string> = useMemo(() => {
-    if (selectedDate === null || bookingCoachId === null) return new Set<string>();
-    return bezetteSlots(slots, bookings, bookingCoachId, selectedDate);
-  }, [slots, bookings, selectedDate, bookingCoachId]);
-
   // Krijg je van deze trainer élke les te zien, of maar een deel? Bepaalt of "vrij" hier iets
   // belooft dat het scherm kan waarmaken. Zie de regel onder het rooster.
   const alleLessenZichtbaar = bezetIsVolledig(currentUser, bookingCoachId);
+
+  // Wat de databank zegt over de drukte van deze trainer op deze dag: alleen tijdstippen,
+  // geen namen (zie BEZETTE-UREN.sql). `null` = nog niet opgehaald, of deze club heeft die
+  // bron niet — en dat is iets anders dan "er staat niets".
+  const [bezetteUren, setBezetteUren] = useState<BezetUur[] | null>(null);
+
+  // Ophalen zodra je een trainer én een dag hebt gekozen, en alleen voor die ene dag: het
+  // gaat om het rooster van de hele club, dus je vraagt wat je nodig hebt en niet meer.
+  //
+  // Krijg je toch al elke les van deze trainer te zien (je eigen agenda, of je bent
+  // beheerder), dan hoeft dit niet: dan staat het antwoord al in `bookings`.
+  useEffect(() => {
+    if (selectedDate === null || bookingCoachId === null || alleLessenZichtbaar) {
+      setBezetteUren(null);
+      return;
+    }
+    // Een dag loopt van middernacht tot middernacht op de klok van hier, niet in UTC — zelfde
+    // lezing als overal elders in deze app.
+    const van = new Date(
+      selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(),
+    );
+    const tot = new Date(van);
+    tot.setDate(tot.getDate() + 1);
+
+    // Wissel je van dag terwijl het vorige antwoord nog onderweg is, dan hoort dat antwoord
+    // niet meer op het scherm te komen.
+    let geldig = true;
+    void laadBezetteUren(bookingCoachId, van, tot).then((uren) => {
+      if (geldig) setBezetteUren(uren);
+    });
+    return () => { geldig = false; };
+  }, [laadBezetteUren, bookingCoachId, selectedDate, alleLessenZichtbaar]);
+
+  // Welke uren al bezet zijn bij de trainer die geboekt wordt. Geen terugval op coaches[0]:
+  // zonder een gekozen trainer valt er toch niets te boeken.
+  //
+  // Twee bronnen, dezelfde rekenregel (lib/slots): de lessen die dit toestel toch al heeft, en
+  // wat de databank over de drukte van deze trainer zegt. Ze worden samengevoegd en niet
+  // vervangen — de eerste kent lessen van vandaag die net geboekt zijn en nog niet opgehaald,
+  // de tweede kent de lessen van andere spelers. Bezet is bezet, uit welke van de twee ook.
+  //
+  // Het rekenwerk staat niet hier: het keek vroeger alleen naar het beginuur, waardoor een les
+  // van een half uur niets blokkeerde en een les van anderhalf uur maar één uur. Zulke fouten
+  // zie je niet aan het scherm — je ziet "vrij" staan — dus horen ze in een functie met testen
+  // ernaast.
+  const takenSlots: Set<string> = useMemo(() => {
+    if (selectedDate === null || bookingCoachId === null) return new Set<string>();
+    const uitLessen = bezetteSlots(slots, bookings, bookingCoachId, selectedDate);
+    if (bezetteUren === null) return uitLessen;
+    return new Set([...uitLessen, ...bezetteSlotsUit(slots, bezetteUren, selectedDate)]);
+  }, [slots, bookings, bezetteUren, selectedDate, bookingCoachId]);
+
 
   function openSlot(slot: string): void {
     setSelectedSlot(slot);
@@ -348,21 +391,25 @@ export default function HomeScreen(): JSX.Element {
 
       {/* Wat dit scherm níét weet, en dat hoort erbij te staan.
 
-          De databank geeft je alleen de lessen die van jou zijn (`bookings_select`): je eigen
-          lessen en die van je kind. Van wat andere spelers bij deze trainer boekten, weet dit
-          scherm dus niets — en dan staat er "vrij" waar het "ik weet het niet" bedoelt. Een
+          `bookings_select` geeft je alleen de lessen die van jou zijn: je eigen lessen en die
+          van je kind. Van wat andere spelers bij deze trainer boekten, weet dit scherm uit
+          zichzelf niets — en dan staat er "vrij" waar het "ik weet het niet" bedoelt. Een
           ouder zag zo een woensdag helemaal open staan terwijl die vol zat.
 
-          Alleen als je de hele agenda te zien krijgt (je eigen agenda, of je bent beheerder)
-          klopt "vrij" ook echt; zie `bezetIsVolledig`. Dit is een tussenoplossing: de echte
-          is een smalle bron die per trainer en dag alleen begin- en eindtijd teruggeeft,
-          zonder namen. Zie OPENSTAAND.md punt 1e — en haal deze regel weg zodra die er is. */}
-      {selectedDate !== null && bookingCoachId !== null && !alleLessenZichtbaar ? (
-        <Text style={styles.hint}>
-          {t('Wat andere spelers bij deze trainer boekten, zie je hier niet. Of een uur echt '
-            + 'vrij is, bevestigt de trainer bij je aanvraag.')}
-        </Text>
-      ) : null}
+          Daar is `bezette_uren` voor (BEZETTE-UREN.sql): die geeft de drukte van een trainer
+          zonder de namen erbij. Kwam dat antwoord binnen, dan klopt "vrij" en hoort hier
+          niets te staan. Bleef het uit — de club draaide dat bestand nog niet, of het ophalen
+          mislukte — dan is de oude toestand terug en zegt het scherm dat eerlijk.
+
+          Wie zijn agenda toch al helemaal ziet (je eigen agenda, of je bent beheerder) heeft
+          die bron niet nodig; zie `bezetIsVolledig`. */}
+      {selectedDate !== null && bookingCoachId !== null
+        && !alleLessenZichtbaar && bezetteUren === null ? (
+          <Text style={styles.hint}>
+            {t('Wat andere spelers bij deze trainer boekten, zie je hier niet. Of een uur echt '
+              + 'vrij is, bevestigt de trainer bij je aanvraag.')}
+          </Text>
+        ) : null}
 
       <BookingModal
         visible={modalOpen}

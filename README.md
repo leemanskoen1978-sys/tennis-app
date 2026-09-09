@@ -36,24 +36,29 @@ npx tsc --noEmit      # typecheck
 1. Maak een project op [supabase.com](https://supabase.com) (gratis plan volstaat).
 2. Open **SQL Editor → New query**, plak de volledige inhoud van `supabase-schema.sql`
    en klik **Run**. Het script mag je later opnieuw draaien; het is idempotent.
-3. Zet in **Authentication → Providers → Email** de optie **Confirm email** aan, en doe dat
+3. Draai in dezelfde SQL-editor ook `BEZETTE-UREN.sql`. Dat voegt de functie `bezette_uren`
+   toe: hij zegt wannéér een trainer bezet is zonder te verklappen wie er dan les heeft.
+   Zonder dat bestand werkt de app gewoon door, maar ziet een speler op Reserveren alleen
+   zijn eigen lessen — en staat de dag van zijn trainer leeg terwijl die vol zit. Het scherm
+   zegt er dan zelf bij dat het het niet kan nagaan. Ook dit script is herhaalbaar.
+4. Zet in **Authentication → Providers → Email** de optie **Confirm email** aan, en doe dat
    vóór je leden importeert. Een geïmporteerd lid bestaat al in de databank maar stelt zijn
    wachtwoord pas zelf in, op het loginscherm, met alleen zijn e-mailadres als sleutel. Staat
    de bevestiging uit, dan kan wie dat adres kent het account claimen vóór het lid er zelf is
    — bij "Account aanmaken" was dat al zo, maar na een import staan er in één keer vijftig
    adressen die te raden zijn. Staat de bevestiging aan, dan moet er eerst een mail aankomen
    op dat adres, en die krijgt alleen wie het echt bezit.
-4. Haal in **Project Settings → API** de *Project URL* en de *anon public* key op.
+5. Haal in **Project Settings → API** de *Project URL* en de *anon public* key op.
    De service-role key heb je niet nodig en hoort nergens in deze app of repo.
-5. Zet ze in `.env` (zie `.env.example`):
+6. Zet ze in `.env` (zie `.env.example`):
 
    ```
    EXPO_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
    EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
    ```
 
-6. Start de app opnieuw. Je krijgt nu het inlogscherm met wachtwoord.
-7. De eerste die zich aanmeldt, is nog een **speler** — dat is met opzet: een trainer geef
+7. Start de app opnieuw. Je krijgt nu het inlogscherm met wachtwoord.
+8. De eerste die zich aanmeldt, is nog een **speler** — dat is met opzet: een trainer geef
    je bewust die rol. Zet die ene rij in Supabase om:
 
    ```sql

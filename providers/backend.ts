@@ -9,12 +9,15 @@
 // profiel). Wat hij niet kan, is samenwerken — twee toestellen weten niets van elkaar.
 
 import { supabaseConfigured } from '../lib/supabase';
-import { loadStore, saveStore, resetStore, type StoreData } from './mockStore';
 import {
-  currentAppUserId, loadFromSupabase, onAuthChange, saveToSupabase, signIn, signOut, signUp,
-  stuurHerstelmail, zetNieuwWachtwoord, type AuthGebeurtenis,
+  bezetteUrenLokaal, loadStore, saveStore, resetStore, type StoreData,
+} from './mockStore';
+import {
+  bezetteUrenUitSupabase, currentAppUserId, loadFromSupabase, onAuthChange, saveToSupabase,
+  signIn, signOut, signUp, stuurHerstelmail, zetNieuwWachtwoord, type AuthGebeurtenis,
 } from './supabaseStore';
 import type { AanmeldUitkomst } from '../lib/wachtwoord';
+import type { BezetUur } from '../lib/types';
 
 /**
  * Hoe je in deze opzet binnenkomt.
@@ -47,6 +50,18 @@ export interface Backend {
   stuurHerstelmail: (email: string) => Promise<void>;
   /** Het nieuwe wachtwoord zetten; kan alleen binnen de sessie die de herstellink opende. */
   zetNieuwWachtwoord: (wachtwoord: string) => Promise<void>;
+  /**
+   * Wanneer deze trainer bezet is, in dit venster — alleen tijdstippen, geen namen.
+   *
+   * De enige leesweg hier die niet bij het opstarten meekomt. `load` haalt op wat je mag zien
+   * en dat is voor een speler alleen zijn eigen agenda; dit beantwoordt de andere vraag, die
+   * over iemands drukte gaat en niet over zijn lessen. Zie BEZETTE-UREN.sql.
+   *
+   * `null` betekent "ik weet het niet" en is iets anders dan een lege lijst: een club die het
+   * SQL-bestand nog niet draaide, heeft deze bron niet. Dan hoort het scherm dat te zeggen in
+   * plaats van te doen alsof de dag leeg is.
+   */
+  bezetteUren: (coachId: string, van: Date, tot: Date) => Promise<BezetUur[] | null>;
 }
 
 const localBackend: Backend = {
@@ -72,6 +87,9 @@ const localBackend: Backend = {
   zetNieuwWachtwoord: async () => {
     throw new Error('Wachtwoorden bestaan alleen met een databank.');
   },
+  // Lokaal is er geen grens tussen wat je mag zien en wat er is: alles staat in deze browser.
+  // Deze kant kan de vraag dus altijd beantwoorden, en geeft nooit null.
+  bezetteUren: bezetteUrenLokaal,
 };
 
 const supabaseBackend: Backend = {
@@ -91,6 +109,7 @@ const supabaseBackend: Backend = {
   onAuthChange,
   stuurHerstelmail,
   zetNieuwWachtwoord,
+  bezetteUren: bezetteUrenUitSupabase,
 };
 
 export const backend: Backend = supabaseConfigured ? supabaseBackend : localBackend;

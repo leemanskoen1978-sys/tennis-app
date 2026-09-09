@@ -37,7 +37,8 @@ import { seriesFrom } from '../lib/series';
 import { botstMet, planSeries, type OvergeslagenSlot, type RecurrenceRule } from '../lib/recurrence';
 import type {
   User, Court, Booking, Lesson, Memo, StudentProgress, PlayerGoal, Role, Settings,
-  Beurtenkaart, BookingStatus, LesGroep, OuderKind, PaymentMethod, PaymentSplit, SickLeave,
+  BezetUur, Beurtenkaart, BookingStatus, LesGroep, OuderKind, PaymentMethod, PaymentSplit,
+  SickLeave,
 } from '../lib/types';
 
 interface DataShape {
@@ -84,6 +85,19 @@ interface DataShape {
   zetNieuwWachtwoord: (wachtwoord: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  /**
+   * Wanneer deze trainer bezet is tussen deze twee momenten — alleen tijdstippen, geen namen.
+   *
+   * De enige leesactie in deze provider die niet uit `store` komt maar apart wordt opgehaald.
+   * Dat is met opzet: het gaat om het rooster van de hele club, en dat bij elke start
+   * meeslepen is een prijs die niemand terugverdient. Reserveren vraagt het per trainer en
+   * per dag op, op het moment dat je die dag aantikt.
+   *
+   * `null` betekent "ik weet het niet" en niet "er staat niets": zolang de club
+   * BEZETTE-UREN.sql niet gedraaid heeft, bestaat deze bron niet. Het scherm hoort dat dan te
+   * zeggen in plaats van een lege dag te tonen. Zie lib/slots (`bezetIsVolledig`).
+   */
+  laadBezetteUren: (coachId: string, van: Date, tot: Date) => Promise<BezetUur[] | null>;
   /**
    * Een baan aanmaken. Geeft de gemaakte baan terug, of `null` met een melding op het
    * scherm als er iets niet klopt — zie `baanFout` in lib/banen.
@@ -495,6 +509,27 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     }
     return merged;
   }, [withCatalogue]);
+
+  /**
+   * De bezette uren van een trainer ophalen. Loopt langs `backend` zoals al het andere, zodat
+   * het scherm niet hoeft te weten of er een databank of een browser onder zit.
+   *
+   * Een fout wordt hier `null` en komt niet in `error` terecht: dit is een aanvulling op wat
+   * het scherm al toont, geen handeling die mislukt. Een rode melding over het ophalen van
+   * bezette uren, terwijl je gewoon een uur probeert te kiezen, helpt niemand — het scherm
+   * zegt dan dat het het niet zeker weet, en dat is het eerlijke antwoord.
+   */
+  const laadBezetteUren = useCallback(async (
+    coachId: string,
+    van: Date,
+    tot: Date,
+  ): Promise<BezetUur[] | null> => {
+    try {
+      return await backend.bezetteUren(coachId, van, tot);
+    } catch {
+      return null;
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     const mijnBeurt = beurt.current.nu();
@@ -1729,6 +1764,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     zetNieuwWachtwoord,
     logout,
     refresh,
+    laadBezetteUren,
     addCourt,
     updateCourt,
     addBooking,
@@ -1785,7 +1821,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     emergencyCleanup,
   }), [
     store, currentUser, loading, error, clearError, login, signIn, signUp,
-    herstelBezig, stuurHerstelmail, zetNieuwWachtwoord, logout, refresh,
+    herstelBezig, stuurHerstelmail, zetNieuwWachtwoord, logout, refresh, laadBezetteUren,
     addCourt, updateCourt, addBooking, addBookingSeries, cancelSeriesFrom, deleteSeriesFrom,
     updateBooking, deleteBooking, approveBooking, rejectBooking,
     setParticipants, setPaymentSplit, setAanwezigheid, bevestigLes,

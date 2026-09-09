@@ -24,8 +24,8 @@ import type { StoreData } from './mockStore';
 import { defaultSettings } from '../lib/seed';
 import { aanmeldUitkomst, type AanmeldUitkomst } from '../lib/wachtwoord';
 import type {
-  Beurtenkaart, Booking, Court, LesGroep, Lesplanning, Lesson, Memo, OuderKind, PlayerGoal, Settings,
-  SickLeave, StudentProgress, User,
+  BezetUur, Beurtenkaart, Booking, Court, LesGroep, Lesplanning, Lesson, Memo, OuderKind,
+  PlayerGoal, Settings, SickLeave, StudentProgress, User,
 } from '../lib/types';
 
 /** De tabelnaam in de databank bij elke verzameling in de app. */
@@ -505,6 +505,41 @@ export async function stuurHerstelmail(email: string): Promise<void> {
     redirectTo: terug,
   });
   if (error) throw new Error(loginMessage(error.message));
+}
+
+/**
+ * De bezette uren van één trainer, uit de databank en niet uit wat de kijker toevallig mag
+ * zien.
+ *
+ * Dit is de enige leesweg in dit bestand die niet bij het opstarten meekomt. Met opzet: het
+ * gaat om het rooster van de hele club, en dat bij elke start meeslepen is een prijs die
+ * niemand terugverdient. Reserveren vraagt het op voor één trainer en één dag, op het moment
+ * dat je die dag aantikt.
+ *
+ * De functie erachter geeft alleen begin- en eindtijd terug — geen namen, geen spelers, geen
+ * bedragen. Zie BEZETTE-UREN.sql voor waarom dat een functie is en geen ruimere policy.
+ *
+ * `null` betekent "ik weet het niet", en dat is iets anders dan een lege lijst. Een club die
+ * BEZETTE-UREN.sql nog niet draaide, kent deze functie niet; dan hoort het scherm te zeggen
+ * dat het het niet weet, en niet te doen alsof de dag leeg is. Zelfde gedachte als
+ * `selectAllOptioneel` hierboven.
+ */
+export async function bezetteUrenUitSupabase(
+  coachId: string,
+  van: Date,
+  tot: Date,
+): Promise<BezetUur[] | null> {
+  const { data, error } = await supabase.rpc('bezette_uren', {
+    trainer: coachId,
+    van: van.toISOString(),
+    tot: tot.toISOString(),
+  });
+  if (error) return null;
+  if (!Array.isArray(data)) return null;
+  return data
+    .filter((r): r is BezetUur =>
+      typeof r?.start_time === 'string' && typeof r?.end_time === 'string')
+    .map((r) => ({ start_time: r.start_time, end_time: r.end_time }));
 }
 
 /** Het nieuwe wachtwoord zetten. Kan alleen binnen de sessie die de herstellink opende. */

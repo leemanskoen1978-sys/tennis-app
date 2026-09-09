@@ -171,40 +171,51 @@ SQL-editor en daarna de app hard herladen. Vóór die SQL werkt het scherm wel e
 Daarna doorlopen: materiaal doorsturen voor een groep en een periode, en met een traineraccount
 nakijken of het bij de juiste lessen staat en niet bij de andere.
 
-### 1e. Een speler ziet niet welke uren echt bezet zijn — open
+### 1e. Een speler ziet niet welke uren echt bezet zijn — af, op het draaien na
 
-Gevonden op 9 september 2026, op Reserveren (`app/agenda/new.tsx`): bij een trainer stond een
-woensdag helemaal vrij terwijl er lessen op stonden.
+Gevonden op 9 september 2026 door de eigenaar, kijkend als ouder: bij een trainer stond een
+woensdag helemaal vrij terwijl er lessen op stonden. Twee oorzaken, allebei opgelost.
 
-**Wat er wél opgelost is.** De uren werden berekend op de béginminuut van een les. Een les van
-een half uur (de club heeft die groepen) blokkeerde daardoor niets, en een les van anderhalf
-uur blokkeerde alleen zijn eerste uur — 16:00–17:30 liet 17:00 vrij staan. Een geannuleerde
-les hield haar uur juist voor altijd bezet. Dat rekenwerk staat nu als `bezetteSlots` in
-`lib/slots.ts`, met tests: overlap in plaats van gelijkheid, en afgezegde lessen tellen niet.
+**De rekenregel keek naar de béginminuut van een les.** Een les van een half uur (de club heeft
+die groepen) blokkeerde daardoor niets, en een les van anderhalf uur blokkeerde alleen zijn
+eerste uur — 16:00–17:30 liet 17:00 vrij staan. Een geannuleerde les hield haar uur juist voor
+altijd bezet. Staat nu als `bezetteSlots` in `lib/slots.ts`, met tests: overlap in plaats van
+gelijkheid, en afgezegde lessen tellen niet mee.
 
-**Wat er níét mee opgelost is, en het zwaarst weegt.** Het scherm kan alleen rekenen met de
-lessen die de kijker mág zien, en `bookings_select` (`supabase-schema.sql:731`) geeft een
-speler alleen zijn eigen lessen. Voor hem is de dag van elke trainer dus leeg, hoe vol die in
-werkelijkheid ook is. Hij kan een uur aanvragen dat allang bezet is; de trainer ziet de
-botsing pas als de aanvraag bij hem binnenkomt. Er is ook geen grendel in de databank: op
-`bookings` staat geen enkele unieke index of exclusion constraint op (trainer, tijd), alleen
-gewone indexen (`:88`).
+**Het scherm zag andermans lessen niet.** `bookings_select` (`supabase-schema.sql:731`) geeft
+een speler alleen zijn eigen lessen en die van zijn kind, dus voor hem is de dag van elke
+trainer leeg, hoe vol die ook is.
 
-**Wat er intussen wél staat.** Het scherm zegt niet langer "vrij" waar het "ik weet het niet"
-bedoelt: kijk je niet in je eigen agenda en ben je geen beheerder, dan staat er onder het
-rooster dat je niet ziet wat anderen bij deze trainer boekten, en dat de trainer bij de
-aanvraag bevestigt of het uur echt vrij is. Wie dat is, beantwoordt `bezetIsVolledig` in
-`lib/slots.ts`. Die regel hoort weg zodra de echte bron er staat.
+De policy verruimen was geen optie: dan leest hij wie er bij zijn trainer les heeft, met naam,
+en RLS schermt rijen af en geen kolommen. In plaats daarvan `bezette_uren` — een
+`security definer`-functie die per trainer en venster alleen begin- en eindtijd teruggeeft.
+Geen namen, geen spelers, geen bedragen. Het venster is begrensd op eenendertig dagen en die
+grens zit in de functie zelf; er staat geen onbegrensde versie naast, want wie de ene mag
+aanroepen mag de andere ook.
 
-Dat blokkeren zou trouwens verkeerd zijn: sinds 6 september 2026 geldt dat een overlap nooit
-blokkeert en altijd waarschuwt (zie `addBooking` in `providers/SimpleDataProvider.tsx`), want
-op Terrein 7 draait dezelfde trainer blauw en rood naast elkaar. Het gaat er dus niet om dat
-de speler tegengehouden wordt, maar dat hij ziet wat er al staat.
+**`BEZETTE-UREN.sql` moet nog gedraaid worden op de databank van de club.** Tot dat gebeurd is,
+werkt de app gewoon door alsof de bron er niet is — zie hieronder.
 
-De weg vooruit is dezelfde als bij punt 11: niet de policy verruimen — dan leest een speler
-mee met wie er bij zijn trainer les heeft — maar een eigen, smalle bron voor "welke uren zijn
-bezet". Een view of een functie die per trainer en dag alleen begin- en eindtijd teruggeeft,
-zonder namen, met een eigen select-policy.
+De weg door de app: `backend.bezetteUren` (`providers/backend.ts`) → `laadBezetteUren` in de
+provider → Reserveren vraagt het op per trainer en per dag, op het moment dat je die dag
+aantikt. Dat is de enige leesactie in deze app die niet bij het opstarten meekomt; het rooster
+van de hele club bij elke start meeslepen is een prijs die niemand terugverdient. De uitkomst
+wordt samengevoegd met de lessen die het toestel al heeft — bezet is bezet, uit welke van de
+twee bronnen ook — en gaat door dezelfde rekenregel (`bezetteSlotsUit`).
+
+**`null` betekent "ik weet het niet" en niet "er staat niets".** Dat onderscheid draagt de hele
+oplossing: een club die het SQL-bestand nog niet draaide heeft deze bron niet, en dan hoort het
+scherm niet te doen alsof de dag leeg is. In dat geval — en alleen dan — staat er onder het
+rooster dat je niet ziet wat anderen bij deze trainer boekten en dat de trainer het bij je
+aanvraag bevestigt. Wie de agenda toch al helemaal ziet (je eigen agenda, of je bent
+beheerder) heeft de bron niet nodig; dat beantwoordt `bezetIsVolledig`.
+
+**Wat dit niet doet: blokkeren.** Sinds 6 september 2026 geldt dat een overlap nooit blokkeert
+en altijd waarschuwt (zie `addBooking` in `providers/SimpleDataProvider.tsx`), want op
+Terrein 7 draait dezelfde trainer blauw en rood naast elkaar. Er is ook geen grendel in de
+databank: op `bookings` staat geen unieke index of exclusion constraint op (trainer, tijd),
+alleen gewone indexen (`:88`). Dat is met opzet zo gebleven — het gaat erom dat de speler ziet
+wat er staat, niet dat hij tegengehouden wordt.
 
 ### 2. Achterstallig klein werk
 

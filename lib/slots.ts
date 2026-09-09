@@ -155,13 +155,31 @@ export function bezetteSlots(
   coachId: string,
   dag: Date,
 ): Set<string> {
+  return bezetteSlotsUit(
+    slots,
+    bookings.filter((b) => b.coach_id === coachId && b.status !== 'cancelled'),
+    dag,
+  );
+}
+
+/**
+ * Dezelfde rekensom, maar op kale tijdvakken in plaats van op boekingen.
+ *
+ * Zo kan het uit twee bronnen komen zonder dat de regel twee keer opgeschreven staat: uit de
+ * lessen die de app toch al heeft, en uit `bezette_uren` in de databank — die geeft alleen
+ * begin- en eindtijd terug, zonder namen (zie BEZETTE-UREN.sql). Dat een speler op Reserveren
+ * hetzelfde uur bezet ziet als zijn trainer, komt doordat het hier dezelfde functie is.
+ *
+ * Wat er binnenkomt is al gefilterd: deze functie kent geen trainer en geen status.
+ */
+export function bezetteSlotsUit(
+  slots: string[],
+  uren: ReadonlyArray<{ start_time: string; end_time: string }>,
+  dag: Date,
+): Set<string> {
   const bezet = new Set<string>();
 
-  for (const b of bookings) {
-    if (b.coach_id !== coachId) continue;
-    // Een afgezegde les houdt geen uur meer bezet. Zonder deze regel bleef een geannuleerde
-    // les het slot voorgoed dichthouden.
-    if (b.status === 'cancelled') continue;
+  for (const b of uren) {
     if (!opDag(b.start_time, dag)) continue;
 
     const van = minuutVanDag(b.start_time);
