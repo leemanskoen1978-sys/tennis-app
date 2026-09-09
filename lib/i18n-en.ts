@@ -736,12 +736,19 @@ export const EN: Record<string, string> = {
     + 'pass your phone around.',
   'Tik op je naam: één keer voor aanwezig, nog eens voor afwezig, nog eens om hem leeg te maken.':
     'Tap your name: once for present, again for absent, again to clear it.',
+  'Deze les is nog niet begonnen. Afvinken kan zodra hij loopt.':
+    'This lesson has not started yet. You can check it off once it is running.',
+  'Iedereen staat op aanwezig. Tik alleen wie er niet is; nog een tik zet hem terug.':
+    'Everyone is marked present. Only tap whoever is missing; another tap puts them back.',
+  'Iedereen die je niet aantikte, staat dan op aanwezig.':
+    'Everyone you did not tap will be marked present.',
   'Terug naar de agenda': 'Back to the schedule',
   'Hierna': 'Up next',
   'Tik een les aan om er nu al iemand van af te vinken.':
     'Tap a lesson to tick someone off for it ahead of time.',
   'Dit is niet de les die nu bezig is.': 'This is not the lesson running right now.',
   'Terug naar de les van nu': 'Back to the lesson happening now',
+  'Terug naar het begin': 'Back to the start',
 
   // --- boekingstijden per trainer -----------------------------------------
   'Boekingstijden': 'Booking hours',
