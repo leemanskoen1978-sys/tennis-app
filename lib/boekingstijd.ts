@@ -42,10 +42,21 @@ export const CLUB_START = '09:00';
  * Bewust niet begrensd door de clubtijd. Wie zijn eigen boekingstijd zet, moet die juist
  * buiten de clubtijd kunnen leggen — anders zet hij het veld dat hem daarvan zou bevrijden
  * met dezelfde grens weer vast.
+ *
+ * `stapMinuten` bepaalt hoe fijn de lijst is. Zestig is de standaard, want een boekingstijd is
+ * een heel uur. Bij het verzetten van een les staat hij op dertig: deze club heeft groepen van
+ * een half uur (zie `duration_minutes` in lib/types), en een les die om 14:30 begon moet je
+ * naar 15:30 kunnen schuiven en niet alleen naar 15:00. Wie een andere stap doorgeeft, krijgt
+ * hem — maar alleen delers van zestig geven een lijst die op het hele uur uitkomt.
  */
-export function keuzeUren(): string[] {
+export function keuzeUren(stapMinuten = 60): string[] {
+  const stap = Number.isFinite(stapMinuten) && stapMinuten > 0 ? Math.floor(stapMinuten) : 60;
   const uren: string[] = [];
-  for (let h = 6; h <= 23; h++) uren.push(`${String(h).padStart(2, '0')}:00`);
+  for (let minuut = 6 * 60; minuut <= 23 * 60; minuut += stap) {
+    const h = Math.floor(minuut / 60);
+    const m = minuut % 60;
+    uren.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+  }
   return uren;
 }
 

@@ -1,6 +1,6 @@
 import {
   isAdmin, isCoach, magClubcijfersZien, magContactZien, magDossierZien, magInElkeAgenda,
-  magKaartenSchrijven, magLesVerwijderen, magLoonZien, roleLabel, rolLabel,
+  magKaartenSchrijven, magLesVerwijderen, magLoonZien, magVerzetten, roleLabel, rolLabel,
 } from './rechten';
 import type { Booking, OuderKind, User } from './types';
 
@@ -277,5 +277,33 @@ describe('magContactZien', () => {
   it('weigert als er niemand is', () => {
     expect(magContactZien(null, speler, relaties)).toBe(false);
     expect(magContactZien(speler, null, relaties)).toBe(false);
+  });
+});
+
+describe('magVerzetten', () => {
+  const les = { coach_id: 'koen' };
+
+  it('laat de trainer van de les verzetten', () => {
+    expect(magVerzetten(trainer, les)).toBe(true);
+  });
+
+  it('laat een beheerder elke les verzetten', () => {
+    expect(magVerzetten({ ...baas, id: 'iemand' }, les)).toBe(true);
+  });
+
+  it('houdt een collega uit een agenda die niet van hem is', () => {
+    expect(magVerzetten({ ...trainer, id: 'sanne' }, les)).toBe(false);
+  });
+
+  it('laat een speler niets verzetten', () => {
+    // Hij mag zijn les wél afzeggen (magLesVerwijderen) — weghalen wat je zelf betaalde is
+    // iets anders dan de agenda van je trainer herschikken.
+    expect(magVerzetten(speler, les)).toBe(false);
+    expect(magVerzetten(speler, { coach_id: 'p1' })).toBe(false);
+  });
+
+  it('weigert als er niemand is', () => {
+    expect(magVerzetten(null, les)).toBe(false);
+    expect(magVerzetten(undefined, les)).toBe(false);
   });
 });
