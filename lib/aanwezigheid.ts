@@ -15,6 +15,7 @@
 
 import { t } from './i18n';
 import { lessonPlayerIds, type GroupBooking } from './groups';
+import { lesgeverId } from './lesgever';
 
 /** Wat er per speler genoteerd kan staan. Niets genoteerd is `undefined` — zie hierboven. */
 export type Aanwezigheid = 'aanwezig' | 'afwezig';
@@ -150,6 +151,37 @@ export function aanwezigheidTelling(b: AanwezigheidBooking): {
 }
 
 /**
+ * Hoe vaak deze ene speler er was, over een reeks lessen.
+ *
+ * `aanwezigheidTelling` telt één les over al zijn spelers; dit telt één speler over al zijn
+ * lessen. Dat is de vraag die het spelersdossier stelt, en tot nu toe stelde niets in de app
+ * die vraag — aanwezigheid bestond alleen per losse les.
+ *
+ * De drie standen blijven gescheiden. "Niet afgevinkt" mag niet bij "aanwezig" opgeteld
+ * worden: een les waar niemand naar keek is geen aanwezigheid, en juist die vermenging is
+ * wat het hele driestandenmodel moet voorkomen.
+ *
+ * `totaal` telt alleen de lessen waarin deze speler meespeelt, want alleen die zeggen iets
+ * over hem.
+ */
+export function aanwezigheidOverzicht(
+  bookings: readonly AanwezigheidBooking[],
+  playerId: string,
+): { aanwezig: number; afwezig: number; open: number; totaal: number } {
+  let aanwezig = 0;
+  let afwezig = 0;
+  let open = 0;
+  for (const b of bookings) {
+    if (!lessonPlayerIds(b).includes(playerId)) continue;
+    const stand = aanwezigheidVan(b, playerId);
+    if (stand === 'aanwezig') aanwezig += 1;
+    else if (stand === 'afwezig') afwezig += 1;
+    else open += 1;
+  }
+  return { aanwezig, afwezig, open, totaal: aanwezig + afwezig + open };
+}
+
+/**
  * De samenvatting boven de knoppen: "2 van 3 aanwezig", met erachter hoeveel er nog open
  * staan. Is er nog niets genoteerd, dan zegt de regel dat met zoveel woorden — een les
  * waar niemand bij afgevinkt is, is iets anders dan een les waar iedereen wegbleef.
@@ -199,31 +231,45 @@ export function volgendeStand(
 /**
  * Mag deze gebruiker de aanwezigheid van deze speler in deze les zetten?
  *
- * De trainer van de les en de beheerder mogen alles: zij vinken af wat er gebeurd is.
+ * De beheerder mag alles, altijd. Iedereen anders is gebonden aan de dag van de les: je mag
+ * een les van vandaag of later bijstellen, en niets van gisteren of eerder.
  *
- * Daarnaast mag je jezelf zetten — en een ouder zijn kind — maar alleen voor een les die
- * vandaag of later begint. Dat is het verschil tussen je afmelden en de geschiedenis
- * herschrijven: wie er vorige week stond, is wat de trainer zag, en dat hoort niet meer
- * bij te stellen door de andere kant van de rekening. Dezelfde grens staat in de databank
- * (`bewaak_betaalvelden` in supabase-schema.sql) — hier zodat het scherm geen knop
- * aanbiedt die daar geweigerd wordt.
+ * Dat geldt sinds vandaag óók voor de trainer van de les. Die had hier een onvoorwaardelijke
+ * pas, en daarmee kon hij de geschiedenis van een heel seizoen herschrijven. Wat geweest is,
+ * is wat er op de baan is vastgesteld; vergat hij af te vinken, dan meldt hij het aan de
+ * beheerder en die zet het recht.
  *
- * `eigenIds` zijn de spelers voor wie je spreekt: jijzelf, plus je goedgekeurde kinderen.
+ * De grens is de DAG en niet het uur, en dat is met opzet. Afvinken gebeurt ná de les: zou de
+ * grens "zodra de les voorbij is" zijn, dan blokkeert ze een trainer die zijn groep om vijf
+ * over het uur afvinkt — het gewone geval, geen correctie.
+ *
+ * `lesgeverId` en niet `coach_id`: een vervanger die de les overnam, staat op de baan en
+ * vinkt dus af. Dezelfde scheur zat in de Klaar-knop en is daar al rechtgezet.
+ *
+ * Voor een speler of ouder komt er bovenop dat het over zijn eigen aantekening moet gaan:
+ * je meldt jezelf af, niet je medespeler. `eigenIds` zijn de spelers voor wie je spreekt —
+ * jijzelf, plus je goedgekeurde kinderen.
+ *
+ * De databank bewaakt dezelfde grens (`bewaak_betaalvelden` in supabase-schema.sql). Deze
+ * functie zorgt alleen dat het scherm niets aanbiedt wat daar geweigerd wordt.
  */
 export function magAanwezigheidZetten(
   kijker: { id: string; is_admin?: boolean } | null | undefined,
-  booking: AanwezigheidBooking & { coach_id: string; start_time: string },
+  booking: AanwezigheidBooking & { coach_id: string; taught_by_id?: string; start_time: string },
   playerId: string,
   eigenIds: readonly string[],
   now: Date,
 ): boolean {
   if (!kijker) return false;
-  if (kijker.is_admin === true || booking.coach_id === kijker.id) return true;
-  if (!eigenIds.includes(playerId)) return false;
-  if (!lessonPlayerIds(booking).includes(playerId)) return false;
+  if (kijker.is_admin === true) return true;
+
   const start = new Date(booking.start_time);
-  // Een onleesbare begintijd telt als "niet meer van jou": bij twijfel beslist de trainer.
+  // Een onleesbare begintijd telt als "niet meer van jou": bij twijfel beslist de beheerder.
   if (Number.isNaN(start.getTime())) return false;
   const vandaag = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return start.getTime() >= vandaag.getTime();
+  if (start.getTime() < vandaag.getTime()) return false;
+
+  if (lesgeverId(booking) === kijker.id) return true;
+  if (!eigenIds.includes(playerId)) return false;
+  return lessonPlayerIds(booking).includes(playerId);
 }

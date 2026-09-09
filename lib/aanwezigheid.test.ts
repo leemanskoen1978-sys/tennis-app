@@ -1,6 +1,6 @@
 import {
   aanwezigheidVan, zetAanwezigheid, aanwezigheidTelling, aanwezigheidRegel, volgendeStand, magAanwezigheidZetten,
-  getoondeStand, bevestigAanwezigheid, magLesBevestigen,
+  getoondeStand, bevestigAanwezigheid, magLesBevestigen, aanwezigheidOverzicht,
 } from './aanwezigheid';
 import type { Booking } from './types';
 
@@ -123,14 +123,29 @@ describe('magAanwezigheidZetten', () => {
   const trainer = { id: 'koen' };
   const speler = { id: 'p1' };
   const ouder = { id: 'ouder' };
+  const beheerder = { id: 'x', is_admin: true };
 
-  it('lets the coach of the lesson set anyone, whenever', () => {
-    expect(magAanwezigheidZetten(trainer, les('2026-08-01T10:00:00'), 'p2', [], nu)).toBe(true);
+  it('lets an admin set anyone, for any day', () => {
+    expect(magAanwezigheidZetten(beheerder, les('2026-08-01T10:00:00'), 'p2', [], nu)).toBe(true);
   });
 
-  it('lets an admin set anyone', () => {
-    expect(magAanwezigheidZetten({ id: 'x', is_admin: true }, les('2026-08-01T10:00:00'), 'p2', [], nu))
-      .toBe(true);
+  it('lets the coach set a lesson of today that already finished: the ordinary case', () => {
+    // Afvinken gebeurt ná de les. Deze les was al voorbij toen "nu" begon.
+    expect(magAanwezigheidZetten(trainer, les('2026-09-02T09:00:00'), 'p2', [], nu)).toBe(true);
+  });
+
+  it('stops the coach at a lesson of yesterday', () => {
+    expect(magAanwezigheidZetten(trainer, les('2026-09-01T18:00:00'), 'p2', [], nu)).toBe(false);
+  });
+
+  it('lets an admin fix a lesson of yesterday', () => {
+    expect(magAanwezigheidZetten(beheerder, les('2026-09-01T18:00:00'), 'p2', [], nu)).toBe(true);
+  });
+
+  it('lets a substitute set today, and takes it away from the regular coach', () => {
+    const vervangenLes = les('2026-09-02T09:00:00', { taught_by_id: 'vervanger' });
+    expect(magAanwezigheidZetten({ id: 'vervanger' }, vervangenLes, 'p2', [], nu)).toBe(true);
+    expect(magAanwezigheidZetten(trainer, vervangenLes, 'p2', [], nu)).toBe(false);
   });
 
   it('lets a player set himself for a lesson later today', () => {
@@ -236,5 +251,32 @@ describe('magLesBevestigen', () => {
   it('weigert bij een onleesbare begintijd', () => {
     // Bij twijfel niet bevestigen: een aantekening terugdraaien kan niet vanaf dit scherm.
     expect(magLesBevestigen({ start_time: 'geen datum' }, nu)).toBe(false);
+  });
+});
+
+describe('aanwezigheidOverzicht', () => {
+  const les = (id: string, attendance?: Record<string, 'aanwezig' | 'afwezig'>) => ({
+    ...base, id, participant_ids: ['p1', 'p2'], attendance,
+  });
+
+  it('telt de drie standen los van elkaar', () => {
+    const lessen = [
+      les('a', { p1: 'aanwezig' }),
+      les('b', { p1: 'afwezig' }),
+      les('c'),
+    ];
+    expect(aanwezigheidOverzicht(lessen, 'p1')).toEqual({ aanwezig: 1, afwezig: 1, open: 1, totaal: 3 });
+  });
+
+  it('telt alleen de lessen waar deze speler in meespeelt', () => {
+    const lessen = [
+      les('a', { p1: 'aanwezig' }),
+      { ...base, id: 'b', player_id: 'p3', participant_ids: [], attendance: { p3: 'aanwezig' as const } },
+    ];
+    expect(aanwezigheidOverzicht(lessen, 'p1')).toEqual({ aanwezig: 1, afwezig: 0, open: 0, totaal: 1 });
+  });
+
+  it('geeft nullen bij een lege lijst', () => {
+    expect(aanwezigheidOverzicht([], 'p1')).toEqual({ aanwezig: 0, afwezig: 0, open: 0, totaal: 0 });
   });
 });
