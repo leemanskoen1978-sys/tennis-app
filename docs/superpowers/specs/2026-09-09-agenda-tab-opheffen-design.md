@@ -42,6 +42,17 @@ zoeken"*. Die badge verdwijnt dus met de tegel: de lijst staat er nu zelf.
 **Voor een speler** verhuist het spiegelbeeld mee: *Wacht op goedkeuring* — wat hij vroeg en
 waar de trainer nog niets over zei. De geweigerde aanvragen staan al op Home.
 
+En hij krijgt zijn eigen lesdag. Waar een trainer `components/lesdag/Lesdag.tsx` ziet, komt
+voor een speler een blok met zijn lessen van vandaag: het uur, zijn trainer, de baan en de
+betaalwijze — dezelfde regels als de sectie *Vandaag* die nu op `/agenda` staat. Geen
+memoknoppen en geen Afvinken: dat is het werk van de trainer.
+
+**Staat er vandaag niets, dan toont het blok zijn eerstvolgende les.** Zonder die terugval is
+het zes dagen per week een kop met "Geen lessen vandaag" eronder, en dat is dode ruimte op
+het scherm dat het vaakst geopend wordt. Een speler heeft doorgaans één les per week; "wanneer
+is mijn volgende les" is dus zijn echte vraag, en die hoort beantwoord te worden zonder dat
+hij ergens op tikt.
+
 De tegels van Home worden:
 
 | trainer | speler |
@@ -127,7 +138,9 @@ bedient is nog altijd de plek waar die drie regels één keer staan.
 
 | bestand | wat |
 | --- | --- |
-| `app/index.tsx` | Goed te keuren en Wacht op goedkeuring erbij; tegels Afvinken en Nieuwe afspraak erbij; Agenda wordt Mijn agenda langs `dossierPad`; het saldo klikt naar het dossier. |
+| `lib/lesdag.ts` | `lesdagVanSpeler(bookings, spelerId, now)` erbij: zijn lessen van vandaag, en de eerstvolgende als vandaag leeg is. |
+| `components/lesdag/Lesdagspeler.tsx` | **nieuw.** Tekent dat blok: uur, trainer, baan, betaalwijze. |
+| `app/index.tsx` | Goed te keuren en Wacht op goedkeuring erbij; de lesdag van de speler erbij; tegels Afvinken en Nieuwe afspraak erbij; Agenda wordt Mijn agenda langs `dossierPad`; het saldo klikt naar het dossier. |
 | `app/players/index.tsx` | tegel Betalingen met badge, alleen voor een trainer. |
 | `app/admin/reports.tsx` | knoppen CSV en Excel over de bestaande selectie. |
 | `app/admin/kalender.tsx` | clubbrede `.ics`-export met trainerfilter. |
@@ -142,8 +155,16 @@ Er komt geen nieuw rekenwerk bij: `awaitingApprovalFor`, `awaitingApprovalOf`, `
 `toCsv`, `toXlsx`, `toIcs`, `icsFilename` en `dossierPad` bestaan allemaal al en hebben hun
 tests. Dit stuk verplaatst schermen.
 
-Eén ding hoort wél in `lib/` en niet in een scherm: **welke lessen in de clubbrede export
-horen**. Dat is een selectie ("alle geplande lessen, of die van één trainer") en geen opmaak.
+Twee dingen horen wél in `lib/` en niet in een scherm.
+
+**Wat de lesdag van een speler toont.** `lesdagVanSpeler(bookings, spelerId, now)` geeft de
+lessen van vandaag én, als die leeg zijn, de eerstvolgende. Tests: een les vandaag staat
+erin; een geannuleerde niet; een les van gisteren telt niet als "volgende"; met niets in de
+toekomst blijft de volgende leeg; en de lessen van vandaag staan op tijd oplopend. Voor een
+groepsles waarin hij meespeelt zonder betaler te zijn, gebruikt de selectie `playsIn` —
+dezelfde regel als zijn dossier.
+
+**Welke lessen in de clubbrede export horen.** Dat is een selectie ("alle geplande lessen, of die van één trainer") en geen opmaak.
 Die komt als `clubAgenda(bookings, coachId, now)` in `lib/ics.ts`, met tests: alles wat nog
 moet komen, geannuleerde eruit, gesorteerd op tijd, en met `coachId` erbij alleen die trainer.
 
@@ -152,6 +173,8 @@ Met de hand na te lopen op de echte site:
 1. Als trainer met een openstaande aanvraag: Home toont hem bovenaan, Goedkeuren werkt, en
    de les staat daarna in de lesdag.
 2. Als speler een les aanvragen → Home toont "Wacht op goedkeuring".
+2b. Als speler met een les vandaag: Home toont die les met uur, trainer en baan. Als speler
+   zónder les vandaag: Home toont zijn eerstvolgende les.
 3. Home → Mijn agenda opent je eigen dossier, voor allebei de rollen; het openstaand saldo
    ook.
 4. Spelers → Betalingen opent de openstaande lessen, met het juiste aantal op de badge.
@@ -185,8 +208,7 @@ dat op hem wacht — maar bij tien openstaande aanvragen staat de lesdag ver naa
 dat in de praktijk knelt, is een grens met "toon alles" het antwoord; dat bouwen we niet
 vooruit.
 
-**Een speler die alleen zijn volgende les wil zien, moet naar zijn dossier.** Vandaag staat
-die les op `/agenda` in de lijst Vandaag. Home toont hem wel nog zijn openstaand saldo en
-zijn wachtende aanvragen, maar niet meer de lessen van vandaag. Dat is een echt verlies; het
-alternatief — de lesdag ook voor spelers op Home — hoort bij een volgende ronde en niet bij
-het opheffen van een tab.
+**Home wordt voor een speler een scherm met meer dan tegels.** Zijn lesdag, zijn openstaand
+saldo, zijn wachtende aanvragen en zijn geweigerde aanvragen staan er allemaal boven de
+tegels. Dat is nog steeds korter dan wat een trainer daar ziet, maar het is wel het einde
+van "Home is een keuzemenu".
