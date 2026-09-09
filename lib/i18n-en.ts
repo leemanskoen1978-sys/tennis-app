@@ -454,6 +454,8 @@ export const EN: Record<string, string> = {
   'Niet ingelogd': 'Not logged in',
   'Niet ingevuld': 'Not filled in',
   'Nog niet ingesteld': 'Not set yet',
+  'Dit dossier is alleen voor de speler zelf, zijn ouder en zijn trainer.':
+    'This file is for the player, their parent and their coach only.',
   'Beheer is alleen voor trainers.': 'Admin is for coaches only.',
   'Alleen een trainer beheert de beurtenkaarten.': 'Only a coach manages the punch cards.',
   'Alleen een trainer kan lesmateriaal toevoegen.': 'Only a coach can add lesson material.',
