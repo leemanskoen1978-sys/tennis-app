@@ -6,11 +6,39 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 
 ## Waar staat het nu
 
-- **`main`** staat op `27af679` — alles tot en met de herhalende lessen. Getest en gecontroleerd.
-- **Werkbranch `feat/lesoverzicht-historiek`** staat gelijk met main en mag weg
-  (`git branch -d feat/lesoverzicht-historiek`).
-- Er is **geen remote**; alles staat lokaal. Pushen kan pas als er een remote is gekoppeld.
-- Testsuite: 676 tests, allemaal in `lib/`. `npx tsc --noEmit` en `npx expo export --platform web` horen bij elke oplevering.
+*Bijgewerkt op 9 september 2026.*
+
+- **`main`** staat op `4f8dfdf` en is gepusht naar
+  <https://github.com/leemanskoen1978-sys/tennis-app>. Elke push naar `main` bouwt en zet de
+  site online (`.github/workflows/deploy.yml`); de site draait op
+  <https://leemanskoen1978-sys.github.io/tennis-app/>.
+- Testsuite: **1794 tests**, allemaal in `lib/`. `npx tsc --noEmit`, `npm test` en
+  `npx expo export -p web` horen bij elke oplevering.
+- `koen.xlsx` is een **testfixture** en moet op de schijf blijven staan — 40 tests lezen dat
+  bestand en slaan zichzelf stilzwijgend over als het weg is. Zie `.gitignore`.
+
+### De Agenda-tab wordt opgeheven — vier stukken
+
+De zeven schermen van de Agenda-tab worden herverdeeld over Home, Spelers en Trainers. Het
+plan, en de besluiten die de gebruiker onderweg genomen heeft, staan in
+`docs/superpowers/specs/2026-09-09-afvinken-vanaf-home-design.md` (onder "Besluiten voor
+stuk 2, 3 en 4").
+
+| | wat | stand |
+|---|---|---|
+| 1 | Afvinken vanaf Home, standaard aanwezig, Klaar-knop | **af en live** |
+| 2 | Aanwezigheid in het spelersdossier | **af en live** |
+| 3 | Weekagenda naar de dossiers van speler en trainer | open |
+| 4 | Agenda-tab opheffen: goedkeuren en Nieuwe afspraak naar Home, betalingen naar Spelers | open |
+
+`AANWEZIGHEID-VERLEDEN.sql` is **al gedraaid** op de databank van de club; die hoeft niet
+opnieuw.
+
+**Het gat dat stuk 4 moet dichten:** sinds stuk 2 is de beheerder de enige die een oude
+aanwezigheid kan rechtzetten. Maar hij heeft maar één weg naar het lesdetail van een oude
+les — Beheer → Lesgroepen → groep → les — en die werkt alleen voor lessen die aan een
+lesgroep hangen. `LessonCards`, het enige component dat dat blad opent, staat verder alleen
+in `agenda/historiek` en `agenda/komend`, en die verdwijnen juist in stuk 4.
 
 ## Afspraken over geld — niet zomaar wijzigen
 
