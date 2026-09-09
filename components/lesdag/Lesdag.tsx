@@ -99,7 +99,17 @@ export function Lesdag({ coachId }: { coachId: string }) {
               <View style={styles.spelers}>
                 {uur.playerIds.map((id) => (
                   <View key={id} style={styles.speler}>
-                    <Text style={styles.naam} numberOfLines={1}>{naamVan(id)}</Text>
+                    {/* De trainer heeft het kind voor zich staan en wil bij zijn doelen,
+                        zijn voortgang of zijn week. Zonder deze tik is dat: terug naar
+                        Home, naar Spelers, en de naam opzoeken in een lijst van 555. */}
+                    <Pressable
+                      onPress={() => router.push(`/players/${id}`)}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('Dossier van {naam}', { naam: naamVan(id) })}
+                      style={[styles.naamKnop, webCursor]}
+                    >
+                      <Text style={styles.naam} numberOfLines={1}>{naamVan(id)}</Text>
+                    </Pressable>
                     <MemoKnop
                       naam={naamVan(id)}
                       alGehad={heeftMemo(memos, uur.booking.id, id)}
@@ -155,6 +165,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   naam: { ...typography.h3, color: tennisColors.text, flexShrink: 1 },
+  // De tik moet ook naast de letters raak zijn; de naam mag krimpen als de memoknop breed is.
+  naamKnop: { flexShrink: 1, paddingVertical: spacing.xs, paddingRight: spacing.sm },
   afvinken: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 4, paddingVertical: spacing.sm, marginTop: spacing.xs,

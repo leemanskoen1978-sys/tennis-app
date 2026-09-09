@@ -13,8 +13,10 @@ import { CalendarClock, CalendarRange, History } from 'lucide-react-native';
 
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
-import { useSchoneLei } from '../../providers/SimpleDataProvider';
+import { useSimpleData, useSchoneLei } from '../../providers/SimpleDataProvider';
+import { useActieveSpeler } from '../../providers/kindkeuze';
 import { useAgendaScope } from '../../providers/agendaScope';
+import { dossierPad } from '../../lib/dossier';
 import {
   bookingsInPeriod, currentPeriod, pastBookings, periodLabel, upcomingBookings,
 } from '../../lib/period';
@@ -25,6 +27,11 @@ export default function OverzichtScreen(): React.JSX.Element {
   const t = useT();
   useSchoneLei();
   const router = useRouter();
+  const { currentUser } = useSimpleData();
+  const speler = useActieveSpeler();
+  // De weekagenda woont sinds stuk 3 in het dossier van de persoon zelf. Deze tegel blijft
+  // staan omdat het voor een speler de enige weg naar zijn eigen dossier is.
+  const pad = dossierPad(currentUser, speler);
   // Dezelfde beginstand als de twee schermen erachter — het is letterlijk dezelfde hook.
   // Anders belooft de tegel een aantal dat je daarna niet terugziet. Er staat hier geen
   // trainerbalk, dus de filter blijft op zijn beginstand staan.
@@ -67,13 +74,15 @@ export default function OverzichtScreen(): React.JSX.Element {
           icon={CalendarClock}
           onPress={() => router.push('/agenda/komend')}
         />
-        <ActionTile
-          title={t('Weekagenda')}
-          // Uren en niet lessen: dat is wat deze tegel toevoegt aan de twee erboven.
-          subtitle={t('{uren} geboekt deze week', { uren: formatUren(weekMinutenNu) })}
-          icon={CalendarRange}
-          onPress={() => router.push('/agenda/week')}
-        />
+        {pad ? (
+          <ActionTile
+            title={t('Weekagenda')}
+            // Uren en niet lessen: dat is wat deze tegel toevoegt aan de twee erboven.
+            subtitle={t('{uren} geboekt deze week', { uren: formatUren(weekMinutenNu) })}
+            icon={CalendarRange}
+            onPress={() => router.push(pad)}
+          />
+        ) : null}
       </TileGrid>
     </Screen>
   );

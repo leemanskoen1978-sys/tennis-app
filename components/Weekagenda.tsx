@@ -1,56 +1,63 @@
-// Weekagenda: hoe vol staat mijn week echt. Geen telling van lessen maar van uren — een les
-// van een half uur en een les van twee uur zijn allebei "één les", en dat is precies wat je
-// hier níet wilt weten. Geannuleerde lessen staan er niet tussen: die kosten geen uur op de
-// baan, dus ze horen niet in een agenda die "effectief" heet.
+// De weekagenda: hoe vol staat de week van deze persoon. Geen telling van lessen maar van
+// uren — een les van een half uur en een les van twee uur zijn allebei "één les", en dat is
+// precies wat je hier níet wilt weten. Geannuleerde lessen staan er niet tussen: die kosten
+// geen uur op de baan.
 //
 // Het beeld is een kalender en geen lijst: zeven kolommen naast een uren-as, elke les een
 // blok waarvan de hoogte zijn duur is. Een lijst zegt wel hoeveel uur er staat, maar niet
 // hoe die uren liggen — en of je week vol is, zie je juist aan de gaten. Het raster zelf
-// staat in components/WeekRaster, het rekenwerk in lib/week; dit bestand kiest de week.
+// staat in components/WeekRaster, het rekenwerk in lib/week.
 //
-// Bladeren gaat per week, met dezelfde knoppen en dezelfde volgorde als de periodekiezer op
-// Historiek en Rapport.
+// De lessen komen van buiten: dit component vraagt niet wie mag kijken. Het dossier waarin
+// het staat heeft die vraag al beantwoord, en dat is ook waarom de trainerbalk hier niet
+// meer staat.
+//
+// De gekozen week woont buiten dit component. Het staat in een blad, en een blad wordt
+// weggegooid zodra het sluit — dan zou je na het bekijken van één les weer op deze week
+// staan terwijl je drie weken vooruit keek.
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
-import { WeekRaster } from '../../components/WeekRaster';
-import { Screen } from '../../components/ui/Screen';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Chip } from '../../components/ui/Chip';
-import { CoachFilter } from '../../components/ui/CoachFilter';
-import { useSchoneLei, useSimpleData } from '../../providers/SimpleDataProvider';
-import { useAgendaScope } from '../../providers/agendaScope';
-import { periodLabel, shiftPeriod, type Period } from '../../lib/period';
+import { WeekRaster } from './WeekRaster';
+import { Card } from './ui/Card';
+import { Button } from './ui/Button';
+import { Chip } from './ui/Chip';
+import { shiftPeriod, periodLabel, type Period } from '../lib/period';
 import {
   formatUren, isDezeWeek, weekAgenda, weekLessen, weekMinuten, weekPeriod, weekRooster,
-} from '../../lib/week';
-import { tennisColors } from '../../constants/tennis-colors';
-import { spacing, typography } from '../../constants/theme';
-import { useT } from '../../lib/i18n';
+} from '../lib/week';
+import type { Booking } from '../lib/types';
+import { tennisColors } from '../constants/tennis-colors';
+import { spacing, typography } from '../constants/theme';
+import { useT } from '../lib/i18n';
 
-export default function WeekScreen(): React.JSX.Element {
+export function Weekagenda({
+  bookings,
+  week,
+  onWeek,
+  onBookingPress,
+}: {
+  /** De lessen van de persoon over wie dit dossier gaat, geannuleerde eruit. */
+  bookings: Booking[];
+  week: Period;
+  onWeek: (week: Period) => void;
+  onBookingPress: (booking: Booking) => void;
+}): React.JSX.Element {
   const t = useT();
-  const { error } = useSimpleData();
-  const { coachId, setCoachId, coaches, bookings } = useAgendaScope();
-  useSchoneLei();
 
-  // Eén moment voor het hele scherm, net als op Historiek: anders kan "deze week" tijdens
-  // het kijken van betekenis veranderen.
+  // Eén moment voor het hele blok, net als op Historiek: anders kan "deze week" tijdens het
+  // kijken van betekenis veranderen.
   const now = useMemo(() => new Date(), []);
-  const [week, setWeek] = useState<Period>(() => weekPeriod(now));
 
-  // `bookings` is al afgebakend op wie mag kijken en op de gekozen trainer; hier komt
-  // alleen de week er nog overheen.
   const dagen = useMemo(() => weekAgenda(bookings, week), [bookings, week]);
   const rooster = useMemo(() => weekRooster(dagen), [dagen]);
   const minuten = weekMinuten(dagen);
   const lessen = weekLessen(dagen);
 
   return (
-    <Screen>
+    <View style={styles.blok}>
       {/* De drie delen blijven als groep bij elkaar, zoals in de periodekiezer. */}
       <View style={styles.pagerRow}>
         <Button
@@ -58,7 +65,7 @@ export default function WeekScreen(): React.JSX.Element {
           variant="secondary"
           fullWidth={false}
           icon={<ChevronLeft size={16} color={tennisColors.text} />}
-          onPress={() => setWeek(shiftPeriod(week, -1))}
+          onPress={() => onWeek(shiftPeriod(week, -1))}
         />
         <Text style={styles.weekLabel}>{periodLabel(week)}</Text>
         <Button
@@ -66,7 +73,7 @@ export default function WeekScreen(): React.JSX.Element {
           variant="secondary"
           fullWidth={false}
           icon={<ChevronRight size={16} color={tennisColors.text} />}
-          onPress={() => setWeek(shiftPeriod(week, 1))}
+          onPress={() => onWeek(shiftPeriod(week, 1))}
         />
       </View>
 
@@ -75,11 +82,9 @@ export default function WeekScreen(): React.JSX.Element {
         <Chip
           label={t('Deze week')}
           selected={isDezeWeek(week, now)}
-          onPress={() => setWeek(weekPeriod(now))}
+          onPress={() => onWeek(weekPeriod(now))}
         />
       </View>
-
-      <CoachFilter coaches={coaches} value={coachId} onChange={setCoachId} />
 
       <Card>
         <Text style={styles.total}>
@@ -92,21 +97,19 @@ export default function WeekScreen(): React.JSX.Element {
         </Text>
       </Card>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
       {/* Het raster tekent alle zeven dagen, ook de lege: juist het gat op donderdag is
-          iets wat je wilt zien als je naar je week kijkt. */}
-      <WeekRaster rooster={rooster} now={now} />
+          iets wat je wilt zien als je naar een week kijkt. */}
+      <WeekRaster rooster={rooster} now={now} onBookingPress={onBookingPress} />
 
       {lessen === 0 ? (
         <Text style={styles.leeg}>{t('Geen lessen deze week.')}</Text>
       ) : null}
-
-    </Screen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  blok: { gap: spacing.md },
   pagerRow: {
     flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center',
     justifyContent: 'center', gap: spacing.md,
@@ -118,5 +121,4 @@ const styles = StyleSheet.create({
   total: { ...typography.body, color: tennisColors.text, fontWeight: '600' },
   totalNote: { ...typography.label, color: tennisColors.textMuted, marginTop: spacing.xs },
   leeg: { ...typography.body, color: tennisColors.textMuted, textAlign: 'center' },
-  error: { color: tennisColors.danger, fontSize: 14 },
 });

@@ -12,7 +12,7 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
   <https://github.com/leemanskoen1978-sys/tennis-app>. Elke push naar `main` bouwt en zet de
   site online (`.github/workflows/deploy.yml`); de site draait op
   <https://leemanskoen1978-sys.github.io/tennis-app/>.
-- Testsuite: **1794 tests**, allemaal in `lib/`. `npx tsc --noEmit`, `npm test` en
+- Testsuite: **1791 tests**, allemaal in `lib/`. `npx tsc --noEmit`, `npm test` en
   `npx expo export -p web` horen bij elke oplevering.
 - `koen.xlsx` is een **testfixture** en moet op de schijf blijven staan — 40 tests lezen dat
   bestand en slaan zichzelf stilzwijgend over als het weg is. Zie `.gitignore`.
@@ -28,17 +28,25 @@ stuk 2, 3 en 4").
 |---|---|---|
 | 1 | Afvinken vanaf Home, standaard aanwezig, Klaar-knop | **af en live** |
 | 2 | Aanwezigheid in het spelersdossier | **af en live** |
-| 3 | Weekagenda naar de dossiers van speler en trainer | open |
+| 3 | Weekagenda naar de dossiers van speler en trainer | **af** |
 | 4 | Agenda-tab opheffen: goedkeuren en Nieuwe afspraak naar Home, betalingen naar Spelers | open |
 
 `AANWEZIGHEID-VERLEDEN.sql` is **al gedraaid** op de databank van de club; die hoeft niet
 opnieuw.
 
-**Het gat dat stuk 4 moet dichten:** sinds stuk 2 is de beheerder de enige die een oude
-aanwezigheid kan rechtzetten. Maar hij heeft maar één weg naar het lesdetail van een oude
-les — Beheer → Lesgroepen → groep → les — en die werkt alleen voor lessen die aan een
-lesgroep hangen. `LessonCards`, het enige component dat dat blad opent, staat verder alleen
-in `agenda/historiek` en `agenda/komend`, en die verdwijnen juist in stuk 4.
+**Het gat dat stuk 4 moest dichten, is dicht.** Sinds stuk 2 is de beheerder de enige die
+een oude aanwezigheid kan rechtzetten, en hij had maar één weg naar het lesdetail van een
+oude les — Beheer → Lesgroepen → groep → les — die alleen werkt voor lessen aan een
+lesgroep. Het weekraster in de dossiers opent hetzelfde blad en kent het verschil tussen een
+losse les en een groepsles niet: blader naar de week van de les en tik hem aan.
+
+**Wat stuk 3 opleverde.** `components/Weekagenda.tsx` (de weekkiezer, de urenregel en het
+raster) staat als tegel met een blad in `app/players/[id].tsx` en `app/coaches/[id].tsx`;
+`app/agenda/week.tsx` bestaat niet meer. Het lesdetail wordt niet langer door `WeekRaster`
+zelf getekend maar door het scherm eromheen — een `Modal` binnen een gesloten `Modal`
+verdwijnt. De tegel Weekagenda op Overzicht wijst naar het eigen dossier, langs
+`dossierPad` in `lib/dossier.ts`. En de namen in een opengeklapte les op Home openen het
+spelersdossier.
 
 ## Afspraken over geld — niet zomaar wijzigen
 
@@ -183,6 +191,9 @@ Op volgorde van wat ik als eerste zou doen:
     De databank houdt het niet tegen: `users_select` staat op `using (true)`
     (`supabase-schema.sql:584`) omdat iedereen elkaars naam moet kunnen zien. Maar dezelfde
     rij draagt ook e-mail, telefoon, bio en sponsorbudget mee.
+
+    Sinds stuk 3 staat de tegel Weekagenda alleen in het dossier voor wie het hoort te zien
+    (`magBewerken`); de rest van het scherm is nog niet dicht.
 
     De regel die dit moet afdwingen bestaat al, één laag te laat: `app/players/[id].tsx:143`
     berekent `magBewerken` als "trainer, of jezelf, of de ouder van dit kind". Dat hoort te

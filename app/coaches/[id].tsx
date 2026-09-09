@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CalendarDays, ChevronRight, Pencil, Users, type LucideIcon } from 'lucide-react-native';
+import { CalendarDays, CalendarRange, ChevronRight, Pencil, Users, type LucideIcon } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { ContactRegels } from '../../components/ui/ContactRegels';
@@ -10,19 +10,25 @@ import { Button } from '../../components/ui/Button';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
 import { DetailSheet } from '../../components/ui/DetailSheet';
 import { LidBewerken } from '../../components/LidBewerken';
+import { BookingDetailSheet } from '../../components/BookingDetailSheet';
+import { Weekagenda } from '../../components/Weekagenda';
 
 import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { useKindkeuze } from '../../providers/kindkeuze';
 import { groupSize, shortGroupLabel } from '../../lib/groups';
 import { playersForCoach } from '../../lib/relations';
 import { formatWorkingDays } from '../../lib/slots';
 import { sorteerPeriodes } from '../../lib/boekingstijd';
 import { useT, useLanguage } from '../../lib/i18n';
-import { isAdmin, magContactZien, magLoonZien, rolLabel } from '../../lib/rechten';
+import { isAdmin, isCoach, magContactZien, magLoonZien, rolLabel } from '../../lib/rechten';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
 import { coachPayoutThisMonth } from '../../lib/reports';
 import { formatEuro } from '../../lib/money';
+import { formatUren, weekAgenda, weekMinuten, weekPeriod } from '../../lib/week';
+import type { Period } from '../../lib/period';
+import type { Booking } from '../../lib/types';
 
 /**
  * Zelfde opbouw als het spelersdossier: de kop-kaart met de trainer blijft altijd staan, en
@@ -32,17 +38,22 @@ import { formatEuro } from '../../lib/money';
  */
 
 /** De onderdelen van het trainersdossier; elk krijgt een tegel en een blad. */
-type SectionKey = 'agenda' | 'spelers';
+type SectionKey = 'agenda' | 'week' | 'spelers';
 export default function CoachDossier() {
   const t = useT();
   const lang = useLanguage();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { users, bookings, courts, lessons, progress, currentUser, relaties } = useSimpleData();
+  const { kijktNaarZichzelf } = useKindkeuze();
   const [editOpen, setEditOpen] = useState(false);
   // Welk onderdeel openstaat; null = je kijkt naar het raster. Niet onthouden tussen
   // bezoeken: een stand van vorige week zegt niets over vandaag.
   const [openSection, setOpenSection] = useState<SectionKey | null>(null);
+  // De week woont hier en niet in het blad: een blad wordt weggegooid als het sluit, en het
+  // sluit zodra je een les opent. Anders stond je daarna weer op deze week.
+  const [week, setWeek] = useState<Period>(() => weekPeriod(new Date()));
+  const [weekBooking, setWeekBooking] = useState<Booking | null>(null);
 
   const coach = users.find((u) => u.id === id && u.role === 'coach') ?? null;
 
@@ -92,12 +103,22 @@ export default function CoachDossier() {
   const spelersSummary = players.length === 0
     ? t('nog geen')
     : players.length === 1 ? t('1 speler') : t('{n} spelers', { n: players.length });
+  // Dezelfde som als in het blad erachter (lib/week): een tegel mag geen ander aantal uren
+  // beloven dan wat je erachter vindt.
+  const weekUren = formatUren(weekMinuten(weekAgenda(coachBookings, week)));
 
   const tiles: Array<{ key: SectionKey; title: string; subtitle: string; icon: LucideIcon }> = [
     { key: 'agenda', title: t('Agenda'), subtitle: agendaSummary, icon: CalendarDays },
+    { key: 'week', title: t('Weekagenda'), subtitle: t('{uren} deze week', { uren: weekUren }), icon: CalendarRange },
     { key: 'spelers', title: t('Spelers'), subtitle: spelersSummary, icon: Users },
   ];
 
+  // Een blad dat iets bovenop zich opent, sluit zolang dat openstaat: twee bladen over
+  // elkaar is rommelig, en op Android sluit één druk op terug ze allebei. `openSection`
+  // blijft ondertussen staan, dus je komt terug in het blad waar je vandaan kwam. Zelfde
+  // truc als in het spelersdossier.
+  const stacked = weekBooking !== null;
+  const sheetOpen = (key: SectionKey) => openSection === key && !stacked;
   const closeSheet = () => setOpenSection(null);
   /** Een blad verlaten om ergens anders heen te gaan: eerst dicht, dan pas navigeren. */
   const goTo = (path: string) => { closeSheet(); router.push(path); };
@@ -186,7 +207,7 @@ export default function CoachDossier() {
         ))}
       </TileGrid>
 
-      <DetailSheet title={t('Agenda')} visible={openSection === 'agenda'} onClose={closeSheet}>
+      <DetailSheet title={t('Agenda')} visible={sheetOpen('agenda')} onClose={closeSheet}>
         {upcoming.length === 0 && past.length === 0 ? (
           <Text style={styles.muted}>{t('Nog geen afspraken.')}</Text>
         ) : (
@@ -215,7 +236,18 @@ export default function CoachDossier() {
         )}
       </DetailSheet>
 
-      <DetailSheet title={t('Spelers')} visible={openSection === 'spelers'} onClose={closeSheet}>
+      {/* De week zoals ze ligt. Een les aantikken opent het lesdetail; dit blad sluit
+          daarvoor, zie `stacked`. */}
+      <DetailSheet title={t('Weekagenda')} visible={sheetOpen('week')} onClose={closeSheet}>
+        <Weekagenda
+          bookings={coachBookings}
+          week={week}
+          onWeek={setWeek}
+          onBookingPress={setWeekBooking}
+        />
+      </DetailSheet>
+
+      <DetailSheet title={t('Spelers')} visible={sheetOpen('spelers')} onClose={closeSheet}>
         {players.length === 0 ? (
           <Text style={styles.muted}>{t('Nog geen spelers.')}</Text>
         ) : (
@@ -234,6 +266,15 @@ export default function CoachDossier() {
           ))
         )}
       </DetailSheet>
+
+      {/* Op schermniveau en niet in het blad: een Modal binnen een gesloten Modal wordt
+          niet meer getekend. */}
+      <BookingDetailSheet
+        booking={weekBooking}
+        visible={weekBooking !== null}
+        canManage={isCoach(currentUser) && kijktNaarZichzelf}
+        onClose={() => setWeekBooking(null)}
+      />
     </Screen>
   );
 }
