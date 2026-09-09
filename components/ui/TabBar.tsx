@@ -2,7 +2,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  Home, CalendarDays, CalendarPlus, Users, GraduationCap, SlidersHorizontal,
+  Home, CalendarPlus, Users, GraduationCap, SlidersHorizontal,
   BookOpen, TrendingUp, type LucideIcon,
 } from 'lucide-react-native';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
@@ -25,7 +25,6 @@ interface TabItem {
 // tegels, zodat tegel en tab hetzelfde beeld oproepen.
 const coachTabs = (t: Translate): TabItem[] => [
   { label: t('Home'), href: '/', icon: Home, segment: '' },
-  { label: t('Agenda'), href: '/agenda', icon: CalendarDays, segment: 'agenda' },
   { label: t('Spelers'), href: '/players', icon: Users, segment: 'players' },
   { label: t('Trainers'), href: '/coaches', icon: GraduationCap, segment: 'coaches' },
   { label: t('Beheer'), href: '/admin', icon: SlidersHorizontal, segment: 'admin' },
