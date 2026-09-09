@@ -1537,10 +1537,10 @@ export const EN: Record<string, string> = {
   'Lesmateriaal {titel} openen': 'Open lesson material {titel}',
   'Zoek een trainer…': 'Search for a coach…',
   'Zoek een groep…': 'Search for a group…',
-  'Niets gevonden. Probeer een andere zoekterm.': 'Nothing found. Try a different search term.',
-  'Nog {n} van de {totaal} — typ om te zoeken.': '{n} more of {totaal} — type to search.',
   'Doorsturen naar…': 'Send on to…',
   'Doorgestuurd: {periode} · {aanWie}': 'Sent on: {periode} · {aanWie}',
   'Hier staat wat er aan wie is doorgestuurd, en voor welke periode. Doorsturen doe je in Lesmateriaal → Databank: zoek de training en gebruik "Doorsturen naar…".':
     'This is what has been sent on to whom, and for which period. To send something on, go to Lesson material → Database: find the training and use "Send on to…".',
+  'Geen trainer gekozen': 'No coach chosen',
+  'Geen groep gekozen': 'No group chosen',
 };
