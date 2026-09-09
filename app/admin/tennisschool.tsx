@@ -12,7 +12,9 @@
 import React from 'react';
 import { Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { GraduationCap, Thermometer, FileUp, FileSpreadsheet } from 'lucide-react-native';
+import {
+  GraduationCap, Thermometer, CalendarRange, FileUp, FileSpreadsheet,
+} from 'lucide-react-native';
 
 import { Screen } from '../../components/ui/Screen';
 import { ActionTile, TileGrid } from '../../components/ui/ActionTile';
@@ -58,6 +60,12 @@ export default function TennisschoolScreen(): React.JSX.Element {
           subtitle={t('Werklijst en vervangers')}
           icon={Thermometer}
           onPress={() => router.push('/admin/ziekmelding')}
+        />
+        <ActionTile
+          title={t('Lesplanning')}
+          subtitle={t('Materiaal per periode en groep')}
+          icon={CalendarRange}
+          onPress={() => router.push('/admin/lesplanning')}
         />
         <ActionTile
           title={t('Trainingen importeren')}

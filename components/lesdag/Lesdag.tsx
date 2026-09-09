@@ -12,17 +12,26 @@ import { ChevronRight } from 'lucide-react-native';
 import { Card } from '../ui/Card';
 import { MemoKnop } from './MemoKnop';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
+import { materiaalVoor } from '../../lib/lesplanning';
+import { LessonDetailModal } from '../LessonDetailModal';
 import { lesdagVan } from '../../lib/lesdag';
 import { heeftMemo, uitTeWerken } from '../../lib/memo';
 import { formatTimeRange } from '../../lib/datetime';
 import { tennisColors } from '../../constants/tennis-colors';
 import { radius, spacing, typography, webCursor } from '../../constants/theme';
+import type { Lesson } from '../../lib/types';
 import { useT } from '../../lib/i18n';
 
 export function Lesdag({ coachId }: { coachId: string }) {
   const t = useT();
   const router = useRouter();
-  const { users, courts, bookings, memos, addMemo } = useSimpleData();
+  const {
+    users, courts, bookings, memos, lessons, lesPlanning, addMemo,
+  } = useSimpleData();
+
+  // Welk doorgestuurd lesmateriaal er open staat; null = niets. Dit blok zit niet in een blad,
+  // dus dit blad mag er gewoon bovenop — anders dan op het lesdetail, dat zelf al een blad is.
+  const [openMateriaal, setOpenMateriaal] = useState<Lesson | null>(null);
 
   // Eén moment voor het hele blok: anders zou de ene les op een andere "nu" beoordeeld
   // worden dan de volgende, en zouden er twee lessen tegelijk open kunnen staan.
@@ -140,11 +149,43 @@ export function Lesdag({ coachId }: { coachId: string }) {
                 </Pressable>
               </View>
             ) : null}
+
+            {/* Wat de tennisschool voor deze periode doorstuurde. Welk materiaal dat is weet
+                `materiaalVoor` in lib/lesplanning en niets anders; gelden er twee, dan staan ze
+                er beide met de bijzonderste bovenaan.
+
+                Geldt er niets, dan staat er niets — ook geen kop. Een kop zonder inhoud leest
+                als "er is niets gepland", en dat is iets anders dan "er is nooit iets
+                ingevuld". */}
+            {materiaalVoor(uur.booking, lesPlanning, lessons).map((l) => (
+              <Pressable
+                key={l.id}
+                onPress={() => setOpenMateriaal(l)}
+                accessibilityRole="button"
+                accessibilityLabel={t('Lesmateriaal {titel} openen', { titel: l.title })}
+                style={[styles.periode, webCursor]}
+              >
+                <Text style={styles.periodeTekst}>
+                  {t('Deze periode: {titel}', { titel: l.title })}
+                </Text>
+                <ChevronRight size={16} color={tennisColors.primary} />
+              </Pressable>
+            ))}
           </Card>
         );
       })}
 
       {werkregel}
+
+      {/* Op blokniveau en niet per les: één blad voor alle lessen van de dag, zodat er nooit
+          twee over elkaar staan. `canEdit` is false — dit is de leeskant; materiaal wijzigen
+          doet de trainer in Lesmateriaal, en niet per ongeluk vanaf zijn lesdag. */}
+      <LessonDetailModal
+        lesson={openMateriaal}
+        visible={openMateriaal !== null}
+        onClose={() => setOpenMateriaal(null)}
+        canEdit={false}
+      />
     </View>
   );
 }
@@ -160,6 +201,11 @@ const styles = StyleSheet.create({
   baan: { fontSize: 13, color: tennisColors.textMuted },
   aantal: { fontSize: 13, color: tennisColors.text, marginLeft: 'auto' },
   spelers: { gap: spacing.sm },
+  periode: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 4, paddingVertical: spacing.xs,
+  },
+  periodeTekst: { fontSize: 13, fontWeight: '600', color: tennisColors.primary },
   speler: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     gap: spacing.md,

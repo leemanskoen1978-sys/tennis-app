@@ -489,6 +489,33 @@ export interface SickLeave {
   retracted_at?: string;
 }
 
+/**
+ * Eén doorsturing: dit lesmateriaal geldt deze periode voor deze trainer en/of deze groep.
+ *
+ * Leeft NAAST `Lesson` en niet erin: `Lesson.student_id` blijft persoonlijk materiaal voor één
+ * speler. Een tweede betekenis op datzelfde veld hangen is dezelfde fout als een tweede antwoord
+ * naast `taught_by_id` — zie het kopcommentaar van lib/lesgever.
+ *
+ * `van` en `tot` zijn dagen als `jjjj-mm-dd`, beide meegerekend, net als bij `SickLeave` en
+ * `Vakantie`. Zo houdt een periode over de zomertijdwissel dezelfde dagen.
+ *
+ * Minstens één van `coach_id` en `group_id` staat er. Beide leeg zou stilzwijgend "de hele club"
+ * betekenen, en dat is een beslissing die niemand met een lege invoer bedoeld heeft; de tabel
+ * `les_planning` weigert zo'n rij ook in de databank. Welk materiaal er voor een les geldt,
+ * beslist `materiaalVoor` in lib/lesplanning — de enige plek die die vraag beantwoordt.
+ */
+export interface Lesplanning {
+  id: string;
+  lesson_id: string;
+  /** Alles wat deze trainer die periode geeft. Leeg = het gaat niet om een trainer. */
+  coach_id?: string;
+  /** Deze groep, bij wie hem ook geeft. Leeg = het gaat niet om een groep. */
+  group_id?: string;
+  van: string; // jjjj-mm-dd
+  tot: string; // jjjj-mm-dd
+  created_at: string; // ISO
+}
+
 export interface Settings {
   booking_end_time: string;
   /**

@@ -24,7 +24,7 @@ import type { StoreData } from './mockStore';
 import { defaultSettings } from '../lib/seed';
 import { aanmeldUitkomst, type AanmeldUitkomst } from '../lib/wachtwoord';
 import type {
-  Beurtenkaart, Booking, Court, LesGroep, Lesson, Memo, OuderKind, PlayerGoal, Settings,
+  Beurtenkaart, Booking, Court, LesGroep, Lesplanning, Lesson, Memo, OuderKind, PlayerGoal, Settings,
   SickLeave, StudentProgress, User,
 } from '../lib/types';
 
@@ -41,6 +41,7 @@ const TABLES: Record<SyncTable, string> = {
   relaties: 'ouder_kind',
   lesGroepen: 'lesson_groups',
   sickLeaves: 'sick_leaves',
+  lesPlanning: 'les_planning',
 };
 
 type Row = Record<string, unknown>;
@@ -172,7 +173,7 @@ function metTarief(users: User[], rates: RateRow[]): User[] {
 export async function loadFromSupabase(): Promise<StoreData> {
   const [
     users, courts, bookings, lessons, progress, goals, beurtenkaarten, memos, relaties, rates,
-    lesGroepen, sickLeaves,
+    lesGroepen, sickLeaves, lesPlanning,
   ] = await Promise.all([
     selectAll<User>('users'),
     selectAll<Court>('courts'),
@@ -194,6 +195,9 @@ export async function loadFromSupabase(): Promise<StoreData> {
     selectAllOptioneel<RateRow>('coach_rates', ['auth_id', 'updated_at'], 'coach_id'),
     selectAllOptioneel<LesGroep>('lesson_groups'),
     selectAllOptioneel<SickLeave>('sick_leaves'),
+    // Idem voor de doorsturingen: `LESPLANNING.sql` draait de beheerder zelf, en tot dat
+    // gebeurd is hoort de app te laden met nog geen enkele doorsturing.
+    selectAllOptioneel<Lesplanning>('les_planning'),
   ]);
 
   const [settingsRow, catalogueRows] = await Promise.all([
@@ -217,6 +221,7 @@ export async function loadFromSupabase(): Promise<StoreData> {
     relaties,
     lesGroepen,
     sickLeaves,
+    lesPlanning,
     // De club heeft één rij instellingen; ontbrekende velden vallen terug op de standaard,
     // zodat een nieuw veld geen lege plek in een scherm oplevert.
     settings: { ...defaultSettings, ...stored },

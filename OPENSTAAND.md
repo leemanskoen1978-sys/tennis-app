@@ -145,6 +145,32 @@ app hard herladen. Vóór die SQL werkt het scherm wel en het claimen niet. Daar
 doorlopen: een les vrijgeven, met een tweede traineraccount de lijst openen, de les nemen, en
 hem teruggeven.
 
+### 1d. Lesmateriaal doorsturen per periode — af, op het handwerk na
+
+De beheerder stuurt onder **Beheer → Lessen beheren → Lesplanning** lesmateriaal door voor een
+periode, aan een trainer en/of een lesgroep. De trainer ziet het bij zijn les staan.
+
+- **Wie de vraag beantwoordt:** `lib/lesplanning.ts` — `lesplanningFout`, `geldtVoor`,
+  `materiaalVoor`, met 18 tests. Er wordt niets op de boeking geschreven: welk materiaal geldt is
+  een afgeleid feit uit trainer, groep en datum, net als `zoektVervanger` en `staatOpen`. Zo krijgt
+  een les die later in die periode nog bijgeboekt wordt het materiaal vanzelf.
+- **`geldtVoor` vergelijkt `coach_id` en met opzet niet `lesgeverId`.** Neemt een collega een les
+  over van een zieke trainer, dan blijft het de les van die groep en hoort er hetzelfde materiaal
+  bij; de vervanger ziet het gewoon.
+- **Er wordt niets weggelaten** als er twee dingen gelden (een groepsplanning én een
+  trainersplanning): ze staan er beide, de bijzonderste bovenaan.
+- **De speler ziet het niet, met opzet.** Dit is werkinstructie voor de trainer. De spelerskant
+  zou twee openingen in de bewaking kosten: `lessons_select` laat een speler alleen materiaal
+  lezen dat aan hemzelf hangt, en `lesson_groups_select` is alleen voor de beheerder.
+- **De databank:** `LESPLANNING.sql` — de tabel `les_planning`, een `check` die een rij zonder
+  trainer én zonder groep weigert, `on delete cascade` op de drie verwijzingen, lezen voor elke
+  trainer en schrijven alleen voor de beheerder. Nagekeken op een echte Postgres 16.
+
+**Wat de gebruiker nog met de hand moet doen.** `LESPLANNING.sql` draaien in de Supabase
+SQL-editor en daarna de app hard herladen. Vóór die SQL werkt het scherm wel en het opslaan niet.
+Daarna doorlopen: materiaal doorsturen voor een groep en een periode, en met een traineraccount
+nakijken of het bij de juiste lessen staat en niet bij de andere.
+
 ### 2. Achterstallig klein werk
 
 - **Verwijderen in het detailblad** verschijnt alleen bij een les uit een reeks. Bij een losse
