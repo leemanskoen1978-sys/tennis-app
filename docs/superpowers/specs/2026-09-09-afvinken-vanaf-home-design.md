@@ -147,10 +147,23 @@ het blad Lesdagen (`app/players/[id].tsx:320`) gaat eraf.
 toekomstige lessen aan. Vergat hij af te vinken, dan meldt hij dat aan de beheerder en die
 zet het recht.
 
-Dat is een **werkafspraak en geen slot**: `magAanwezigheidZetten` wordt niet aangescherpt.
-Zou "het verleden is voor de beheerder" in de rechten afgedwongen worden, dan blokkeert dat
-precies het gewone geval — een trainer die zijn groep afvinkt om vijf over het uur, wanneer
-de les technisch al voorbij is. Dat is geen correctie maar zijn werk.
+**"Verleden" begint de dag nadien.** Een trainer mag alles wijzigen aan een les van
+vandaag, ook nadat die is afgelopen; vanaf middernacht is het aan de beheerder.
+
+Die grens is er met opzet en niet "zodra de les voorbij is": dat laatste zou precies het
+gewone geval blokkeren — een trainer die zijn groep afvinkt om vijf over het uur. Afvinken
+gebeurt ná de les, dus de dag is de eenheid, niet het uur.
+
+Er komt geen nieuw begrip bij. Deze grens staat al in `magAanwezigheidZetten`
+(`lib/aanwezigheid.ts`) en in de databank (`bewaak_betaalvelden`,
+`date_trunc('day', now() at time zone 'Europe/Brussels')`), alleen geldt ze vandaag enkel
+voor spelers en ouders — de trainer van de les valt er nu bovenlangs uit. Die uitzondering
+vervalt; alleen de beheerder houdt de vrije hand.
+
+Dit moet op **twee** plaatsen, anders is het cosmetica: in `magAanwezigheidZetten` zodat het
+scherm niets aanbiedt wat geweigerd wordt, én in de trigger `bewaak_betaalvelden`, die nu
+nog `if is_admin() or old.coach_id = app_user_id() then return new` doet en de trainer dus
+alles laat schrijven.
 
 Wat wél opgelost moet worden in stuk 4: de beheerder heeft vandaag maar één weg naar het
 lesdetail van een oude les, en dat is Beheer → Lesgroepen → groep → les. Die werkt alleen
