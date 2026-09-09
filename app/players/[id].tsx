@@ -252,7 +252,9 @@ export default function PlayerDossier() {
   const lesLabel = (b: Booking): string => t('Les van {dag} {tijd} met {ander}, details openen', {
     dag: formatDay(b.start_time),
     tijd: formatTimeRange(b.start_time, b.end_time),
-    ander: lessonMeta(b),
+    // De trainer en niet `lessonMeta`: die zin begint met de baan, en "met Terrein 11 ·
+    // Ann Devries" is geen Nederlands. Wie hier voor de speler staat, is de trainer.
+    ander: nameOf(b.coach_id),
   });
 
   /** Een blad verlaten om ergens anders heen te gaan: eerst dicht, dan pas navigeren. */
