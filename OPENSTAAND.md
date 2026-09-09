@@ -6,13 +6,17 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 
 ## Waar staat het nu
 
-*Bijgewerkt op 9 september 2026.*
+*Bijgewerkt op 10 september 2026.*
 
-- **`main`** staat op `cbb29d8` en is gepusht naar
+**Alle SQL-bestanden zijn gedraaid op de databank van de club**: `supabase-schema.sql`,
+`AANWEZIGHEID-VERLEDEN.sql`, `ZOEKT-TRAINER.sql`, `LESPLANNING.sql` en `BEZETTE-UREN.sql`. Er
+staat niets meer klaar dat nog gedraaid moet worden.
+
+- **`main`** staat op `5213fca` en is gepusht naar
   <https://github.com/leemanskoen1978-sys/tennis-app>. Elke push naar `main` bouwt en zet de
   site online (`.github/workflows/deploy.yml`); de site draait op
   <https://leemanskoen1978-sys.github.io/tennis-app/>.
-- Testsuite: **1865 tests**, allemaal in `lib/`. `npx tsc --noEmit`, `npm test` en
+- Testsuite: **1935 tests**, allemaal in `lib/`. `npx tsc --noEmit`, `npm test` en
   `npx expo export -p web` horen bij elke oplevering.
 - `koen.xlsx` is een **testfixture** en moet op de schijf blijven staan — 40 tests lezen dat
   bestand en slaan zichzelf stilzwijgend over als het weg is. Zie `.gitignore`.
@@ -139,11 +143,12 @@ gemeld, of iemand heeft de les vrijgegeven met de knop op het lesdetail (`bookin
   een echte Postgres 16 met vijftien scenario's, inclusief de bestaande wegen (beheerder wijst
   aan, trainer verzet zijn baan, speler zet zijn betaalwijze).
 
-**Wat de gebruiker nog met de hand moet doen.** `ZOEKT-TRAINER.sql` draaien in de Supabase
-SQL-editor — ná `AANWEZIGHEID-VERLEDEN.sql`, want die herschikte dezelfde trigger — en daarna de
-app hard herladen. Vóór die SQL werkt het scherm wel en het claimen niet. Daarna met de hand
-doorlopen: een les vrijgeven, met een tweede traineraccount de lijst openen, de les nemen, en
-hem teruggeven.
+**De SQL is gedraaid** op 10 september 2026 (`ZOEKT-TRAINER.sql`, ná
+`AANWEZIGHEID-VERLEDEN.sql` die dezelfde trigger herschikte). De kolom `bookings.zoekt_trainer`
+is nagekeken en staat er.
+
+**Wat er nog met de hand doorlopen moet:** een les vrijgeven, met een tweede traineraccount de
+lijst openen, de les nemen, en hem teruggeven.
 
 ### 1d. Lesmateriaal doorsturen per periode — af, op het handwerk na
 
@@ -166,10 +171,11 @@ periode, aan een trainer en/of een lesgroep. De trainer ziet het bij zijn les st
   trainer én zonder groep weigert, `on delete cascade` op de drie verwijzingen, lezen voor elke
   trainer en schrijven alleen voor de beheerder. Nagekeken op een echte Postgres 16.
 
-**Wat de gebruiker nog met de hand moet doen.** `LESPLANNING.sql` draaien in de Supabase
-SQL-editor en daarna de app hard herladen. Vóór die SQL werkt het scherm wel en het opslaan niet.
-Daarna doorlopen: materiaal doorsturen voor een groep en een periode, en met een traineraccount
-nakijken of het bij de juiste lessen staat en niet bij de andere.
+**De SQL is gedraaid** op 10 september 2026 (`LESPLANNING.sql`). De tabel `les_planning`
+is nagekeken en staat er.
+
+**Wat er nog met de hand doorlopen moet:** materiaal doorsturen voor een groep en een periode, en
+met een traineraccount nakijken of het bij de juiste lessen staat en niet bij de andere.
 
 ### 1e. Een speler ziet niet welke uren echt bezet zijn — af, op het draaien na
 
