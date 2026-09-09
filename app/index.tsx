@@ -15,6 +15,7 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ActionTile, TileGrid } from '../components/ui/ActionTile';
 import { Lesdag } from '../components/lesdag/Lesdag';
+import { Lesdagspeler } from '../components/lesdag/Lesdagspeler';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { useKindkeuze, useOpenstaandeBetalingen } from '../providers/kindkeuze';
 import { SpelerKiezer } from '../components/ui/SpelerKiezer';
@@ -146,8 +147,11 @@ export default function Hub() {
       <SpelerKiezer />
 
       {/* De lesdag hoort bovenaan: wat een trainer om vijf voor vijf wil zien, is de les
-          van vijf uur — niet een keuzemenu. De tegels blijven eronder staan. */}
-      {coach ? <Lesdag coachId={currentUser.id} /> : null}
+          van vijf uur — niet een keuzemenu. Voor een speler is dat dezelfde vraag met een
+          ander antwoord: hoe laat, bij wie, op welke baan. */}
+      {coach
+        ? <Lesdag coachId={currentUser.id} />
+        : speler ? <Lesdagspeler spelerId={speler.id} /> : null}
 
       {/* Wat er met een aanvraag gebeurde. Staat bovenaan en verdwijnt na een week vanzelf:
           er valt niets weg te klikken, en een bericht van drie weken oud is geen bericht. */}
