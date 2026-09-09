@@ -12,7 +12,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 import { Button } from './ui/Button';
-import { ChipKiezer } from './ui/ChipKiezer';
+import { Combobox } from './ui/Combobox';
 import { DatumVeld } from './ui/DatumVeld';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { lesplanningFout } from '../lib/lesplanning';
@@ -32,12 +32,12 @@ export function LesplanningToevoegen({ lessonId, onKlaar }: {
   const t = useT();
   const { users, lesGroepen, voegLesplanningToe, error } = useSimpleData();
 
-  const [coachId, setCoachId] = useState('');
-  const [groupId, setGroupId] = useState('');
+  // `null` en niet '': dat is wat `Combobox` teruggeeft als er niets gekozen is. Naar de lib en
+  // naar de databank gaat het als een lege tekst respectievelijk `undefined` — zie hieronder.
+  const [coachId, setCoachId] = useState<string | null>(null);
+  const [groupId, setGroupId] = useState<string | null>(null);
   const [van, setVan] = useState('');
   const [tot, setTot] = useState('');
-  const [zoekTrainer, setZoekTrainer] = useState('');
-  const [zoekGroep, setZoekGroep] = useState('');
 
   const trainers = coachesOf(users);
   const groepen = lesGroepen.filter((g) => !g.archived);
@@ -62,7 +62,7 @@ export function LesplanningToevoegen({ lessonId, onKlaar }: {
   const vanSleutel = vanDatum ? dagSleutel(vanDatum) : '';
   const totSleutel = totDatum ? dagSleutel(totDatum) : '';
 
-  const fout = lesplanningFout(lessonId, coachId, groupId, vanSleutel, totSleutel);
+  const fout = lesplanningFout(lessonId, coachId ?? '', groupId ?? '', vanSleutel, totSleutel);
 
   const stuurDoor = async (): Promise<void> => {
     if (fout !== null) return;
@@ -70,38 +70,35 @@ export function LesplanningToevoegen({ lessonId, onKlaar }: {
       lesson_id: lessonId,
       // Leeg is `undefined` op het type en niet een lege tekst: zo leest `geldtVoor` het, en zo
       // komt er ook geen lege verwijzing in de databank.
-      coach_id: coachId === '' ? undefined : coachId,
-      group_id: groupId === '' ? undefined : groupId,
+      coach_id: coachId ?? undefined,
+      group_id: groupId ?? undefined,
       van: vanSleutel,
       tot: totSleutel,
     });
-    setCoachId(''); setGroupId(''); setVan(''); setTot('');
-    setZoekTrainer(''); setZoekGroep('');
+    setCoachId(null); setGroupId(null); setVan(''); setTot('');
     onKlaar();
   };
 
   return (
     <View style={styles.blok}>
       <Text style={styles.label}>{t('Trainer')}</Text>
-      <ChipKiezer
+      <Combobox
         items={trainers}
         label={(c) => c.name}
-        gekozen={coachId}
-        onKies={(id) => setCoachId(coachId === id ? '' : id)}
-        zoek={zoekTrainer}
-        onZoek={setZoekTrainer}
+        value={coachId}
+        onChange={setCoachId}
         plaatshouder={t('Zoek een trainer…')}
+        leeghint={t('Geen trainer gekozen')}
       />
 
       <Text style={styles.label}>{t('Groep')}</Text>
-      <ChipKiezer
+      <Combobox
         items={groepen}
         label={groepLabel}
-        gekozen={groupId}
-        onKies={(id) => setGroupId(groupId === id ? '' : id)}
-        zoek={zoekGroep}
-        onZoek={setZoekGroep}
+        value={groupId}
+        onChange={setGroupId}
         plaatshouder={t('Zoek een groep…')}
+        leeghint={t('Geen groep gekozen')}
       />
 
       <View style={styles.datumRij}>
@@ -118,7 +115,7 @@ export function LesplanningToevoegen({ lessonId, onKlaar }: {
       {/* De melding komt pas als er iets ingevuld is: een leeg formulier verwijten dat het leeg
           is, helpt niemand. Geen `Alert` — die blokkeert op web, en je wil de melding kunnen
           lezen terwijl je het veld verbetert. */}
-      {fout !== null && (coachId !== '' || groupId !== '' || van !== '' || tot !== '') ? (
+      {fout !== null && (coachId !== null || groupId !== null || van !== '' || tot !== '') ? (
         <Text style={styles.fout}>{fout}</Text>
       ) : null}
       {error ? <Text style={styles.fout}>{error}</Text> : null}
