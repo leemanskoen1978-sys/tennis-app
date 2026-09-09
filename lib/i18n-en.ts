@@ -1537,4 +1537,8 @@ export const EN: Record<string, string> = {
   'Ja, weghalen': 'Yes, remove it',
   'Deze periode: {titel}': 'This period: {titel}',
   'Lesmateriaal {titel} openen': 'Open lesson material {titel}',
+  'Zoek een trainer…': 'Search for a coach…',
+  'Zoek een groep…': 'Search for a group…',
+  'Niets gevonden. Probeer een andere zoekterm.': 'Nothing found. Try a different search term.',
+  'Nog {n} van de {totaal} — typ om te zoeken.': '{n} more of {totaal} — type to search.',
 };
