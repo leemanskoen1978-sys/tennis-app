@@ -135,6 +135,38 @@ bedoeling — openklappen is geen controleren — maar het betekent wel dat een 
 vergeet op Klaar te tikken, denkt te hebben afgevinkt terwijl er niets staat. Het scherm
 moet dus duidelijk maken dat Klaar de handeling is en niet een sierknop.
 
+## Besluiten voor stuk 2, 3 en 4
+
+Genomen op 9 september 2026, zodat de volgende ontwerpen er niet opnieuw over hoeven.
+
+**Stuk 2 — de aanwezigheidshistoriek krijgt een periodekiezer.** Dezelfde `PeriodPicker` als
+op Historiek, in plaats van "alles van dit seizoen". Het plafond van zes verleden lessen in
+het blad Lesdagen (`app/players/[id].tsx:320`) gaat eraf.
+
+**Stuk 2 — het verleden is in het dossier alleen leesbaar.** Een trainer past daar alleen
+toekomstige lessen aan. Vergat hij af te vinken, dan meldt hij dat aan de beheerder en die
+zet het recht.
+
+Dat is een **werkafspraak en geen slot**: `magAanwezigheidZetten` wordt niet aangescherpt.
+Zou "het verleden is voor de beheerder" in de rechten afgedwongen worden, dan blokkeert dat
+precies het gewone geval — een trainer die zijn groep afvinkt om vijf over het uur, wanneer
+de les technisch al voorbij is. Dat is geen correctie maar zijn werk.
+
+Wat wél opgelost moet worden in stuk 4: de beheerder heeft vandaag maar één weg naar het
+lesdetail van een oude les, en dat is Beheer → Lesgroepen → groep → les. Die werkt alleen
+voor lessen die aan een lesgroep hangen. Voor een losse les is er na het opheffen van
+Historiek en Nog te komen geen enkele weg meer — `LessonCards`, het component dat het
+lesdetail opent, staat alleen in `agenda/historiek`, `agenda/komend` en
+`admin/lesgroepen/[id]`, en de eerste twee verdwijnen. De lessenregels in de dossiers zijn
+gewone regels zonder doorklik.
+
+**Stuk 3 — de weekagenda komt in het dossier van de persoon zelf.** Een trainer opent een
+speler en ziet diens week; hij opent zijn eigen trainersdossier en ziet die van hem. Geen
+aparte ingang voor de speler.
+
+**Stuk 4 — Historiek en Nog te komen verdwijnen.** De dossiers nemen het over, zonder
+plafond. De periodekiezer en de bedragen gaan naar Beheer → Rapport, waar het geld al staat.
+
 ## Bewust buiten dit stuk
 
 - De goedkeuringswachtrij (`app/agenda/index.tsx:122`) verhuist naar Home — **stuk 4**.
