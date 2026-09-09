@@ -146,9 +146,20 @@ moet dus duidelijk maken dat Klaar de handeling is en niet een sierknop.
   geen verhuizing.
 - Weekagenda naar Spelers en Trainers — **stuk 3**. Let op: dit kalenderraster bestaat
   nergens anders in de app, dus dit is echt verhuizen.
-- Historiek en Nog te komen — **stuk 4**, en hier ligt een beslissing die nog niemand
-  genomen heeft. Ze staan inderdaad al verkort op de dossiers (`app/players/[id].tsx:320`,
-  `app/coaches/[id].tsx:200`), maar zonder periodekiezer, zonder bedragen en zonder de
-  exports. **Het ICS-agendabestand bestaat alleen op `/agenda/komend`** — dat is de knop
-  waarmee een speler zijn lessen in zijn eigen telefoonagenda zet. Die knop mag niet zonder
-  besluit verdwijnen.
+- Historiek en Nog te komen — **stuk 4**. Ze staan al verkort op de dossiers
+  (`app/players/[id].tsx:320`, `app/coaches/[id].tsx:200`), maar zonder periodekiezer,
+  zonder bedragen en zonder de exports.
+
+  **Het ICS-agendabestand bestaat alleen op `/agenda/komend`.** Beslist op 9 september 2026:
+  het wordt er **twee**.
+
+  - Een **persoonlijke** export blijft bestaan voor de speler, op een plek die hij bereikt —
+    bij zijn eigen lessen. Dat is waar de knop voor gemaakt is: een speler zet zíjn lessen in
+    de agenda van zijn telefoon.
+  - Een **clubbrede** export komt erbij in Beheer → Kalender, voor de beheerder: alle lessen,
+    of die van één trainer.
+
+  Waarom niet alleen dat tweede, zoals eerst gevraagd: het Beheer-tabblad staat alleen in
+  `coachTabs` (`components/ui/TabBar.tsx:31`) en `app/admin/index.tsx:33` weigert iedereen die
+  geen trainer is. De knop daarheen verplaatsen zou hem onbereikbaar maken voor precies de
+  mensen voor wie hij bestaat.
