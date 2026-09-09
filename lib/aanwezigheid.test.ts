@@ -1,5 +1,6 @@
 import {
   aanwezigheidVan, zetAanwezigheid, aanwezigheidTelling, aanwezigheidRegel, volgendeStand, magAanwezigheidZetten,
+  getoondeStand, bevestigAanwezigheid,
 } from './aanwezigheid';
 import type { Booking } from './types';
 
@@ -90,13 +91,25 @@ describe('aanwezigheidRegel', () => {
 });
 
 describe('volgendeStand', () => {
-  it('walks one circle: empty, present, absent, empty', () => {
-    expect(volgendeStand(null)).toBe('aanwezig');
+  it('schakelt heen en weer tussen aanwezig en afwezig', () => {
     expect(volgendeStand('aanwezig')).toBe('afwezig');
-    expect(volgendeStand('afwezig')).toBeNull();
+    expect(volgendeStand('afwezig')).toBe('aanwezig');
   });
 
-  it('clears the note when the screen passes null', () => {
+  it('vertrekt vanuit aanwezig als er nog niets genoteerd staat', () => {
+    // Het scherm toont zo iemand als aanwezig, dus de tik moet hem op afwezig zetten.
+    expect(volgendeStand(null)).toBe('afwezig');
+  });
+
+  it('komt nooit meer op niets genoteerd uit', () => {
+    // De weg terug naar "leeg" is met opzet uit het scherm gehaald; hij bestaat nog wel
+    // via zetAanwezigheid(b, id, null), waar het detailblad van de les gebruik van maakt.
+    for (const stand of [null, 'aanwezig', 'afwezig'] as const) {
+      expect(volgendeStand(stand)).not.toBeNull();
+    }
+  });
+
+  it('laat de weg terug naar leeg bestaan buiten het scherm om', () => {
     const b = { ...base, attendance: { p1: 'aanwezig' as const } };
     expect(zetAanwezigheid(b, 'p1', null).attendance).toEqual({});
   });
@@ -148,5 +161,55 @@ describe('magAanwezigheidZetten', () => {
 
   it('says no when the start time is unreadable', () => {
     expect(magAanwezigheidZetten(speler, les('ooit'), 'p1', ['p1'], nu)).toBe(false);
+  });
+});
+
+describe('getoondeStand', () => {
+  it('leest niets genoteerd als aanwezig', () => {
+    expect(getoondeStand(null)).toBe('aanwezig');
+  });
+
+  it('laat een echte stand zichzelf blijven', () => {
+    expect(getoondeStand('aanwezig')).toBe('aanwezig');
+    expect(getoondeStand('afwezig')).toBe('afwezig');
+  });
+});
+
+describe('bevestigAanwezigheid', () => {
+  const groep = {
+    ...base,
+    participant_ids: ['p1', 'p2', 'p3'],
+  };
+
+  it('zet iedereen zonder aantekening op aanwezig', () => {
+    expect(bevestigAanwezigheid(groep).attendance).toEqual({
+      p1: 'aanwezig', p2: 'aanwezig', p3: 'aanwezig',
+    });
+  });
+
+  it('laat een afwezige met rust', () => {
+    const b = { ...groep, attendance: { p2: 'afwezig' as const } };
+    expect(bevestigAanwezigheid(b).attendance).toEqual({
+      p1: 'aanwezig', p2: 'afwezig', p3: 'aanwezig',
+    });
+  });
+
+  it('gooit de aantekening weg van wie niet meer meespeelt', () => {
+    // Dezelfde opruiming als zetAanwezigheid: een speler die de trainer uit de les haalde,
+    // laat anders een aantekening achter die nergens op het scherm komt maar wel meetelt.
+    const b = { ...groep, attendance: { weg: 'afwezig' as const } };
+    expect(bevestigAanwezigheid(b).attendance).toEqual({
+      p1: 'aanwezig', p2: 'aanwezig', p3: 'aanwezig',
+    });
+  });
+
+  it('maakt de telling compleet: niets staat meer open', () => {
+    const bevestigd = { ...groep, ...bevestigAanwezigheid(groep) };
+    expect(aanwezigheidTelling(bevestigd)).toEqual({ aanwezig: 3, afwezig: 0, open: 0 });
+  });
+
+  it('verandert niets meer als je twee keer bevestigt', () => {
+    const eenmaal = { ...groep, ...bevestigAanwezigheid(groep) };
+    expect(bevestigAanwezigheid(eenmaal).attendance).toEqual(eenmaal.attendance);
   });
 });

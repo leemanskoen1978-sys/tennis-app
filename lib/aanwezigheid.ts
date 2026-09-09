@@ -42,6 +42,24 @@ export function aanwezigheidVan(
 }
 
 /**
+ * Wat het afvinkscherm toont voor deze stand.
+ *
+ * Niets genoteerd leest als aanwezig, want dat is wat er in de praktijk aan de hand is: op
+ * een handvol uitzonderingen na staat iedereen er. De trainer tikt dus alleen de afwezigen
+ * aan in plaats van elk kind los te bevestigen.
+ *
+ * Deze vertaling valt op één plek. Zou elk scherm zelf `?? 'aanwezig'` schrijven, dan gaat
+ * de telling (`aanwezigheidTelling`) er vroeg of laat anders over denken dan de namenlijst,
+ * en dan klopt de regel "3 van 4 aanwezig" niet meer met wat eronder staat.
+ *
+ * Let op wat dit NIET doet: het schrijft niets weg. In de databank blijft "niets genoteerd"
+ * gewoon leeg staan tot de trainer op Klaar tikt — zie `bevestigAanwezigheid`.
+ */
+export function getoondeStand(huidig: Aanwezigheid | null): Aanwezigheid {
+  return huidig ?? 'aanwezig';
+}
+
+/**
  * De aantekening van één speler zetten, en de rest van de les teruggeven zoals ze was.
  *
  * `null` wist hem, en opnieuw op dezelfde knop tikken doet hetzelfde. Er moet een weg terug
@@ -66,6 +84,29 @@ export function zetAanwezigheid(
   if (!spelers.includes(playerId)) return { attendance: uit };
   if (waarde === null || uit[playerId] === waarde) delete uit[playerId];
   else uit[playerId] = waarde;
+  return { attendance: uit };
+}
+
+/**
+ * De les afsluiten: wie nog geen aantekening heeft, was er.
+ *
+ * Dit is wat de Klaar-knop op het afvinkscherm wegschrijft, en het is het moment waarop
+ * "niemand heeft hiernaar gekeken" verandert in "de trainer heeft dit gezien". Dat verschil
+ * moet blijven bestaan — een les van volgende maand staat anders nu al op "iedereen
+ * aanwezig", en het uitprintbare blad voor invaltrainers (`bladAanwezigheid` in
+ * lib/export-trainingen) laat een vakje leeg juist om te zeggen dat er niet gekeken is.
+ *
+ * Bestaande aantekeningen blijven staan: de afwezigen die de trainer net aantikte, zijn
+ * precies waarvoor hij het scherm opende.
+ *
+ * Wie niet meer meespeelt gaat eruit, om dezelfde reden als bij `zetAanwezigheid`.
+ */
+export function bevestigAanwezigheid(b: AanwezigheidBooking): { attendance: Aanwezigheden } {
+  const uit: Aanwezigheden = {};
+  for (const id of lessonPlayerIds(b)) {
+    const bestaand = b.attendance?.[id];
+    uit[id] = bestaand === 'afwezig' ? 'afwezig' : 'aanwezig';
+  }
   return { attendance: uit };
 }
 
@@ -102,16 +143,21 @@ export function aanwezigheidRegel(b: AanwezigheidBooking): string {
 }
 
 /**
- * De volgende stand op het afvinkscherm: leeg → aanwezig → afwezig → leeg.
+ * De volgende stand op het afvinkscherm: aanwezig ⇄ afwezig.
  *
- * Eén rondje, want daar tikt een kind zelf op zijn eigen naam en heeft het maar één knop.
- * Dat de derde tik weer leeg maakt is met opzet: wie zich vergist tikt gewoon door tot de
- * juiste stand er staat, in plaats van de trainer erbij te moeten roepen.
+ * Was een rondje van drie (leeg → aanwezig → afwezig → leeg), zodat een kind dat zijn eigen
+ * naam aantikte zich kon herstellen door door te tikken. Dat rondje kostte een trainer drie
+ * tikken per kind om bij "afwezig" te komen, terwijl hij er per les hooguit één of twee
+ * nodig heeft: de rest staat er gewoon.
+ *
+ * Nu vertrekt alles vanuit aanwezig (zie `getoondeStand`) en zet één tik iemand op afwezig,
+ * de volgende weer terug. Herstellen kan dus nog steeds door door te tikken.
+ *
+ * De weg terug naar "niets genoteerd" is uit het scherm verdwenen maar niet uit de app:
+ * `zetAanwezigheid(b, id, null)` doet het nog, en het detailblad van een les gebruikt dat.
  */
-export function volgendeStand(huidig: Aanwezigheid | null): Aanwezigheid | null {
-  if (huidig === null) return 'aanwezig';
-  if (huidig === 'aanwezig') return 'afwezig';
-  return null;
+export function volgendeStand(huidig: Aanwezigheid | null): Aanwezigheid {
+  return getoondeStand(huidig) === 'aanwezig' ? 'afwezig' : 'aanwezig';
 }
 
 /**
