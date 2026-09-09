@@ -30,7 +30,7 @@ import { isValidEmail, normalizePhone } from '../lib/contact';
 import {
   gevolgenVanVerwijderen, heeftGevolgen, magVinkjeWeg, rolWisselBezwaar, type Gevolgen,
 } from '../lib/leden';
-import { isAdmin, isCoach, roleLabel } from '../lib/rechten';
+import { isAdmin, isCoach, magContactZien, roleLabel } from '../lib/rechten';
 import { isMijnKind } from '../lib/ouderkind';
 import { DAY_LABELS } from '../lib/slots';
 import { PAYMENT_METHODS, PAYMENT_LABELS } from '../lib/payments';
@@ -215,10 +215,14 @@ export function LidBewerken({
         <>
           <Text style={styles.label}>{t('Naam')}</Text>
           <Text style={styles.waarde}>{lid.name}</Text>
-          <Text style={styles.label}>{t('E-mailadres')}</Text>
-          <Text style={styles.waarde}>{lid.email}</Text>
-          <Text style={styles.label}>{t('Gsm-nummer')}</Text>
-          <Text style={styles.waarde}>{lid.phone ?? t('Niet ingevuld')}</Text>
+          {magContactZien(currentUser, lid, relaties) ? (
+            <>
+              <Text style={styles.label}>{t('E-mailadres')}</Text>
+              <Text style={styles.waarde}>{lid.email}</Text>
+              <Text style={styles.label}>{t('Gsm-nummer')}</Text>
+              <Text style={styles.waarde}>{lid.phone ?? t('Niet ingevuld')}</Text>
+            </>
+          ) : null}
         </>
       )}
 

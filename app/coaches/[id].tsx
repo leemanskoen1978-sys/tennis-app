@@ -17,7 +17,7 @@ import { playersForCoach } from '../../lib/relations';
 import { formatWorkingDays } from '../../lib/slots';
 import { sorteerPeriodes } from '../../lib/boekingstijd';
 import { useT, useLanguage } from '../../lib/i18n';
-import { isAdmin, magLoonZien, rolLabel } from '../../lib/rechten';
+import { isAdmin, magContactZien, magLoonZien, rolLabel } from '../../lib/rechten';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, typography, webCursor } from '../../constants/theme';
 import { formatDay, formatTimeRange } from '../../lib/datetime';
@@ -38,7 +38,7 @@ export default function CoachDossier() {
   const lang = useLanguage();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { users, bookings, courts, lessons, progress, currentUser } = useSimpleData();
+  const { users, bookings, courts, lessons, progress, currentUser, relaties } = useSimpleData();
   const [editOpen, setEditOpen] = useState(false);
   // Welk onderdeel openstaat; null = je kijkt naar het raster. Niet onthouden tussen
   // bezoeken: een stand van vorige week zegt niets over vandaag.
@@ -110,8 +110,12 @@ export default function CoachDossier() {
       <Card>
         <Text style={styles.name}>{coach.name}</Text>
         <Badge label={rolLabel(coach)} color={tennisColors.primaryFill} />
-        {/* Eén tik opent de mail of een WhatsApp-gesprek; zie components/ui/ContactRegels. */}
-        <ContactRegels email={coach.email} phone={coach.phone} />
+        {/* Eén tik opent de mail of een WhatsApp-gesprek; zie components/ui/ContactRegels.
+            Alleen voor wie het aangaat: een trainer is voor iedereen bereikbaar via de club,
+            niet via zijn privénummer. Zie `magContactZien`. */}
+        {magContactZien(currentUser, coach, relaties)
+          ? <ContactRegels email={coach.email} phone={coach.phone} />
+          : null}
 
         <Text style={styles.fieldLabel}>{t('Geeft les')}</Text>
         <Text style={styles.fieldValue}>{formatWorkingDays(coach)}</Text>
