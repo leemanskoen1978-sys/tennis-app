@@ -85,10 +85,13 @@ function exerciseHeading(t: Translate, hit: ExerciseHit): string {
 }
 
 export function LessonDatabase({
-  lessons, canEdit, emptyLabel,
+  lessons, canEdit, emptyLabel, magDoorsturen = false,
 }: {
   lessons: Lesson[];
   canEdit: boolean;
+  /** Mag het lesdetail hier "Doorsturen naar…" tonen? Alleen op het databankscherm van de
+   *  tennisschool; op /coaches/lessons kijkt ook een speler mee. Zie `LessonDetailModal`. */
+  magDoorsturen?: boolean;
   /** Wat er staat als er niets te doorzoeken valt. Voor een speler is dat iets anders
    *  dan voor een trainer: hij kan er zelf niets aan doen. */
   emptyLabel?: string;
@@ -349,6 +352,7 @@ export function LessonDatabase({
         visible={openLesson !== null}
         onClose={() => setOpenLesson(null)}
         canEdit={canEdit}
+        magDoorsturen={magDoorsturen}
       />
     </View>
   );

@@ -20,9 +20,13 @@ export default function DatabankScreen(): React.JSX.Element {
       {error !== undefined && error !== null && error.length > 0 ? (
         <Text style={styles.error}>{error}</Text>
       ) : null}
+      {/* Alleen hier staat het doorsturen aan: dit is het databankscherm van de tennisschool.
+          Op /coaches/lessons kijkt ook een speler mee, en die heeft met de weekplanning niets te
+          maken. Binnen het blad geldt daarnaast nog `isAdmin`. */}
       <LessonDatabase
         lessons={visibleLessonsFor(lessons, currentUser)}
         canEdit={isCoach(currentUser)}
+        magDoorsturen
       />
     </Screen>
   );

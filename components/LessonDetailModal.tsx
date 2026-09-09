@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { View, Text, TextInput, Pressable, Linking, Platform, Alert, StyleSheet } from 'react-native';
-import { ExternalLink, Pencil, Trash2, PenLine, Plus } from 'lucide-react-native';
+import { ExternalLink, Pencil, Trash2, PenLine, Plus, CalendarRange } from 'lucide-react-native';
 import { useSimpleData } from '../providers/SimpleDataProvider';
 import { StudentCombobox } from './ui/StudentCombobox';
 import { Button } from './ui/Button';
@@ -17,6 +17,9 @@ import { tennisColors } from '../constants/tennis-colors';
 import { spacing, radius, typography, webCursor } from '../constants/theme';
 import type { Lesson, LessonAttachment } from '../lib/types';
 import { playersOf } from '../lib/hub';
+import { LesplanningToevoegen } from './LesplanningToevoegen';
+import { periodeTekst } from '../lib/vakanties';
+import { isAdmin } from '../lib/rechten';
 
 function confirmDelete(t: Translate, message: string, onYes: () => void) {
   if (Platform.OS === 'web') { if (window.confirm(message)) onYes(); return; }
@@ -28,17 +31,31 @@ function confirmDelete(t: Translate, message: string, onYes: () => void) {
 
 /** Shows a lesson's details first; allows opening the video, editing, or deleting. */
 export function LessonDetailModal({
-  lesson: selected, visible, onClose, canEdit,
+  lesson: selected, visible, onClose, canEdit, magDoorsturen = false,
 }: {
   lesson: Lesson | null;
   visible: boolean;
   onClose: () => void;
   canEdit: boolean;
+  /**
+   * Mag dit blad de knop "Doorsturen naar…" tonen? Standaard niet.
+   *
+   * Een eigen prop en niet stilzwijgend "overal waar je beheerder bent": dit blad gaat ook open
+   * vanuit een spelersdossier, en daar gaat het over die ene speler en niet over de weekplanning
+   * van de tennisschool. Alleen de databank zet hem aan — en binnen het blok geldt daarnaast nog
+   * gewoon `isAdmin`, want doorsturen is beheerderswerk (zie de policy `les_planning_write`).
+   */
+  magDoorsturen?: boolean;
 }) {
   const t = useT();
   const router = useRouter();
-  const { users, lessons, updateLesson, deleteLesson } = useSimpleData();
+  const {
+    currentUser, users, lessons, lesGroepen, lesPlanning, updateLesson, deleteLesson,
+  } = useSimpleData();
   const [editing, setEditing] = useState(false);
+  // Staat het doorstuurblok open? Achter een knop en niet altijd zichtbaar: wie dit blad opent
+  // wil meestal lezen wat er in de training zit, en niet meteen een formulier zien.
+  const [doorsturen, setDoorsturen] = useState(false);
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [description, setDescription] = useState('');
@@ -52,6 +69,26 @@ export function LessonDetailModal({
   // the store instead, or saving an edit would leave the details showing the old text
   // until you close and reopen the sheet.
   const lesson = selected ? (lessons.find((l) => l.id === selected.id) ?? selected) : null;
+
+  // Wat er voor dít materiaal al doorgestuurd is, nieuwste periode eerst. Geen `materiaalVoor`:
+  // die vraag gaat over één les op één dag, en dit gaat over het materiaal zelf.
+  const gepland = lesson === null
+    ? []
+    : lesPlanning
+      .filter((p) => p.lesson_id === lesson.id)
+      .sort((a2, b2) => b2.van.localeCompare(a2.van));
+
+  /** Aan wie een doorsturing hangt, in gewone taal. */
+  const aanWie = (p: (typeof gepland)[number]): string => {
+    const trainer = p.coach_id
+      ? (users.find((u) => u.id === p.coach_id)?.name ?? t('Onbekend'))
+      : null;
+    const groep = p.group_id
+      ? (lesGroepen.find((g) => g.id === p.group_id)?.name ?? t('Onbekende groep'))
+      : null;
+    if (trainer && groep) return t('{groep} bij {trainer}', { groep, trainer });
+    return groep ?? trainer ?? '';
+  };
   if (!lesson) return null;
   const students = playersOf(users);
   const studentName = lesson.student_id
@@ -193,6 +230,33 @@ export function LessonDetailModal({
           <Text style={styles.label}>{t('PDF-bijlagen')}</Text>
           <AttachmentList attachments={lesson.attachments} />
 
+          {magDoorsturen && isAdmin(currentUser) ? (
+            <>
+              {/* Wat er al met dit materiaal gepland staat. Als tekst: weghalen gebeurt op één
+                  plek, in Beheer → Lessen beheren → Lesplanning. Twee plekken om iets weg te
+                  gooien is één te veel. Staat er niets, dan staat er niets — een lege kop leest
+                  als "er is niets gepland", en dat is iets anders dan "nooit ingevuld". */}
+              {gepland.map((p) => (
+                <Text key={p.id} style={styles.gepland}>
+                  {t('Doorgestuurd: {periode} · {aanWie}', {
+                    periode: periodeTekst(p.van, p.tot),
+                    aanWie: aanWie(p),
+                  })}
+                </Text>
+              ))}
+              {doorsturen ? (
+                <LesplanningToevoegen lessonId={lesson.id} onKlaar={() => setDoorsturen(false)} />
+              ) : (
+                <Button
+                  label={t('Doorsturen naar…')}
+                  variant="secondary"
+                  icon={<CalendarRange size={16} color={tennisColors.text} />}
+                  onPress={() => setDoorsturen(true)}
+                />
+              )}
+            </>
+          ) : null}
+
           {canEdit ? (
             <View style={styles.actions}>
               <Button label={t('Bewerken')} variant="secondary" icon={<Pencil size={16} color={tennisColors.text} />} onPress={startEdit} />
@@ -206,6 +270,7 @@ export function LessonDetailModal({
 }
 
 const styles = StyleSheet.create({
+  gepland: { fontSize: 13, color: tennisColors.textMuted, marginTop: spacing.xs },
   lessonTitle: { ...typography.h1, color: tennisColors.text },
   meta: { fontSize: 13, fontWeight: '600', color: tennisColors.textMuted },
   desc: { fontSize: 15, color: tennisColors.text, marginVertical: spacing.sm },
