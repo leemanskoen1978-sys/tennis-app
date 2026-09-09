@@ -1,6 +1,6 @@
 import {
   isAdmin, isCoach, magClubcijfersZien, magContactZien, magInElkeAgenda, magKaartenSchrijven,
-  magLesVerwijderen, magLoonZien, roleLabel, rolLabel,
+  magDossierZien, magLesVerwijderen, magLoonZien, roleLabel, rolLabel,
 } from './rechten';
 import type { Booking, OuderKind, User } from './types';
 
@@ -232,5 +232,57 @@ describe('magContactZien', () => {
   it('weigert als er niemand is', () => {
     expect(magContactZien(null, speler, relaties)).toBe(false);
     expect(magContactZien(speler, null, relaties)).toBe(false);
+  });
+});
+
+describe('magDossierZien', () => {
+  const andereSpeler: User = { id: 'p2', email: 'p2@x.be', name: 'Nova', role: 'player' };
+  const ouder: User = { id: 'ouder', email: 'ouder@x.be', name: 'Wim', role: 'player' };
+  const kind: User = { id: 'kind', email: 'kind@x.be', name: 'Nova', role: 'player' };
+  const aangevraagd: User = { id: 'vreemde', email: 'v@x.be', name: 'Iemand', role: 'player' };
+
+  const relaties: OuderKind[] = [
+    { id: 'r1', parent_id: 'ouder', child_id: 'kind', status: 'approved' as const },
+    { id: 'r2', parent_id: 'ouder', child_id: 'vreemde', status: 'pending' as const },
+  ];
+
+  it('laat een trainer in elk dossier', () => {
+    expect(magDossierZien(trainer, speler, relaties)).toBe(true);
+    expect(magDossierZien(baas, speler, relaties)).toBe(true);
+  });
+
+  it('laat je je eigen dossier openen', () => {
+    expect(magDossierZien(speler, speler, relaties)).toBe(true);
+  });
+
+  it('houdt een speler buiten het dossier van een medespeler', () => {
+    // Dit is de reden dat deze functie bestaat: in een groepsles was elke medespeler
+    // aanklikbaar, en daarachter stonden zijn doelen en zijn voortgangsnotities.
+    expect(magDossierZien(speler, andereSpeler, relaties)).toBe(false);
+  });
+
+  it('laat een ouder in het dossier van zijn goedgekeurde kind', () => {
+    expect(magDossierZien(ouder, kind, relaties)).toBe(true);
+  });
+
+  it('houdt een ouder buiten een dossier waarvoor de aanvraag nog loopt', () => {
+    // Anders is "ik vraag het ouderschap aan" genoeg om een dossier te openen.
+    expect(magDossierZien(ouder, aangevraagd, relaties)).toBe(false);
+  });
+
+  it('weigert als er niemand is', () => {
+    expect(magDossierZien(null, speler, relaties)).toBe(false);
+    expect(magDossierZien(speler, null, relaties)).toBe(false);
+  });
+
+  it('is de buitendeur van magContactZien: wie niet binnen mag, ziet ook geen nummer', () => {
+    // De twee vragen mogen niet uit elkaar lopen zonder dat iemand dat bewust doet.
+    const paren: Array<[User, User]> = [
+      [trainer, speler], [baas, speler], [speler, speler],
+      [speler, andereSpeler], [ouder, kind], [ouder, aangevraagd],
+    ];
+    for (const [kijker, lid] of paren) {
+      expect(magContactZien(kijker, lid, relaties)).toBe(magDossierZien(kijker, lid, relaties));
+    }
   });
 });
