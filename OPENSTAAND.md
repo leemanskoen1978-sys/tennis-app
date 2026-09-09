@@ -121,19 +121,29 @@ Op volgorde van wat ik als eerste zou doen:
 6. **Verzetten** in plaats van annuleren en opnieuw boeken (regen, binnenbaan).
 7. **Facturen** — "Factuur" bestaat als betaalwijze, maar er komt geen document uit.
 8. **Voortgang over tijd** — ratings staan er, maar het verloop per speler is nergens te zien.
-9. **Lessen toewijzen aan trainers.** De beheerder bepaalt voor een aantal trainers tegelijk
-   welke les ze moeten geven. Gevraagd op 9 september 2026; nog niet ontworpen.
+9. **Oefenstof toewijzen aan trainers.** De beheerder bepaalt voor meerdere trainers
+   tegelijk welke les ze die week geven. Gevraagd en uitgevraagd op 9 september 2026; nog
+   niet ontworpen.
 
-   Wat er al ligt om op te bouwen: `lib/vervanger.ts` wijst al een vervanger aan voor
-   bestaande lessen, en `lib/lesgroepen.ts` kent het verband tussen een groep en zijn
-   trainer. Dit is dus eerder een uitbreiding van de lesgroepen dan iets nieuws.
+   **Het gaat om lesmateriaal, niet om lesuren.** Een `Lesson` is in dit model een pagina
+   uit het lessenboekje — titel, oefeningen, aandachtspunten, materiaal (`lib/types.ts:317`)
+   — en niet een uur op de baan; dat is een boeking. De wens gaat dus over "welke oefenstof
+   staat er deze week op het programma", niet over wie wanneer lesgeeft. De eerste notitie
+   hier nam dat laatste aan en dat was verkeerd.
 
-   Wat eerst beslist moet worden: gaat het om het toewijzen van een lesgroep aan een
-   trainer voor het hele seizoen, of om losse lessen per week? Wat gebeurt er met de lessen
-   die al in de agenda staan als een toewijzing verandert — schuiven die mee of blijft het
-   verleden staan? En krijgt de trainer het te zien of te bevestigen? Zolang die drie open
-   staan, valt hier niets te plannen.
+   Vastgelegd met de gebruiker:
 
+   - **Per week, één losse les.** Geen toewijzing voor een heel seizoen.
+   - **De agenda blijft ongemoeid.** De boeking die er stond blijft staan: dit is een
+     toelichting, geen verplichting. Er verschuift niets en er wordt niets overschreven.
+   - **De trainer krijgt het te zien.** Hij hoeft niets te bevestigen en niets te doen.
+
+   Wat er al ligt om op te bouwen: `Lesson` heeft al een `coach_id` én een `student_id`, en
+   `components/AssignLessonModal.tsx` hangt al een les uit de gedeelde bibliotheek aan een
+   speler. Dit is dezelfde handeling met een andere ontvanger, voor meer dan één tegelijk.
+
+   Nog open voor het ontwerp: waar de trainer het te zien krijgt (op Home bij zijn lesdag,
+   of onder Mijn lessen), en of een toewijzing aan een weeknummer hangt of aan een datum.
 10. **Tests op de schermen** — alle 676 tests zitten in `lib/`, geen enkele op een scherm. Twee
    echte fouten van vandaag zaten daar: een opslagknop die op web nooit vuurde
    (`onEndEditing` bestaat niet in react-native-web) en een stijl die niet geïmporteerd was.
