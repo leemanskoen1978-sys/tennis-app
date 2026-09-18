@@ -51,6 +51,11 @@ Een trainer houdt vier tabs: Home, Spelers, Trainers, Beheer. `/agenda/new` houd
 een map in de code is geen tabblad, en hernoemen zou elke verwijzing raken zonder dat iemand
 er iets aan heeft.
 
+De oude adressen lopen niet dood: `/agenda` en alles eronder sturen door naar Home
+(`app/agenda/index.tsx` en `app/agenda/[...rest].tsx`). Een bladwijzer of een snelkoppeling
+op een beginscherm van vóór de opheffing kwam anders uit op het Engelse "Unmatched Route"
+van de router.
+
 `AANWEZIGHEID-VERLEDEN.sql` is **al gedraaid** op de databank van de club; die hoeft niet
 opnieuw.
 
