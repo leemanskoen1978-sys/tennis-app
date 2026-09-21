@@ -1325,3 +1325,27 @@ create policy oefeningen_insert on storage.objects for insert
 drop policy if exists oefeningen_delete on storage.objects;
 create policy oefeningen_delete on storage.objects for delete
   to authenticated using (bucket_id = 'oefeningen' and is_admin());
+
+
+-- === LESPLANNING-OEFENING.sql: oefeningen per kleur doorsturen ===================================
+
+alter table les_planning alter column lesson_id drop not null;
+
+alter table les_planning
+  add column if not exists oefening_kleur text
+    check (oefening_kleur in ('blauw', 'rood', 'oranje', 'groen'));
+alter table les_planning
+  add column if not exists oefening_week int
+    check (oefening_week in (1, 2));
+
+-- Precies één van de twee: een les, of een kleur mét een week. Beide leeg zou een doorsturing
+-- zijn die nergens naar wijst; een kleur zonder week zou niet zeggen wát er doorgestuurd wordt.
+-- De app zorgt dat er geen knop is die hier geweigerd wordt; dit is de bewaking (zie het
+-- kopcommentaar van lib/rechten.ts).
+alter table les_planning drop constraint if exists les_planning_wat;
+alter table les_planning add constraint les_planning_wat check (
+  (lesson_id is not null and oefening_kleur is null and oefening_week is null)
+  or (lesson_id is null and oefening_kleur is not null and oefening_week is not null)
+);
+
+-- Wie mag lezen en schrijven verandert niet: de policies op `les_planning` gelden per rij.

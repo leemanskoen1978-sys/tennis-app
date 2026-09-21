@@ -14,11 +14,16 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, Image, Pressable, StyleSheet, Platform, useWindowDimensions,
 } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 
 import { Screen } from '../../../components/ui/Screen';
+import { Card } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
+import { LesplanningToevoegen } from '../../../components/LesplanningToevoegen';
 import {
-  NIVEAUS, type Kleur, type Oefenblok, type Oefenonderdeel,
+  NIVEAUS, kleurNaam, type Kleur, type Oefenblok, type Oefenonderdeel,
 } from '../../../lib/oefeningen';
+import { oefeningLabel } from '../../../lib/lesplanning';
 import { oefenmap, type Onderdeelnaam } from '../../../lib/oefenafbeeldingen';
 import { kanBestandKiezen, kiesAfbeelding } from '../../../lib/bestand';
 import {
@@ -66,16 +71,32 @@ function laadKopfont(): void {
 
 type Palet = (typeof PALET)[Kleur];
 
+// Wie hier via een doorsturing komt ("Deze periode: Blauw, week 2") krijgt die kleur en week
+// meteen open. Alles wat niet klopt valt terug op blauw, week 1: een verkeerde link is geen
+// reden voor een leeg scherm.
+const niveauUit = (kleur: string | undefined): number =>
+  Math.max(0, NIVEAUS.findIndex((n) => n.kleur === kleur));
+const weekUit = (week: string | undefined): number => (week === '2' ? 1 : 0);
+
 export default function OefeningenScreen(): React.JSX.Element {
   const t = useT();
   const { currentUser } = useSimpleData();
-  const [niveauIndex, setNiveauIndex] = useState(0);
-  const [weekIndex, setWeekIndex] = useState(0);
+  const params = useLocalSearchParams<{ kleur?: string; week?: string }>();
+  const [niveauIndex, setNiveauIndex] = useState(() => niveauUit(params.kleur));
+  const [weekIndex, setWeekIndex] = useState(() => weekUit(params.week));
+  const [doorsturen, setDoorsturen] = useState(false);
   const [afbeeldingen, setAfbeeldingen] = useState<OefenAfbeeldingen | null>(null);
   const [fout, setFout] = useState<string | null>(null);
   const [bezig, setBezig] = useState(false);
 
   useEffect(laadKopfont, []);
+
+  // Komt er terwijl het scherm openstaat een andere kleur of week mee (een tweede doorsturing
+  // aangetikt), dan volgt het scherm; de keuze met de hand blijft staan tot dat gebeurt.
+  useEffect(() => {
+    setNiveauIndex(niveauUit(params.kleur));
+    setWeekIndex(weekUit(params.week));
+  }, [params.kleur, params.week]);
 
   const niveau = NIVEAUS[niveauIndex];
   const map = oefenmap(niveau.kleur, weekIndex);
@@ -229,12 +250,33 @@ export default function OefeningenScreen(): React.JSX.Element {
           ) : null}
         </View>
       </View>
+
+      {/* Buiten het papier: dit formulier is in de kleuren van de app, en die horen niet op een
+          vel met vaste kleuren. Het geldt voor de kleur en week die hierboven openstaan. */}
+      {admin ? (
+        <View style={styles.doorsturen}>
+          {doorsturen ? (
+            <Card>
+              <Text style={styles.doorstuurKop}>
+                {t('Doorsturen: {wat}', { wat: oefeningLabel({ kleur: niveau.kleur, week: weekIndex + 1 }) })}
+              </Text>
+              <LesplanningToevoegen
+                key={map}
+                oefening={{ kleur: niveau.kleur, week: weekIndex + 1 }}
+                onKlaar={() => setDoorsturen(false)}
+              />
+            </Card>
+          ) : (
+            <Button
+              label={t('Doorsturen naar…')}
+              variant="secondary"
+              onPress={() => setDoorsturen(true)}
+            />
+          )}
+        </View>
+      ) : null}
     </Screen>
   );
-}
-
-function kleurNaam(kleur: string): string {
-  return kleur.charAt(0).toUpperCase() + kleur.slice(1);
 }
 
 /** Een kop met de duur ernaast, de streeplijn eronder, en dan de inhoud. */
@@ -476,5 +518,7 @@ const styles = StyleSheet.create({
   toevoegenTekst: { color: MUTED, fontSize: 12.5, fontStyle: 'italic' },
 
   fout: { color: tennisColors.danger, fontSize: 13, marginTop: 4 },
+  doorsturen: { marginTop: 12 },
+  doorstuurKop: { ...typography.h3, color: tennisColors.text },
   voet: { color: MUTED, fontSize: 12, marginTop: 4 },
 });

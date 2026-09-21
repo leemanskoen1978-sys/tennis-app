@@ -1,6 +1,7 @@
 // Shared data model (spec §4).
 
 import type { Aanwezigheden } from './aanwezigheid';
+import type { Kleur } from './oefeningen';
 
 /**
  * Twee rollen, geen drie. "Ouder" was er ooit een, en dat werkte averechts: een ouder die
@@ -506,7 +507,14 @@ export interface SickLeave {
  */
 export interface Lesplanning {
   id: string;
-  lesson_id: string;
+  /** Het lesmateriaal dat doorgestuurd wordt. Leeg als het om oefeningen per kleur gaat. */
+  lesson_id?: string;
+  /**
+   * Oefeningen per kleur (lib/oefeningen) in plaats van een les: de kleur en de week, altijd
+   * samen en nooit samen met `lesson_id`. `les_planning_wat` in de databank bewaakt dat.
+   */
+  oefening_kleur?: Kleur;
+  oefening_week?: number; // 1 of 2
   /** Alles wat deze trainer die periode geeft. Leeg = het gaat niet om een trainer. */
   coach_id?: string;
   /** Deze groep, bij wie hem ook geeft. Leeg = het gaat niet om een groep. */

@@ -16,6 +16,7 @@
 
 import { t } from './i18n';
 import { dagSleutel, parseDag } from './vakanties';
+import { kleurNaam, type Kleur } from './oefeningen';
 import type { Booking, Lesplanning, Lesson } from './types';
 
 /** De velden die deze vragen van een les nodig hebben; meer weet dit bestand er niet van. */
@@ -39,13 +40,14 @@ export type PlanningBoeking = Pick<Booking, 'coach_id' | 'start_time'> & { group
  * datum wordt daar een lege sleutel, en die maakt hier de ene melding die overal hetzelfde luidt.
  */
 export function lesplanningFout(
-  lessonId: string,
+  /** Wat er doorgestuurd wordt: het id van een les, of de naam van een kleur en week. */
+  wat: string,
   coachId: string,
   groupId: string,
   van: string,
   tot: string,
 ): string | null {
-  if (lessonId.trim().length === 0) return t('Kies welk lesmateriaal je doorstuurt.');
+  if (wat.trim().length === 0) return t('Kies welk lesmateriaal je doorstuurt.');
   if (coachId.trim().length === 0 && groupId.trim().length === 0) {
     return t('Kies een trainer, een groep, of beide.');
   }
@@ -103,6 +105,41 @@ export function materiaalVoor(
   planningen: Lesplanning[],
   lessons: Lesson[],
 ): Lesson[] {
+  return geldendVoor(les, planningen)
+    .map((p) => lessons.find((l) => l.id === p.lesson_id))
+    .filter((l): l is Lesson => l !== undefined);
+}
+
+/** Een kleur en een week uit de oefeningen per kleur: wat een doorsturing kan aanwijzen. */
+export type Oefeningkeuze = { kleur: Kleur; week: number };
+
+/**
+ * Welke oefeningen per kleur gelden er voor deze les, in dezelfde volgorde als `materiaalVoor`:
+ * bijzonder eerst. Twee doorsturingen naar dezelfde kleur en week geven die één keer: de trainer
+ * heeft niets aan twee dezelfde regels, en het scherm erachter is hetzelfde.
+ */
+export function oefeningenVoor(
+  les: PlanningBoeking,
+  planningen: Lesplanning[],
+): Oefeningkeuze[] {
+  const uit: Oefeningkeuze[] = [];
+  for (const p of geldendVoor(les, planningen)) {
+    if (p.oefening_kleur === undefined || p.oefening_week === undefined) continue;
+    const keuze = { kleur: p.oefening_kleur, week: p.oefening_week };
+    if (!uit.some((k) => k.kleur === keuze.kleur && k.week === keuze.week)) uit.push(keuze);
+  }
+  return uit;
+}
+
+/** "Oefeningen per kleur: Blauw, week 2" — zoals het op het scherm staat. */
+export function oefeningLabel(keuze: Oefeningkeuze): string {
+  return t('Oefeningen per kleur: {kleur}, week {n}', {
+    kleur: t(kleurNaam(keuze.kleur)), n: keuze.week,
+  });
+}
+
+/** De doorsturingen die voor deze les gelden, van bijzonder naar algemeen. */
+function geldendVoor(les: PlanningBoeking, planningen: Lesplanning[]): Lesplanning[] {
   const rang = (p: Lesplanning): number => {
     if (p.coach_id && p.group_id) return 0;
     if (p.group_id) return 1;
@@ -111,7 +148,5 @@ export function materiaalVoor(
   return planningen
     .filter((p) => geldtVoor(p, les))
     // `filter` gaf al een nieuwe lijst, dus deze sortering raakt de invoer niet aan.
-    .sort((a, b) => rang(a) - rang(b))
-    .map((p) => lessons.find((l) => l.id === p.lesson_id))
-    .filter((l): l is Lesson => l !== undefined);
+    .sort((a, b) => rang(a) - rang(b));
 }

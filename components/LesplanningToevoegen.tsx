@@ -15,7 +15,7 @@ import { Button } from './ui/Button';
 import { Combobox } from './ui/Combobox';
 import { DatumVeld } from './ui/DatumVeld';
 import { useSimpleData } from '../providers/SimpleDataProvider';
-import { lesplanningFout } from '../lib/lesplanning';
+import { lesplanningFout, type Oefeningkeuze } from '../lib/lesplanning';
 import { dagSleutel } from '../lib/vakanties';
 import { parseDayInput } from '../lib/period';
 import { coachesOf } from '../lib/hub';
@@ -24,8 +24,11 @@ import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
 import { spacing, typography } from '../constants/theme';
 
-export function LesplanningToevoegen({ lessonId, onKlaar }: {
-  lessonId: string;
+export function LesplanningToevoegen({ lessonId, oefening, onKlaar }: {
+  /** Het lesmateriaal dat doorgestuurd wordt. Óf dit, óf `oefening`. */
+  lessonId?: string;
+  /** Oefeningen per kleur in plaats van een les: welke kleur en welke week. */
+  oefening?: Oefeningkeuze;
   /** Wordt aangeroepen na een geslaagde doorsturing, zodat het blad zich kan sluiten. */
   onKlaar: () => void;
 }): React.JSX.Element {
@@ -62,12 +65,18 @@ export function LesplanningToevoegen({ lessonId, onKlaar }: {
   const vanSleutel = vanDatum ? dagSleutel(vanDatum) : '';
   const totSleutel = totDatum ? dagSleutel(totDatum) : '';
 
-  const fout = lesplanningFout(lessonId, coachId ?? '', groupId ?? '', vanSleutel, totSleutel);
+  // `lesplanningFout` wil één tekst voor "wat wordt er doorgestuurd"; bij oefeningen is dat de
+  // kleur en de week, en bij een leeg formulier (geen van beide) blijft het leeg.
+  const wat = lessonId ?? (oefening ? `${oefening.kleur}-week${oefening.week}` : '');
+  const fout = lesplanningFout(wat, coachId ?? '', groupId ?? '', vanSleutel, totSleutel);
 
   const stuurDoor = async (): Promise<void> => {
     if (fout !== null) return;
     await voegLesplanningToe({
-      lesson_id: lessonId,
+      // Een les, of een kleur mét een week: nooit allebei (`les_planning_wat` in de databank).
+      ...(lessonId !== undefined
+        ? { lesson_id: lessonId }
+        : { oefening_kleur: oefening?.kleur, oefening_week: oefening?.week }),
       // Leeg is `undefined` op het type en niet een lege tekst: zo leest `geldtVoor` het, en zo
       // komt er ook geen lege verwijzing in de databank.
       coach_id: coachId ?? undefined,

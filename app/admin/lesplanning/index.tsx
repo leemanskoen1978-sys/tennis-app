@@ -20,6 +20,8 @@ import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { useSimpleData } from '../../../providers/SimpleDataProvider';
 import { periodeTekst } from '../../../lib/vakanties';
+import { oefeningLabel } from '../../../lib/lesplanning';
+import type { Lesplanning } from '../../../lib/types';
 import { isAdmin } from '../../../lib/rechten';
 import { useT } from '../../../lib/i18n';
 import { tennisColors } from '../../../constants/tennis-colors';
@@ -49,8 +51,12 @@ export default function LesplanningScreen(): React.JSX.Element {
     );
   }
 
-  const titelVan = (id: string): string =>
-    lessons.find((l) => l.id === id)?.title ?? t('Onbekend lesmateriaal');
+  const titelVan = (p: Lesplanning): string => {
+    if (p.oefening_kleur !== undefined && p.oefening_week !== undefined) {
+      return oefeningLabel({ kleur: p.oefening_kleur, week: p.oefening_week });
+    }
+    return lessons.find((l) => l.id === p.lesson_id)?.title ?? t('Onbekend lesmateriaal');
+  };
   const naamVan = (id: string): string => users.find((u) => u.id === id)?.name ?? t('Onbekend');
   const groepVan = (id: string): string =>
     lesGroepen.find((g) => g.id === id)?.name ?? t('Onbekende groep');
@@ -59,7 +65,8 @@ export default function LesplanningScreen(): React.JSX.Element {
     <Screen>
       <Text style={styles.uitleg}>
         {t('Hier staat wat er aan wie is doorgestuurd, en voor welke periode. Doorsturen doe je '
-          + 'in Lesmateriaal → Databank: zoek de training en gebruik "Doorsturen naar…".')}
+          + 'in Lesmateriaal → Databank: zoek de training en gebruik "Doorsturen naar…". '
+          + 'Oefeningen per kleur stuur je door op hun eigen scherm.')}
       </Text>
 
       {error ? <Text style={styles.fout}>{error}</Text> : null}
@@ -70,7 +77,7 @@ export default function LesplanningScreen(): React.JSX.Element {
 
       {rijen.map((p) => (
         <Card key={p.id}>
-          <Text style={styles.titel}>{titelVan(p.lesson_id)}</Text>
+          <Text style={styles.titel}>{titelVan(p)}</Text>
           <Text style={styles.meta}>{periodeTekst(p.van, p.tot)}</Text>
           <Text style={styles.meta}>
             {p.coach_id && p.group_id

@@ -21,7 +21,7 @@ import { ParticipantPicker } from './ParticipantPicker';
 import { PaymentMethodSheet } from './PaymentMethodSheet';
 import { VerzetLes } from './VerzetLes';
 import { useSimpleData } from '../providers/SimpleDataProvider';
-import { materiaalVoor } from '../lib/lesplanning';
+import { materiaalVoor, oefeningenVoor, oefeningLabel } from '../lib/lesplanning';
 import { useActieveSpeler } from '../providers/kindkeuze';
 import { cardsFor, remaining, GROEPSLES_ALLEEN_FACTUUR } from '../lib/beurtenkaart';
 import { formatDayTimeRange } from '../lib/datetime';
@@ -419,6 +419,11 @@ export function BookingDetailSheet({
         {materiaalVoor(booking, lesPlanning, lesmateriaal).map((l) => (
           <Text key={l.id} style={styles.hint}>
             {t('Deze periode: {titel}', { titel: l.title })}
+          </Text>
+        ))}
+        {oefeningenVoor(booking, lesPlanning).map((k) => (
+          <Text key={`${k.kleur}-${k.week}`} style={styles.hint}>
+            {t('Deze periode: {titel}', { titel: oefeningLabel(k) })}
           </Text>
         ))}
 

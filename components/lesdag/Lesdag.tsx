@@ -13,7 +13,7 @@ import { Card } from '../ui/Card';
 import { GroepStip } from '../ui/GroepStip';
 import { MemoKnop } from './MemoKnop';
 import { useSimpleData } from '../../providers/SimpleDataProvider';
-import { materiaalVoor } from '../../lib/lesplanning';
+import { materiaalVoor, oefeningenVoor, oefeningLabel } from '../../lib/lesplanning';
 import { LessonDetailModal } from '../LessonDetailModal';
 import { lesdagVan } from '../../lib/lesdag';
 import { heeftMemo, uitTeWerken } from '../../lib/memo';
@@ -182,6 +182,23 @@ export function Lesdag({ coachId }: { coachId: string }) {
               >
                 <Text style={styles.periodeTekst}>
                   {t('Deze periode: {titel}', { titel: l.title })}
+                </Text>
+                <ChevronRight size={16} color={tennisColors.primary} />
+              </Pressable>
+            ))}
+
+            {/* Oefeningen per kleur zijn geen les in de databank maar een scherm in de app; tikken
+                brengt de trainer daar, op de kleur en de week die voor deze les gelden. */}
+            {oefeningenVoor(uur.booking, lesPlanning).map((k) => (
+              <Pressable
+                key={`${k.kleur}-${k.week}`}
+                onPress={() => router.push(`/coaches/lessons/oefeningen?kleur=${k.kleur}&week=${k.week}`)}
+                accessibilityRole="button"
+                accessibilityLabel={t('Lesmateriaal {titel} openen', { titel: oefeningLabel(k) })}
+                style={[styles.periode, webCursor]}
+              >
+                <Text style={styles.periodeTekst}>
+                  {t('Deze periode: {titel}', { titel: oefeningLabel(k) })}
                 </Text>
                 <ChevronRight size={16} color={tennisColors.primary} />
               </Pressable>
