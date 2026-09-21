@@ -252,6 +252,8 @@ export const EN: Record<string, string> = {
   'Tussenspel': 'Interlude game',
   'Wedstrijdvorm': 'Match form',
   'Materiaal': 'Equipment',
+  'Oefeningen per kleur: {kleur}, week {n}': 'Exercises by colour: {kleur}, week {n}',
+  'Doorsturen: {wat}': 'Send on: {wat}',
   'Bekijk tekening': 'View drawing',
   'Bekijk tekening {n}': 'View drawing {n}',
   'Verberg tekening': 'Hide drawing',
@@ -1605,8 +1607,8 @@ export const EN: Record<string, string> = {
   'Zoek een groep…': 'Search for a group…',
   'Doorsturen naar…': 'Send on to…',
   'Doorgestuurd: {periode} · {aanWie}': 'Sent on: {periode} · {aanWie}',
-  'Hier staat wat er aan wie is doorgestuurd, en voor welke periode. Doorsturen doe je in Lesmateriaal → Databank: zoek de training en gebruik "Doorsturen naar…".':
-    'This is what has been sent on to whom, and for which period. To send something on, go to Lesson material → Database: find the training and use "Send on to…".',
+  'Hier staat wat er aan wie is doorgestuurd, en voor welke periode. Doorsturen doe je in Lesmateriaal → Databank: zoek de training en gebruik "Doorsturen naar…". Oefeningen per kleur stuur je door op hun eigen scherm.':
+    'This is what has been sent on to whom, and for which period. To send something on, go to Lesson material → Database: find the training and use "Send on to…". You send exercises by colour on from their own screen.',
   'Geen trainer gekozen': 'No coach chosen',
   'Geen groep gekozen': 'No group chosen',
 };

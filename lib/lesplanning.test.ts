@@ -1,4 +1,4 @@
-import { geldtVoor, lesplanningFout, materiaalVoor } from './lesplanning';
+import { geldtVoor, lesplanningFout, materiaalVoor, oefeningenVoor } from './lesplanning';
 import type { Booking, Lesplanning, Lesson } from './types';
 
 describe('lesplanningFout', () => {
@@ -147,5 +147,46 @@ describe('materiaalVoor', () => {
     // De databank ruimt dit op met `on delete cascade`; dit is het vangnet voor de opslag in de
     // app, die tussen twee ophaalronden even uit de pas kan lopen.
     expect(materiaalVoor(les(), [planning({ lesson_id: 'l-weg' })], materiaal)).toEqual([]);
+  });
+});
+
+describe('oefeningen per kleur', () => {
+  const oefening = (patch: Partial<Lesplanning> = {}): Lesplanning => planning({
+    lesson_id: undefined, oefening_kleur: 'blauw', oefening_week: 2, ...patch,
+  });
+
+  it('geeft de kleur en de week van de enige treffer', () => {
+    expect(oefeningenVoor(les(), [oefening()])).toEqual([{ kleur: 'blauw', week: 2 }]);
+  });
+
+  it('geeft niets voor een les buiten de periode of van een andere trainer', () => {
+    expect(oefeningenVoor(les({ coach_id: 'c-9' }), [oefening()])).toEqual([]);
+    expect(oefeningenVoor(les({
+      start_time: '2027-04-01T17:00:00.000Z', end_time: '2027-04-01T18:00:00.000Z',
+    }), [oefening()])).toEqual([]);
+  });
+
+  it('slaat een doorsturing van een les over', () => {
+    expect(oefeningenVoor(les(), [planning()])).toEqual([]);
+  });
+
+  it('zet het bijzonderste eerst en laat niets weg', () => {
+    const perTrainer = oefening({ id: 'p-trainer', oefening_kleur: 'rood', oefening_week: 1 });
+    const perBeide = oefening({ id: 'p-beide', group_id: 'g-1' });
+    expect(oefeningenVoor(les({ group_id: 'g-1' }), [perTrainer, perBeide])).toEqual([
+      { kleur: 'blauw', week: 2 },
+      { kleur: 'rood', week: 1 },
+    ]);
+  });
+
+  it('geeft dezelfde kleur en week maar één keer', () => {
+    expect(oefeningenVoor(les(), [oefening({ id: 'p-a' }), oefening({ id: 'p-b' })]))
+      .toEqual([{ kleur: 'blauw', week: 2 }]);
+  });
+
+  it('laat een doorsturing van oefeningen niet als lesmateriaal meetellen', () => {
+    // Zonder `lesson_id` mag `materiaalVoor` er geen les van maken.
+    expect(materiaalVoor(les(), [oefening()], [{ id: 'l-1', title: 'Training 4', uploaded_by: 'c-1' }]))
+      .toEqual([]);
   });
 });

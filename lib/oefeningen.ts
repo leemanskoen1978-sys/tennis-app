@@ -43,6 +43,11 @@ export type Oefenniveau = {
   weken: readonly [Oefenweek, Oefenweek];
 };
 
+/** "blauw" als naam op het scherm: "Blauw". Vertalen doet wie het toont, met `t`. */
+export function kleurNaam(kleur: Kleur): string {
+  return kleur.charAt(0).toUpperCase() + kleur.slice(1);
+}
+
 export const NIVEAUS: readonly Oefenniveau[] = [
   {
     kleur: 'blauw',
