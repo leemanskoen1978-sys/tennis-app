@@ -284,6 +284,15 @@ kleur*. Het is de inhoud van `tennis-oefeningen.html` (blauw, rood, oranje, groe
   `materiaalVoor` slaat zo'n rij over: zonder `lesson_id` is het geen les.
 - **Beheer → Lesplanning** toont de doorsturing in dezelfde lijst, met een label in plaats van
   een lestitel, en weghalen werkt hetzelfde.
+- **Meerdere groepen tegelijk** (ook bij lesmateriaal uit de databank): de groepskiezer in
+  `LesplanningToevoegen` werkt als "voeg toe" en de gekozen groepen staan eronder als labels met een
+  kruisje. Doorsturen maakt **één rij per groep**, elk met dezelfde trainer en periode, in één
+  wegschrijving (`voegLesplanningenToe` in de provider, die `voegLesplanningToe` verving). In
+  Beheer → Lesplanning staat elke groep dus als eigen kaart en haal je ze apart weg. Een trainer
+  blijft één keuze; meerdere trainers tegelijk is er niet.
+- **De regel is aantikbaar** op de lesdag én in het detailblad van een les (`goTo` sluit het blad
+  en opent het scherm op die kleur en week). Het lesmateriaal uit de databank blijft daar alleen
+  tekst: dat zou een blad in een blad worden. Wie geen trainer is, krijgt alleen de tekst.
 
 **De SQL is gedraaid** op 21 september 2026 (`LESPLANNING-OEFENING.sql`, gemeld door de
 eigenaar).
@@ -297,6 +306,21 @@ doorsturen tot en met de tik op de lesdag.
 **Wat er bewust niet is meegekomen:** de tekeningen uit de HTML zelf. Daar stonden overal
 "Tekening volgt"-plekken bij een map `images/` die nooit bestond. De beheerder voegt ze nu in de
 app toe; er is niets om te migreren.
+
+### 1g. Het detailblad van een les opgeruimd — af
+
+Het blad (`components/BookingDetailSheet.tsx`) was één lange kolom van ruim twintig blokken. Sinds
+21 september staat het in koppen met een lijntje ertussen: bovenaan datum, baan, groep, status en
+reeks; dan **Wie**, **Lesmateriaal** (alleen als er iets geldt), **Aanwezigheid**, **Notitie** en
+**Betaling**. Goedkeuren/Weigeren blijft zichtbaar. Wat je zelden doet staat achter **Meer
+opties**: "Deze les zoekt een trainer", "Wie gaf deze les?", factuur, medespelers wijzigen,
+lesgroep, verzetten, annuleren en verwijderen. De knop verschijnt alleen als er iets in zit, en
+sluiten van het blad klapt hem weer dicht.
+
+Er is niets aan de logica veranderd, alleen verplaatst; de status-badge staat sinds dit bovenaan en
+de betaal-badge in het blok Betaling. Doorgeklikt in de browser (demo, als beheerder): de indeling
+en het openklappen van Meer opties. Niet allemaal doorgeklikt: annuleren, verwijderen en de reeks-
+varianten, die ongewijzigd zijn meeverhuisd.
 
 ### 2. Achterstallig klein werk
 
