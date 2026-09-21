@@ -6,18 +6,25 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 
 ## Waar staat het nu
 
-*Bijgewerkt op 10 september 2026.*
+*Bijgewerkt op 21 september 2026.*
 
 **Alle SQL-bestanden zijn gedraaid op de databank van de club**: `supabase-schema.sql`,
-`AANWEZIGHEID-VERLEDEN.sql`, `ZOEKT-TRAINER.sql`, `LESPLANNING.sql` en `BEZETTE-UREN.sql`. Er
-staat niets meer klaar dat nog gedraaid moet worden.
+`AANWEZIGHEID-VERLEDEN.sql`, `ZOEKT-TRAINER.sql`, `LESPLANNING.sql`, `BEZETTE-UREN.sql` en
+`OEFENAFBEELDINGEN.sql` (die laatste gemeld door de eigenaar op 21 september; de bucket zelf is
+niet nagekeken). Er staat niets meer klaar dat nog gedraaid moet worden.
 
-- **`main`** staat op `5213fca` en is gepusht naar
+- **`main`** bevat de merge `cc5b61b` (oefeningen per kleur) en is gepusht naar
   <https://github.com/leemanskoen1978-sys/tennis-app>. Elke push naar `main` bouwt en zet de
   site online (`.github/workflows/deploy.yml`); de site draait op
-  <https://leemanskoen1978-sys.github.io/tennis-app/>.
-- Testsuite: **1935 tests**, allemaal in `lib/`. `npx tsc --noEmit`, `npm test` en
-  `npx expo export -p web` horen bij elke oplevering.
+  <https://leemanskoen1978-sys.github.io/tennis-app/>. De bouw van `cc5b61b` is geslaagd.
+- **Pushen:** `git push` liep eerst stuk op een 403, omdat Git Credential Manager het account
+  `koen-AI-Nation` onthield in plaats van de eigenaar (`leemanskoen1978-sys`). Opgelost met
+  `gh auth setup-git`: Git gebruikt nu het actieve `gh`-account. Krijg je in een nieuwe
+  terminal weer een 403, kijk dan met `gh auth status` welk account actief is. De naam en het
+  e-mailadres op commits (`user.name` / `user.email` in `~/.gitconfig`) staan hier los van.
+- Testsuite: **1945 tests**, allemaal in `lib/` (40 daarvan slaan zichzelf over, zie
+  `koen.xlsx`). `npx tsc --noEmit`, `npm test` en `npx expo export -p web` horen bij elke
+  oplevering.
 - `koen.xlsx` is een **testfixture** en moet op de schijf blijven staan — 40 tests lezen dat
   bestand en slaan zichzelf stilzwijgend over als het weg is. Zie `.gitignore`.
 
@@ -227,6 +234,45 @@ Terrein 7 draait dezelfde trainer blauw en rood naast elkaar. Er is ook geen gre
 databank: op `bookings` staat geen unieke index of exclusion constraint op (trainer, tijd),
 alleen gewone indexen (`:88`). Dat is met opzet zo gebleven — het gaat erom dat de speler ziet
 wat er staat, niet dat hij tegengehouden wordt.
+
+### 1f. Oefeningen per kleur in Lesmateriaal — af, op het handwerk na
+
+Op 21 september 2026 kwam er een vierde tegel bij **Trainers → Lesmateriaal**: *Oefeningen per
+kleur*. Het is de inhoud van `tennis-oefeningen.html` (blauw, rood, oranje, groen; telkens week
+1 en 2: opwarming, leskern, tussenspel, wedstrijdvorm) in de app.
+
+- **Leerstof, geen lesmateriaal.** Net als de keymoments staat de inhoud vast in de code
+  (`lib/oefeningen.ts`, `NIVEAUS`) en niet in de databank: een trainer maakt het niet aan en past
+  het niet aan. Bewust niet in de databank als `Lesson`: het past niet op de indeling per kleur
+  en week, en het zou de datalaag raken. Een week of niveau erbij is een blok in `NIVEAUS`.
+- **Alleen trainers.** De tegel staat alleen in het trainersdeel van Lesmateriaal, en het scherm
+  (`app/coaches/lessons/oefeningen.tsx`) weigert een niet-trainer zelf ook.
+- **De opmaak is die van de HTML**, op een eigen "papier" met vaste kleuren (dus niet mee met de
+  donkere modus). Bebas Neue wordt op het web van Google Fonts geladen; native valt het terug op
+  een zwaar systeemlettertype, want de app laadt geen eigen lettertypen.
+- **Tekeningen toevoegen** doet alleen de beheerder (`isAdmin`), per onderdeel, meerdere per
+  onderdeel; elke trainer ziet ze als "Bekijk tekening". Ze staan in de **privé Storage-bucket
+  `oefeningen`**, één map per kleur en week (`blauw-week1/leskern-<tijd>.jpg`), zonder tabel:
+  de map lijst je op en de bestandsnaam zegt bij welk onderdeel het hoort
+  (`lib/oefenafbeeldingen.ts`, met tests). Wie kan wat staat in `OEFENAFBEELDINGEN.sql`
+  (ook onderaan `supabase-schema.sql`): lezen trainer en beheerder, toevoegen en weghalen alleen
+  de beheerder, geen `update`.
+- **De I/O** zit in `providers/oefenopslag.ts`: Supabase Storage met tijdelijke links (een uur),
+  en zonder sleutels in `.env` de browseropslag zelf (`AsyncStorage`, per toestel dus niet
+  gedeeld). `kiesAfbeelding` in `lib/bestand.ts` verkleint een foto tot 1600 px en JPEG in de
+  browser; de bucket weigert bestanden boven 5 MB en alles behalve JPEG.
+- **Alleen op het web.** Toevoegen gebruikt een bestandskiezer van de browser, net als de
+  ledenimport. Op een telefoon ziet een beheerder de melding dat het alleen op de website kan.
+  Native toevoegen vraagt `expo-image-picker` (of `expo-document-picker`) erbij.
+
+**Wat er nog met de hand doorlopen moet:** online, als beheerder, een tekening toevoegen en
+weghalen, en als gewone trainer nakijken dat hij ze ziet zonder de knoppen. Lokaal (demo, zonder
+sleutels) is dat doorlopen: toevoegen, uitklappen, weghalen, en de trainerweergave. Het bewaren
+in Supabase Storage is nog niet met een echt account geprobeerd.
+
+**Wat er bewust niet is meegekomen:** de tekeningen uit de HTML zelf. Daar stonden overal
+"Tekening volgt"-plekken bij een map `images/` die nooit bestond. De beheerder voegt ze nu in de
+app toe; er is niets om te migreren.
 
 ### 2. Achterstallig klein werk
 
@@ -457,6 +503,11 @@ apart getest worden (`sameRow`, `splitEvenly`, `crc32`, `leesKopregel` en dertig
 niet-geëxporteerd zijn ze niet te testen, en dat is de prijs waard.
 
 ## Losse bestanden die niet in git horen
+
+`tennis-oefeningen.html` in de projectmap is de bron van de oefeningen per kleur (zie 1f). De
+inhoud zit nu in `lib/oefeningen.ts`; het bestand zelf is niet gecommit en de app leest het niet.
+Bewaar het als naslag of verwijder het.
+
 
 `PHOTO-2026-08-20-13-13-44.jpg` en `PHOTO-2026-08-20-13-13-45.jpg` in de projectmap zijn
 schermafbeeldingen van de Rork-versie, gebruikt als voorbeeld voor het profielscherm en het
