@@ -8,14 +8,11 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 
 *Bijgewerkt op 21 september 2026.*
 
-**Gedraaid op de databank van de club**: `supabase-schema.sql`, `AANWEZIGHEID-VERLEDEN.sql`,
-`ZOEKT-TRAINER.sql`, `LESPLANNING.sql`, `BEZETTE-UREN.sql` en `OEFENAFBEELDINGEN.sql` (die
-laatste gemeld door de eigenaar op 21 september; de bucket zelf is niet nagekeken).
-
-**Nog te draaien: `LESPLANNING-OEFENING.sql`** (ná `LESPLANNING.sql`), in de Supabase
-SQL-editor. Zonder dit weigert de databank een doorsturing van oefeningen per kleur (zie 1f); de
-lokale demo heeft het niet nodig. Twee keer draaien kan geen kwaad. Zet hier na het draaien
-"gedraaid" bij.
+**Alle SQL-bestanden zijn gedraaid op de databank van de club**: `supabase-schema.sql`,
+`AANWEZIGHEID-VERLEDEN.sql`, `ZOEKT-TRAINER.sql`, `LESPLANNING.sql`, `BEZETTE-UREN.sql`,
+`OEFENAFBEELDINGEN.sql` en `LESPLANNING-OEFENING.sql`. De laatste twee zijn gemeld door de
+eigenaar op 21 september 2026; de bucket en de nieuwe kolommen zelf zijn niet nagekeken. Er staat
+niets meer klaar dat nog gedraaid moet worden.
 
 - **`main`** bevat de merge `cc5b61b` (oefeningen per kleur) en is gepusht naar
   <https://github.com/leemanskoen1978-sys/tennis-app>. Elke push naar `main` bouwt en zet de
@@ -288,9 +285,11 @@ kleur*. Het is de inhoud van `tennis-oefeningen.html` (blauw, rood, oranje, groe
 - **Beheer → Lesplanning** toont de doorsturing in dezelfde lijst, met een label in plaats van
   een lestitel, en weghalen werkt hetzelfde.
 
+**De SQL is gedraaid** op 21 september 2026 (`LESPLANNING-OEFENING.sql`, gemeld door de
+eigenaar).
+
 **Wat er nog met de hand doorlopen moet:** het doorsturen van oefeningen per kleur tegen de
-echte databank, ná het draaien van `LESPLANNING-OEFENING.sql`, en met een traineraccount
-nakijken dat de regel bij de juiste lessen staat. Het toevoegen en weghalen van tekeningen
+echte databank, en met een traineraccount nakijken dat de regel bij de juiste lessen staat. Het toevoegen en weghalen van tekeningen
 is online door de eigenaar doorlopen op 21 september 2026 en werkt. Lokaal (demo, zonder sleutels)
 is alles doorlopen: tekeningen toevoegen, uitklappen, weghalen, de trainerweergave, en het
 doorsturen tot en met de tik op de lesdag.
