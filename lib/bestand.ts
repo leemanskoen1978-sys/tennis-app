@@ -80,3 +80,46 @@ export function kiesBinairBestand(): Promise<{ naam: string; bytes: Uint8Array }
     input.click();
   });
 }
+
+/** De langste zijde van een afbeelding na het verkleinen, in pixels. */
+const MAX_AFBEELDING_ZIJDE = 1600;
+
+/**
+ * Vraag de gebruiker om een afbeelding en geef die terug als JPEG-data-URL, verkleind tot
+ * hoogstens 1600 pixels aan de langste zijde. Een foto van een telefoon is zo'n 4 MB; de
+ * tekening van een oefening is er niet beter van geworden, en de Storage-bucket wordt er
+ * vol van. `null`: weggeklikt, of het bestand was geen afbeelding die de browser kan lezen.
+ *
+ * Een png met een doorzichtige achtergrond krijgt een witte: JPEG kent geen doorzichtigheid,
+ * en zwart is wat de browser er anders van maakt.
+ */
+export function kiesAfbeelding(): Promise<string | null> {
+  if (!kanBestandKiezen) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = () => {
+      const bestand = input.files?.[0];
+      if (!bestand) { resolve(null); return; }
+      const url = URL.createObjectURL(bestand);
+      const beeld = new Image();
+      beeld.onload = () => {
+        URL.revokeObjectURL(url);
+        const schaal = Math.min(1, MAX_AFBEELDING_ZIJDE / Math.max(beeld.width, beeld.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(beeld.width * schaal));
+        canvas.height = Math.max(1, Math.round(beeld.height * schaal));
+        const tekenaar = canvas.getContext('2d');
+        if (!tekenaar) { resolve(null); return; }
+        tekenaar.fillStyle = '#FFFFFF';
+        tekenaar.fillRect(0, 0, canvas.width, canvas.height);
+        tekenaar.drawImage(beeld, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      beeld.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      beeld.src = url;
+    };
+    input.click();
+  });
+}
