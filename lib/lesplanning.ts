@@ -7,7 +7,7 @@
 // is niet gegeven.
 //
 // Puur rekenwerk: geen store, geen scherm, geen schrijfweg. Wie een doorsturing aanmaakt of
-// weghaalt, doet dat een laag hoger met `voegLesplanningToe` en `verwijderLesplanning`.
+// weghaalt, doet dat een laag hoger met `voegLesplanningenToe` en `verwijderLesplanning`.
 //
 // Er wordt hier nooit iets aan een boeking geschreven. "Welk materiaal hoort bij deze les" is een
 // afgeleid feit, net als `zoektVervanger` in lib/ziekmelding en `staatOpen` in lib/openstaand: een
