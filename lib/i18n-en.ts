@@ -210,6 +210,10 @@ export const EN: Record<string, string> = {
   'Beschrijving': 'Description',
   'Omschrijving': 'Description',
   'Notitie': 'Note',
+  'Wie': 'Who',
+  'Betaling': 'Payment',
+  'Meer opties': 'More options',
+  'Minder opties': 'Fewer options',
   'Notities': 'Notes',
   'Opmerking': 'Remark',
   'Opmerkingen': 'Remarks',
@@ -1611,4 +1615,7 @@ export const EN: Record<string, string> = {
     'This is what has been sent on to whom, and for which period. To send something on, go to Lesson material → Database: find the training and use "Send on to…". You send exercises by colour on from their own screen.',
   'Geen trainer gekozen': 'No coach chosen',
   'Geen groep gekozen': 'No group chosen',
+  'Groepen': 'Groups',
+  'Nog een groep erbij zoeken': 'Search for another group to add',
+  'Groep weghalen: {naam}': 'Remove group: {naam}',
 };

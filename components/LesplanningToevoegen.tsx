@@ -6,10 +6,11 @@
 // naast de twee andere muren; zoeken doe je in de databank, dus daar hoort het te gebeuren.
 //
 // Dit onderdeel beslist niets zelf. Of de invoer deugt weet `lesplanningFout` en het
-// wegschrijven doet `voegLesplanningToe` — hier staat alleen hoe het eruitziet.
+// wegschrijven doet `voegLesplanningenToe` — hier staat alleen hoe het eruitziet.
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { X } from 'lucide-react-native';
 
 import { Button } from './ui/Button';
 import { Combobox } from './ui/Combobox';
@@ -22,7 +23,7 @@ import { coachesOf } from '../lib/hub';
 import { DAY_LABELS } from '../lib/slots';
 import { useT } from '../lib/i18n';
 import { tennisColors } from '../constants/tennis-colors';
-import { spacing, typography } from '../constants/theme';
+import { radius, spacing, typography, webCursor } from '../constants/theme';
 
 export function LesplanningToevoegen({ lessonId, oefening, onKlaar }: {
   /** Het lesmateriaal dat doorgestuurd wordt. Óf dit, óf `oefening`. */
@@ -33,17 +34,28 @@ export function LesplanningToevoegen({ lessonId, oefening, onKlaar }: {
   onKlaar: () => void;
 }): React.JSX.Element {
   const t = useT();
-  const { users, lesGroepen, voegLesplanningToe, error } = useSimpleData();
+  const { users, lesGroepen, voegLesplanningenToe, error } = useSimpleData();
 
   // `null` en niet '': dat is wat `Combobox` teruggeeft als er niets gekozen is. Naar de lib en
   // naar de databank gaat het als een lege tekst respectievelijk `undefined` — zie hieronder.
+  // (Voor de groepen geldt dat niet: die staan als lijst hieronder.)
   const [coachId, setCoachId] = useState<string | null>(null);
-  const [groupId, setGroupId] = useState<string | null>(null);
+  // Meerdere groepen mogen: de kiezer hieronder werkt als "voeg toe" en de gekozen groepen staan
+  // eronder als labels. Elke groep wordt bij het doorsturen een eigen rij (zie `stuurDoor`).
+  const [groupIds, setGroupIds] = useState<string[]>([]);
   const [van, setVan] = useState('');
   const [tot, setTot] = useState('');
 
   const trainers = coachesOf(users);
   const groepen = lesGroepen.filter((g) => !g.archived);
+  // Wie al gekozen is, staat niet meer in de lijst: twee keer dezelfde groep is één rij te veel.
+  const nogTeKiezen = groepen.filter((g) => !groupIds.includes(g.id));
+  // In de volgorde van kiezen. Een groep die intussen gearchiveerd is valt hier weg, en dus ook
+  // uit wat er doorgestuurd wordt.
+  const gekozenGroepen = groupIds.flatMap((id) => {
+    const g = groepen.find((x) => x.id === id);
+    return g ? [g] : [];
+  });
 
   /**
    * Wat er op de chip van een groep staat: de naam, en daarachter de dag en het uur. Zonder die
@@ -68,11 +80,12 @@ export function LesplanningToevoegen({ lessonId, oefening, onKlaar }: {
   // `lesplanningFout` wil één tekst voor "wat wordt er doorgestuurd"; bij oefeningen is dat de
   // kleur en de week, en bij een leeg formulier (geen van beide) blijft het leeg.
   const wat = lessonId ?? (oefening ? `${oefening.kleur}-week${oefening.week}` : '');
-  const fout = lesplanningFout(wat, coachId ?? '', groupId ?? '', vanSleutel, totSleutel);
+  // Voor de controle telt alleen of er een groep is; welke maakt niet uit.
+  const fout = lesplanningFout(wat, coachId ?? '', gekozenGroepen[0]?.id ?? '', vanSleutel, totSleutel);
 
   const stuurDoor = async (): Promise<void> => {
     if (fout !== null) return;
-    await voegLesplanningToe({
+    const basis = {
       // Een les, of een kleur mét een week: nooit allebei (`les_planning_wat` in de databank).
       ...(lessonId !== undefined
         ? { lesson_id: lessonId }
@@ -80,11 +93,17 @@ export function LesplanningToevoegen({ lessonId, oefening, onKlaar }: {
       // Leeg is `undefined` op het type en niet een lege tekst: zo leest `geldtVoor` het, en zo
       // komt er ook geen lege verwijzing in de databank.
       coach_id: coachId ?? undefined,
-      group_id: groupId ?? undefined,
       van: vanSleutel,
       tot: totSleutel,
-    });
-    setCoachId(null); setGroupId(null); setVan(''); setTot('');
+    };
+    // Eén rij per groep, elk met dezelfde trainer en periode. Zonder groep één rij voor de
+    // trainer alleen.
+    await voegLesplanningenToe(
+      gekozenGroepen.length > 0
+        ? gekozenGroepen.map((g) => ({ ...basis, group_id: g.id }))
+        : [{ ...basis, group_id: undefined }],
+    );
+    setCoachId(null); setGroupIds([]); setVan(''); setTot('');
     onKlaar();
   };
 
@@ -100,15 +119,35 @@ export function LesplanningToevoegen({ lessonId, oefening, onKlaar }: {
         leeghint={t('Geen trainer gekozen')}
       />
 
-      <Text style={styles.label}>{t('Groep')}</Text>
+      <Text style={styles.label}>{t('Groepen')}</Text>
+      {/* De kiezer is hier een "voeg toe": hij kiest één groep, die eronder als label komt te
+          staan, en begint dan weer leeg (de `key` zet hem terug). Zo blijft het zoeken door de
+          tientallen groepen hetzelfde als altijd, en kun je er meer dan één kiezen. */}
       <Combobox
-        items={groepen}
+        key={gekozenGroepen.length}
+        items={nogTeKiezen}
         label={groepLabel}
-        value={groupId}
-        onChange={setGroupId}
+        value={null}
+        onChange={(id) => { if (id !== null) setGroupIds([...groupIds, id]); }}
         plaatshouder={t('Zoek een groep…')}
-        leeghint={t('Geen groep gekozen')}
+        leeghint={gekozenGroepen.length === 0 ? t('Geen groep gekozen') : t('Nog een groep erbij zoeken')}
       />
+      {gekozenGroepen.length > 0 ? (
+        <View style={styles.groepen}>
+          {gekozenGroepen.map((g) => (
+            <Pressable
+              key={g.id}
+              accessibilityRole="button"
+              accessibilityLabel={t('Groep weghalen: {naam}', { naam: groepLabel(g) })}
+              onPress={() => setGroupIds(groupIds.filter((id) => id !== g.id))}
+              style={[styles.groepChip, webCursor]}
+            >
+              <Text style={styles.groepTekst}>{groepLabel(g)}</Text>
+              <X size={14} color={tennisColors.textMuted} />
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
       <View style={styles.datumRij}>
         <View style={styles.veld}>
@@ -124,7 +163,7 @@ export function LesplanningToevoegen({ lessonId, oefening, onKlaar }: {
       {/* De melding komt pas als er iets ingevuld is: een leeg formulier verwijten dat het leeg
           is, helpt niemand. Geen `Alert` — die blokkeert op web, en je wil de melding kunnen
           lezen terwijl je het veld verbetert. */}
-      {fout !== null && (coachId !== null || groupId !== null || van !== '' || tot !== '') ? (
+      {fout !== null && (coachId !== null || gekozenGroepen.length > 0 || van !== '' || tot !== '') ? (
         <Text style={styles.fout}>{fout}</Text>
       ) : null}
       {error ? <Text style={styles.fout}>{error}</Text> : null}
@@ -141,6 +180,13 @@ export function LesplanningToevoegen({ lessonId, oefening, onKlaar }: {
 const styles = StyleSheet.create({
   blok: { gap: spacing.xs, marginTop: spacing.sm },
   label: { ...typography.label, color: tennisColors.textMuted, marginTop: spacing.sm },
+  groepen: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
+  groepChip: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    borderWidth: 1, borderColor: tennisColors.border, borderRadius: radius.pill,
+    backgroundColor: tennisColors.primaryTint, paddingVertical: 6, paddingHorizontal: spacing.md,
+  },
+  groepTekst: { fontSize: 13, color: tennisColors.text },
   datumRij: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   veld: { flexGrow: 1, flexBasis: 140 },
   fout: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.sm },

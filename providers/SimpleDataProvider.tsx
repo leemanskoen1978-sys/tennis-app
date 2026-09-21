@@ -328,7 +328,8 @@ interface DataShape {
    * hier wordt de rij alleen weggeschreven. De id wordt op één plek gemaakt, net als bij elke
    * andere `add*`-actie.
    */
-  voegLesplanningToe: (p: Omit<Lesplanning, 'id' | 'created_at'>) => Promise<void>;
+  /** Meerdere doorsturingen in één keer: één rij per groep, in één wegschrijving. */
+  voegLesplanningenToe: (p: Omit<Lesplanning, 'id' | 'created_at'>[]) => Promise<void>;
   /**
    * Een doorsturing weghalen. Raakt geen enkele boeking: welk materiaal er geldt, wordt afgeleid
    * door `materiaalVoor` — zodra de rij weg is, is dat antwoord vanzelf overal nee, overal waar
@@ -1604,13 +1605,16 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
   // weg is, geeft `materiaalVoor` vanzelf niets meer terug.
   // ---------------------------------------------------------------------------
 
-  const voegLesplanningToe = useCallback(async (
-    planning: Omit<Lesplanning, 'id' | 'created_at'>,
+  // Eén schrijfbeurt voor alle rijen: na elkaar wegschrijven laat een mislukking halverwege een
+  // deel van de groepen doorgestuurd en de rest niet, zonder dat iemand ziet welke.
+  const voegLesplanningenToe = useCallback(async (
+    planningen: Omit<Lesplanning, 'id' | 'created_at'>[],
   ): Promise<void> => {
     const store = storeRef.current;
-    if (!store) return;
-    const aangemaakt: Lesplanning = { ...planning, id: newId('lp'), created_at: nowISO() };
-    await commit({ ...store, lesPlanning: [...store.lesPlanning, aangemaakt] });
+    if (!store || planningen.length === 0) return;
+    const nu = nowISO();
+    const aangemaakt: Lesplanning[] = planningen.map((p) => ({ ...p, id: newId('lp'), created_at: nu }));
+    await commit({ ...store, lesPlanning: [...store.lesPlanning, ...aangemaakt] });
   }, [commit]);
 
   const verwijderLesplanning = useCallback(async (id: string): Promise<void> => {
@@ -1804,7 +1808,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     importeerTrainingen,
     meldZiek,
     verwijderZiekmelding,
-    voegLesplanningToe,
+    voegLesplanningenToe,
     verwijderLesplanning,
     addLesson,
     updateLesson,
@@ -1831,7 +1835,7 @@ export function SimpleDataProvider({ children }: { children: React.ReactNode }) 
     addUser, updateUser, setUserRole, setBeheerder, deleteUser,
     vraagKindAan, beslisOverKind, wisRelatie, addLesGroep, updateLesGroep, updateLesGroepRoster,
     archiveLesGroep, importeerTrainingen,
-    meldZiek, verwijderZiekmelding, voegLesplanningToe, verwijderLesplanning, addLesson,
+    meldZiek, verwijderZiekmelding, voegLesplanningenToe, verwijderLesplanning, addLesson,
     updateLesson, deleteLesson, addProgress, updateProgress, deleteProgress,
     addMemo, deleteMemo, werkMemoUit,
     saveGoal, deleteGoal, saveSettings, emergencyCleanup,
