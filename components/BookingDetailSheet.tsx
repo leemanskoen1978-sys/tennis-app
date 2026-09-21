@@ -10,7 +10,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react-native';
 
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
@@ -98,6 +98,17 @@ export function paymentLabelFor(
   return `${meta.label} · ${tr('nog {n}', { n: remaining(card) })}`;
 }
 
+/** Een blok in het blad met een kop erboven en een lijntje ertussen, zodat het niet één lange
+ *  kolom is. */
+function Blok({ titel, children }: { titel: string; children: React.ReactNode }): React.JSX.Element {
+  return (
+    <View style={styles.blok}>
+      <Text style={styles.blokKop}>{titel}</Text>
+      {children}
+    </View>
+  );
+}
+
 export function BookingDetailSheet({
   booking: selected,
   visible,
@@ -145,6 +156,8 @@ export function BookingDetailSheet({
   // in de eerste plaats om een les te lezen, en een lijst van elke groep van de club erin
   // laten staan duwt de aanwezigheid van het scherm af.
   const [kiezenGroep, setKiezenGroep] = useState(false);
+  // Wat je zelden doet (lesgroep, wie gaf de les, factuur, annuleren) staat achter "Meer opties".
+  const [meer, setMeer] = useState(false);
 
   // De aanroeper geeft de les mee die hij had toen de kaart werd aangetikt. Lees hem terug
   // uit de opslag, anders blijven status en betaalwijze hier op de oude waarde staan zodra
@@ -229,6 +242,20 @@ export function BookingDetailSheet({
   // twee knoppen die hetzelfde doen zijn dan alleen maar verwarrend.
   const tailOnlyThis = tail.length <= 1;
 
+  // Wat de tennisschool voor deze periode doorstuurde; zie `materiaalVoor` in lib/lesplanning.
+  // Geen kop als er niets geldt: een kop zonder inhoud leest als "er is niets gepland", en dat is
+  // iets anders dan "er is nooit iets ingevuld".
+  const periodeLessen = materiaalVoor(booking, lesPlanning, lesmateriaal);
+  const periodeOefeningen = oefeningenVoor(booking, lesPlanning);
+  const heeftMateriaal = periodeLessen.length > 0 || periodeOefeningen.length > 0;
+
+  // Is er iets om onder "Meer opties" te zetten? Zo niet (een speler die alleen kijkt), dan is er
+  // ook geen knop. Dezelfde voorwaarden als de blokken zelf hieronder.
+  const heeftMeer = magGroepen
+    || canManage || magWeg
+    || ((booking.coach_id === currentUser?.id)
+      && !booking.taught_by_id && !isCancelled && !zoektNogIemand);
+
   const cardHint = (): string | undefined => {
     const cards = cardsFor(beurtenkaarten, booking.player_id);
     if (cards.length === 0) return t('Deze speler heeft nog geen beurtenkaart.');
@@ -255,6 +282,7 @@ export function BookingDetailSheet({
     setNotice(null);
     setEditingPlayers(false);
     setKiezenGroep(false);
+    setMeer(false);
     setConfirming(null);
     onClose();
   };
@@ -341,6 +369,9 @@ export function BookingDetailSheet({
             Bovenaan en voor iedereen die het blad opent. Verderop staat de lesgroep ook, maar
             dat is de beheerdersknop om hem te veranderen; dit is wat er ís. */}
         <GroepStip niveau={groepVanLes?.level} naam={groepVanLes?.name} />
+        <View style={styles.badgeRow}>
+          <Badge label={bookingStatusLabel(booking.status)} color={STATUS_COLORS[booking.status]} />
+        </View>
         {/* Een les uit een reeks ziet er verder uit als elke andere les. Zeg het dus,
             vóór iemand hem annuleert in de veronderstelling dat het er één was. */}
         {inSeries ? (
@@ -352,324 +383,103 @@ export function BookingDetailSheet({
           </Text>
         ) : null}
 
-        {/* De naam van de trainer klikt altijd door; die van een speler alleen voor wie
-            zijn dossier mag openen — een les is het raakpunt van Spelers en Trainers, maar
-            een medespeler is geen reden om in andermans dossier te mogen. */}
-        {partijRegel(
-          booking.player_id,
-          `${isGroup ? t('Betaalt') : t('Speler')}: ${playerName}`
-            + (isGroup ? ` · € ${formatEuro(amountOf(booking.player_id) ?? 0)}` : ''),
-          t('Open dossier van {naam}', { naam: playerName }),
-        )}
-        {isGroup ? (
-          <>
-            <Text style={styles.label}>{t('Medespelers')}</Text>
-            {participantIdsOf(booking).map((id) => partijRegel(
-              id,
-              nameOf(id) + (amountOf(id) !== null ? ` · € ${formatEuro(amountOf(id) as number)}` : ''),
-              t('Open dossier van {naam}', { naam: nameOf(id) }),
-            ))}
-          </>
-        ) : null}
-
-        <Pressable
-          onPress={() => goTo(`/coaches/${booking.coach_id}`)}
-          accessibilityRole="button"
-          accessibilityLabel={t('Open dossier van trainer {naam}', { naam: coachName })}
-          style={[styles.partyLine, webCursor]}
-        >
-          <Text style={styles.partyLink}>{t('Trainer')}: {coachName}</Text>
-          <ChevronRight size={16} color={tennisColors.textMuted} />
-        </Pressable>
-        {/* Beide namen blijven staan. Wie hier alleen de vervanger zou tonen, maakt achteraf
-            onnavolgbaar wat er gebeurd is: dan is niet meer te zien aan wie de les was
-            toegewezen én wie hem uiteindelijk gaf (D-07). */}
-        {vervangerNaam && booking.taught_by_id ? (
-          <Pressable
-            onPress={() => goTo(`/coaches/${booking.taught_by_id as string}`)}
-            accessibilityRole="button"
-            accessibilityLabel={t('Open dossier van vervanger {naam}', { naam: vervangerNaam })}
-            style={[styles.partyLine, webCursor]}
-          >
-            <Text style={styles.partyLink}>{t('Vervanger')}: {vervangerNaam}</Text>
-            <ChevronRight size={16} color={tennisColors.textMuted} />
-          </Pressable>
-        ) : null}
-
-        {/* De trainer van deze les is ziek gemeld en er staat nog niemand anders op: dat blijft
-            hier staan tot de les geregeld of afgezegd is (D-06 / VERV-07). Er wordt niets
-            weggeschreven en er staat geen vlaggetje op de les — is de ziekmelding ingetrokken,
-            dan is deze regel vanzelf weg. Voor de beheerder staat erbij waar hij het oplost;
-            een speler of trainer leest alleen dát er nog iemand gezocht wordt, en niet wie er
-            ziek is of waarom. */}
-        {zoektNogIemand ? (
-          <Text style={styles.hint}>{t('De trainer is ziek gemeld: deze les zoekt nog een vervanger.')}</Text>
-        ) : null}
-        {zoektNogIemand && isAdmin(currentUser) ? (
-          <Text style={styles.hint}>{t('Je regelt hem op de werklijst, onder Beheer bij Ziekmelding.')}</Text>
-        ) : null}
-
-        {/* Wat de tennisschool voor deze periode doorstuurde; zie `materiaalVoor` in
-            lib/lesplanning. Tekst zonder tik, met opzet: dit blad is zelf een blad, en een blad
-            binnen een blad is precies wat de betaalwijze hierboven met een schakelaar omzeilt.
-            Wie het materiaal wil openen, doet dat op zijn lesdag of in Lesmateriaal.
-
-            Geen kop als er niets geldt, om dezelfde reden als op de lesdag: een kop zonder
-            inhoud leest als "er is niets gepland". */}
-        {materiaalVoor(booking, lesPlanning, lesmateriaal).map((l) => (
-          <Text key={l.id} style={styles.hint}>
-            {t('Deze periode: {titel}', { titel: l.title })}
-          </Text>
-        ))}
-        {oefeningenVoor(booking, lesPlanning).map((k) => (
-          <Text key={`${k.kleur}-${k.week}`} style={styles.hint}>
-            {t('Deze periode: {titel}', { titel: oefeningLabel(k) })}
-          </Text>
-        ))}
-
-        {/* "Deze les zoekt een trainer": het merkteken buiten ziekte om, dat de les in de lijst
-            onder Trainers → Lessen zonder trainer zet. Alleen de trainer van de les en de
-            beheerder — bewust niet `canManage`, want dat is "de trainer die naar zijn eigen
-            agenda kijkt", en de beheerder hoort een les van een collega ook te kunnen vrijgeven
-            als die zelf niet meer aan zijn telefoon komt. De databank bewaakt dezelfde grens;
-            dit voorkomt alleen een knop die daarna geweigerd wordt.
-
-            Staat er al een lesgever op, dan is er geen knop: die les zoekt niemand meer. En bij
-            een ziekmelding staat hij er ook niet — de les staat dan al in de lijst, en een
-            merkteken dat niets verandert is een knop die de trainer één keer indrukt en daarna
-            wantrouwt. */}
-        {(isAdmin(currentUser) || booking.coach_id === currentUser?.id)
-          && !booking.taught_by_id && !isCancelled && !zoektNogIemand ? (
-            <Button
-              label={booking.zoekt_trainer === true
-                ? t('Toch zelf geven')
-                : t('Deze les zoekt een trainer')}
-              variant="secondary"
-              onPress={() => {
-                clearError();
-                void updateBooking(booking.id, {
-                  zoekt_trainer: booking.zoekt_trainer !== true,
-                });
-              }}
-            />
-          ) : null}
-
-        {/* Invullen wie de les werkelijk gaf mag alleen de beheerder (D-08) — bewust niet
-            `canManage`, want daar valt de trainer van de les zelf ook onder. Die grens loopt
-            hier anders: dit veld beslist wie er uitbetaald wordt, dus een trainer die op zijn
-            eigen les een vervanger invult, zet daarmee zijn eigen loonstaat.
-
-            Voor wie het niet mag staat er geen uitgeschakelde knop maar helemaal geen knop:
-            er bestaat dan geen `onPress` die `setTaughtBy` kan bereiken. Dat is geen
-            bewaking maar netheid — de bewaking staat in `bewaak_betaalvelden` in de databank,
-            zodat het scherm geen knop toont die daarna geweigerd wordt (lib/rechten:
-            "de app is niet de bewaker"). */}
-        {isAdmin(currentUser) ? (
-          <>
-            <Text style={styles.label}>{t('Wie gaf deze les?')}</Text>
-            <View style={styles.chipRow}>
-              <Chip
-                label={t('Gaf hem zelf')}
-                selected={!booking.taught_by_id}
-                onPress={() => {
-                  void setTaughtBy(booking.id, null);
-                }}
-              />
-              {users
-                .filter((u) => isCoach(u) && u.id !== booking.coach_id)
-                .map((u) => (
-                  <Chip
-                    key={u.id}
-                    label={u.name}
-                    selected={booking.taught_by_id === u.id}
-                    onPress={() => {
-                      void setTaughtBy(booking.id, u.id);
-                    }}
-                  />
-                ))}
-            </View>
-          </>
-        ) : null}
-
-        <View style={styles.badgeRow}>
-          <Badge label={bookingStatusLabel(booking.status)} color={STATUS_COLORS[booking.status]} />
-          {canPay && !isGroup ? (
-            <Pressable
-              onPress={() => {
-                clearError();
-                setChoosing(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={t('Betaalwijze wijzigen, nu {wijze}', { wijze: paymentLabel })}
-              style={[styles.paymentTap, webCursor]}
-            >
-              <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
-            </Pressable>
-          ) : (
-            <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
+        <Blok titel={t('Wie')}>
+          {/* De naam van de trainer klikt altijd door; die van een speler alleen voor wie
+              zijn dossier mag openen — een les is het raakpunt van Spelers en Trainers, maar
+              een medespeler is geen reden om in andermans dossier te mogen. */}
+          {partijRegel(
+            booking.player_id,
+            `${isGroup ? t('Betaalt') : t('Speler')}: ${playerName}`
+              + (isGroup ? ` · € ${formatEuro(amountOf(booking.player_id) ?? 0)}` : ''),
+            t('Open dossier van {naam}', { naam: playerName }),
           )}
-        </View>
-        {isGroup ? (
-          <Text style={styles.hint}>
-            {t('{regel} Een beurtenkaart en het sponsorbudget gelden alleen voor een '
-              + 'privéles.', { regel: t(GROEPSLES_ALLEEN_FACTUUR) })}
-          </Text>
-        ) : null}
-
-        <Text style={styles.price}>{lessonPriceLine(booking, court)}</Text>
-
-        {isGroup && canManage && !isCancelled ? (
-          <>
-            <Text style={styles.label}>{t('Factuur')}</Text>
-            <View style={styles.chipRow}>
-              <Chip
-                label={t('Samen')}
-                selected={splitOf(booking) === 'together'}
-                onPress={() => {
-                  void setPaymentSplit(booking.id, 'together');
-                }}
-              />
-              <Chip
-                label={t('Apart')}
-                selected={splitOf(booking) === 'separate'}
-                onPress={() => {
-                  void setPaymentSplit(booking.id, 'separate');
-                }}
-              />
-            </View>
-          </>
-        ) : null}
-
-        {canManage && !isCancelled ? (
-          editingPlayers ? (
+          {isGroup ? (
             <>
               <Text style={styles.label}>{t('Medespelers')}</Text>
-              <ParticipantPicker
-                players={players}
-                payerId={booking.player_id}
-                value={participantIdsOf(booking)}
-                onChange={(ids) => {
-                  clearError();
-                  void setParticipants(booking.id, ids).then(setNotice);
-                }}
-              />
-              <View style={styles.actions}>
-                <Button
-                  label={t('Klaar')}
-                  variant="secondary"
-                  fullWidth={false}
-                  onPress={() => setEditingPlayers(false)}
-                />
-              </View>
+              {participantIdsOf(booking).map((id) => partijRegel(
+                id,
+                nameOf(id) + (amountOf(id) !== null ? ` · € ${formatEuro(amountOf(id) as number)}` : ''),
+                t('Open dossier van {naam}', { naam: nameOf(id) }),
+              ))}
             </>
-          ) : (
-            <View style={styles.actions}>
-              <Button
-                label={isGroup ? t('Medespelers wijzigen') : t('Medespeler toevoegen')}
-                variant="secondary"
-                fullWidth={false}
-                onPress={() => {
-                  clearError();
-                  setEditingPlayers(true);
-                }}
-              />
-            </View>
-          )
-        ) : null}
+          ) : null}
 
-        {/* Aan welke lesgroep deze les hangt, en dat veranderen.
+          <Pressable
+            onPress={() => goTo(`/coaches/${booking.coach_id}`)}
+            accessibilityRole="button"
+            accessibilityLabel={t('Open dossier van trainer {naam}', { naam: coachName })}
+            style={[styles.partyLine, webCursor]}
+          >
+            <Text style={styles.partyLink}>{t('Trainer')}: {coachName}</Text>
+            <ChevronRight size={16} color={tennisColors.textMuted} />
+          </Pressable>
+          {/* Beide namen blijven staan. Wie hier alleen de vervanger zou tonen, maakt achteraf
+              onnavolgbaar wat er gebeurd is: dan is niet meer te zien aan wie de les was
+              toegewezen én wie hem uiteindelijk gaf (D-07). */}
+          {vervangerNaam && booking.taught_by_id ? (
+            <Pressable
+              onPress={() => goTo(`/coaches/${booking.taught_by_id as string}`)}
+              accessibilityRole="button"
+              accessibilityLabel={t('Open dossier van vervanger {naam}', { naam: vervangerNaam })}
+              style={[styles.partyLine, webCursor]}
+            >
+              <Text style={styles.partyLink}>{t('Vervanger')}: {vervangerNaam}</Text>
+              <ChevronRight size={16} color={tennisColors.textMuted} />
+            </Pressable>
+          ) : null}
 
-            Koppelen verandert alleen de verwijzing. Wie er bij déze les stond blijft staan
-            zoals het staat: het rooster van de groep wordt hier niet overgenomen en
-            `participant_ids` wordt nergens aangeraakt. Een les weet zelf wie erbij was, en
-            dat blijft zo — anders zou de afvinklijst van vorige maand meeverschuiven met een
-            groep die vandaag iemand erbij kreeg (D-07/D-08).
+          {/* De trainer van deze les is ziek gemeld en er staat nog niemand anders op: dat blijft
+              hier staan tot de les geregeld of afgezegd is (D-06 / VERV-07). Er wordt niets
+              weggeschreven en er staat geen vlaggetje op de les — is de ziekmelding ingetrokken,
+              dan is deze regel vanzelf weg. Voor de beheerder staat erbij waar hij het oplost;
+              een speler of trainer leest alleen dát er nog iemand gezocht wordt, en niet wie er
+              ziek is of waarom. */}
+          {zoektNogIemand ? (
+            <Text style={styles.hint}>{t('De trainer is ziek gemeld: deze les zoekt nog een vervanger.')}</Text>
+          ) : null}
+          {zoektNogIemand && isAdmin(currentUser) ? (
+            <Text style={styles.hint}>{t('Je regelt hem op de werklijst, onder Beheer bij Ziekmelding.')}</Text>
+          ) : null}
+        </Blok>
 
-            Er wordt géén `series_id` gezet. Een reeks is een aanmaakbatch — hij vertelt welke
-            lessen ooit in één keer gemaakt zijn — en een groep is een blijvende identiteit.
-            Ze bestaan naast elkaar en nooit in elkaar (D-12). Een les aan een groep hangen
-            maakt er dus ook geen reeks van: de knoppen hierboven blijven precies doen wat ze
-            deden.
+        {/* Wat de tennisschool voor deze periode doorstuurde; zie `materiaalVoor` in
+            lib/lesplanning. */}
+        {heeftMateriaal ? (
+          <Blok titel={t('Lesmateriaal')}>
+          {/* Wat de tennisschool voor deze periode doorstuurde; zie `materiaalVoor` in
+              lib/lesplanning. Tekst zonder tik, met opzet: dit blad is zelf een blad, en een blad
+              binnen een blad is precies wat de betaalwijze hierboven met een schakelaar omzeilt.
+              Wie het materiaal wil openen, doet dat op zijn lesdag of in Lesmateriaal.
 
-            Dit gaat bewust via het bestaande `updateBooking` en niet via een nieuwe
-            provideractie. Elke extra weg die zelf een `Partial<Booking>` samenstelt is een
-            weg langs `planMethodChange` heen, en dat is precies het gat waardoor een speler
-            ooit twee keer betaalde — zie OPENSTAAND.md, "Eén bewaakte weg". `group_id` valt
-            binnen wat het patchtype van `updateBooking` toelaat, dus er is hier niets nieuws
-            voor nodig. */}
-        {magGroepen ? (
-          <>
-            <Text style={styles.label}>{t('Lesgroep')}</Text>
-            {booking.group_id ? (
-              <>
-                <Text style={styles.hint}>
-                  {groepVanLes
-                    ? `${groepVanLes.name} · ${groepVanLes.level}`
-                    : t('Deze les verwijst naar een lesgroep die hier niet (meer) te vinden is.')}
-                </Text>
-                <View style={styles.actions}>
-                  <Button
-                    label={t('Losmaken van de lesgroep')}
-                    variant="secondary"
-                    fullWidth={false}
-                    onPress={() => {
-                      clearError();
-                      void updateBooking(booking.id, { group_id: undefined });
-                    }}
-                  />
-                </View>
-              </>
-            ) : kiezenGroep ? (
-              <>
-                {teKiezenGroepen.length === 0 ? (
-                  <Text style={styles.hint}>
-                    {t('Er is nog geen lesgroep om aan te hangen. Je maakt er een aan bij '
-                      + 'Beheer, onder Lesgroepen.')}
-                  </Text>
-                ) : (
-                  <View style={styles.chipRow}>
-                    {teKiezenGroepen.map((groep) => (
-                      <Chip
-                        key={groep.id}
-                        label={`${groep.name} · ${groep.level}`}
-                        onPress={() => {
-                          clearError();
-                          setKiezenGroep(false);
-                          void updateBooking(booking.id, { group_id: groep.id });
-                        }}
-                      />
-                    ))}
-                  </View>
-                )}
-                <View style={styles.actions}>
-                  <Button
-                    label={t('Klaar')}
-                    variant="secondary"
-                    fullWidth={false}
-                    onPress={() => setKiezenGroep(false)}
-                  />
-                </View>
-              </>
+              Geen kop als er niets geldt, om dezelfde reden als op de lesdag: een kop zonder
+              inhoud leest als "er is niets gepland". */}
+          {periodeLessen.map((l) => (
+            <Text key={l.id} style={styles.hint}>
+              {t('Deze periode: {titel}', { titel: l.title })}
+            </Text>
+          ))}
+          {/* Oefeningen per kleur zijn wél te openen: dat is een scherm en geen blad, dus er komt
+              geen blad in een blad. `goTo` sluit dit blad en brengt de trainer naar de kleur en de
+              week die voor deze les gelden. Wie geen trainer is, kan dat scherm niet openen en
+              krijgt alleen de tekst. */}
+          {periodeOefeningen.map((k) => {
+            const tekst = t('Deze periode: {titel}', { titel: oefeningLabel(k) });
+            return isCoach(currentUser) ? (
+              <Pressable
+                key={`${k.kleur}-${k.week}`}
+                accessibilityRole="button"
+                accessibilityLabel={t('Lesmateriaal {titel} openen', { titel: oefeningLabel(k) })}
+                onPress={() => goTo(`/coaches/lessons/oefeningen?kleur=${k.kleur}&week=${k.week}`)}
+                style={[styles.periodeRij, webCursor]}
+              >
+                <Text style={[styles.hint, styles.periodeLink]}>{tekst}</Text>
+                <ChevronRight size={14} color={tennisColors.primary} />
+              </Pressable>
             ) : (
-              <>
-                <Text style={styles.hint}>
-                  {t('Deze les hoort bij geen enkele lesgroep. Eraan hangen verandert niets '
-                    + 'aan de les zelf: wie erbij stond, het uur en de betaling blijven.')}
-                </Text>
-                <View style={styles.actions}>
-                  <Button
-                    label={t('Aan een lesgroep hangen')}
-                    variant="secondary"
-                    fullWidth={false}
-                    onPress={() => {
-                      clearError();
-                      setKiezenGroep(true);
-                    }}
-                  />
-                </View>
-              </>
-            )}
-          </>
+              <Text key={`${k.kleur}-${k.week}`} style={styles.hint}>{tekst}</Text>
+            );
+          })}
+          </Blok>
         ) : null}
 
         {/* Wie er stond. De trainer van de les vinkt af — hij was erbij — en dat mag ook
@@ -685,8 +495,7 @@ export function BookingDetailSheet({
             Bij een geannuleerde les staat de lijst er niet: die les is niet doorgegaan, dus
             er valt niemand aan- of afwezig te noemen. */}
         {!isCancelled ? (
-          <>
-            <Text style={styles.label}>{t('Aanwezigheid')}</Text>
+          <Blok titel={t('Aanwezigheid')}>
             <Text style={styles.hint}>{aanwezigheidRegel(booking)}</Text>
             {lessonPlayerIds(booking).map((id) => {
               const stand = aanwezigheidVan(booking, id);
@@ -735,17 +544,45 @@ export function BookingDetailSheet({
                 {t('Nog eens op dezelfde knop tikken maakt de aantekening weer leeg.')}
               </Text>
             ) : null}
-          </>
+          </Blok>
         ) : null}
-
-        {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
         {booking.notes ? (
-          <>
-            <Text style={styles.label}>{t('Notitie')}</Text>
+          <Blok titel={t('Notitie')}>
             <Text style={styles.notes}>{booking.notes}</Text>
-          </>
+          </Blok>
         ) : null}
+
+        {/* Betalen en wat het kost. De status staat bovenaan bij de les; hier alleen de betaalwijze,
+            die je met een tik wijzigt. */}
+        <Blok titel={t('Betaling')}>
+          <View style={styles.badgeRow}>
+            {canPay && !isGroup ? (
+              <Pressable
+                onPress={() => {
+                  clearError();
+                  setChoosing(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={t('Betaalwijze wijzigen, nu {wijze}', { wijze: paymentLabel })}
+                style={[styles.paymentTap, webCursor]}
+              >
+                <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
+              </Pressable>
+            ) : (
+              <Badge label={paymentLabel} color={payment.color} subtle={payment.subtle} />
+            )}
+          </View>
+          {isGroup ? (
+            <Text style={styles.hint}>
+              {t('{regel} Een beurtenkaart en het sponsorbudget gelden alleen voor een '
+                + 'privéles.', { regel: t(GROEPSLES_ALLEEN_FACTUUR) })}
+            </Text>
+          ) : null}
+          <Text style={styles.price}>{lessonPriceLine(booking, court)}</Text>
+        </Blok>
+
+        {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -773,148 +610,388 @@ export function BookingDetailSheet({
           </View>
         ) : null}
 
-        {/* Annuleren van één losse les gaat rechtstreeks: dat is geen vraag waard, en de les
-            blijft staan met "geannuleerd" erop. Verwijderen vraagt wél na, ook bij een losse
-            les: daarna is er geen spoor meer van, ook niet in je historiek. Bij een reeks
-            komt er nog een vraag bij, want daar kan één druk een half seizoen meenemen. */}
-        {!inSeries && (canManage || magWeg) ? (
-          confirming === 'delete' ? (
-            <View style={styles.confirmBox}>
-              <Text style={styles.confirmText}>
-                {t('Verwijderen: deze les gaat uit de agenda. Weg is weg.')}
-              </Text>
-              <View style={styles.confirmRow}>
-                <Button
-                  label={t('Ja, verwijderen')}
-                  variant="danger"
-                  fullWidth={false}
-                  onPress={() => weghalen(() => deleteBooking(booking.id))}
-                />
-                <Button
-                  label={t('Nee')}
-                  variant="secondary"
-                  fullWidth={false}
-                  onPress={() => setConfirming(null)}
-                />
-              </View>
-            </View>
-          ) : (
-            <View style={[styles.actions, styles.confirmRow]}>
-              {/* Verzetten staat vóór annuleren, want dat is meestal wat je bedoelt: bij regen
-                  wil een trainer de les naar binnen halen, niet afzeggen. Stond het er niet,
-                  dan deed hij het met annuleren plus opnieuw boeken — en raakte hij de
-                  betaalwijze, de beurt en de aanwezigheid kwijt. Zie lib/verzetten. */}
-              {magHerplannen && !isCancelled ? (
-                <Button
-                  label={t('Verzetten')}
-                  variant="secondary"
-                  fullWidth={false}
-                  onPress={() => {
-                    clearError();
-                    setVerzetten(true);
-                  }}
-                />
-              ) : null}
-              {canManage && canCancel ? (
-                <Button
-                  label={t('Annuleren')}
-                  variant="danger"
-                  fullWidth={false}
-                  onPress={() => {
-                    void updateBooking(booking.id, { status: 'cancelled' });
-                  }}
-                />
-              ) : null}
-              {magWeg ? (
-                <Button
-                  label={t('Verwijderen')}
-                  variant="danger"
-                  fullWidth={false}
-                  onPress={() => {
-                    clearError();
-                    setConfirming('delete');
-                  }}
-                />
-              ) : null}
-            </View>
-          )
-        ) : null}
+        {/* Wat je zelden doet staat achter één knop: het blad is in de eerste plaats om een les te
+            lezen. Zolang er niets is om te wijzigen (een speler die alleen kijkt) is er ook geen
+            knop. Dichtdoen van het blad zet de knop weer dicht (zie `close`). */}
+        {heeftMeer ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: meer }}
+              onPress={() => setMeer(!meer)}
+              style={[styles.meerKnop, webCursor]}
+            >
+              <Text style={styles.meerTekst}>{meer ? t('Minder opties') : t('Meer opties')}</Text>
+              {meer
+                ? <ChevronUp size={16} color={tennisColors.textMuted} />
+                : <ChevronDown size={16} color={tennisColors.textMuted} />}
+            </Pressable>
+            {meer ? (
+              <View style={styles.meerInhoud}>
+                {/* "Deze les zoekt een trainer": het merkteken buiten ziekte om, dat de les in de lijst
+                    onder Trainers → Lessen zonder trainer zet. Alleen de trainer van de les en de
+                    beheerder — bewust niet `canManage`, want dat is "de trainer die naar zijn eigen
+                    agenda kijkt", en de beheerder hoort een les van een collega ook te kunnen vrijgeven
+                    als die zelf niet meer aan zijn telefoon komt. De databank bewaakt dezelfde grens;
+                    dit voorkomt alleen een knop die daarna geweigerd wordt.
 
-        {inSeries && (canManage || magWeg) ? (
-          confirming ? (
-            <View style={styles.confirmBox}>
-              <Text style={styles.confirmText}>
-                {confirming === 'cancel' ? t('Annuleren') : t('Verwijderen')}:{' '}
-                {tailOnlyThis
-                  ? t('dit is de laatste les van de reeks.')
-                  : t('alleen deze les, of deze en alle volgende ({lessen})?', {
-                    lessen: lessons(tail.length),
-                  })}
-                {confirming === 'delete' ? ` ${t('Weg is weg.')}` : ''}
-              </Text>
-              <View style={styles.confirmRow}>
-                <Button
-                  label={tailOnlyThis ? t('Ja, deze les') : t('Alleen deze les')}
-                  variant="danger"
-                  fullWidth={false}
-                  onPress={() => {
-                    if (confirming === 'cancel') {
-                      setConfirming(null);
-                      void updateBooking(booking.id, { status: 'cancelled' });
-                      return;
-                    }
-                    weghalen(() => deleteBooking(booking.id));
-                  }}
-                />
-                {tailOnlyThis ? null : (
-                  <Button
-                    label={t('Deze en alle volgende ({n})', { n: tail.length })}
-                    variant="danger"
-                    fullWidth={false}
-                    onPress={() => {
-                      if (confirming === 'cancel') {
-                        setConfirming(null);
-                        void cancelSeriesFrom(booking.id);
-                        return;
-                      }
-                      weghalen(() => deleteSeriesFrom(booking.id));
-                    }}
-                  />
-                )}
-                <Button
-                  label={t('Nee')}
-                  variant="secondary"
-                  fullWidth={false}
-                  onPress={() => setConfirming(null)}
-                />
+                    Staat er al een lesgever op, dan is er geen knop: die les zoekt niemand meer. En bij
+                    een ziekmelding staat hij er ook niet — de les staat dan al in de lijst, en een
+                    merkteken dat niets verandert is een knop die de trainer één keer indrukt en daarna
+                    wantrouwt. */}
+                {(isAdmin(currentUser) || booking.coach_id === currentUser?.id)
+                  && !booking.taught_by_id && !isCancelled && !zoektNogIemand ? (
+                    <Button
+                      label={booking.zoekt_trainer === true
+                        ? t('Toch zelf geven')
+                        : t('Deze les zoekt een trainer')}
+                      variant="secondary"
+                      onPress={() => {
+                        clearError();
+                        void updateBooking(booking.id, {
+                          zoekt_trainer: booking.zoekt_trainer !== true,
+                        });
+                      }}
+                    />
+                  ) : null}
+
+                {/* Invullen wie de les werkelijk gaf mag alleen de beheerder (D-08) — bewust niet
+                    `canManage`, want daar valt de trainer van de les zelf ook onder. Die grens loopt
+                    hier anders: dit veld beslist wie er uitbetaald wordt, dus een trainer die op zijn
+                    eigen les een vervanger invult, zet daarmee zijn eigen loonstaat.
+
+                    Voor wie het niet mag staat er geen uitgeschakelde knop maar helemaal geen knop:
+                    er bestaat dan geen `onPress` die `setTaughtBy` kan bereiken. Dat is geen
+                    bewaking maar netheid — de bewaking staat in `bewaak_betaalvelden` in de databank,
+                    zodat het scherm geen knop toont die daarna geweigerd wordt (lib/rechten:
+                    "de app is niet de bewaker"). */}
+                {isAdmin(currentUser) ? (
+                  <>
+                    <Text style={styles.label}>{t('Wie gaf deze les?')}</Text>
+                    <View style={styles.chipRow}>
+                      <Chip
+                        label={t('Gaf hem zelf')}
+                        selected={!booking.taught_by_id}
+                        onPress={() => {
+                          void setTaughtBy(booking.id, null);
+                        }}
+                      />
+                      {users
+                        .filter((u) => isCoach(u) && u.id !== booking.coach_id)
+                        .map((u) => (
+                          <Chip
+                            key={u.id}
+                            label={u.name}
+                            selected={booking.taught_by_id === u.id}
+                            onPress={() => {
+                              void setTaughtBy(booking.id, u.id);
+                            }}
+                          />
+                        ))}
+                    </View>
+                  </>
+                ) : null}
+
+                {isGroup && canManage && !isCancelled ? (
+                  <>
+                    <Text style={styles.label}>{t('Factuur')}</Text>
+                    <View style={styles.chipRow}>
+                      <Chip
+                        label={t('Samen')}
+                        selected={splitOf(booking) === 'together'}
+                        onPress={() => {
+                          void setPaymentSplit(booking.id, 'together');
+                        }}
+                      />
+                      <Chip
+                        label={t('Apart')}
+                        selected={splitOf(booking) === 'separate'}
+                        onPress={() => {
+                          void setPaymentSplit(booking.id, 'separate');
+                        }}
+                      />
+                    </View>
+                  </>
+                ) : null}
+
+                {canManage && !isCancelled ? (
+                  editingPlayers ? (
+                    <>
+                      <Text style={styles.label}>{t('Medespelers')}</Text>
+                      <ParticipantPicker
+                        players={players}
+                        payerId={booking.player_id}
+                        value={participantIdsOf(booking)}
+                        onChange={(ids) => {
+                          clearError();
+                          void setParticipants(booking.id, ids).then(setNotice);
+                        }}
+                      />
+                      <View style={styles.actions}>
+                        <Button
+                          label={t('Klaar')}
+                          variant="secondary"
+                          fullWidth={false}
+                          onPress={() => setEditingPlayers(false)}
+                        />
+                      </View>
+                    </>
+                  ) : (
+                    <View style={styles.actions}>
+                      <Button
+                        label={isGroup ? t('Medespelers wijzigen') : t('Medespeler toevoegen')}
+                        variant="secondary"
+                        fullWidth={false}
+                        onPress={() => {
+                          clearError();
+                          setEditingPlayers(true);
+                        }}
+                      />
+                    </View>
+                  )
+                ) : null}
+
+                {/* Aan welke lesgroep deze les hangt, en dat veranderen.
+
+                    Koppelen verandert alleen de verwijzing. Wie er bij déze les stond blijft staan
+                    zoals het staat: het rooster van de groep wordt hier niet overgenomen en
+                    `participant_ids` wordt nergens aangeraakt. Een les weet zelf wie erbij was, en
+                    dat blijft zo — anders zou de afvinklijst van vorige maand meeverschuiven met een
+                    groep die vandaag iemand erbij kreeg (D-07/D-08).
+
+                    Er wordt géén `series_id` gezet. Een reeks is een aanmaakbatch — hij vertelt welke
+                    lessen ooit in één keer gemaakt zijn — en een groep is een blijvende identiteit.
+                    Ze bestaan naast elkaar en nooit in elkaar (D-12). Een les aan een groep hangen
+                    maakt er dus ook geen reeks van: de knoppen hierboven blijven precies doen wat ze
+                    deden.
+
+                    Dit gaat bewust via het bestaande `updateBooking` en niet via een nieuwe
+                    provideractie. Elke extra weg die zelf een `Partial<Booking>` samenstelt is een
+                    weg langs `planMethodChange` heen, en dat is precies het gat waardoor een speler
+                    ooit twee keer betaalde — zie OPENSTAAND.md, "Eén bewaakte weg". `group_id` valt
+                    binnen wat het patchtype van `updateBooking` toelaat, dus er is hier niets nieuws
+                    voor nodig. */}
+                {magGroepen ? (
+                  <>
+                    <Text style={styles.label}>{t('Lesgroep')}</Text>
+                    {booking.group_id ? (
+                      <>
+                        <Text style={styles.hint}>
+                          {groepVanLes
+                            ? `${groepVanLes.name} · ${groepVanLes.level}`
+                            : t('Deze les verwijst naar een lesgroep die hier niet (meer) te vinden is.')}
+                        </Text>
+                        <View style={styles.actions}>
+                          <Button
+                            label={t('Losmaken van de lesgroep')}
+                            variant="secondary"
+                            fullWidth={false}
+                            onPress={() => {
+                              clearError();
+                              void updateBooking(booking.id, { group_id: undefined });
+                            }}
+                          />
+                        </View>
+                      </>
+                    ) : kiezenGroep ? (
+                      <>
+                        {teKiezenGroepen.length === 0 ? (
+                          <Text style={styles.hint}>
+                            {t('Er is nog geen lesgroep om aan te hangen. Je maakt er een aan bij '
+                              + 'Beheer, onder Lesgroepen.')}
+                          </Text>
+                        ) : (
+                          <View style={styles.chipRow}>
+                            {teKiezenGroepen.map((groep) => (
+                              <Chip
+                                key={groep.id}
+                                label={`${groep.name} · ${groep.level}`}
+                                onPress={() => {
+                                  clearError();
+                                  setKiezenGroep(false);
+                                  void updateBooking(booking.id, { group_id: groep.id });
+                                }}
+                              />
+                            ))}
+                          </View>
+                        )}
+                        <View style={styles.actions}>
+                          <Button
+                            label={t('Klaar')}
+                            variant="secondary"
+                            fullWidth={false}
+                            onPress={() => setKiezenGroep(false)}
+                          />
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.hint}>
+                          {t('Deze les hoort bij geen enkele lesgroep. Eraan hangen verandert niets '
+                            + 'aan de les zelf: wie erbij stond, het uur en de betaling blijven.')}
+                        </Text>
+                        <View style={styles.actions}>
+                          <Button
+                            label={t('Aan een lesgroep hangen')}
+                            variant="secondary"
+                            fullWidth={false}
+                            onPress={() => {
+                              clearError();
+                              setKiezenGroep(true);
+                            }}
+                          />
+                        </View>
+                      </>
+                    )}
+                  </>
+                ) : null}
+
+                {/* Annuleren van één losse les gaat rechtstreeks: dat is geen vraag waard, en de les
+                    blijft staan met "geannuleerd" erop. Verwijderen vraagt wél na, ook bij een losse
+                    les: daarna is er geen spoor meer van, ook niet in je historiek. Bij een reeks
+                    komt er nog een vraag bij, want daar kan één druk een half seizoen meenemen. */}
+                {!inSeries && (canManage || magWeg) ? (
+                  confirming === 'delete' ? (
+                    <View style={styles.confirmBox}>
+                      <Text style={styles.confirmText}>
+                        {t('Verwijderen: deze les gaat uit de agenda. Weg is weg.')}
+                      </Text>
+                      <View style={styles.confirmRow}>
+                        <Button
+                          label={t('Ja, verwijderen')}
+                          variant="danger"
+                          fullWidth={false}
+                          onPress={() => weghalen(() => deleteBooking(booking.id))}
+                        />
+                        <Button
+                          label={t('Nee')}
+                          variant="secondary"
+                          fullWidth={false}
+                          onPress={() => setConfirming(null)}
+                        />
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={[styles.actions, styles.confirmRow]}>
+                      {/* Verzetten staat vóór annuleren, want dat is meestal wat je bedoelt: bij regen
+                          wil een trainer de les naar binnen halen, niet afzeggen. Stond het er niet,
+                          dan deed hij het met annuleren plus opnieuw boeken — en raakte hij de
+                          betaalwijze, de beurt en de aanwezigheid kwijt. Zie lib/verzetten. */}
+                      {magHerplannen && !isCancelled ? (
+                        <Button
+                          label={t('Verzetten')}
+                          variant="secondary"
+                          fullWidth={false}
+                          onPress={() => {
+                            clearError();
+                            setVerzetten(true);
+                          }}
+                        />
+                      ) : null}
+                      {canManage && canCancel ? (
+                        <Button
+                          label={t('Annuleren')}
+                          variant="danger"
+                          fullWidth={false}
+                          onPress={() => {
+                            void updateBooking(booking.id, { status: 'cancelled' });
+                          }}
+                        />
+                      ) : null}
+                      {magWeg ? (
+                        <Button
+                          label={t('Verwijderen')}
+                          variant="danger"
+                          fullWidth={false}
+                          onPress={() => {
+                            clearError();
+                            setConfirming('delete');
+                          }}
+                        />
+                      ) : null}
+                    </View>
+                  )
+                ) : null}
+
+                {inSeries && (canManage || magWeg) ? (
+                  confirming ? (
+                    <View style={styles.confirmBox}>
+                      <Text style={styles.confirmText}>
+                        {confirming === 'cancel' ? t('Annuleren') : t('Verwijderen')}:{' '}
+                        {tailOnlyThis
+                          ? t('dit is de laatste les van de reeks.')
+                          : t('alleen deze les, of deze en alle volgende ({lessen})?', {
+                            lessen: lessons(tail.length),
+                          })}
+                        {confirming === 'delete' ? ` ${t('Weg is weg.')}` : ''}
+                      </Text>
+                      <View style={styles.confirmRow}>
+                        <Button
+                          label={tailOnlyThis ? t('Ja, deze les') : t('Alleen deze les')}
+                          variant="danger"
+                          fullWidth={false}
+                          onPress={() => {
+                            if (confirming === 'cancel') {
+                              setConfirming(null);
+                              void updateBooking(booking.id, { status: 'cancelled' });
+                              return;
+                            }
+                            weghalen(() => deleteBooking(booking.id));
+                          }}
+                        />
+                        {tailOnlyThis ? null : (
+                          <Button
+                            label={t('Deze en alle volgende ({n})', { n: tail.length })}
+                            variant="danger"
+                            fullWidth={false}
+                            onPress={() => {
+                              if (confirming === 'cancel') {
+                                setConfirming(null);
+                                void cancelSeriesFrom(booking.id);
+                                return;
+                              }
+                              weghalen(() => deleteSeriesFrom(booking.id));
+                            }}
+                          />
+                        )}
+                        <Button
+                          label={t('Nee')}
+                          variant="secondary"
+                          fullWidth={false}
+                          onPress={() => setConfirming(null)}
+                        />
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={[styles.actions, styles.confirmRow]}>
+                      {canManage && canCancel ? (
+                        <Button
+                          label={t('Annuleren')}
+                          variant="danger"
+                          fullWidth={false}
+                          onPress={() => {
+                            clearError();
+                            setConfirming('cancel');
+                          }}
+                        />
+                      ) : null}
+                      {magWeg ? (
+                        <Button
+                          label={t('Verwijderen')}
+                          variant="danger"
+                          fullWidth={false}
+                          onPress={() => {
+                            clearError();
+                            setConfirming('delete');
+                          }}
+                        />
+                      ) : null}
+                    </View>
+                  )
+                ) : null}
               </View>
-            </View>
-          ) : (
-            <View style={[styles.actions, styles.confirmRow]}>
-              {canManage && canCancel ? (
-                <Button
-                  label={t('Annuleren')}
-                  variant="danger"
-                  fullWidth={false}
-                  onPress={() => {
-                    clearError();
-                    setConfirming('cancel');
-                  }}
-                />
-              ) : null}
-              {magWeg ? (
-                <Button
-                  label={t('Verwijderen')}
-                  variant="danger"
-                  fullWidth={false}
-                  onPress={() => {
-                    clearError();
-                    setConfirming('delete');
-                  }}
-                />
-              ) : null}
-            </View>
-          )
+            ) : null}
+          </>
         ) : null}
       </DetailSheet>
 
@@ -977,6 +1054,22 @@ const styles = StyleSheet.create({
   attendanceName: { ...typography.body, color: tennisColors.text, flexShrink: 1 },
   notice: { fontSize: 13, color: tennisColors.text, fontStyle: 'italic', marginTop: spacing.sm },
   hint: { fontSize: 13, color: tennisColors.textMuted, fontStyle: 'italic', marginTop: spacing.xs },
+  blok: {
+    gap: spacing.xs, marginTop: spacing.sm, paddingTop: spacing.md,
+    borderTopWidth: 1, borderTopColor: tennisColors.border,
+  },
+  blokKop: { ...typography.label, color: tennisColors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
+  meerKnop: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
+    minHeight: minTapTarget, marginTop: spacing.sm,
+    borderTopWidth: 1, borderTopColor: tennisColors.border,
+  },
+  meerTekst: { ...typography.label, color: tennisColors.textMuted },
+  meerInhoud: { gap: spacing.sm },
+  // Een regel die je kunt aantikken: de tekst in de kleur van de app en een pijltje erachter,
+  // zoals "Deze periode" op de lesdag.
+  periodeRij: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: minTapTarget },
+  periodeLink: { color: tennisColors.primary, marginTop: 0, fontStyle: 'normal', fontWeight: '600' },
   notes: { ...typography.body, color: tennisColors.text },
   error: { color: tennisColors.danger, fontSize: 14, marginTop: spacing.sm },
   actions: { marginTop: spacing.lg, alignItems: 'flex-start' },
