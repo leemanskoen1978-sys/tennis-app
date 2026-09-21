@@ -8,10 +8,14 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 
 *Bijgewerkt op 21 september 2026.*
 
-**Alle SQL-bestanden zijn gedraaid op de databank van de club**: `supabase-schema.sql`,
-`AANWEZIGHEID-VERLEDEN.sql`, `ZOEKT-TRAINER.sql`, `LESPLANNING.sql`, `BEZETTE-UREN.sql` en
-`OEFENAFBEELDINGEN.sql` (die laatste gemeld door de eigenaar op 21 september; de bucket zelf is
-niet nagekeken). Er staat niets meer klaar dat nog gedraaid moet worden.
+**Gedraaid op de databank van de club**: `supabase-schema.sql`, `AANWEZIGHEID-VERLEDEN.sql`,
+`ZOEKT-TRAINER.sql`, `LESPLANNING.sql`, `BEZETTE-UREN.sql` en `OEFENAFBEELDINGEN.sql` (die
+laatste gemeld door de eigenaar op 21 september; de bucket zelf is niet nagekeken).
+
+**Nog te draaien: `LESPLANNING-OEFENING.sql`** (ná `LESPLANNING.sql`), in de Supabase
+SQL-editor. Zonder dit weigert de databank een doorsturing van oefeningen per kleur (zie 1f); de
+lokale demo heeft het niet nodig. Twee keer draaien kan geen kwaad. Zet hier na het draaien
+"gedraaid" bij.
 
 - **`main`** bevat de merge `cc5b61b` (oefeningen per kleur) en is gepusht naar
   <https://github.com/leemanskoen1978-sys/tennis-app>. Elke push naar `main` bouwt en zet de
@@ -22,7 +26,7 @@ niet nagekeken). Er staat niets meer klaar dat nog gedraaid moet worden.
   `gh auth setup-git`: Git gebruikt nu het actieve `gh`-account. Krijg je in een nieuwe
   terminal weer een 403, kijk dan met `gh auth status` welk account actief is. De naam en het
   e-mailadres op commits (`user.name` / `user.email` in `~/.gitconfig`) staan hier los van.
-- Testsuite: **1945 tests**, allemaal in `lib/` (40 daarvan slaan zichzelf over, zie
+- Testsuite: **1951 tests**, allemaal in `lib/` (40 daarvan slaan zichzelf over, zie
   `koen.xlsx`). `npx tsc --noEmit`, `npm test` en `npx expo export -p web` horen bij elke
   oplevering.
 - `koen.xlsx` is een **testfixture** en moet op de schijf blijven staan — 40 tests lezen dat
@@ -186,6 +190,9 @@ periode, aan een trainer en/of een lesgroep. De trainer ziet het bij zijn les st
 **De SQL is gedraaid** op 10 september 2026 (`LESPLANNING.sql`). De tabel `les_planning`
 is nagekeken en staat er.
 
+Een doorsturing kan sinds 21 september ook naar oefeningen per kleur wijzen in plaats van naar
+een les; zie 1f.
+
 **Wat er nog met de hand doorlopen moet:** materiaal doorsturen voor een groep en een periode, en
 met een traineraccount nakijken of het bij de juiste lessen staat en niet bij de andere.
 
@@ -265,10 +272,28 @@ kleur*. Het is de inhoud van `tennis-oefeningen.html` (blauw, rood, oranje, groe
   ledenimport. Op een telefoon ziet een beheerder de melding dat het alleen op de website kan.
   Native toevoegen vraagt `expo-image-picker` (of `expo-document-picker`) erbij.
 
-**Wat er nog met de hand doorlopen moet:** online, als beheerder, een tekening toevoegen en
-weghalen, en als gewone trainer nakijken dat hij ze ziet zonder de knoppen. Lokaal (demo, zonder
-sleutels) is dat doorlopen: toevoegen, uitklappen, weghalen, en de trainerweergave. Het bewaren
-in Supabase Storage is nog niet met een echt account geprobeerd.
+- **Doorsturen aan een trainer of groep, voor een periode.** De beheerder opent het scherm,
+  kiest een kleur en een week en gebruikt "Doorsturen naar…" (onder het papier, in de kleuren
+  van de app), precies zoals bij lesmateriaal in de databank. Het is dezelfde `les_planning`
+  (zie 1d), die nu óf naar een `lesson_id` wijst óf naar `oefening_kleur` + `oefening_week`
+  (`LESPLANNING-OEFENING.sql`; de `check` `les_planning_wat` eist er precies één van de twee).
+  Bewust niet als 8 aparte `Lesson`-rijen in de databank: dan moest de inhoud twee keer
+  bijgehouden worden.
+- **Wat de trainer ziet:** op zijn lesdag "Deze periode: Oefeningen per kleur: Rood, week 2",
+  met een tik die het scherm meteen op die kleur en week opent (`?kleur=rood&week=2`). In het
+  detailblad van een les staat dezelfde regel als tekst, zonder tik: dat blad is zelf een blad.
+  De rekenregels staan in `lib/lesplanning.ts`: `oefeningenVoor` (zelfde volgorde als
+  `materiaalVoor`, dezelfde kleur en week maar één keer) en `oefeningLabel`, met tests.
+  `materiaalVoor` slaat zo'n rij over: zonder `lesson_id` is het geen les.
+- **Beheer → Lesplanning** toont de doorsturing in dezelfde lijst, met een label in plaats van
+  een lestitel, en weghalen werkt hetzelfde.
+
+**Wat er nog met de hand doorlopen moet:** het doorsturen van oefeningen per kleur tegen de
+echte databank, ná het draaien van `LESPLANNING-OEFENING.sql`, en met een traineraccount
+nakijken dat de regel bij de juiste lessen staat. Het toevoegen en weghalen van tekeningen
+is online door de eigenaar doorlopen op 21 september 2026 en werkt. Lokaal (demo, zonder sleutels)
+is alles doorlopen: tekeningen toevoegen, uitklappen, weghalen, de trainerweergave, en het
+doorsturen tot en met de tik op de lesdag.
 
 **Wat er bewust niet is meegekomen:** de tekeningen uit de HTML zelf. Daar stonden overal
 "Tekening volgt"-plekken bij een map `images/` die nooit bestond. De beheerder voegt ze nu in de
