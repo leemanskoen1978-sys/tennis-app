@@ -243,6 +243,34 @@ describe('urenPerClub', () => {
     const uit = urenPerClub(voorbeeldLessen(), [RACSO, GANTOISE], 10, 2026);
     expect(uit.map((r) => r.klant.id)).toEqual(['k0', 'k1']);
   });
+
+  it('laat bij gelijke volgorde de binnengekomen volgorde staan', () => {
+    const a = klant({ id: 'a', volgorde: 1 });
+    const b = klant({ id: 'b', volgorde: 1 });
+    expect(urenPerClub([], [a, b], 10, 2026).map((r) => r.klant.id)).toEqual(['a', 'b']);
+    expect(urenPerClub([], [b, a], 10, 2026).map((r) => r.klant.id)).toEqual(['b', 'a']);
+  });
+
+  it('telt een les op de eerste en op de laatste dag van de maand mee', () => {
+    const lessen = voorbeeldLessen().slice(0, 1).map((l, i) => ({
+      ...l, id: `r${i}`, club_tekst: 'T.C. RACSO', datum: '2026-09-01',
+    }));
+    lessen.push({ ...lessen[0], id: 'r-laatst', datum: '2026-09-30', sleutel: 'r-laatst' });
+    expect(urenPerClub(lessen, [RACSO], 9, 2026)[0].urenGeplakt).toBe(2);
+  });
+
+  it('negeert een klant waarvan de naam in de lijst nog niet ingevuld is', () => {
+    // Zo maakt het instellingenscherm een nieuwe club aan: alle velden leeg.
+    const nieuw = klant({ id: 'leeg', naam_in_lijst: '', korte_naam: '' });
+    const blanco = voorbeeldLessen().slice(0, 1).map((l) => ({ ...l, club_tekst: '' }));
+    expect(urenPerClub(blanco, [nieuw], 9, 2026)[0].urenGeplakt).toBe(0);
+  });
+
+  it('telt dezelfde lessen bij twee klanten met dezelfde naam — het scherm waarschuwt', () => {
+    const tweeling = klant({ id: 'k2', naam_in_lijst: 'T.C. RACSO', volgorde: 3 });
+    const uit = urenPerClub(voorbeeldLessen(), [RACSO, tweeling], 10, 2026);
+    expect(uit.map((r) => r.urenGeplakt)).toEqual([9, 9]);
+  });
 });
 
 describe('onbekendeClubs', () => {
@@ -257,6 +285,12 @@ describe('onbekendeClubs', () => {
 
   it('kijkt alleen naar de gevraagde maand', () => {
     expect(onbekendeClubs(voorbeeldLessen(), [GANTOISE], 9, 2026)).toEqual([]);
+  });
+
+  it('meldt een lege clubnaam in plaats van hem te verzwijgen', () => {
+    const nieuw = klant({ id: 'leeg', naam_in_lijst: '' });
+    const blanco = voorbeeldLessen().slice(0, 1).map((l) => ({ ...l, club_tekst: '' }));
+    expect(onbekendeClubs(blanco, [nieuw], 9, 2026)).toEqual([{ naam: '(leeg)', aantal: 1 }]);
   });
 });
 
@@ -307,5 +341,14 @@ describe('urenUitApp', () => {
 
   it('slikt een boeking met een onleesbaar tijdstip in plaats van NaN terug te geven', () => {
     expect(urenUitApp([boeking({ end_time: 'later' })], 'koen', 9, 2026)).toBe(0);
+  });
+
+  it('rekent een les die over middernacht de maand uit loopt bij de maand van de start', () => {
+    const overMiddernacht = boeking({
+      start_time: new Date(2026, 8, 30, 23, 30).toISOString(),
+      end_time: new Date(2026, 9, 1, 0, 30).toISOString(),
+    });
+    expect(urenUitApp([overMiddernacht], 'koen', 9, 2026)).toBe(1);
+    expect(urenUitApp([overMiddernacht], 'koen', 10, 2026)).toBe(0);
   });
 });

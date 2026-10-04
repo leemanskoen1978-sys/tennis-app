@@ -7,6 +7,8 @@
 // `Booking` in lib/types dat is. Dat scheelt een vertaallaag tussen scherm en databank, en
 // een vertaallaag is precies de plek waar een veld stilletjes verdwijnt.
 
+import { lesgeverId } from './lesgever';
+
 /**
  * Wie deze schermen mag zien.
  *
@@ -234,7 +236,14 @@ export interface ClubUren {
  *
  * De volgorde van het antwoord is die van `volgorde` op de klant, niet die van de lijst die
  * binnenkwam: het scherm zet de kaarten eronder en die horen altijd in dezelfde volgorde te
- * staan.
+ * staan. Bij gelijke `volgorde` blijft de binnengekomen volgorde staan, want `sort` is
+ * stabiel.
+ *
+ * Aangenomen wordt dat `naam_in_lijst` en `korte_naam` uniek zijn over alle klanten. Staan
+ * er twee klanten met dezelfde naam, dan krijgen ze allebei dezelfde uren en wordt er
+ * dubbel gefactureerd. Dat wordt hier niet tegengehouden maar in het instellingenscherm
+ * gemeld: hier weten we niet of het een vergissing is of niet, en een telling hoort geen
+ * rijen te laten verdwijnen die iemand bewust zo heeft gezet.
  */
 export function urenPerClub(
   lessen: readonly Factuurles[],
@@ -257,9 +266,13 @@ export function urenPerClub(
       // Een privéles hangt aan de korte naam ("Racso"), een geplakte les aan de naam zoals
       // die in de lijst staat ("T.C. RACSO"). Dat zijn twee verschillende namen voor
       // dezelfde club, en ze allebei aan één veld hangen zou er één van de twee breken.
+      //
+      // Een lege ingestelde naam matcht niets. Zonder die regel zou een club die net
+      // toegevoegd is en nog niet ingevuld — het instellingenscherm maakt hem met lege
+      // velden aan — elke regel claimen waarvan de clubkolom leeg is.
       if (les.bron === 'prive') {
-        if (club === korteNaam) urenPrive += urenVan(les);
-      } else if (club === geplakteNaam) {
+        if (korteNaam !== '' && club === korteNaam) urenPrive += urenVan(les);
+      } else if (geplakteNaam !== '' && club === geplakteNaam) {
         urenGeplakt += urenVan(les);
       }
     }
@@ -281,7 +294,11 @@ export function onbekendeClubs(
   maand: number,
   jaar: number,
 ): Array<{ naam: string; aantal: number }> {
-  const gekend = new Set(klanten.map((k) => schoon(k.naam_in_lijst)));
+  // Een klant zonder ingevulde naam telt niet als "gekend": anders zou een lege clubkolom
+  // in de plaktekst op hem uitkomen en nooit gemeld worden.
+  const gekend = new Set(
+    klanten.map((k) => schoon(k.naam_in_lijst)).filter((naam) => naam !== ''),
+  );
   const geteld = new Map<string, { naam: string; aantal: number }>();
 
   for (const les of lessen) {
@@ -290,10 +307,11 @@ export function onbekendeClubs(
     const sleutel = schoon(les.club_tekst);
     if (gekend.has(sleutel)) continue;
     // De naam zoals hij in de lijst stond, niet de opgeschoonde: dat is wat de gebruiker
-    // straks in het veld "naam in de lijst" moet overnemen.
+    // straks in het veld "naam in de lijst" moet overnemen. Een lege naam krijgt een
+    // woord, want "0 lessen bij een club die ik niet ken: " leest als een bug.
     const al = geteld.get(sleutel);
     if (al) al.aantal++;
-    else geteld.set(sleutel, { naam: les.club_tekst.trim(), aantal: 1 });
+    else geteld.set(sleutel, { naam: les.club_tekst.trim() || '(leeg)', aantal: 1 });
   }
 
   return [...geteld.values()];
@@ -315,11 +333,21 @@ export interface AppBoeking {
 }
 
 /**
+ * De maand waarin een boeking telt, is die van de begintijd.
+ *
+ * Een les van 23:30 op 30 september tot 00:30 op 1 oktober hoort bij september: zo staat
+ * hij in de agenda en zo praat men erover. Het alternatief — de uren splitsen over twee
+ * maanden — zou twee facturen een half uur geven dat op geen van beide klopt.
+ */
+
+/**
  * De uren die al in de app staan: de lessen waarvan deze trainer de lesgever was.
  *
  * Dezelfde definitie als het bedrag op zijn profiel (`coachPayoutThisMonth` in lib/reports):
- * wie de les werkelijk gaf telt, niet van wie de les was. Daarom `taught_by_id ?? coach_id`
- * en niet `coach_id` — zie lib/lesgever.
+ * wie de les werkelijk gaf telt, niet van wie de les was. Die vraag wordt beantwoord door
+ * `lesgeverId` in lib/lesgever en door niets anders — dat bestand zegt in zijn kop waarom,
+ * en een tweede `taught_by_id ?? coach_id` hier zou precies het gat terugzetten waar het
+ * voor waarschuwt.
  *
  * Dit getal kent geen clubs: de app weet niet bij welke club een boeking hoort. Het heeft
  * dus alleen betekenis bij de ene klant waarvoor `bron_voorkeur` op `'app'` staat.
@@ -334,7 +362,7 @@ export function urenUitApp(
 
   for (const b of boekingen) {
     if (b.status === 'cancelled') continue;
-    if ((b.taught_by_id ?? b.coach_id) !== trainerId) continue;
+    if (lesgeverId(b) !== trainerId) continue;
 
     const start = new Date(b.start_time);
     const eind = new Date(b.end_time);
