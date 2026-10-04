@@ -210,3 +210,144 @@ export interface FacturatieData {
 export function urenVan(les: Factuurles): number {
   return les.uren_handmatig ?? les.uren;
 }
+
+// ---------------------------------------------------------------------------
+// Uren tellen
+// ---------------------------------------------------------------------------
+
+/** Valt deze datum (`2026-09-09`) in deze maand? */
+function inMaand(datum: string, maand: number, jaar: number): boolean {
+  const two = String(maand).padStart(2, '0');
+  return datum.startsWith(`${jaar}-${two}-`);
+}
+
+export interface ClubUren {
+  klant: Klant;
+  /** Wat de geplakte lijst voor deze club zegt. */
+  urenGeplakt: number;
+  /** De privélessen die met de hand bijgetikt zijn. Tellen altijd mee, bij beide bronnen. */
+  urenPrive: number;
+}
+
+/**
+ * Per klant de uren van één maand, uit de geplakte lijst en uit de privélessen.
+ *
+ * De volgorde van het antwoord is die van `volgorde` op de klant, niet die van de lijst die
+ * binnenkwam: het scherm zet de kaarten eronder en die horen altijd in dezelfde volgorde te
+ * staan.
+ */
+export function urenPerClub(
+  lessen: readonly Factuurles[],
+  klanten: readonly Klant[],
+  maand: number,
+  jaar: number,
+): ClubUren[] {
+  const opVolgorde = [...klanten].sort((a, b) => a.volgorde - b.volgorde);
+
+  return opVolgorde.map((klant) => {
+    const geplakteNaam = schoon(klant.naam_in_lijst);
+    const korteNaam = schoon(klant.korte_naam);
+    let urenGeplakt = 0;
+    let urenPrive = 0;
+
+    for (const les of lessen) {
+      if (!les.actief) continue;
+      if (!inMaand(les.datum, maand, jaar)) continue;
+      const club = schoon(les.club_tekst);
+      // Een privéles hangt aan de korte naam ("Racso"), een geplakte les aan de naam zoals
+      // die in de lijst staat ("T.C. RACSO"). Dat zijn twee verschillende namen voor
+      // dezelfde club, en ze allebei aan één veld hangen zou er één van de twee breken.
+      if (les.bron === 'prive') {
+        if (club === korteNaam) urenPrive += urenVan(les);
+      } else if (club === geplakteNaam) {
+        urenGeplakt += urenVan(les);
+      }
+    }
+
+    return { klant, urenGeplakt: rond2(urenGeplakt), urenPrive: rond2(urenPrive) };
+  });
+}
+
+/**
+ * De clubs in de geplakte lijst die bij geen enkele klant uitkomen.
+ *
+ * Zonder deze functie verdwijnen die uren geruisloos: ze staan in de databank, ze staan op
+ * geen enkele factuur, en niemand merkt het. Zo ging het in `facturen.xlsx` met `T.C. RACSO`
+ * tegen `RACSO`. Het scherm toont dit, met een knop om de club bij te maken.
+ */
+export function onbekendeClubs(
+  lessen: readonly Factuurles[],
+  klanten: readonly Klant[],
+  maand: number,
+  jaar: number,
+): Array<{ naam: string; aantal: number }> {
+  const gekend = new Set(klanten.map((k) => schoon(k.naam_in_lijst)));
+  const geteld = new Map<string, { naam: string; aantal: number }>();
+
+  for (const les of lessen) {
+    if (les.bron !== 'geplakt' || !les.actief) continue;
+    if (!inMaand(les.datum, maand, jaar)) continue;
+    const sleutel = schoon(les.club_tekst);
+    if (gekend.has(sleutel)) continue;
+    // De naam zoals hij in de lijst stond, niet de opgeschoonde: dat is wat de gebruiker
+    // straks in het veld "naam in de lijst" moet overnemen.
+    const al = geteld.get(sleutel);
+    if (al) al.aantal++;
+    else geteld.set(sleutel, { naam: les.club_tekst.trim(), aantal: 1 });
+  }
+
+  return [...geteld.values()];
+}
+
+/**
+ * De velden van een boeking die deze telling nodig heeft.
+ *
+ * Met opzet geen `import type { Booking }`: dit bestand hoort niets te weten van spelers,
+ * banen of betalingen. `Booking` past hier structureel in, dus het scherm geeft hem gewoon
+ * door.
+ */
+export interface AppBoeking {
+  coach_id: string;
+  taught_by_id?: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+}
+
+/**
+ * De uren die al in de app staan: de lessen waarvan deze trainer de lesgever was.
+ *
+ * Dezelfde definitie als het bedrag op zijn profiel (`coachPayoutThisMonth` in lib/reports):
+ * wie de les werkelijk gaf telt, niet van wie de les was. Daarom `taught_by_id ?? coach_id`
+ * en niet `coach_id` — zie lib/lesgever.
+ *
+ * Dit getal kent geen clubs: de app weet niet bij welke club een boeking hoort. Het heeft
+ * dus alleen betekenis bij de ene klant waarvoor `bron_voorkeur` op `'app'` staat.
+ */
+export function urenUitApp(
+  boekingen: readonly AppBoeking[],
+  trainerId: string,
+  maand: number,
+  jaar: number,
+): number {
+  let uren = 0;
+
+  for (const b of boekingen) {
+    if (b.status === 'cancelled') continue;
+    if ((b.taught_by_id ?? b.coach_id) !== trainerId) continue;
+
+    const start = new Date(b.start_time);
+    const eind = new Date(b.end_time);
+    const ms = eind.getTime() - start.getTime();
+    // Een onleesbaar tijdstip geeft NaN, en NaN zou het hele totaal wegvagen zonder dat er
+    // iets op het scherm verandert. Zo'n boeking telt niet mee.
+    if (!Number.isFinite(ms) || ms <= 0) continue;
+    // De maand van de kalender, niet van UTC: een les van 's avonds laat hoort bij de dag
+    // die je op de klok ziet.
+    if (start.getFullYear() !== jaar || start.getMonth() + 1 !== maand) continue;
+
+    uren += ms / 3_600_000;
+  }
+
+  return rond2(uren);
+}
