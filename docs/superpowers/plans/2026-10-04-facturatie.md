@@ -1327,6 +1327,15 @@ describe('factuurUit', () => {
     expect(metBtw.totaal).toBe(300.08);
   });
 
+  it('laat de urenlijn optellen tot het netto, ook bij uren met drie decimalen', () => {
+    // 8,005 u wordt op de factuur 8,01 u. Het bedrag op die regel hoort dan 8,01 × € 31 te
+    // zijn en niet 8,005 × € 31, anders staat er een regel van € 248,31 boven een netto
+    // van € 248,16.
+    const f = factuurUit({ ...basis, uren: 8.005 });
+    expect(f.aantal_uren).toBe(8.01);
+    expect(f.netto).toBe(rond2(f.aantal_uren * f.uurtarief));
+  });
+
   it('rondt elke lijn apart af en telt daarna pas op', () => {
     const f = factuurUit({
       ...basis,
@@ -1530,7 +1539,11 @@ const BETAALTERMIJN_DAGEN = 15;
 export function factuurUit(opties: FactuurOpties): Factuur {
   const { klant, uren, vrijeLijnen } = opties;
 
-  const urenBedrag = rond2(uren * klant.uurtarief);
+  // Met de áfgedrukte uren rekenen, niet met het ruwe getal. Staat er 8,01 u op de factuur
+  // en rekent het bedrag met 8,005, dan telt de regel niet op tot het nettobedrag eronder —
+  // en dan heeft wie het natelt gelijk en de factuur ongelijk.
+  const aantalUren = rond2(uren);
+  const urenBedrag = rond2(aantalUren * klant.uurtarief);
   const vrijBedrag = vrijeLijnen.reduce((som, l) => som + rond2(l.aantal * l.tarief), 0);
   const netto = rond2(urenBedrag + vrijBedrag);
   const btw_bedrag = rond2((netto * klant.btw_percentage) / 100);
@@ -1547,7 +1560,7 @@ export function factuurUit(opties: FactuurOpties): Factuur {
     omschrijving: opties.omschrijving,
     dienstmaand: opties.maand,
     dienstjaar: opties.jaar,
-    aantal_uren: rond2(uren),
+    aantal_uren: aantalUren,
     uurtarief: klant.uurtarief,
     netto,
     btw_percentage: klant.btw_percentage,
@@ -1628,7 +1641,7 @@ export function standaardKlanten([idGantoise, idRacso]: readonly [string, string
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx jest lib/facturatie.test.ts`
-Expected: PASS — 68 tests.
+Expected: PASS — 69 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -2323,6 +2336,19 @@ describe('factuurWerkmap', () => {
     expect(bytes[0]).toBe(0x50);
     expect(bytes[1]).toBe(0x4b);
   });
+
+  it('botst nooit op zichzelf, hoeveel vrije lijnen er ook bij komen', () => {
+    // `vrijBladXml` gooit als twee cellen op dezelfde plaats landen. Het totalenblok
+    // schuift op met het aantal vrije lijnen, dus dat is precies waar een rijnummer één
+    // te ver kan tellen. Deze test laat het blad écht schrijven in plaats van losse
+    // celverwijzingen na te kijken.
+    for (const aantal of [0, 1, 2, 5, 12]) {
+      const lijnen = Array.from({ length: aantal }, (_, i) => ({
+        omschrijving: `Lijn ${i + 1}`, aantal: 1, eenheid: 'stuk', tarief: 10,
+      }));
+      expect(() => factuurWerkmap(factuur({ vrije_lijnen: lijnen }), LEVERANCIER)).not.toThrow();
+    }
+  });
 });
 
 describe('factuurBestandsnaam', () => {
@@ -2337,6 +2363,15 @@ describe('factuurBestandsnaam', () => {
 
   it('valt terug op "factuur.xlsx" als het nummer leeg is', () => {
     expect(factuurBestandsnaam('   ')).toBe('factuur.xlsx');
+  });
+
+  it('haalt streepjes aan de randen weg', () => {
+    expect(factuurBestandsnaam('-NG-0007-')).toBe('factuur-NG-0007.xlsx');
+  });
+
+  it('topt een onwaarschijnlijk lang nummer af', () => {
+    const lang = 'A'.repeat(300);
+    expect(factuurBestandsnaam(lang).length).toBeLessThanOrEqual(113);
   });
 });
 ```
@@ -2523,7 +2558,12 @@ export function factuurWerkmap(factuur: Factuur, leverancier: Leverancier): Uint
  * download zonder uitleg.
  */
 export function factuurBestandsnaam(factuurnr: string): string {
-  const net = factuurnr.trim().replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+  const net = factuurnr.trim()
+    .replace(/[^A-Za-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    // Een bestandsnaam langer dan ongeveer 255 tekens weigeren sommige schijven en
+    // browsers zonder uitleg. Honderd is ruim voor een factuurnummer.
+    .slice(0, 100);
   return net === '' ? 'factuur.xlsx' : `factuur-${net}.xlsx`;
 }
 ```
@@ -2531,7 +2571,7 @@ export function factuurBestandsnaam(factuurnr: string): string {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx jest lib/facturatie-xlsx.test.ts`
-Expected: PASS — 20 tests.
+Expected: PASS — 23 tests.
 
 - [ ] **Step 5: Run the whole suite and the typechecker**
 
@@ -2796,13 +2836,25 @@ function tabelBestaatNiet(error: { code?: string; message?: string }): boolean {
   return /schema cache/i.test(error.message ?? '');
 }
 
-/** De kolommen die de app niet kent en niet terugschrijft. */
-function zonderHuishouding<T>(rij: Record<string, unknown>): T {
-  const { eigenaar, aangemaakt, ...rest } = rij;
-  void eigenaar;
-  void aangemaakt;
-  return rest as T;
+/**
+ * De kolommen die de app niet kent, eraf halen.
+ *
+ * Welke dat zijn verschilt per tabel, en dat is geen slordigheid. `eigenaar` is overal
+ * huishouding. `aangemaakt` is dat bij een les — de databank zet hem en niemand leest hem —
+ * maar bij een factuur is het een veld van de app zelf: `factuurUit` zet erin wanneer de
+ * factuur gemaakt is, en het register toont dat. Knip je hem daar ook weg, dan is dat veld
+ * na een herlaadbeurt leeg terwijl het type belooft dat er een datum in staat.
+ */
+function zonderKolommen<T>(rij: Record<string, unknown>, weg: readonly string[]): T {
+  const uit = { ...rij };
+  for (const kolom of weg) delete uit[kolom];
+  return uit as T;
 }
+
+/** Overal huishouding. */
+const EIGENAAR = ['eigenaar'] as const;
+/** Bij een les zet de databank `aangemaakt` en leest de app hem nooit. */
+const EIGENAAR_EN_AANGEMAAKT = ['eigenaar', 'aangemaakt'] as const;
 
 export async function laden(): Promise<FacturatieData | null> {
   const [lev, kla, les, fac] = await Promise.all([
@@ -2819,14 +2871,14 @@ export async function laden(): Promise<FacturatieData | null> {
     }
   }
 
-  const leveranciers = (lev.data ?? []).map((r) => zonderHuishouding<Leverancier>(r));
+  const leveranciers = (lev.data ?? []).map((r) => zonderKolommen<Leverancier>(r, EIGENAAR));
 
   return {
     // Er is er hoogstens één; staat er nog geen, dan maakt het scherm hem bij de eerste keer.
     leverancier: leveranciers[0] ?? { id: '', naam: '', adres: '', btw: '', iban: '', bic: '' },
-    klanten: (kla.data ?? []).map((r) => zonderHuishouding<Klant>(r)),
-    lessen: (les.data ?? []).map((r) => zonderHuishouding<Factuurles>(r)),
-    facturen: (fac.data ?? []).map((r) => zonderHuishouding<Factuur>(r)),
+    klanten: (kla.data ?? []).map((r) => zonderKolommen<Klant>(r, EIGENAAR)),
+    lessen: (les.data ?? []).map((r) => zonderKolommen<Factuurles>(r, EIGENAAR_EN_AANGEMAAKT)),
+    facturen: (fac.data ?? []).map((r) => zonderKolommen<Factuur>(r, EIGENAAR)),
   };
 }
 
@@ -4154,7 +4206,11 @@ function KlantFactuur({
 
   const urenBron = bron === 'app' ? urenApp : urenGeplakt;
   const uren = rond2(urenBron + urenPrive);
-  const urenBedrag = rond2(uren * klant.uurtarief);
+  // Met de áfgedrukte uren rekenen, niet met het ruwe getal. Staat er 8,01 u op de factuur
+  // en rekent het bedrag met 8,005, dan telt de regel niet op tot het nettobedrag eronder —
+  // en dan heeft wie het natelt gelijk en de factuur ongelijk.
+  const aantalUren = rond2(uren);
+  const urenBedrag = rond2(aantalUren * klant.uurtarief);
   const vrijBedrag = lijnen.reduce((som, l) => som + rond2(l.aantal * l.tarief), 0);
   const netto = rond2(urenBedrag + vrijBedrag);
   const btw = rond2((netto * klant.btw_percentage) / 100);
