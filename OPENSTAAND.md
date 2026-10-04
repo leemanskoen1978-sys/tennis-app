@@ -12,7 +12,8 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 `AANWEZIGHEID-VERLEDEN.sql`, `ZOEKT-TRAINER.sql`, `LESPLANNING.sql`, `BEZETTE-UREN.sql`,
 `OEFENAFBEELDINGEN.sql`, `LESPLANNING-OEFENING.sql` en `FACTURATIE.sql`. De twee over de
 oefeningen zijn gemeld door de eigenaar op 21 september 2026, `FACTURATIE.sql` op 4 oktober
-2026; de bucket, de nieuwe kolommen en de tabellen zelf zijn niet nagekeken. Er staat niets
+2026. De vier tabellen van de facturatie bestaan (nagekeken via de REST-ingang); de bucket en
+de nieuwe kolommen van de oefeningen zijn niet nagekeken. Er staat niets
 meer klaar dat nog gedraaid moet worden.
 
 - **`main`** bevat de merge `cc5b61b` (oefeningen per kleur) en is gepusht naar
