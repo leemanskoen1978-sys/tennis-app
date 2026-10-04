@@ -3586,9 +3586,12 @@ function Lesregel({ les, onBewaar }: {
 
   function zetUren() {
     const getal = Number(urenTekst.replace(',', '.'));
-    // Onzin of hetzelfde getal: niets wegschrijven. Een lege databankronde per toetsaanslag
-    // is precies wat dit scherm traag zou maken.
-    if (!Number.isFinite(getal) || getal < 0 || getal === urenVan(les)) {
+    // Een leeg veld is géén nul uur. `Number('')` is 0, en dat is finiet en niet negatief,
+    // dus zonder deze regel schrijft wegvegen-en-wegklikken stilletjes nul uur weg en telt
+    // de factuur een les te weinig. Onzin en hetzelfde getal vallen hier ook af: een
+    // databankronde per toetsaanslag is precies wat dit scherm traag zou maken.
+    if (urenTekst.trim() === '' || !Number.isFinite(getal) || getal < 0
+      || getal === urenVan(les)) {
       setUrenTekst(String(urenVan(les)));
       return;
     }
@@ -4119,7 +4122,7 @@ import { Chip } from '../ui/Chip';
 import { Veld } from './LessenBlad';
 import { backend } from '../../providers/backend';
 import { factuurBestandsnaam, factuurWerkmap } from '../../lib/facturatie-xlsx';
-import { shareXlsx } from '../../lib/share';
+import { shareXlsx, xlsxWordtOndersteund } from '../../lib/share';
 import {
   MAANDNAMEN, extraLessenUit, factuurUit, nieuwId, onbekendeClubs, rond2, urenPerClub,
   urenUitApp,
@@ -4130,6 +4133,28 @@ import { formatEuro, parseEuro } from '../../lib/money';
 import { formatDayInput, parseDayInput } from '../../lib/period';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
+
+/**
+ * Een vrije lijn zoals het scherm hem vasthoudt, met een eigen sleutel erbij.
+ *
+ * Die sleutel staat er voor React en gaat niet mee de databank in. Zonder hem zou een lijst
+ * op volgnummer gesleuteld worden, en dan hergebruikt React de rij die op die plek stond
+ * zodra je er eentje wegneemt — met het aantal en het tarief van de verwijderde lijn nog in
+ * beeld, want die velden houden hun eigen tekst vast terwijl je typt.
+ */
+interface LijnInBewerking extends VrijeLijn {
+  sleutel: string;
+}
+
+/** Wat ervan op de factuur komt: zonder de sleutel, die alleen het scherm nodig had. */
+function zonderSleutel(lijn: LijnInBewerking): VrijeLijn {
+  return {
+    omschrijving: lijn.omschrijving,
+    aantal: lijn.aantal,
+    eenheid: lijn.eenheid,
+    tarief: lijn.tarief,
+  };
+}
 
 /**
  * Valt deze factuurdatum redelijk bij deze dienstmaand?
@@ -4212,7 +4237,12 @@ export function FactuurBlad({ data, bookings, trainerId, opnieuwLaden }: {
 
       {perClub.map((rij) => (
         <KlantFactuur
-          key={rij.klant.id}
+          // De maand hoort in de sleutel. Een factuurkaart draagt een nummer, een datum,
+          // een omschrijving en vrije lijnen die bij één maand horen; blijft dezelfde kaart
+          // staan als je van maand wisselt, dan houdt ze "Tennislessen September" en die
+          // ene extra lijn vast terwijl de uren al die van augustus zijn. Een andere
+          // sleutel geeft een schone kaart, en dat is precies wat een andere maand is.
+          key={`${rij.klant.id}-${jaar}-${maand}`}
           klant={rij.klant}
           urenGeplakt={rij.urenGeplakt}
           urenPrive={rij.urenPrive}
@@ -4247,7 +4277,7 @@ function KlantFactuur({
   const [omschrijving, setOmschrijving] = useState(
     `Tennislessen ${MAANDNAMEN[maand - 1]} ${jaar}`,
   );
-  const [lijnen, setLijnen] = useState<VrijeLijn[]>([]);
+  const [lijnen, setLijnen] = useState<LijnInBewerking[]>([]);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState('');
   const [klaar, setKlaar] = useState('');
@@ -4300,7 +4330,7 @@ function KlantFactuur({
         id: nieuwId('fac'),
         klant,
         uren,
-        vrijeLijnen: lijnen,
+        vrijeLijnen: lijnen.map(zonderSleutel),
         extraLessen,
         factuurnr: nummer.trim(),
         factuurdatum: dagIso,
@@ -4384,12 +4414,14 @@ function KlantFactuur({
       </Text>
       <Veld label="Omschrijving" waarde={omschrijving} onChange={setOmschrijving} />
 
-      {lijnen.map((lijn, i) => (
+      {lijnen.map((lijn) => (
         <VrijeLijnRegel
-          key={i}
+          key={lijn.sleutel}
           lijn={lijn}
-          onWijzig={(nieuw) => setLijnen(lijnen.map((l, j) => (j === i ? nieuw : l)))}
-          onWeg={() => setLijnen(lijnen.filter((_, j) => j !== i))}
+          onWijzig={(nieuw) => setLijnen(lijnen.map(
+            (l) => (l.sleutel === lijn.sleutel ? { ...nieuw, sleutel: l.sleutel } : l),
+          ))}
+          onWeg={() => setLijnen(lijnen.filter((l) => l.sleutel !== lijn.sleutel))}
         />
       ))}
 
@@ -4397,14 +4429,27 @@ function KlantFactuur({
         label="Vrije lijn toevoegen"
         variant="secondary"
         icon={<Plus size={18} color={tennisColors.primary} />}
-        onPress={() => setLijnen([...lijnen, { omschrijving: '', aantal: 1, eenheid: 'stuk', tarief: 0 }])}
+        onPress={() => setLijnen([...lijnen, {
+          sleutel: nieuwId('lijn'), omschrijving: '', aantal: 1, eenheid: 'stuk', tarief: 0,
+        }])}
       />
 
-      <Button
-        label={bezig ? 'Bezig…' : 'Factuur downloaden'}
-        onPress={() => void maak()}
-        disabled={!mag}
-      />
+      {/*
+        Downloaden kan alleen op het web — `shareXlsx` zegt dat zelf ook. De knop hier laten
+        staan en hem daar laten omvallen is wat de andere exportschermen bewust níét doen;
+        zie app/admin/export en app/admin/reports.
+      */}
+      {xlsxWordtOndersteund ? (
+        <Button
+          label={bezig ? 'Bezig…' : 'Factuur downloaden'}
+          onPress={() => void maak()}
+          disabled={!mag}
+        />
+      ) : (
+        <Text style={styles.uitleg}>
+          Een factuur maken kan alleen op de website, niet op een telefoon.
+        </Text>
+      )}
 
       {klaar !== '' && <Text style={styles.klaar}>{klaar}</Text>}
       {fout !== '' && <Text style={styles.fout}>{fout}</Text>}
