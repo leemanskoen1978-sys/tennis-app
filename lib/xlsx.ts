@@ -38,8 +38,38 @@ export interface XlsxBlad {
  */
 export interface XlsxVrijeCel {
   ref: string;
-  cel: XlsxCel;
+  /** Leeg mag, als er een `stijl` bij staat: een kader of een gekleurd vlak zonder tekst. */
+  cel?: XlsxCel;
   vet?: boolean;
+  /** De opmaak van deze ene cel. Weglaten: de gewone stijl van haar soort, zoals voorheen. */
+  stijl?: XlsxStijl;
+}
+
+/** Welke zijden van een cel een dunne lijn krijgen. */
+export interface XlsxRand {
+  boven?: boolean;
+  onder?: boolean;
+  links?: boolean;
+  rechts?: boolean;
+}
+
+/**
+ * Hoe een cel eruitziet: letter, kleur, vulling, kader en uitlijning. Kleuren als `RRGGBB`.
+ *
+ * Alleen wat de factuur nodig heeft, en dat is met opzet: elke eigenschap hier is er een die
+ * `Opmaak` hieronder in `styles.xml` moet kunnen schrijven, en wat niemand gebruikt hoeft
+ * niemand te onderhouden.
+ */
+export interface XlsxStijl {
+  /** Lettergrootte in punten; weglaten is 11, de standaard van Excel. */
+  grootte?: number;
+  vet?: boolean;
+  /** De kleur van de letters. */
+  kleur?: string;
+  /** De achtergrond van de cel. */
+  vulling?: string;
+  rand?: XlsxRand;
+  uitlijning?: 'left' | 'center' | 'right';
 }
 
 /**
@@ -56,6 +86,13 @@ export interface XlsxVrijBlad {
   breedtes?: readonly number[];
   /** Bereiken als "A23:E23". Nodig voor de lange regels, die anders achter de bedragen lopen. */
   samengevoegd?: readonly string[];
+  /** Rijhoogte in punten, per rijnummer. */
+  rijhoogtes?: Readonly<Record<number, number>>;
+  /**
+   * Wat er afgedrukt wordt, als "A1:I45". Erbij komt: staand, A4, één pagina breed — zoals het
+   * blad in `facturen.xlsx`, dat zo als pdf verstuurd werd.
+   */
+  afdrukbereik?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -363,8 +400,84 @@ export function bladXml(blad: XlsxBlad): string {
     + '</worksheet>';
 }
 
-/** Dezelfde cel-XML als een tabel schrijft, met één verschil: tekst mag vet. */
-function vrijeCelXml(vrij: XlsxVrijeCel): string {
+/**
+ * De opmaak van één werkmap: de vier vaste stijlen hieronder, plus elke combinatie die een
+ * vrij blad met `stijl` vraagt. Dezelfde combinatie krijgt hetzelfde nummer, zodat honderd
+ * bedragcellen in dezelfde kleur één regel in `styles.xml` zijn en niet honderd.
+ *
+ * De vaste stijlen houden hun nummer (0 tot 3): een tabel en een vette tekst zien er dus
+ * precies uit zoals voorheen, ook in een werkmap waar er stijlen bij komen.
+ */
+class Opmaak {
+  readonly fonts: string[] = [
+    '<font><sz val="11"/><name val="Calibri"/></font>',
+    '<font><b/><sz val="11"/><name val="Calibri"/></font>',
+  ];
+  readonly fills: string[] = [
+    '<fill><patternFill patternType="none"/></fill>',
+    '<fill><patternFill patternType="gray125"/></fill>',
+  ];
+  readonly borders: string[] = ['<border><left/><right/><top/><bottom/><diagonal/></border>'];
+  readonly xfs: string[] = [
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>',
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>',
+    '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>',
+    '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>',
+  ];
+
+  private nummer(lijst: string[], item: string): number {
+    const i = lijst.indexOf(item);
+    if (i >= 0) return i;
+    lijst.push(item);
+    return lijst.length - 1;
+  }
+
+  /** Het stijlnummer voor deze opmaak op een cel met dit getalformaat. */
+  xf(numFmtId: number, stijl: XlsxStijl): number {
+    const kleur = (rgb: string) => `FF${rgb.replace('#', '').toUpperCase()}`;
+    const font = this.nummer(this.fonts, '<font>'
+      + (stijl.vet ? '<b/>' : '')
+      + `<sz val="${stijl.grootte ?? 11}"/>`
+      + (stijl.kleur ? `<color rgb="${kleur(stijl.kleur)}"/>` : '')
+      + '<name val="Calibri"/></font>');
+    const fill = stijl.vulling
+      ? this.nummer(this.fills, '<fill><patternFill patternType="solid">'
+        + `<fgColor rgb="${kleur(stijl.vulling)}"/><bgColor indexed="64"/></patternFill></fill>`)
+      : 0;
+    const r = stijl.rand ?? {};
+    const lijn = (naam: string, aan?: boolean) =>
+      (aan ? `<${naam} style="thin"><color auto="1"/></${naam}>` : `<${naam}/>`);
+    const border = this.nummer(this.borders, '<border>'
+      + lijn('left', r.links) + lijn('right', r.rechts) + lijn('top', r.boven) + lijn('bottom', r.onder)
+      + '<diagonal/></border>');
+    const uitlijning = stijl.uitlijning ? `<alignment horizontal="${stijl.uitlijning}"/>` : '';
+    return this.nummer(this.xfs, `<xf numFmtId="${numFmtId}" fontId="${font}" fillId="${fill}"`
+      + ` borderId="${border}" xfId="0" applyFont="1"`
+      + (fill ? ' applyFill="1"' : '')
+      + (border ? ' applyBorder="1"' : '')
+      + (numFmtId ? ' applyNumberFormat="1"' : '')
+      + (uitlijning ? ` applyAlignment="1">${uitlijning}</xf>` : '/>'));
+  }
+}
+
+/** Het getalformaat dat bij de soort van een cel hoort; 0 is "algemeen". */
+function getalformaat(cel: XlsxCel | undefined): number {
+  if (cel?.soort === 'geld') return 164;
+  if (cel?.soort === 'datum') return 165;
+  return 0;
+}
+
+/**
+ * Dezelfde cel-XML als een tabel schrijft, met twee verschillen: tekst mag vet, en een cel
+ * met `stijl` krijgt haar eigen opmaak (als er een `Opmaak` is om ze in te schrijven).
+ */
+function vrijeCelXml(vrij: XlsxVrijeCel, opmaak?: Opmaak): string {
+  if (vrij.stijl && opmaak) {
+    const s = opmaak.xf(getalformaat(vrij.cel), { vet: vrij.vet, ...vrij.stijl });
+    if (!vrij.cel) return `<c r="${vrij.ref}" s="${s}"/>`;
+    return celXml(vrij.cel, vrij.ref).replace(/^<c r="([^"]+)"(?: s="\d+")?/, `<c r="$1" s="${s}"`);
+  }
+  if (!vrij.cel) return '';
   if (vrij.vet && vrij.cel.soort === 'tekst') {
     return `<c r="${vrij.ref}" t="inlineStr" s="${STIJL_VET}">`
       + `<is><t xml:space="preserve">${xml(vrij.cel.waarde)}</t></is></c>`;
@@ -372,7 +485,15 @@ function vrijeCelXml(vrij: XlsxVrijeCel): string {
   return celXml(vrij.cel, vrij.ref);
 }
 
-export function vrijBladXml(blad: XlsxVrijBlad): string {
+/** "A1:I45" → "$A$1:$I$45", zoals een gedefinieerde naam het wil. */
+function absoluut(bereik: string): string {
+  return bereik.split(':').map((ref) => {
+    const { rij, kolom } = refOntleden(ref);
+    return `$${kolomLetter(kolom)}$${rij}`;
+  }).join(':');
+}
+
+export function vrijBladXml(blad: XlsxVrijBlad, opmaak?: Opmaak): string {
   const gelegd = blad.cellen.map((c) => ({ ...c, ...refOntleden(c.ref) }));
 
   // Twee cellen op dezelfde plaats levert een blad op dat Excel weigert te openen zonder
@@ -388,7 +509,11 @@ export function vrijBladXml(blad: XlsxVrijBlad): string {
     gezien.add(plaats);
   }
 
-  const laatsteRij = gelegd.reduce((max, c) => Math.max(max, c.rij), 1);
+  const hoogtes = blad.rijhoogtes ?? {};
+  const laatsteRij = Math.max(
+    gelegd.reduce((max, c) => Math.max(max, c.rij), 1),
+    ...Object.keys(hoogtes).map(Number),
+  );
   const laatsteKolom = kolomLetter(gelegd.reduce((max, c) => Math.max(max, c.kolom), 0));
 
   const perRij = new Map<number, typeof gelegd>();
@@ -401,13 +526,15 @@ export function vrijBladXml(blad: XlsxVrijBlad): string {
   // Oplopend, en binnen een rij op kolom: Excel leest een blad waarin de rijen door elkaar
   // staan wel, maar sommige lezers niet — en een bestand dat alleen in Excel opengaat is
   // precies wat deze schrijver niet wil zijn.
-  const rijen = [...perRij.keys()].sort((a, b) => a - b)
+  const nummers = new Set([...perRij.keys(), ...Object.keys(hoogtes).map(Number)]);
+  const rijen = [...nummers].sort((a, b) => a - b)
     .map((nummer) => {
-      const cellen = perRij.get(nummer)!
+      const cellen = (perRij.get(nummer) ?? [])
         .sort((a, b) => a.kolom - b.kolom)
-        .map(vrijeCelXml)
+        .map((c) => vrijeCelXml(c, opmaak))
         .join('');
-      return `<row r="${nummer}">${cellen}</row>`;
+      const hoogte = hoogtes[nummer] ? ` ht="${hoogtes[nummer]}" customHeight="1"` : '';
+      return `<row r="${nummer}"${hoogte}>${cellen}</row>`;
     })
     .join('');
 
@@ -426,11 +553,19 @@ export function vrijBladXml(blad: XlsxVrijBlad): string {
   // Geen bevroren koprij en geen filter, anders dan bij een tabel: een factuur heeft geen
   // koprij om te bevriezen en geen kolommen om op te filteren. De volgorde van de
   // onderdelen ligt vast in het formaat — afmeting, kolommen, gegevens, samengevoegd.
+  //
+  // Het afdrukken komt er achteraan bij, en `sheetPr` vooraan: ook dat is de vaste volgorde.
+  const afdruk = blad.afdrukbereik
+    ? '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>'
+      + '<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>'
+    : '';
   return `${KOP}<worksheet xmlns="${HOOFD_NS}">`
+    + (blad.afdrukbereik ? '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' : '')
     + `<dimension ref="A1:${laatsteKolom}${laatsteRij}"/>`
     + breedtes
     + `<sheetData>${rijen}</sheetData>`
     + samengevoegd
+    + afdruk
     + '</worksheet>';
 }
 
@@ -439,28 +574,17 @@ export function vrijBladXml(blad: XlsxVrijBlad): string {
  * datum. De lijsten fonts/fills/borders mogen niet leeg zijn en de tweede vulling moet
  * `gray125` heten — Excel rekent op die twee en klaagt anders dat het bestand stuk is.
  */
-function stijlenXml(): string {
+function stijlenXml(opmaak: Opmaak = new Opmaak()): string {
   return `${KOP}<styleSheet xmlns="${HOOFD_NS}">`
     + '<numFmts count="2">'
     + '<numFmt numFmtId="164" formatCode="#,##0.00"/>'
     + '<numFmt numFmtId="165" formatCode="dd/mm/yyyy"/>'
     + '</numFmts>'
-    + '<fonts count="2">'
-    + '<font><sz val="11"/><name val="Calibri"/></font>'
-    + '<font><b/><sz val="11"/><name val="Calibri"/></font>'
-    + '</fonts>'
-    + '<fills count="2">'
-    + '<fill><patternFill patternType="none"/></fill>'
-    + '<fill><patternFill patternType="gray125"/></fill>'
-    + '</fills>'
-    + '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+    + `<fonts count="${opmaak.fonts.length}">${opmaak.fonts.join('')}</fonts>`
+    + `<fills count="${opmaak.fills.length}">${opmaak.fills.join('')}</fills>`
+    + `<borders count="${opmaak.borders.length}">${opmaak.borders.join('')}</borders>`
     + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-    + '<cellXfs count="4">'
-    + '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
-    + '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
-    + '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
-    + '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
-    + '</cellXfs>'
+    + `<cellXfs count="${opmaak.xfs.length}">${opmaak.xfs.join('')}</cellXfs>`
     + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
     + '</styleSheet>';
 }
@@ -546,6 +670,9 @@ function uniekeBladnamen(voorstellen: readonly string[]): string[] {
 function meerBladenPakket(
   namen: readonly string[],
   inhouden: readonly string[],
+  opmaak?: Opmaak,
+  /** Per blad het afdrukbereik ("A1:I45"), of niets. */
+  afdrukbereiken: ReadonlyArray<string | undefined> = [],
 ): Uint8Array {
   // Excel weigert een werkmap zonder bladen. Hem toch wegschrijven levert een bestand op
   // dat pas bij de ontvanger stukloopt, en dat is de slechtste plek om het te merken.
@@ -569,6 +696,13 @@ function meerBladenPakket(
 
   const workbook = `${KOP}<workbook xmlns="${HOOFD_NS}" xmlns:r="${REL_NS}">`
     + `<sheets>${namen.map((naam, i) => `<sheet name="${xml(naam)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets>`
+    + (afdrukbereiken.some(Boolean)
+      ? `<definedNames>${afdrukbereiken
+        .map((bereik, i) => (bereik
+          ? `<definedName name="_xlnm.Print_Area" localSheetId="${i}">'${xml(namen[i].replace(/'/g, "''"))}'!${absoluut(bereik)}</definedName>`
+          : ''))
+        .join('')}</definedNames>`
+      : '')
     + '</workbook>';
 
   const workbookRels = `${KOP}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
@@ -583,7 +717,7 @@ function meerBladenPakket(
     { naam: '_rels/.rels', inhoud: utf8(rels) },
     { naam: 'xl/workbook.xml', inhoud: utf8(workbook) },
     { naam: 'xl/_rels/workbook.xml.rels', inhoud: utf8(workbookRels) },
-    { naam: 'xl/styles.xml', inhoud: utf8(stijlenXml()) },
+    { naam: 'xl/styles.xml', inhoud: utf8(stijlenXml(opmaak)) },
     ...inhouden.map((inhoud, i) => ({ naam: `xl/${bladPad(i)}`, inhoud: utf8(inhoud) })),
   ]);
 }
@@ -619,8 +753,9 @@ export function buildWorkbook(bladen: readonly XlsxBlad[]): Uint8Array {
  */
 export function buildVrijWorkbook(bladen: readonly XlsxVrijBlad[]): Uint8Array {
   const namen = uniekeBladnamen(bladen.map((b) => b.naam));
-  return meerBladenPakket(
-    namen,
-    bladen.map((blad, i) => vrijBladXml({ ...blad, naam: namen[i] })),
-  );
+  // Eerst de bladen, dan de opmaak: welke stijlen er nodig zijn, weet je pas als elke cel
+  // geschreven is.
+  const opmaak = new Opmaak();
+  const inhouden = bladen.map((blad, i) => vrijBladXml({ ...blad, naam: namen[i] }, opmaak));
+  return meerBladenPakket(namen, inhouden, opmaak, bladen.map((b) => b.afdrukbereik));
 }

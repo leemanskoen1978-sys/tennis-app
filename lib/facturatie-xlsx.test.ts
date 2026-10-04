@@ -73,17 +73,17 @@ describe('factuurBlad', () => {
     expect(cel(cellen, 'I24')?.cel).toEqual({ soort: 'geld', waarde: 248 });
   });
 
-  it('zet de totalen onder de laatste lijn', () => {
+  it('zet de totalen onder het blok met de lijnen, dat zoals in het oude blad tot rij 28 loopt', () => {
     const { cellen } = factuurBlad(factuur(), LEVERANCIER);
-    expect(cel(cellen, 'G25')?.cel).toEqual({ soort: 'tekst', waarde: 'netto:' });
-    expect(cel(cellen, 'I25')?.cel).toEqual({ soort: 'geld', waarde: 248 });
-    expect(cel(cellen, 'I26')?.cel).toEqual({ soort: 'getal', waarde: 0 });
-    expect(cel(cellen, 'I27')?.cel).toEqual({ soort: 'geld', waarde: 0 });
-    expect(cel(cellen, 'H30')?.cel).toEqual({ soort: 'tekst', waarde: 'Te Betalen:' });
-    expect(cel(cellen, 'I30')?.cel).toEqual({ soort: 'geld', waarde: 248 });
+    expect(cel(cellen, 'G29')?.cel).toEqual({ soort: 'tekst', waarde: 'netto:' });
+    expect(cel(cellen, 'I29')?.cel).toEqual({ soort: 'geld', waarde: 248 });
+    expect(cel(cellen, 'I30')?.cel).toEqual({ soort: 'getal', waarde: 0 });
+    expect(cel(cellen, 'I31')?.cel).toEqual({ soort: 'geld', waarde: 0 });
+    expect(cel(cellen, 'H34')?.cel).toEqual({ soort: 'tekst', waarde: 'Te Betalen:' });
+    expect(cel(cellen, 'I34')?.cel).toEqual({ soort: 'geld', waarde: 248 });
   });
 
-  it('schuift de totalen op als er vrije lijnen zijn', () => {
+  it('zet vrije lijnen onder de urenlijn, en houdt de totalen op hun plaats zolang ze passen', () => {
     const met = factuur({
       vrije_lijnen: [
         { omschrijving: 'Verplaatsing', aantal: 2, eenheid: 'stuk', tarief: 12.5 },
@@ -96,21 +96,28 @@ describe('factuurBlad', () => {
     expect(cel(cellen, 'A25')?.cel).toEqual({ soort: 'tekst', waarde: 'Verplaatsing' });
     expect(cel(cellen, 'I25')?.cel).toEqual({ soort: 'geld', waarde: 25 });
     expect(cel(cellen, 'A26')?.cel).toEqual({ soort: 'tekst', waarde: 'Materiaal' });
-    expect(cel(cellen, 'G27')?.cel).toEqual({ soort: 'tekst', waarde: 'netto:' });
-    expect(cel(cellen, 'I27')?.cel).toEqual({ soort: 'geld', waarde: 313 });
+    expect(cel(cellen, 'G29')?.cel).toEqual({ soort: 'tekst', waarde: 'netto:' });
+    expect(cel(cellen, 'I29')?.cel).toEqual({ soort: 'geld', waarde: 313 });
+  });
+
+  it('schuift de totalen op als de lijnen voorbij rij 28 lopen', () => {
+    const lijn = { omschrijving: 'Lijn', aantal: 1, eenheid: 'stuk', tarief: 1 };
+    const { cellen } = factuurBlad(factuur({ vrije_lijnen: Array(6).fill(lijn) }), LEVERANCIER);
+    expect(cel(cellen, 'A30')?.cel).toEqual({ soort: 'tekst', waarde: 'Lijn' });
+    expect(cel(cellen, 'G31')?.cel).toEqual({ soort: 'tekst', waarde: 'netto:' });
   });
 
   it('zet de twee BTW-voetnoten en de twee opmerkingen erbij', () => {
     const { cellen } = factuurBlad(factuur(), LEVERANCIER);
-    expect(cel(cellen, 'A26')?.cel).toEqual({
+    expect(cel(cellen, 'A30')?.cel).toEqual({
       soort: 'tekst',
       waarde: 'Artikel 44.2.3 vrijstelling btw exploitatie lichamelijke ontwikkeling',
     });
-    expect(cel(cellen, 'A27')?.cel).toEqual({ soort: 'tekst', waarde: 'kleine onderneming' });
-    expect(cel(cellen, 'A29')?.cel).toEqual({ soort: 'tekst', waarde: 'AANVULLENDE OPMERKINGEN' });
-    expect((cel(cellen, 'A30')?.cel as { waarde: string }).waarde)
+    expect(cel(cellen, 'A31')?.cel).toEqual({ soort: 'tekst', waarde: 'kleine onderneming' });
+    expect(cel(cellen, 'A33')?.cel).toEqual({ soort: 'tekst', waarde: 'AANVULLENDE OPMERKINGEN' });
+    expect((cel(cellen, 'A34')?.cel as { waarde: string }).waarde)
       .toContain('te storten op rekening: BE90143103210832');
-    expect(cel(cellen, 'A32')?.cel).toEqual({
+    expect(cel(cellen, 'A36')?.cel).toEqual({
       soort: 'tekst',
       waarde: '2. Gelieve het factuur# te vermelden als mededeling',
     });
@@ -119,17 +126,80 @@ describe('factuurBlad', () => {
   it('voegt de lange regels samen zodat ze niet achter de bedragen lopen', () => {
     const blad = factuurBlad(factuur(), LEVERANCIER);
     expect(blad.samengevoegd).toContain('A23:E23');
-    expect(blad.samengevoegd).toContain('A30:F30');
+    expect(blad.samengevoegd).toContain('A34:F34');
   });
 
   it('bevat geen enkele formule — een bewaarde factuur hoort niet te herrekenen', () => {
     const blad = factuurBlad(factuur(), LEVERANCIER);
     const teksten = blad.cellen
-      .map((c) => (c.cel.soort === 'tekst' ? c.cel.waarde : ''))
+      .map((c) => (c.cel?.soort === 'tekst' ? c.cel.waarde : ''))
       .join(' ');
     expect(teksten).not.toContain('=');
   });
 
+});
+
+describe('de opmaak van facturen.xlsx', () => {
+  const ORANJE = 'FF3300';
+  const LICHT = 'F4B183';
+  const blad = () => factuurBlad(factuur(), LEVERANCIER);
+
+  it('zet de koppen van mijn gegevens en van de beschrijving op een oranje balk', () => {
+    const { cellen, samengevoegd } = blad();
+    expect(cel(cellen, 'A5')?.stijl?.vulling).toBe(ORANJE);
+    expect(samengevoegd).toContain('A5:I5');
+    for (const ref of ['A22', 'F22', 'G22', 'H22', 'I22']) {
+      expect(cel(cellen, ref)?.stijl?.vulling).toBe(ORANJE);
+    }
+  });
+
+  it('schrijft de tekst op de oranje balken in het wit', () => {
+    const { cellen } = blad();
+    for (const ref of ['A5', 'A22', 'I22']) expect(cel(cellen, ref)?.stijl?.kleur).toBe('FFFFFF');
+  });
+
+  it('zet "Factuur" vet en goudgeel, over drie kolommen', () => {
+    const { cellen, samengevoegd } = blad();
+    expect(cel(cellen, 'G6')?.stijl).toMatchObject({ vet: true, kleur: 'FFC000' });
+    expect(samengevoegd).toContain('G6:I6');
+  });
+
+  it('kleurt de bedragkolom en de factuurdatum lichtoranje', () => {
+    const { cellen } = blad();
+    for (const ref of ['H7', 'I24', 'I28', 'I29', 'I30', 'I31', 'I34']) {
+      expect(cel(cellen, ref)?.stijl?.vulling).toBe(LICHT);
+    }
+  });
+
+  it('zet een kader rond mijn gegevens, de factuurgegevens en de klant', () => {
+    const { cellen } = blad();
+    expect(cel(cellen, 'A6')?.stijl?.rand?.links).toBe(true);
+    expect(cel(cellen, 'C10')?.stijl?.rand).toMatchObject({ onder: true, rechts: true });
+    expect(cel(cellen, 'I9')?.stijl?.rand).toMatchObject({ onder: true, rechts: true });
+    expect(cel(cellen, 'A16')?.stijl?.rand).toMatchObject({ boven: true, links: true });
+    expect(cel(cellen, 'D20')?.stijl?.rand).toMatchObject({ onder: true, rechts: true });
+  });
+
+  it('schrijft klein (9 pt) en de klant en de beschrijving groter (11 pt)', () => {
+    const { cellen } = blad();
+    expect(cel(cellen, 'G7')?.stijl?.grootte).toBe(9);
+    expect(cel(cellen, 'I24')?.stijl?.grootte).toBe(9);
+    expect(cel(cellen, 'A17')?.stijl?.grootte).toBe(11);
+    expect(cel(cellen, 'A23')?.stijl?.grootte).toBe(11);
+  });
+
+  it('drukt af op één A4, van A1 tot en met de laatste regel', () => {
+    expect(blad().afdrukbereik).toBe('A1:I36');
+  });
+
+  it('neemt de kolombreedtes van het oude blad over, met ruimte voor een bedrag in I', () => {
+    expect(blad().breedtes).toEqual([33.2, 7.7, 12.7, 2.3, 2.7, 6.2, 10.8, 10.7, 10]);
+  });
+
+  it('levert een werkmap die de opmaak ook echt meedraagt', () => {
+    const bytes = factuurWerkmap(factuur(), LEVERANCIER);
+    expect(bytes.length).toBeGreaterThan(0);
+  });
 });
 
 describe('extraLessenBlad', () => {

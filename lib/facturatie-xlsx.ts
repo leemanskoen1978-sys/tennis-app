@@ -13,10 +13,30 @@
 // veranderen omdat iemand per ongeluk een cel aanraakt. Wat hier staat is uitgerekend.
 
 import { MAANDNAMEN, rond2, type Factuur, type Leverancier } from './facturatie';
-import { buildVrijWorkbook, type XlsxVrijBlad, type XlsxVrijeCel } from './xlsx';
+import {
+  buildVrijWorkbook, type XlsxRand, type XlsxStijl, type XlsxVrijBlad, type XlsxVrijeCel,
+} from './xlsx';
 
-/** Kolom A draagt de omschrijvingen en is daarom breed; G tot I dragen de bedragen. */
-const BREEDTES = [38, 10, 10, 10, 10, 10, 14, 16, 14];
+/**
+ * De kolombreedtes van het blad in `facturen.xlsx`. Eén uitzondering: daar was I 7 breed, en
+ * dat paste voor een formule die "1155" toonde. Hier staat er een bedrag met twee decimalen
+ * en een punt voor de duizendtallen, en bij 7 toont Excel dan `####`.
+ */
+const BREEDTES = [33.2, 7.7, 12.7, 2.3, 2.7, 6.2, 10.8, 10.7, 10];
+
+/** De kleuren van het oude blad: de oranje balken, het lichtoranje van de bedragen, het goud. */
+const ORANJE = 'FF3300';
+const LICHT = 'F4B183';
+const GOUD = 'FFC000';
+const WIT = 'FFFFFF';
+
+/** Tot hier loopt het blok met de lijnen minstens, zoals in het oude blad. */
+const LIJNEN_TOT = 28;
+
+/** De rijhoogtes van het oude blad, voor de rijen die altijd op dezelfde plek staan. */
+const RIJHOOGTES: Record<number, number> = {
+  5: 16, 7: 22, 9: 16, 10: 16, 15: 16, 20: 16, 22: 16,
+};
 
 /** `2026-10-01` als dag op de kalender. Niet via `new Date(tekst)`: dat leest UTC. */
 function alsDatum(iso: string): Date {
@@ -85,7 +105,11 @@ export function factuurBlad(factuur: Factuur, leverancier: Leverancier): XlsxVri
     samengevoegd.push(`A${rij}:E${rij}`);
   }
 
-  const netto = rij + 1;
+  // Het blok met de lijnen loopt minstens tot rij 28, zoals in het oude blad: een factuur met
+  // één urenlijn krijgt zo dezelfde ruimte eronder, en de totalen staan altijd op dezelfde
+  // hoogte. Meer lijnen dan dat duwen de rest gewoon naar beneden.
+  const blokEinde = Math.max(rij, LIJNEN_TOT);
+  const netto = blokEinde + 1;
   tekst(`G${netto}`, 'netto:'); geld(`I${netto}`, factuur.netto);
   tekst(`G${netto + 1}`, 'BTW %'); getal(`I${netto + 1}`, factuur.btw_percentage);
   tekst(`G${netto + 2}`, 'BTW-Bedrag'); geld(`I${netto + 2}`, factuur.btw_bedrag);
@@ -105,7 +129,125 @@ export function factuurBlad(factuur: Factuur, leverancier: Leverancier): XlsxVri
   tekst(`A${netto + 7}`, '2. Gelieve het factuur# te vermelden als mededeling');
   samengevoegd.push(`A${netto + 5}:F${netto + 5}`, `A${netto + 7}:F${netto + 7}`);
 
-  return { naam: 'Factuur', cellen, breedtes: BREEDTES, samengevoegd };
+  const laatste = netto + 7;
+  opmaken(cellen, samengevoegd, blokEinde, netto);
+
+  return {
+    naam: 'Factuur',
+    cellen,
+    breedtes: BREEDTES,
+    samengevoegd,
+    rijhoogtes: RIJHOOGTES,
+    afdrukbereik: `A1:I${laatste}`,
+  };
+}
+
+/**
+ * De opmaak van `facturen.xlsx` over de cellen heen: oranje balken, kaders, het lichtoranje
+ * van de bedragen, en 9 punt voor alles behalve de klant en de beschrijving (11 punt).
+ *
+ * Apart van het plaatsen van de waarden, zodat `factuurBlad` leesbaar blijft als lijst van
+ * wat waar staat. Een cel die hier opmaak krijgt maar geen waarde heeft, wordt een lege cel
+ * met opmaak: een kader loopt ook langs cellen waar niets in staat.
+ *
+ * `laatsteLijn` is de onderste rij van het blok met de lijnen (minstens `LIJNEN_TOT`),
+ * `netto` die van de nettoregel.
+ */
+function opmaken(
+  cellen: XlsxVrijeCel[],
+  samengevoegd: string[],
+  laatsteLijn: number,
+  netto: number,
+): void {
+  const zet = (ref: string, stijl: XlsxStijl): void => {
+    const bestaand = cellen.find((c) => c.ref === ref);
+    const rand: XlsxRand = { ...bestaand?.stijl?.rand, ...stijl.rand };
+    const nieuw: XlsxStijl = { grootte: 9, ...bestaand?.stijl, ...stijl, rand };
+    if (bestaand) bestaand.stijl = nieuw;
+    else cellen.push({ ref, stijl: nieuw });
+  };
+  const kolommen = (van: string, tot: string): string[] => {
+    const uit: string[] = [];
+    for (let k = van.charCodeAt(0); k <= tot.charCodeAt(0); k++) uit.push(String.fromCharCode(k));
+    return uit;
+  };
+
+  // Alles eerst op 9 punt, met vet waar `factuurBlad` dat al zei.
+  for (const c of [...cellen]) zet(c.ref, { vet: c.vet });
+
+  // Mijn gegevens: de oranje balk over de hele breedte, en een kader rond A6:C10.
+  zet('A5', { grootte: 11, vulling: ORANJE, kleur: WIT, uitlijning: 'center', vet: false });
+  samengevoegd.push('A5:I5');
+  for (let r = 6; r <= 10; r++) {
+    zet(`A${r}`, { rand: { links: true } });
+    zet(`B${r}`, { vet: true });
+    zet(`C${r}`, { rand: { rechts: true } });
+  }
+  zet('C6', { rand: { boven: true } });
+  zet('A6', { rand: { boven: true } });
+  zet('B6', { rand: { boven: true } });
+  for (const k of ['A', 'B', 'C']) zet(`${k}10`, { rand: { onder: true } });
+
+  // Het factuurblok rechtsboven: "Factuur" in goud, en een kader rond G6:I9.
+  zet('G6', { vet: true, kleur: GOUD, uitlijning: 'center', rand: { boven: true, links: true } });
+  zet('H6', { rand: { boven: true } });
+  zet('I6', { rand: { boven: true, rechts: true } });
+  samengevoegd.push('G6:I6');
+  for (let r = 7; r <= 9; r++) {
+    zet(`G${r}`, { rand: { links: true } });
+    zet(`I${r}`, { rand: { rechts: true } });
+  }
+  for (const k of ['G', 'H', 'I']) zet(`${k}9`, { rand: { onder: true } });
+  zet('H7', { vulling: LICHT, uitlijning: 'left' });
+  zet('H9', { uitlijning: 'left' });
+
+  // De klant, in 11 punt en in een kader A16:D20.
+  for (let r = 16; r <= 20; r++) {
+    zet(`A${r}`, { grootte: 11, rand: { links: true } });
+    zet(`D${r}`, { rand: { rechts: true } });
+  }
+  for (const k of ['A', 'B', 'C', 'D']) {
+    zet(`${k}16`, { rand: { boven: true } });
+    zet(`${k}20`, { rand: { onder: true } });
+  }
+  zet('H21', { vet: true });
+  zet('I21', { vet: true });
+
+  // De balk boven de lijnen.
+  zet('A22', { grootte: 11, vulling: ORANJE, kleur: WIT, vet: false });
+  samengevoegd.push('A22:E22');
+  for (const k of ['F', 'G', 'H', 'I']) zet(`${k}22`, { vulling: ORANJE, kleur: WIT, vet: false });
+
+  // De lijnen: links een kader rond de omschrijving, rechts een kolom per getal, en de
+  // bedragen lichtoranje. De onderste lijn sluit het blok af.
+  for (let r = 23; r <= laatsteLijn; r++) {
+    zet(`A${r}`, { grootte: 11, rand: { links: true } });
+    zet(`E${r}`, { rand: { rechts: true } });
+    for (const k of ['F', 'G', 'H']) zet(`${k}${r}`, { rand: { links: true, rechts: true } });
+    zet(`I${r}`, { vulling: LICHT, rand: { links: true, rechts: true } });
+  }
+  for (const k of kolommen('A', 'I')) {
+    zet(`${k}23`, { rand: { boven: true } });
+    zet(`${k}${laatsteLijn}`, { rand: { onder: true } });
+  }
+
+  // De totalen: elk een kader, het bedrag lichtoranje.
+  for (let r = netto; r <= netto + 2; r++) {
+    zet(`G${r}`, { rand: { links: true, onder: true } });
+    zet(`H${r}`, { rand: { onder: true } });
+    zet(`I${r}`, { vulling: LICHT, rand: { links: true, rechts: true, onder: true } });
+  }
+
+  // De voetnoten bij de BTW, gecentreerd in 11 punt, en de opmerkingen in 9.
+  zet(`A${netto + 1}`, { grootte: 11, uitlijning: 'center' });
+  zet(`A${netto + 2}`, { grootte: 11, uitlijning: 'center' });
+  zet(`A${netto + 4}`, { vet: false });
+
+  // Te betalen: vet, met een kader rondom.
+  zet(`H${netto + 5}`, { vet: false, rand: { boven: true, onder: true, links: true } });
+  zet(`I${netto + 5}`, {
+    vet: true, vulling: LICHT, rand: { boven: true, onder: true, links: true, rechts: true },
+  });
 }
 
 /**

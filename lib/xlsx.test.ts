@@ -638,3 +638,93 @@ describe('buildVrijWorkbook', () => {
     expect(() => buildVrijWorkbook([])).toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Opmaak op een vrij blad (de layout van de factuur, 4 oktober 2026)
+// ---------------------------------------------------------------------------
+
+describe('opmaak op een vrij blad', () => {
+  const pakket = (bladen: XlsxVrijBlad[]) => {
+    const ingangen = leesZip(buildVrijWorkbook(bladen));
+    const lees = (naam: string) => tekst(ingangen.find((i) => i.naam === naam)!.inhoud);
+    return {
+      blad: lees('xl/worksheets/sheet1.xml'),
+      stijlen: lees('xl/styles.xml'),
+      werkmap: lees('xl/workbook.xml'),
+    };
+  };
+  /** Het stijlnummer van een cel, uit `<c r="A22" ... s="7">`. */
+  const stijlVan = (blad: string, ref: string): number => {
+    const m = new RegExp(`<c r="${ref}"[^>]* s="(\\d+)"`).exec(blad);
+    if (!m) throw new Error(`geen stijl op ${ref}`);
+    return Number(m[1]);
+  };
+  /** De `<xf>` met dat nummer uit `cellXfs`. */
+  const xfVan = (stijlen: string, nummer: number): string =>
+    /<cellXfs[^>]*>(.*)<\/cellXfs>/.exec(stijlen)![1].match(/<xf [^>]*?(?:\/>|>.*?<\/xf>)/g)![nummer];
+
+  it('geeft een cel met een vulling, een kader en een lettergrootte een eigen stijl', () => {
+    const { blad, stijlen } = pakket([vrij({
+      cellen: [{
+        ref: 'A22', cel: { soort: 'tekst', waarde: 'BESCHRIJVING:' },
+        stijl: { grootte: 11, vulling: 'FF3300', rand: { boven: true, onder: true } },
+      }],
+    })]);
+    const xf = xfVan(stijlen, stijlVan(blad, 'A22'));
+    expect(xf).toContain('applyFill="1"');
+    expect(xf).toContain('applyBorder="1"');
+    expect(stijlen).toContain('<fgColor rgb="FFFF3300"/>');
+    expect(stijlen).toContain('<top style="thin"><color auto="1"/></top>');
+  });
+
+  it('deelt één stijl tussen cellen die er hetzelfde uitzien', () => {
+    const zelfde = { grootte: 9, vulling: 'F4B183' };
+    const { blad } = pakket([vrij({
+      cellen: [
+        { ref: 'I24', cel: { soort: 'geld', waarde: 10 }, stijl: zelfde },
+        { ref: 'I25', cel: { soort: 'geld', waarde: 20 }, stijl: { ...zelfde } },
+      ],
+    })]);
+    expect(stijlVan(blad, 'I24')).toBe(stijlVan(blad, 'I25'));
+  });
+
+  it('houdt een bedrag een bedrag en een datum een datum, ook met opmaak', () => {
+    const { blad, stijlen } = pakket([vrij({
+      cellen: [
+        { ref: 'I24', cel: { soort: 'geld', waarde: 10 }, stijl: { grootte: 9 } },
+        { ref: 'H7', cel: { soort: 'datum', waarde: new Date(2026, 9, 1) }, stijl: { grootte: 9 } },
+      ],
+    })]);
+    expect(xfVan(stijlen, stijlVan(blad, 'I24'))).toContain('numFmtId="164"');
+    expect(xfVan(stijlen, stijlVan(blad, 'H7'))).toContain('numFmtId="165"');
+  });
+
+  it('schrijft een lege cel met opmaak, voor een kader zonder tekst', () => {
+    const { blad } = pakket([vrij({
+      cellen: [{ ref: 'D20', stijl: { rand: { onder: true, rechts: true } } }],
+    })]);
+    expect(blad).toMatch(/<c r="D20" s="\d+"\/>/);
+  });
+
+  it('zet een rijhoogte, ook op een rij zonder cellen', () => {
+    const { blad } = pakket([vrij({ rijhoogtes: { 38: 33 } })]);
+    expect(blad).toContain('<row r="38" ht="33" customHeight="1"');
+  });
+
+  it('legt het afdrukbereik vast, staand op A4 en op één pagina breed', () => {
+    const { blad, werkmap } = pakket([vrij({ naam: 'Factuur', afdrukbereik: 'A1:I45' })]);
+    expect(werkmap).toContain(
+      '<definedName name="_xlnm.Print_Area" localSheetId="0">\'Factuur\'!$A$1:$I$45</definedName>',
+    );
+    expect(blad).toContain('<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>');
+  });
+
+  it('laat de oude stijlnummers staan: een tabel en een vette tekst blijven zoals ze waren', () => {
+    const { stijlen } = pakket([vrij({
+      cellen: [{ ref: 'A1', cel: { soort: 'tekst', waarde: 'x' }, stijl: { vulling: 'FF3300' } }],
+    })]);
+    expect(xfVan(stijlen, 1)).toContain('fontId="1"');
+    expect(xfVan(stijlen, 2)).toContain('numFmtId="164"');
+    expect(xfVan(stijlen, 3)).toContain('numFmtId="165"');
+  });
+});
