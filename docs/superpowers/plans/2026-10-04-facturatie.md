@@ -2825,11 +2825,11 @@ Maak `providers/facturatieStore.ts`:
 // `laden` geeft `null` als de tabellen er nog niet zijn. Dat is iets anders dan een lege
 // boekhouding, en het scherm zegt dat ook anders — dezelfde afspraak als bij `bezetteUren`.
 
-// boekhouding, en het scherm zegt dat ook anders — dezelfde afspraak als bij `bezetteUren`.
-
 import { alleRijen } from '../lib/paginering';
 import { supabase } from '../lib/supabase';
 import type {
+  Factuur, Factuurles, FacturatieData, Klant, Leverancier,
+} from '../lib/facturatie';
 
 /** Kent deze databank die tabel (nog) niet? Zelfde drie signalen als in supabaseStore. */
 function tabelBestaatNiet(error: { code?: string; message?: string }): boolean {
