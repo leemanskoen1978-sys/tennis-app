@@ -6,13 +6,14 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 
 ## Waar staat het nu
 
-*Bijgewerkt op 21 september 2026.*
+*Bijgewerkt op 4 oktober 2026.*
 
 **Alle SQL-bestanden zijn gedraaid op de databank van de club**: `supabase-schema.sql`,
 `AANWEZIGHEID-VERLEDEN.sql`, `ZOEKT-TRAINER.sql`, `LESPLANNING.sql`, `BEZETTE-UREN.sql`,
-`OEFENAFBEELDINGEN.sql` en `LESPLANNING-OEFENING.sql`. De laatste twee zijn gemeld door de
-eigenaar op 21 september 2026; de bucket en de nieuwe kolommen zelf zijn niet nagekeken.
-**`FACTURATIE.sql` staat wél klaar en moet nog gedraaid worden** — zie hieronder.
+`OEFENAFBEELDINGEN.sql`, `LESPLANNING-OEFENING.sql` en `FACTURATIE.sql`. De twee over de
+oefeningen zijn gemeld door de eigenaar op 21 september 2026, `FACTURATIE.sql` op 4 oktober
+2026; de bucket, de nieuwe kolommen en de tabellen zelf zijn niet nagekeken. Er staat niets
+meer klaar dat nog gedraaid moet worden.
 
 - **`main`** bevat de merge `cc5b61b` (oefeningen per kleur) en is gepusht naar
   <https://github.com/leemanskoen1978-sys/tennis-app>. Elke push naar `main` bouwt en zet de
@@ -42,9 +43,8 @@ tabbladen** — de factuur, in de indeling van het oude blad, en het overzicht v
 lessen dat Racso elke maand vraagt. Zonder formules: wat erin staat is uitgerekend, zodat
 een verstuurde factuur niet meer kan veranderen.
 
-**`FACTURATIE.sql` moet gedraaid zijn** op de databank van de club. Vier tabellen met RLS op
-`auth.uid()`: niemand anders ziet deze gegevens, de beheerder ook niet. Draai hem in de
-SQL-editor van Supabase en herlaad daarna hard.
+**`FACTURATIE.sql` is gedraaid** op de databank van de club (gemeld op 4 oktober 2026). Vier
+tabellen met RLS op `auth.uid()`: niemand anders ziet deze gegevens, de beheerder ook niet.
 
 Vier dingen om te onthouden:
 
