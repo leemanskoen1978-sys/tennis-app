@@ -21,7 +21,7 @@ function les(velden: Partial<Factuurles>): Factuurles {
     actief: true,
     naam_prive: '',
     type_prive: '',
-    sleutel: 'GANTOISE|DUOLES - GROEP 4|WO 09/09/2026 14:00 - 15:00',
+    sleutel: sleutelVan('GANTOISE', 'Duoles - Groep 4', 'wo 09/09/2026 14:00 - 15:00'),
     ...velden,
   };
 }
@@ -48,6 +48,10 @@ describe('schoon', () => {
   it('negeert hoofdletters', () => {
     expect(schoon('t.c. racso')).toBe('T.C. RACSO');
   });
+
+  it('behandelt een tab als een spatie — zo komt tekst uit Excel binnen', () => {
+    expect(schoon('T.C.\tRACSO')).toBe('T.C. RACSO');
+  });
 });
 
 describe('sleutelVan', () => {
@@ -60,12 +64,30 @@ describe('sleutelVan', () => {
     expect(sleutelVan('GANTOISE', 'Groep 4', 'wo 09/09/2026 14:00 - 15:00'))
       .not.toBe(sleutelVan('GANTOISE', 'Groep 5', 'wo 09/09/2026 14:00 - 15:00'));
   });
+
+  it('botst niet als een veld zelf een scheidingsteken bevat', () => {
+    expect(sleutelVan('A|B', 'C', 'D')).not.toBe(sleutelVan('A', 'B|C', 'D'));
+  });
 });
 
 describe('rond2', () => {
   it('rondt af op twee decimalen', () => {
     expect(rond2(1.005)).toBe(1.01);
     expect(rond2(33 * 1.5)).toBe(49.5);
+  });
+
+  it('rondt een half naar boven, ook waar het binaire getal er net onder ligt', () => {
+    expect(rond2(35.855)).toBe(35.86);
+    expect(rond2(5.015)).toBe(5.02);
+  });
+
+  it('laat een bedrag dat al klopt met rust', () => {
+    expect(rond2(248)).toBe(248);
+    expect(rond2(31 * 8)).toBe(248);
+  });
+
+  it('rondt een negatief half getal van nul weg', () => {
+    expect(rond2(-1.005)).toBe(-1.01);
   });
 });
 
@@ -80,6 +102,10 @@ describe('plusDagen', () => {
 
   it('gaat over de jaargrens', () => {
     expect(plusDagen('2026-12-28', 15)).toBe('2027-01-12');
+  });
+
+  it('kan ook achteruit', () => {
+    expect(plusDagen('2026-01-03', -5)).toBe('2025-12-29');
   });
 });
 
@@ -100,5 +126,9 @@ describe('urenVan', () => {
   it('laat een handmatig getal voorgaan, ook als dat nul is', () => {
     expect(urenVan(les({ uren: 1, uren_handmatig: 0.5 }))).toBe(0.5);
     expect(urenVan(les({ uren: 1, uren_handmatig: 0 }))).toBe(0);
+  });
+
+  it('geeft nul als er niets gerekend is en niets gezet', () => {
+    expect(urenVan(les({ uren: 0, uren_handmatig: null }))).toBe(0);
   });
 });

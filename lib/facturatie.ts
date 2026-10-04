@@ -34,18 +34,42 @@ export function schoon(tekst: string): string {
 }
 
 /**
+ * Waarmee de drie velden van een sleutel gescheiden worden: U+001F, "unit separator".
+ *
+ * Een gewoon leesteken zou botsen. Met een streepje krijgen ("A|B", "C", "D") en
+ * ("A", "B|C", "D") dezelfde sleutel, en dan houdt de ontdubbeling twee verschillende
+ * lessen voor één en verdwijnt er één van de factuur — precies het omgekeerde van waarvoor
+ * de sleutel bestaat. U+001F komt in geplakte tekst niet voor.
+ *
+ * Niet U+0000, hoe verleidelijk ook: Postgres weigert dat teken in een tekstkolom, en deze
+ * sleutel gaat de databank in.
+ */
+const VELDSCHEIDER = '\u001f';
+
+/**
  * Wanneer zijn twee geplakte regels dezelfde les: club, groep en dag/uur gelijk.
  *
  * Dit is wat een tweede plakbeurt tegenhoudt. Zonder zo'n sleutel komt elke les die je in
  * oktober nog eens plakt er een tweede keer bij, en telt de factuur van september dubbel.
  */
 export function sleutelVan(clubTekst: string, groep: string, dagUur: string): string {
-  return [schoon(clubTekst), schoon(groep), schoon(dagUur)].join('|');
+  return [schoon(clubTekst), schoon(groep), schoon(dagUur)].join(VELDSCHEIDER);
 }
 
-/** Twee decimalen. Elk bedrag en elk urental in dit bestand gaat hier doorheen. */
+/**
+ * Twee decimalen. Elk bedrag en elk urental in dit bestand gaat hier doorheen.
+ *
+ * Niet `Math.round(n * 100) / 100`: 35,855 ligt als binair getal nét ónder 35,855, en dan
+ * wordt het 35,85 terwijl iedereen 35,86 verwacht. Op een factuur is dat de cent waar de
+ * optelling van wie het natelt op strandt. De speling van een miljardste vangt dat op; ze
+ * is absoluut en niet relatief, en bij bedragen van deze grootte is dat ruim genoeg.
+ *
+ * Een half bedrag gaat van nul wég, ook met een minteken ervoor: -1,005 wordt -1,01 en
+ * niet -1,00. Zo is afronden dezelfde bewerking aan beide kanten van nul.
+ */
 export function rond2(n: number): number {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
+  const teken = n < 0 ? -1 : 1;
+  return (teken * Math.round(Math.abs(n) * 100 + 1e-9)) / 100;
 }
 
 /**
@@ -63,7 +87,14 @@ export function plusDagen(iso: string, dagen: number): string {
   return `${uit.getUTCFullYear()}-${two(uit.getUTCMonth() + 1)}-${two(uit.getUTCDate())}`;
 }
 
-/** De maandnamen zoals ze op de factuur komen; index 0 is januari. */
+/**
+ * De maandnamen zoals ze op de factuur komen; index 0 is januari.
+ *
+ * Een eigen lijst naast die in lib/kalenderrooster en `monthName` in lib/period, om
+ * dezelfde reden als daar: een factuur is een Belgisch document en blijft Nederlands, ook
+ * als iemand de app op Engels zet. Zou hij door `t()` gaan, dan stond er "Invoice for
+ * September" op een factuur aan een Gentse vzw.
+ */
 export const MAANDNAMEN = [
   'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni',
   'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December',
