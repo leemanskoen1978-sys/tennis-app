@@ -102,6 +102,15 @@ export const MAANDNAMEN = [
   'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December',
 ] as const;
 
+/**
+ * Een id voor een nieuwe rij. Dezelfde vorm als `newId` in providers/mockStore, maar hier,
+ * zodat een scherm dat een les bijmaakt niets uit de lokale opslag hoeft te importeren.
+ */
+export function nieuwId(voorvoegsel: string): string {
+  const willekeur = Math.random().toString(36).slice(2, 9);
+  return `${voorvoegsel}-${Date.now().toString(36)}-${willekeur}`;
+}
+
 // ---------------------------------------------------------------------------
 // Wat er in de databank staat
 // ---------------------------------------------------------------------------

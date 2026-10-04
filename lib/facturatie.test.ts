@@ -4,7 +4,7 @@ import { leesPlaktekst } from './facturatie-plak';
 import {
   magFactureren, schoon, sleutelVan, rond2, plusDagen, MAANDNAMEN, urenVan,
   urenPerClub, urenUitApp, onbekendeClubs,
-  factuurUit, extraLessenUit, standaardLeverancier, standaardKlanten,
+  factuurUit, extraLessenUit, standaardLeverancier, standaardKlanten, nieuwId,
   type Factuurles, type Klant, type AppBoeking,
 } from './facturatie';
 
@@ -554,5 +554,16 @@ describe('standaardLeverancier en standaardKlanten', () => {
   it('telt de uren van het voorbeeldbestand met de standaardklanten', () => {
     const uit = urenPerClub(voorbeeldLessen(), standaardKlanten(['a', 'b']), 10, 2026);
     expect(uit.map((r) => r.urenGeplakt)).toEqual([25, 9]);
+  });
+});
+
+describe('nieuwId', () => {
+  it('begint met het voorvoegsel', () => {
+    expect(nieuwId('les')).toMatch(/^les-/);
+  });
+
+  it('geeft twee keer na elkaar niet hetzelfde', () => {
+    const veel = new Set(Array.from({ length: 500 }, () => nieuwId('les')));
+    expect(veel.size).toBe(500);
   });
 });
