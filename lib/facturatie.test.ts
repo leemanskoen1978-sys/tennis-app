@@ -398,6 +398,16 @@ describe('extraLessenUit', () => {
   it('geeft een lege lijst en niet undefined als er niets is', () => {
     expect(extraLessenUit([], RACSO, 9, 2026)).toEqual([]);
   });
+
+  it('zegt hetzelfde als urenPerClub voor een club die nog niet ingevuld is', () => {
+    // Zo maakt het instellingenscherm een nieuwe club aan: alle velden leeg. Zou dit
+    // overzicht wél een les tonen, dan spreken blad 1 en blad 2 van dezelfde factuur
+    // elkaar tegen: nul uur in het bedrag, één les in de lijst erachter.
+    const leeg = klant({ id: 'leeg', korte_naam: '', naam_in_lijst: '' });
+    const blanco = [extra('Stan', '2026-09-07', { club_tekst: '' })];
+    expect(extraLessenUit(blanco, leeg, 9, 2026)).toEqual([]);
+    expect(urenPerClub(blanco, [leeg], 9, 2026)[0].urenPrive).toBe(0);
+  });
 });
 
 describe('factuurUit', () => {
@@ -488,6 +498,15 @@ describe('factuurUit', () => {
     const f = factuurUit({ ...basis, extraLessen: lijst });
     lijst.push({ datum: '2026-09-14', naam: 'Veerle', type: 'sponsor', uren: 1 });
     expect(f.extra_lessen).toHaveLength(1);
+  });
+
+  it('geeft de bedragen die Koen deze maanden echt verwacht', () => {
+    // De twee getallen waar dit hele onderdeel om draait: 35 uur bij Gantoise in september
+    // (hetzelfde getal dat in facturen.xlsx met de hand in F24 stond) en 9 uur bij Racso in
+    // oktober. Staan die hier verkeerd, dan klopt er niets van.
+    const [gantoise, racso] = standaardKlanten(['k-1', 'k-2']);
+    expect(factuurUit({ ...basis, klant: gantoise, uren: 35 }).totaal).toBe(1155);
+    expect(factuurUit({ ...basis, klant: racso, uren: 9, maand: 10 }).totaal).toBe(279);
   });
 });
 

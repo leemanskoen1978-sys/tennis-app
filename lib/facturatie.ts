@@ -406,6 +406,12 @@ export function urenUitApp(
  *
  * Dit is hetzelfde rijtje dat `urenPerClub` als `urenPrive` optelt, maar dan uitgeschreven:
  * Racso wil niet alleen het getal maar ook waar het vandaan komt.
+ *
+ * "Hetzelfde rijtje" is hier geen manier van spreken maar een eis: het bedrag op blad 1 en
+ * het overzicht op blad 2 van dezelfde factuur moeten over dezelfde lessen gaan. Daarom
+ * staat hier dezelfde regel over een lege naam als in `urenPerClub` — zonder die regel zou
+ * een club die nog niet ingevuld is, op blad 2 lessen tonen die in het bedrag niet
+ * meegeteld zijn. Er staat een test op dat de twee hetzelfde zeggen.
  */
 export function extraLessenUit(
   lessen: readonly Factuurles[],
@@ -414,6 +420,7 @@ export function extraLessenUit(
   jaar: number,
 ): ExtraLes[] {
   const korteNaam = schoon(klant.korte_naam);
+  if (korteNaam === '') return [];
 
   return lessen
     .filter((l) => l.bron === 'prive' && l.actief
@@ -458,6 +465,11 @@ const BETAALTERMIJN_DAGEN = 15;
  * Elke lijn wordt apart afgerond en daarna opgeteld, niet omgekeerd. Zo staat op de factuur
  * precies de som van de bedragen die erop te lezen zijn — anders klopt de optelling van wie
  * het natelt een cent niet, en dat is precies waar een boekhouder op terugkomt.
+ *
+ * Wat hier binnenkomt wordt niet gekeurd: een negatief aantal of een onzinnig tarief op een
+ * vrije lijn komt gewoon op de factuur. Dat is met opzet — `parseEuro` in lib/money keurt
+ * aan het invulveld, en een tweede keuring hier zou een creditlijn onmogelijk maken zonder
+ * dat iemand dat besloten heeft.
  */
 export function factuurUit(opties: FactuurOpties): Factuur {
   const { klant, uren, vrijeLijnen } = opties;
@@ -520,8 +532,12 @@ export function standaardLeverancier(id: string): Leverancier {
  *
  * `naam_in_lijst` van Racso is `T.C. RACSO` en niet `RACSO`: zo staat hij in de geplakte
  * lijst. In `facturen.xlsx` stond `RACSO`, en daardoor telde die werkmap Racso op nul uur.
+ *
+ * De twee id's komen binnen als een paar en niet als een lijst, zodat een aanroep met één
+ * id niet compileert. Met `readonly string[]` zou dat wél mogen, en dan kreeg Racso
+ * `id: undefined` — als primaire sleutel, in de databank.
  */
-export function standaardKlanten([idGantoise, idRacso]: readonly string[]): Klant[] {
+export function standaardKlanten([idGantoise, idRacso]: readonly [string, string]): Klant[] {
   return [
     {
       id: idGantoise,
