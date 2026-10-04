@@ -10,22 +10,24 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 
 **Alle SQL-bestanden zijn gedraaid op de databank van de club**: `supabase-schema.sql`,
 `AANWEZIGHEID-VERLEDEN.sql`, `ZOEKT-TRAINER.sql`, `LESPLANNING.sql`, `BEZETTE-UREN.sql`,
-`OEFENAFBEELDINGEN.sql`, `LESPLANNING-OEFENING.sql` en `FACTURATIE.sql`. De twee over de
-oefeningen zijn gemeld door de eigenaar op 21 september 2026, `FACTURATIE.sql` op 4 oktober
-2026. De vier tabellen van de facturatie bestaan (nagekeken via de REST-ingang); de bucket en
+`OEFENAFBEELDINGEN.sql`, `LESPLANNING-OEFENING.sql`, `FACTURATIE.sql`,
+`HERINDELING-OKTOBER.sql` en `BANEN-CLUB.sql`. De twee over de oefeningen zijn gemeld door de
+eigenaar op 21 september 2026, de andere drie op 4 oktober 2026. De vier tabellen van de facturatie bestaan (nagekeken via de REST-ingang); de bucket en
 de nieuwe kolommen van de oefeningen zijn niet nagekeken. Er staat niets
 meer klaar dat nog gedraaid moet worden.
 
-- **`main`** bevat de merge `cc5b61b` (oefeningen per kleur) en is gepusht naar
+- **`main`** staat op `30ed29f` (de club van een terrein, zie 1h) en is gepusht naar
   <https://github.com/leemanskoen1978-sys/tennis-app>. Elke push naar `main` bouwt en zet de
   site online (`.github/workflows/deploy.yml`); de site draait op
-  <https://leemanskoen1978-sys.github.io/tennis-app/>. De bouw van `cc5b61b` is geslaagd.
+  <https://leemanskoen1978-sys.github.io/tennis-app/>. De bouw van `30ed29f` is geslaagd.
+- **Test na een push in een privévenster.** Een open tabblad houdt de oude versie vast, ook na
+  hard herladen; op 4 oktober 2026 leek dat een fout in de code.
 - **Pushen:** `git push` liep eerst stuk op een 403, omdat Git Credential Manager het account
   `koen-AI-Nation` onthield in plaats van de eigenaar (`leemanskoen1978-sys`). Opgelost met
   `gh auth setup-git`: Git gebruikt nu het actieve `gh`-account. Krijg je in een nieuwe
   terminal weer een 403, kijk dan met `gh auth status` welk account actief is. De naam en het
   e-mailadres op commits (`user.name` / `user.email` in `~/.gitconfig`) staan hier los van.
-- Testsuite: **2095 tests**, allemaal in `lib/` (40 daarvan slaan zichzelf over, zie
+- Testsuite: **2101 tests**, allemaal in `lib/` (40 daarvan slaan zichzelf over, zie
   `koen.xlsx`). `npx tsc --noEmit`, `npm test` en `npx expo export -p web` horen bij elke
   oplevering.
 - `koen.xlsx` is een **testfixture** en moet op de schijf blijven staan — 40 tests lezen dat
@@ -53,6 +55,12 @@ Vier dingen om te onthouden:
   staat op "de app" — zijn lessen staan er toch al in, als boekingen waarvan Koen de lesgever
   is — en Racso op "de geplakte lijst". Optellen kan niet; de kaart zet de twee naast elkaar
   zodat een verschil opvalt.
+- **"Uit de app" telt per klant, via het terrein.** Een terrein heeft een club (Beheer → Banen,
+  kolom `courts.club`); een les telt bij de klant waarvan de naam in de lijst of de korte naam
+  gelijk is aan die club (`urenUitAppPerKlant`). Terrein 1–11 staan op `GANTOISE`. Uren op een
+  terrein zonder bekende club worden bovenaan het factuurblad gemeld. Komt er een
+  Racso-terrein bij, vul dan zijn club in. Nagekeken op 4 oktober 2026: september geeft
+  Gantoise 35 u en Racso 0 u.
 - **De clubnaam in de plaktekst is een eigen veld** (`naam_in_lijst`). `T.C. RACSO` is niet
   `RACSO`. In `facturen.xlsx` stond het verkeerd en telde die werkmap Racso een heel seizoen
   op nul uur, zonder dat iets dat zei. Het instellingenscherm waarschuwt als twee clubs
@@ -360,6 +368,45 @@ de betaal-badge in het blok Betaling. Doorgeklikt in de browser (demo, als behee
 en het openklappen van Meer opties. Niet allemaal doorgeklikt: annuleren, verwijderen en de reeks-
 varianten, die ongewijzigd zijn meeverhuisd.
 
+### 1h. De herindeling van oktober en de club van een terrein — af, op het handwerk na
+
+**Herindeling.** Begin oktober stuurde de club een nieuwe planning: dezelfde lesdagen, spelers op
+een ander moment. Ze kwam als zeven Word-documenten (één per weekdag, *Planning lessen Tennis -
+Jaarcyclus 2026 - 2027 (3) t/m (9).docx*), omgezet naar `~/Downloads/Lesgroepen-oktober-2026.xlsx`
+in het formaat van de clublijst en ingelezen met Beheer → Importeren. Resultaat: 28 nieuwe
+spelers, 3 nieuwe groepen, 44 groepen bijgewerkt, 1091 komende lessen op het nieuwe rooster.
+`HERINDELING-OKTOBER.sql` zegde de lessen af van de twee groepen die verdwenen (donderdag 16:00
+Terrein 8, zondag 15:00 Terrein 11) en archiveerde ze. De controle (elke komende les heeft
+precies de spelers van haar groep) gaf 0.
+
+Wat er daarvoor in de code moest:
+
+- **Een herimport van het weekschema zet de komende lessen op het rooster.** Vroeger veranderde
+  alleen de groep, en bleef wie van moment wisselde tot juni op de afvinklijst van zijn oude
+  groep. De vergelijking gebeurt op de lessen zelf (`deelnemerswissels` in het plan), zodat een
+  afgebroken import bij een tweede poging alsnog afmaakt. Het bestand met datums blijft
+  ongemoeid: daar heeft elke les haar eigen spelers.
+- **De opslag geeft een ontbrekend veld de standaardwaarde van de kolom** (`defaultToNull:
+  false` in `saveToSupabase`). Een upsert met bestaande én nieuwe lessen vulde `zoekt_trainer`
+  anders met null, en de eerste poging liep daarop stuk.
+- **De Excel-lezer leest `&#235;`.** Excel schrijft een ë als ë, maar openpyxl niet; de `;`
+  van zo'n entiteit splitste een naam in tweeën.
+
+**Nog te doen, met de hand:**
+
+- De 28 nieuwe spelers hebben een verzonnen adres (`...@example.com`): de Word-documenten hebben
+  geen contactgegevens. Vervang ze via het spelersdossier, of lees een nieuwe clublijst met het
+  blad `groepsleden` in.
+- Kijk na of *volwassen groepsles recreatie - Groep 6* en haar lessen op Bahri Fathi staan: de
+  planning wisselde haar trainer, maar de droogloop meldde geen trainerwissel meer.
+- *GTTA - Groep 57* (zaterdag 16:30, Terrein 8) heeft geen spelers en krijgt dus geen lessen; de
+  import meldt dat elke keer. Dat is zo bij de club, niet in de app.
+- Een Racso-terrein dat je toevoegt, is ook voor spelers van Gantoise zichtbaar en boekbaar: de
+  app kent één lijst terreinen. Afschermen is een apart stuk werk, als het nodig wordt.
+
+**De club van een terrein.** Zie *Facturatie* hierboven. Ontwerp:
+`docs/superpowers/specs/2026-10-04-banen-club-design.md`.
+
 ### 2. Achterstallig klein werk
 
 - **Verwijderen in het detailblad** verschijnt alleen bij een les uit een reeks. Bij een losse
@@ -589,6 +636,11 @@ apart getest worden (`sameRow`, `splitEvenly`, `crc32`, `leesKopregel` en dertig
 niet-geëxporteerd zijn ze niet te testen, en dat is de prijs waard.
 
 ## Losse bestanden die niet in git horen
+
+De zeven *Planning lessen Tennis - Jaarcyclus 2026 - 2027 (3) t/m (9).docx* in de projectmap en
+`~/Downloads/Lesgroepen-oktober-2026.xlsx` bevatten de echte namen van de spelers. Ze horen
+niet in git (de repository is publiek). Bewaar ze als naslag buiten de projectmap, of verwijder
+ze. Hetzelfde geldt voor `facturen.xlsx` (zie *Facturatie*).
 
 `tennis-oefeningen.html` in de projectmap is de bron van de oefeningen per kleur (zie 1f). De
 inhoud zit nu in `lib/oefeningen.ts`; het bestand zelf is niet gecommit en de app leest het niet.
