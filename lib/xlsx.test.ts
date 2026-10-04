@@ -1,5 +1,7 @@
 import {
-  buildXlsx, buildWorkbook, bladXml, bladnaam, crc32, datumNaarSerie, kolomLetter, zip, type XlsxCel,
+  buildXlsx, buildWorkbook, buildVrijWorkbook, bladXml, vrijBladXml,
+  refOntleden, bladnaam, crc32, datumNaarSerie, kolomLetter, zip,
+  type XlsxCel, type XlsxVrijBlad,
 } from './xlsx';
 
 // ---------------------------------------------------------------------------
@@ -454,5 +456,152 @@ describe('buildWorkbook', () => {
       { naam: 'Groepen', koppen: ['b'], rijen: [] },
     ];
     expect(Array.from(buildWorkbook(bladen))).toEqual(Array.from(buildWorkbook(bladen)));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Een blad met cellen op hun plaats, in plaats van een tabel. Voor de factuur.
+// ---------------------------------------------------------------------------
+
+function vrij(velden: Partial<XlsxVrijBlad> = {}): XlsxVrijBlad {
+  return {
+    naam: 'Factuur',
+    cellen: [{ ref: 'A1', cel: { soort: 'tekst', waarde: 'hallo' } }],
+    ...velden,
+  };
+}
+
+describe('refOntleden', () => {
+  it('leest een gewone verwijzing', () => {
+    expect(refOntleden('A1')).toEqual({ rij: 1, kolom: 0 });
+    expect(refOntleden('H7')).toEqual({ rij: 7, kolom: 7 });
+    expect(refOntleden('I43')).toEqual({ rij: 43, kolom: 8 });
+  });
+
+  it('leest een verwijzing met twee letters', () => {
+    expect(refOntleden('AA3')).toEqual({ rij: 3, kolom: 26 });
+  });
+
+  it('weigert iets wat geen verwijzing is', () => {
+    expect(() => refOntleden('zomaar')).toThrow();
+    expect(() => refOntleden('A0')).toThrow();
+  });
+});
+
+describe('vrijBladXml', () => {
+  it('zet een cel op de plaats die de verwijzing noemt', () => {
+    const xml = vrijBladXml(vrij({
+      cellen: [{ ref: 'H7', cel: { soort: 'tekst', waarde: 'Datum' } }],
+    }));
+    expect(xml).toContain('<row r="7">');
+    expect(xml).toContain('<c r="H7" t="inlineStr"><is><t xml:space="preserve">Datum</t></is></c>');
+  });
+
+  it('zet de rijen oplopend, ook als de cellen door elkaar binnenkomen', () => {
+    const xml = vrijBladXml(vrij({
+      cellen: [
+        { ref: 'A9', cel: { soort: 'tekst', waarde: 'negen' } },
+        { ref: 'A2', cel: { soort: 'tekst', waarde: 'twee' } },
+      ],
+    }));
+    expect(xml.indexOf('<row r="2">')).toBeLessThan(xml.indexOf('<row r="9">'));
+  });
+
+  it('zet de cellen binnen een rij op kolomvolgorde', () => {
+    const xml = vrijBladXml(vrij({
+      cellen: [
+        { ref: 'I3', cel: { soort: 'tekst', waarde: 'negen' } },
+        { ref: 'B3', cel: { soort: 'tekst', waarde: 'twee' } },
+      ],
+    }));
+    expect(xml.indexOf('r="B3"')).toBeLessThan(xml.indexOf('r="I3"'));
+  });
+
+  it('maakt een tekstcel vet als dat gevraagd wordt', () => {
+    const xml = vrijBladXml(vrij({
+      cellen: [{ ref: 'A5', cel: { soort: 'tekst', waarde: 'Mijn gegevens' }, vet: true }],
+    }));
+    expect(xml).toContain('<c r="A5" t="inlineStr" s="1">');
+  });
+
+  it('houdt de stijl van een bedrag en van een datum aan', () => {
+    const xml = vrijBladXml(vrij({
+      cellen: [
+        { ref: 'I24', cel: { soort: 'geld', waarde: 248 } },
+        { ref: 'H7', cel: { soort: 'datum', waarde: new Date(2026, 9, 1) } },
+      ],
+    }));
+    expect(xml).toContain('<c r="I24" s="2"><v>248</v></c>');
+    expect(xml).toContain(`<c r="H7" s="3"><v>${datumNaarSerie(new Date(2026, 9, 1))}</v></c>`);
+  });
+
+  it('schrijft de samengevoegde bereiken weg, ná de gegevens', () => {
+    const xml = vrijBladXml(vrij({ samengevoegd: ['A23:E23', 'A30:F30'] }));
+    expect(xml).toContain('<mergeCells count="2"><mergeCell ref="A23:E23"/><mergeCell ref="A30:F30"/></mergeCells>');
+    expect(xml.indexOf('</sheetData>')).toBeLessThan(xml.indexOf('<mergeCells'));
+  });
+
+  it('laat mergeCells weg als er niets samengevoegd is', () => {
+    expect(vrijBladXml(vrij())).not.toContain('mergeCells');
+  });
+
+  it('laat de afmeting tot aan de verste cel lopen', () => {
+    const xml = vrijBladXml(vrij({
+      cellen: [
+        { ref: 'A1', cel: { soort: 'tekst', waarde: 'x' } },
+        { ref: 'I43', cel: { soort: 'tekst', waarde: 'y' } },
+      ],
+    }));
+    expect(xml).toContain('<dimension ref="A1:I43"/>');
+  });
+
+  it('bevriest niets en filtert niets — een factuur is geen lijst', () => {
+    const xml = vrijBladXml(vrij());
+    expect(xml).not.toContain('autoFilter');
+    expect(xml).not.toContain('frozen');
+  });
+
+  it('schrijft de kolombreedtes weg', () => {
+    const xml = vrijBladXml(vrij({ breedtes: [38, 10] }));
+    expect(xml).toContain('<col min="1" max="1" width="38" customWidth="1"/>');
+  });
+});
+
+describe('buildVrijWorkbook', () => {
+  it('draagt twee vrije tabbladen, elk met hun eigen naam en inhoud', () => {
+    const bytes = buildVrijWorkbook([
+      vrij({ naam: 'Factuur', cellen: [{ ref: 'H8', cel: { soort: 'tekst', waarde: 'NG-0007' } }] }),
+      vrij({ naam: 'Extra lessen', cellen: [{ ref: 'A1', cel: { soort: 'tekst', waarde: 'EXTRA LESSEN' } }] }),
+    ]);
+    const ingangen = leesZip(bytes);
+
+    const werkmap = tekst(ingangen.find((i) => i.naam === 'xl/workbook.xml')!.inhoud);
+    expect(werkmap).toContain('name="Factuur"');
+    expect(werkmap).toContain('name="Extra lessen"');
+
+    expect(tekst(ingangen.find((i) => i.naam === 'xl/worksheets/sheet1.xml')!.inhoud))
+      .toContain('NG-0007');
+    expect(tekst(ingangen.find((i) => i.naam === 'xl/worksheets/sheet2.xml')!.inhoud))
+      .toContain('EXTRA LESSEN');
+  });
+
+  it('houdt de volgorde aan waarin de bladen binnenkomen', () => {
+    const werkmap = tekst(leesZip(buildVrijWorkbook([
+      vrij({ naam: 'Eerste' }), vrij({ naam: 'Tweede' }),
+    ])).find((i) => i.naam === 'xl/workbook.xml')!.inhoud);
+    expect(werkmap.indexOf('name="Eerste"')).toBeLessThan(werkmap.indexOf('name="Tweede"'));
+  });
+
+  it('geeft twee bladen met dezelfde naam een eigen naam — Excel weigert dubbels', () => {
+    const werkmap = tekst(leesZip(buildVrijWorkbook([
+      vrij({ naam: 'Factuur' }), vrij({ naam: 'Factuur' }),
+    ])).find((i) => i.naam === 'xl/workbook.xml')!.inhoud);
+    expect(werkmap).toContain('name="Factuur"');
+    expect(werkmap).toContain('name="Factuur (2)"');
+  });
+
+  it('deelt één opmaaktabel, zodat een bedrag ook op blad twee een getal blijft', () => {
+    const ingangen = leesZip(buildVrijWorkbook([vrij({ naam: 'A' }), vrij({ naam: 'B' })]));
+    expect(ingangen.filter((i) => i.naam === 'xl/styles.xml')).toHaveLength(1);
   });
 });
