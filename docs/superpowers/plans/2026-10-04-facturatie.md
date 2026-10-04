@@ -894,6 +894,34 @@ describe('urenPerClub', () => {
     const uit = urenPerClub(voorbeeldLessen(), [RACSO, GANTOISE], 10, 2026);
     expect(uit.map((r) => r.klant.id)).toEqual(['k0', 'k1']);
   });
+
+  it('laat bij gelijke volgorde de binnengekomen volgorde staan', () => {
+    const a = klant({ id: 'a', volgorde: 1 });
+    const b = klant({ id: 'b', volgorde: 1 });
+    expect(urenPerClub([], [a, b], 10, 2026).map((r) => r.klant.id)).toEqual(['a', 'b']);
+    expect(urenPerClub([], [b, a], 10, 2026).map((r) => r.klant.id)).toEqual(['b', 'a']);
+  });
+
+  it('telt een les op de eerste en op de laatste dag van de maand mee', () => {
+    const lessen = voorbeeldLessen().slice(0, 1).map((l, i) => ({
+      ...l, id: `r${i}`, club_tekst: 'T.C. RACSO', datum: '2026-09-01',
+    }));
+    lessen.push({ ...lessen[0], id: 'r-laatst', datum: '2026-09-30', sleutel: 'r-laatst' });
+    expect(urenPerClub(lessen, [RACSO], 9, 2026)[0].urenGeplakt).toBe(2);
+  });
+
+  it('negeert een klant waarvan de naam in de lijst nog niet ingevuld is', () => {
+    // Zo maakt het instellingenscherm een nieuwe club aan: alle velden leeg.
+    const nieuw = klant({ id: 'leeg', naam_in_lijst: '', korte_naam: '' });
+    const blanco = voorbeeldLessen().slice(0, 1).map((l) => ({ ...l, club_tekst: '' }));
+    expect(urenPerClub(blanco, [nieuw], 9, 2026)[0].urenGeplakt).toBe(0);
+  });
+
+  it('telt dezelfde lessen bij twee klanten met dezelfde naam — het scherm waarschuwt', () => {
+    const tweeling = klant({ id: 'k2', naam_in_lijst: 'T.C. RACSO', volgorde: 3 });
+    const uit = urenPerClub(voorbeeldLessen(), [RACSO, tweeling], 10, 2026);
+    expect(uit.map((r) => r.urenGeplakt)).toEqual([9, 9]);
+  });
 });
 
 describe('onbekendeClubs', () => {
@@ -908,6 +936,12 @@ describe('onbekendeClubs', () => {
 
   it('kijkt alleen naar de gevraagde maand', () => {
     expect(onbekendeClubs(voorbeeldLessen(), [GANTOISE], 9, 2026)).toEqual([]);
+  });
+
+  it('meldt een lege clubnaam in plaats van hem te verzwijgen', () => {
+    const nieuw = klant({ id: 'leeg', naam_in_lijst: '' });
+    const blanco = voorbeeldLessen().slice(0, 1).map((l) => ({ ...l, club_tekst: '' }));
+    expect(onbekendeClubs(blanco, [nieuw], 9, 2026)).toEqual([{ naam: '(leeg)', aantal: 1 }]);
   });
 });
 
@@ -959,6 +993,15 @@ describe('urenUitApp', () => {
   it('slikt een boeking met een onleesbaar tijdstip in plaats van NaN terug te geven', () => {
     expect(urenUitApp([boeking({ end_time: 'later' })], 'koen', 9, 2026)).toBe(0);
   });
+
+  it('rekent een les die over middernacht de maand uit loopt bij de maand van de start', () => {
+    const overMiddernacht = boeking({
+      start_time: new Date(2026, 8, 30, 23, 30).toISOString(),
+      end_time: new Date(2026, 9, 1, 0, 30).toISOString(),
+    });
+    expect(urenUitApp([overMiddernacht], 'koen', 9, 2026)).toBe(1);
+    expect(urenUitApp([overMiddernacht], 'koen', 10, 2026)).toBe(0);
+  });
 });
 ```
 
@@ -969,7 +1012,18 @@ Expected: FAIL — `urenPerClub is not a function`.
 
 - [ ] **Step 3: Write the implementation**
 
-Zet onderaan `lib/facturatie.ts` erbij:
+Zet eerst bovenaan `lib/facturatie.ts`, onder het kopcommentaar, de enige import die dit
+bestand nodig heeft:
+
+```ts
+import { lesgeverId } from './lesgever';
+```
+
+`lib/lesgever.ts` heeft zelf alleen een *type*-import van `Booking`, en die verdwijnt bij
+het compileren. Deze module krijgt er dus geen runtime-afhankelijkheid van `lib/types.ts`
+bij.
+
+Zet daarna onderaan `lib/facturatie.ts` erbij:
 
 ```ts
 // ---------------------------------------------------------------------------
@@ -995,7 +1049,14 @@ export interface ClubUren {
  *
  * De volgorde van het antwoord is die van `volgorde` op de klant, niet die van de lijst die
  * binnenkwam: het scherm zet de kaarten eronder en die horen altijd in dezelfde volgorde te
- * staan.
+ * staan. Bij gelijke `volgorde` blijft de binnengekomen volgorde staan, want `sort` is
+ * stabiel.
+ *
+ * Aangenomen wordt dat `naam_in_lijst` en `korte_naam` uniek zijn over alle klanten. Staan
+ * er twee klanten met dezelfde naam, dan krijgen ze allebei dezelfde uren en wordt er
+ * dubbel gefactureerd. Dat wordt hier niet tegengehouden maar in het instellingenscherm
+ * gemeld: hier weten we niet of het een vergissing is of niet, en een telling hoort geen
+ * rijen te laten verdwijnen die iemand bewust zo heeft gezet.
  */
 export function urenPerClub(
   lessen: readonly Factuurles[],
@@ -1018,9 +1079,13 @@ export function urenPerClub(
       // Een privéles hangt aan de korte naam ("Racso"), een geplakte les aan de naam zoals
       // die in de lijst staat ("T.C. RACSO"). Dat zijn twee verschillende namen voor
       // dezelfde club, en ze allebei aan één veld hangen zou er één van de twee breken.
+      //
+      // Een lege ingestelde naam matcht niets. Zonder die regel zou een club die net
+      // toegevoegd is en nog niet ingevuld — het instellingenscherm maakt hem met lege
+      // velden aan — elke regel claimen waarvan de clubkolom leeg is.
       if (les.bron === 'prive') {
-        if (club === korteNaam) urenPrive += urenVan(les);
-      } else if (club === geplakteNaam) {
+        if (korteNaam !== '' && club === korteNaam) urenPrive += urenVan(les);
+      } else if (geplakteNaam !== '' && club === geplakteNaam) {
         urenGeplakt += urenVan(les);
       }
     }
@@ -1042,7 +1107,11 @@ export function onbekendeClubs(
   maand: number,
   jaar: number,
 ): Array<{ naam: string; aantal: number }> {
-  const gekend = new Set(klanten.map((k) => schoon(k.naam_in_lijst)));
+  // Een klant zonder ingevulde naam telt niet als "gekend": anders zou een lege clubkolom
+  // in de plaktekst op hem uitkomen en nooit gemeld worden.
+  const gekend = new Set(
+    klanten.map((k) => schoon(k.naam_in_lijst)).filter((naam) => naam !== ''),
+  );
   const geteld = new Map<string, { naam: string; aantal: number }>();
 
   for (const les of lessen) {
@@ -1051,10 +1120,11 @@ export function onbekendeClubs(
     const sleutel = schoon(les.club_tekst);
     if (gekend.has(sleutel)) continue;
     // De naam zoals hij in de lijst stond, niet de opgeschoonde: dat is wat de gebruiker
-    // straks in het veld "naam in de lijst" moet overnemen.
+    // straks in het veld "naam in de lijst" moet overnemen. Een lege naam krijgt een
+    // woord, want "0 lessen bij een club die ik niet ken: " leest als een bug.
     const al = geteld.get(sleutel);
     if (al) al.aantal++;
-    else geteld.set(sleutel, { naam: les.club_tekst.trim(), aantal: 1 });
+    else geteld.set(sleutel, { naam: les.club_tekst.trim() || '(leeg)', aantal: 1 });
   }
 
   return [...geteld.values()];
@@ -1076,11 +1146,21 @@ export interface AppBoeking {
 }
 
 /**
+ * De maand waarin een boeking telt, is die van de begintijd.
+ *
+ * Een les van 23:30 op 30 september tot 00:30 op 1 oktober hoort bij september: zo staat
+ * hij in de agenda en zo praat men erover. Het alternatief — de uren splitsen over twee
+ * maanden — zou twee facturen een half uur geven dat op geen van beide klopt.
+ */
+
+/**
  * De uren die al in de app staan: de lessen waarvan deze trainer de lesgever was.
  *
  * Dezelfde definitie als het bedrag op zijn profiel (`coachPayoutThisMonth` in lib/reports):
- * wie de les werkelijk gaf telt, niet van wie de les was. Daarom `taught_by_id ?? coach_id`
- * en niet `coach_id` — zie lib/lesgever.
+ * wie de les werkelijk gaf telt, niet van wie de les was. Die vraag wordt beantwoord door
+ * `lesgeverId` in lib/lesgever en door niets anders — dat bestand zegt in zijn kop waarom,
+ * en een tweede `taught_by_id ?? coach_id` hier zou precies het gat terugzetten waar het
+ * voor waarschuwt.
  *
  * Dit getal kent geen clubs: de app weet niet bij welke club een boeking hoort. Het heeft
  * dus alleen betekenis bij de ene klant waarvoor `bron_voorkeur` op `'app'` staat.
@@ -1095,7 +1175,7 @@ export function urenUitApp(
 
   for (const b of boekingen) {
     if (b.status === 'cancelled') continue;
-    if ((b.taught_by_id ?? b.coach_id) !== trainerId) continue;
+    if (lesgeverId(b) !== trainerId) continue;
 
     const start = new Date(b.start_time);
     const eind = new Date(b.end_time);
@@ -1117,7 +1197,7 @@ export function urenUitApp(
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx jest lib/facturatie.test.ts`
-Expected: PASS — 41 tests.
+Expected: PASS — 47 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -1513,7 +1593,7 @@ export function standaardKlanten([idGantoise, idRacso]: readonly string[]): Klan
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx jest lib/facturatie.test.ts`
-Expected: PASS — 60 tests.
+Expected: PASS — 66 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -3609,7 +3689,7 @@ Maak `components/facturatie/InstellingenBlad.tsx`:
 // zegt, en die werkmap telde Racso daardoor op nul uur zonder dat er iets misliep. Daarom
 // staat het hier als een gewoon, zichtbaar veld en niet verstopt in de code.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Plus } from 'lucide-react-native';
 
@@ -3639,12 +3719,31 @@ export function InstellingenBlad({ data, opnieuwLaden }: {
     }
   }
 
+  // `urenPerClub` gaat ervan uit dat elke naam bij één club hoort en houdt een dubbel niet
+  // tegen — daar weet het rekenwerk niet of het een vergissing is. Hier wel: dit is de
+  // enige plek waar iemand die naam intikt.
+  const dubbeleNamen = useMemo(() => {
+    const geteld = new Map<string, number>();
+    for (const k of data.klanten) {
+      const naam = k.naam_in_lijst.trim();
+      if (naam !== '') geteld.set(naam, (geteld.get(naam) ?? 0) + 1);
+    }
+    return [...geteld.entries()].filter(([, n]) => n > 1).map(([naam]) => naam);
+  }, [data.klanten]);
+
   return (
     <View style={styles.blad}>
       <LeverancierKaart
         leverancier={data.leverancier}
         onBewaar={(l) => doe(() => backend.facturatie.leverancierBewaren(l))}
       />
+
+      {dubbeleNamen.length > 0 && (
+        <Text style={styles.waarschuwing}>
+          Twee clubs met dezelfde naam in de lijst: {dubbeleNamen.join(', ')}. Ze tellen
+          allebei dezelfde lessen, en dan factureer je die twee keer.
+        </Text>
+      )}
 
       {data.klanten.map((klant) => (
         <KlantKaart
