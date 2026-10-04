@@ -2531,7 +2531,7 @@ export function factuurBestandsnaam(factuurnr: string): string {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx jest lib/facturatie-xlsx.test.ts`
-Expected: PASS — 21 tests.
+Expected: PASS — 20 tests.
 
 - [ ] **Step 5: Run the whole suite and the typechecker**
 
@@ -2572,6 +2572,10 @@ Maak `FACTURATIE.sql`:
 --
 -- Sleutels zijn `text` en komen van de app, zoals overal in dit schema. Zie de kop van
 -- supabase-schema.sql voor het waarom.
+--
+-- LET OP bij het met de hand invoegen van een rij vanuit de SQL-editor: `auth.uid()` is
+-- daar leeg, en `eigenaar` is `not null`. Zo'n insert wordt dus geweigerd tenzij je zelf
+-- je uuid meegeeft. De app heeft daar geen last van — die schrijft altijd ingelogd.
 
 -- ---------------------------------------------------------------------------
 -- Tabellen
@@ -2660,7 +2664,7 @@ create table if not exists facturatie_facturen (
   factuurdatum date not null,
   vervaldatum date not null,
   omschrijving text not null default '',
-  dienstmaand int not null,
+  dienstmaand int not null check (dienstmaand between 1 and 12),
   dienstjaar int not null,
   aantal_uren numeric(8,2) not null default 0,
   uurtarief numeric(10,2) not null default 0,
@@ -2709,17 +2713,29 @@ begin
     execute format('drop policy if exists %1$s_update on %1$s', t);
     execute format('drop policy if exists %1$s_delete on %1$s', t);
 
+    -- `%s` en niet `%I` voor de tabelnaam: wat hier binnenkomt is de vaste lijst hierboven
+    -- en nooit iets van buiten. Zou dat ooit veranderen, dan moet dit `%I` worden.
+    --
+    -- `to authenticated` zoals overal in supabase-schema.sql. Strikt genomen overbodig —
+    -- voor de anon-rol is `auth.uid()` leeg en matcht `eigenaar = null` nooit — maar een
+    -- policy die alleen klopt omdat een vergelijking toevallig onwaar is, is er een die
+    -- niemand durft te wijzigen.
     execute format(
-      'create policy %1$s_select on %1$s for select using (eigenaar = auth.uid())', t);
+      'create policy %1$s_select on %1$s for select '
+      || 'to authenticated using (eigenaar = auth.uid())', t);
     -- Ook `with check` op insert: anders kan iemand een rij op naam van een ander wegschrijven
     -- door de kolom zelf mee te sturen, en de default `auth.uid()` komt daar niet aan te pas.
     execute format(
-      'create policy %1$s_insert on %1$s for insert with check (eigenaar = auth.uid())', t);
+      'create policy %1$s_insert on %1$s for insert '
+      || 'to authenticated with check (eigenaar = auth.uid())', t);
+    -- `with check` op update houdt tegen dat je je eigen rij op naam van iemand anders zet.
     execute format(
-      'create policy %1$s_update on %1$s for update using (eigenaar = auth.uid()) '
+      'create policy %1$s_update on %1$s for update '
+      || 'to authenticated using (eigenaar = auth.uid()) '
       || 'with check (eigenaar = auth.uid())', t);
     execute format(
-      'create policy %1$s_delete on %1$s for delete using (eigenaar = auth.uid())', t);
+      'create policy %1$s_delete on %1$s for delete '
+      || 'to authenticated using (eigenaar = auth.uid())', t);
   end loop;
 end
 $$;
