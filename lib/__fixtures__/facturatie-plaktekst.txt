@@ -1,0 +1,70 @@
+Club	Aanbod	Doelgroep	Groep	Dag + uur	Trainer	Aanwezigh.	Uur/locatie gewijzigd?	Status	Bedrag
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 4	wo 09/09/2026 14:00 - 15:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 12	wo 09/09/2026 15:00 - 16:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Oranje - Groep 13	wo 09/09/2026 16:00 - 17:00	Leemans Koen	0/6	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Kidstennis oranje - Groep 8	wo 09/09/2026 17:00 - 18:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 26	wo 09/09/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 31	vr 11/09/2026 16:00 - 17:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 8	vr 11/09/2026 17:00 - 18:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Privéles - Groep 12	vr 11/09/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 8	vr 11/09/2026 19:00 - 20:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Volwassenen - (her)starters	Volwassenen - (her)starters - Groep 3	vr 11/09/2026 20:00 - 21:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 4	wo 16/09/2026 14:00 - 15:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 12	wo 16/09/2026 15:00 - 16:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Oranje - Groep 13	wo 16/09/2026 16:00 - 17:00	Leemans Koen	0/6	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Kidstennis oranje - Groep 8	wo 16/09/2026 17:00 - 18:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 26	wo 16/09/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 31	vr 18/09/2026 16:00 - 17:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 8	vr 18/09/2026 17:00 - 18:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Privéles - Groep 12	vr 18/09/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 8	vr 18/09/2026 19:00 - 20:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Volwassenen - (her)starters	Volwassenen - (her)starters - Groep 3	vr 18/09/2026 20:00 - 21:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 4	wo 23/09/2026 14:00 - 15:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 12	wo 23/09/2026 15:00 - 16:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Oranje - Groep 13	wo 23/09/2026 16:00 - 17:00	Leemans Koen	0/6	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Kidstennis oranje - Groep 8	wo 23/09/2026 17:00 - 18:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 26	wo 23/09/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 31	vr 25/09/2026 16:00 - 17:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 8	vr 25/09/2026 17:00 - 18:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Privéles - Groep 12	vr 25/09/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 8	vr 25/09/2026 19:00 - 20:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Volwassenen - (her)starters	Volwassenen - (her)starters - Groep 3	vr 25/09/2026 20:00 - 21:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 4	wo 30/09/2026 14:00 - 15:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 12	wo 30/09/2026 15:00 - 16:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Oranje - Groep 13	wo 30/09/2026 16:00 - 17:00	Leemans Koen	0/6	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Kidstennis oranje - Groep 8	wo 30/09/2026 17:00 - 18:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 26	wo 30/09/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 31	vr 02/10/2026 16:00 - 17:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 8	vr 02/10/2026 17:00 - 18:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Privéles - Groep 12	vr 02/10/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 8	vr 02/10/2026 19:00 - 20:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Volwassenen - (her)starters	Volwassenen - (her)starters - Groep 3	vr 02/10/2026 20:00 - 21:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+T.C. RACSO	Jaarcyclus 2026-2027	Tienertennis (maxitennis/breaktennis)	Tienertennis (maxitennis/breaktennis) - Groep 36	za 03/10/2026 12:00 - 13:00	Leemans Koen	0/4	Nee	Te bevestigen	31 €	
+T.C. RACSO	Jaarcyclus 2026-2027	Tienertennis (maxitennis/breaktennis)	Tienertennis (maxitennis/breaktennis) - Groep 30	za 03/10/2026 13:00 - 14:00	Leemans Koen	0/7	Nee	Te bevestigen	31 €	
+T.C. RACSO	Jaarcyclus 2026-2027	Tienertennis (maxitennis/breaktennis)	Tienertennis (maxitennis/breaktennis) - Groep 28	za 03/10/2026 14:00 - 15:00	Leemans Koen	0/5	Nee	Te bevestigen	31 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 4	wo 07/10/2026 14:00 - 15:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 12	wo 07/10/2026 15:00 - 16:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Oranje - Groep 13	wo 07/10/2026 16:00 - 17:00	Leemans Koen	0/6	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Kidstennis oranje - Groep 8	wo 07/10/2026 17:00 - 18:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 26	wo 07/10/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 31	vr 09/10/2026 16:00 - 17:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 8	vr 09/10/2026 17:00 - 18:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Privéles - Groep 12	vr 09/10/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 8	vr 09/10/2026 19:00 - 20:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Volwassenen - (her)starters	Volwassenen - (her)starters - Groep 3	vr 09/10/2026 20:00 - 21:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+T.C. RACSO	Jaarcyclus 2026-2027	Tienertennis (maxitennis/breaktennis)	Tienertennis (maxitennis/breaktennis) - Groep 36	za 10/10/2026 12:00 - 13:00	Leemans Koen	0/4	Nee	Te bevestigen	31 €	
+T.C. RACSO	Jaarcyclus 2026-2027	Tienertennis (maxitennis/breaktennis)	Tienertennis (maxitennis/breaktennis) - Groep 30	za 10/10/2026 13:00 - 14:00	Leemans Koen	0/7	Nee	Te bevestigen	31 €	
+T.C. RACSO	Jaarcyclus 2026-2027	Tienertennis (maxitennis/breaktennis)	Tienertennis (maxitennis/breaktennis) - Groep 28	za 10/10/2026 14:00 - 15:00	Leemans Koen	0/5	Nee	Te bevestigen	31 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 4	wo 14/10/2026 14:00 - 15:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 12	wo 14/10/2026 15:00 - 16:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Oranje - Groep 13	wo 14/10/2026 16:00 - 17:00	Leemans Koen	0/6	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Kidstennis oranje	Kidstennis oranje - Groep 8	wo 14/10/2026 17:00 - 18:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 26	wo 14/10/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 31	vr 16/10/2026 16:00 - 17:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Tienertennis geel - Groep 8	vr 16/10/2026 17:00 - 18:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Tienertennis geel	Privéles - Groep 12	vr 16/10/2026 18:00 - 19:00	Leemans Koen	0/4	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Duoles	Duoles - Groep 8	vr 16/10/2026 19:00 - 20:00	Leemans Koen	0/2	Nee	Te bevestigen	0 €	
+GANTOISE	Tennis - Jaarcyclus 2026 - 2027	Volwassenen - (her)starters	Volwassenen - (her)starters - Groep 3	vr 16/10/2026 20:00 - 21:00	Leemans Koen	0/5	Nee	Te bevestigen	0 €	
+T.C. RACSO	Jaarcyclus 2026-2027	Tienertennis (maxitennis/breaktennis)	Tienertennis (maxitennis/breaktennis) - Groep 36	za 17/10/2026 12:00 - 13:00	Leemans Koen	0/4	Nee	Te bevestigen	31 €	
+T.C. RACSO	Jaarcyclus 2026-2027	Tienertennis (maxitennis/breaktennis)	Tienertennis (maxitennis/breaktennis) - Groep 30	za 17/10/2026 13:00 - 14:00	Leemans Koen	0/7	Nee	Te bevestigen	31 €	
+T.C. RACSO	Jaarcyclus 2026-2027	Tienertennis (maxitennis/breaktennis)	Tienertennis (maxitennis/breaktennis) - Groep 28	za 17/10/2026 14:00 - 15:00	Leemans Koen	0/5	Nee	Te bevestigen	31 €	

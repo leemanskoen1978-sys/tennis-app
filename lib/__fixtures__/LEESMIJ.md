@@ -68,3 +68,43 @@ Negen rijen: één koprij en acht gegevensrijen, over twee groepen.
 | ----- | -------- | ----- | ---------- |
 | Groep 1 | woensdag | 14:00 | 3, op twee datums |
 | Groep 2 | vrijdag  | 17:00 | 2, op één datum   |
+
+---
+
+# facturatie-plaktekst.txt
+
+De lijst zoals die uit het clubsysteem gekopieerd wordt, voor de tests van
+`lib/facturatie-plak.ts` en `lib/facturatie.ts`.
+
+## Waarom dit bestand bestaat
+
+De parser moet het echte formaat aankunnen en niet het formaat dat hij zelf zou schrijven:
+velden gescheiden door tabs, een koprij erboven, een lege kolom achteraan omdat elke regel op
+een tab eindigt, en een dag-en-uurveld (`wo 09/09/2026 14:00 - 15:00`) waar de datum en de
+lesduur uit gehaald moeten worden. Een string die in de test zelf in elkaar gezet wordt,
+bevestigt alleen de aannames van wie hem typte.
+
+## Hier staat wél een echte naam in
+
+`Leemans Koen` — de eigenaar van deze repository, over zijn eigen uren. Verder komt er niemand
+in voor: `GANTOISE` en `T.C. RACSO` zijn clubs en `Groep 4` is een groep. Zet hier **nooit** de
+naam van een leerling of van een collega in; de regel uit het stuk hierboven geldt ook hier.
+
+## Wat erin staat
+
+69 lessen, één koprij, alle lessen van één uur. Dit zijn de getallen waar de tests op staan:
+
+| club | maand | lessen (= uren) |
+| ---- | ----- | --------------- |
+| GANTOISE   | september 2026 | 35 |
+| GANTOISE   | oktober 2026   | 25 |
+| T.C. RACSO | oktober 2026   | 9  |
+| T.C. RACSO | september 2026 | 0  |
+
+De 35 van september is hetzelfde getal dat in `facturen.xlsx` met de hand in `F24` van het
+Gantoise-blad getypt stond. Dat is de hele reden dat dit bestand er is: het bewijst dat de app
+tot hetzelfde komt als het blad dat ze vervangt.
+
+**De club heet `T.C. RACSO` en niet `RACSO`.** In `facturen.xlsx` stond `RACSO` in de
+klantenlijst, en de `SUMIFS` daar vergelijkt exact — die telde Racso daardoor op nul uur. Laat
+die naam dus staan zoals hij is; er staat een test op dat `RACSO` níét matcht.
