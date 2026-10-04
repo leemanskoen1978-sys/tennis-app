@@ -18,13 +18,25 @@ function tabelBestaatNiet(error: { code?: string; message?: string }): boolean {
   return /schema cache/i.test(error.message ?? '');
 }
 
-/** De kolommen die de app niet kent en niet terugschrijft. */
-function zonderHuishouding<T>(rij: Record<string, unknown>): T {
-  const { eigenaar, aangemaakt, ...rest } = rij;
-  void eigenaar;
-  void aangemaakt;
-  return rest as T;
+/**
+ * De kolommen die de app niet kent, eraf halen.
+ *
+ * Welke dat zijn verschilt per tabel, en dat is geen slordigheid. `eigenaar` is overal
+ * huishouding. `aangemaakt` is dat bij een les — de databank zet hem en niemand leest hem —
+ * maar bij een factuur is het een veld van de app zelf: `factuurUit` zet erin wanneer de
+ * factuur gemaakt is, en het register toont dat. Knip je hem daar ook weg, dan is dat veld
+ * na een herlaadbeurt leeg terwijl het type belooft dat er een datum in staat.
+ */
+function zonderKolommen<T>(rij: Record<string, unknown>, weg: readonly string[]): T {
+  const uit = { ...rij };
+  for (const kolom of weg) delete uit[kolom];
+  return uit as T;
 }
+
+/** Overal huishouding. */
+const EIGENAAR = ['eigenaar'] as const;
+/** Bij een les zet de databank `aangemaakt` en leest de app hem nooit. */
+const EIGENAAR_EN_AANGEMAAKT = ['eigenaar', 'aangemaakt'] as const;
 
 export async function laden(): Promise<FacturatieData | null> {
   const [lev, kla, les, fac] = await Promise.all([
@@ -41,14 +53,14 @@ export async function laden(): Promise<FacturatieData | null> {
     }
   }
 
-  const leveranciers = (lev.data ?? []).map((r) => zonderHuishouding<Leverancier>(r));
+  const leveranciers = (lev.data ?? []).map((r) => zonderKolommen<Leverancier>(r, EIGENAAR));
 
   return {
     // Er is er hoogstens één; staat er nog geen, dan maakt het scherm hem bij de eerste keer.
     leverancier: leveranciers[0] ?? { id: '', naam: '', adres: '', btw: '', iban: '', bic: '' },
-    klanten: (kla.data ?? []).map((r) => zonderHuishouding<Klant>(r)),
-    lessen: (les.data ?? []).map((r) => zonderHuishouding<Factuurles>(r)),
-    facturen: (fac.data ?? []).map((r) => zonderHuishouding<Factuur>(r)),
+    klanten: (kla.data ?? []).map((r) => zonderKolommen<Klant>(r, EIGENAAR)),
+    lessen: (les.data ?? []).map((r) => zonderKolommen<Factuurles>(r, EIGENAAR_EN_AANGEMAAKT)),
+    facturen: (fac.data ?? []).map((r) => zonderKolommen<Factuur>(r, EIGENAAR)),
   };
 }
 
