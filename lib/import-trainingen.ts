@@ -21,7 +21,9 @@ import { normalizeEmail } from './contact';
 import {
   groepenUitWeekRegels, isWeekschema, leesGroepsleden, leesWeekRegels, spelerRegelsUitWeek,
 } from './import-weekschema';
-import { actieveGroepen, groepSleutel, groupBookingsFrom, lesGroepFout } from './lesgroepen';
+import {
+  actieveGroepen, groepSleutel, groupBookingsFrom, komendeLessen, lesGroepFout,
+} from './lesgroepen';
 import { botstMet, type BezetBoeking } from './recurrence';
 import { normalizeName, zelfdeNaamOngeachtVolgorde, zoekOpNaam } from './students';
 import type {
@@ -1477,6 +1479,24 @@ export interface VerdwenenLes {
  * `groep`, `van` en `naar` zijn er om te tonen; `trainerId` is het enige dat weggeschreven wordt.
  * `van` mag leeg zijn — dan heeft de trainer die er stond geen account meer bij de club.
  */
+/**
+ * De komende lessen van een bestaande groep die het nieuwe rooster krijgen.
+ *
+ * WAAROM DIT BESTAAT. Tot oktober 2026 zette een herimport alleen het rooster van de groep goed.
+ * De lessen die al ingepland stonden hielden hun oude spelers, en wie van moment wisselde stond
+ * tot het einde van het seizoen op de afvinklijst van zijn oude groep — terwijl dezelfde
+ * wijziging met de hand, in Beheer → Lesgroepen, de komende lessen wél meenam
+ * (`planRosterChange` in lib/lesgroepen). Welke lessen dat zijn is dezelfde regel:
+ * `komendeLessen`, dus vanaf nu en zonder de afgezegde.
+ */
+export interface DeelnemersWissel {
+  groep: string;
+  /** Het id van de bestaande groep: twee groepen van de club kunnen dezelfde naam dragen. */
+  groepId: string;
+  aantal: number;
+  boekingIds: string[];
+}
+
 export interface TrainerWissel {
   groep: string;
   /** De naam van de trainer die er nu op staat, of leeg als de club dat account niet (meer) kent. */
@@ -1966,6 +1986,13 @@ export interface ImportPlanLessen {
    * om hoeveel lessen het gaat — de beheerder ziet het, hij ontdekt het niet achteraf (D-10).
    */
   trainerwissels: TrainerWissel[];
+  /**
+   * Per bijgewerkte groep de komende lessen die het nieuwe rooster krijgen. Alleen bij het
+   * weekschema: daar geldt het rooster voor elke week. In het bestand met datums staan de
+   * spelers per les, en daar zou het rooster van de groep een les overschrijven die haar eigen
+   * deelnemers had. Zie `DeelnemersWissel`.
+   */
+  deelnemerswissels: DeelnemersWissel[];
   /** Wat er niet gelezen kon worden, met regelnummer en reden. */
   fouten: ImportFoutLessen[];
   /** Wat wel doorgaat maar de beheerder beter even nakijkt. */
@@ -2040,6 +2067,7 @@ export function planImportLessen(
     handmatigGewijzigd: [],
     verdwenenUitBestand: [],
     trainerwissels: [],
+    deelnemerswissels: [],
     fouten: [...(gelezenIets?.fouten ?? [])],
     waarschuwingen: [],
     nietHerkend: gelezenIets?.nietHerkend ?? [],
@@ -2173,6 +2201,18 @@ export function planImportLessen(
     plan.handmatigGewijzigd.push(...lessen.handmatigGewijzigd);
     plan.verdwenenUitBestand.push(...lessen.verdwenenUitBestand);
     if (lessen.trainerwissel) plan.trainerwissels.push(lessen.trainerwissel);
+    if (isWeek && groep.bestaand && status === 'bijgewerkt'
+      && (verschil.toegevoegd.length > 0 || verschil.verwijderd.length > 0)) {
+      const komend = komendeLessen([...(opGroep.get(groep.bestaand.id) ?? [])], groep.bestaand.id, nu);
+      if (komend.length > 0) {
+        plan.deelnemerswissels.push({
+          groep: groep.naam,
+          groepId: groep.bestaand.id,
+          aantal: komend.length,
+          boekingIds: komend.map((b) => b.id),
+        });
+      }
+    }
 
     // De zojuist goedgekeurde lessen tellen vanaf nu mee als bezet: zo botst het bestand ook met
     // zichzelf, en niet alleen met wat er al stond.
@@ -2216,14 +2256,19 @@ export interface ImportKeuze {
   ingrijpend: boolean;
 }
 
+/** Wat de import aan een bestaande les mag veranderen: de trainer, en wie er meedoet. */
+export type BoekingBijwerking = Partial<
+  Pick<Booking, 'coach_id' | 'player_id' | 'participant_ids' | 'payment_method'>
+>;
+
 export interface ImportWijziging {
   nieuweUsers: User[];
   nieuweGroepen: LesGroep[];
   gewijzigdeGroepen: GroepBijwerking[];
   nieuweBoekingen: Booking[];
   /**
-   * De komende lessen die een andere trainer krijgen, met een patch die letterlijk niets anders
-   * kan bevatten dan `coach_id`.
+   * De komende lessen die een andere trainer of andere spelers krijgen, met een patch die
+   * letterlijk niets anders kan bevatten dan die twee: `coach_id`, en wie er meedoet.
    *
    * Die smalle typering is het punt en geen slordigheid. Een `Partial<Booking>` zou de deur
    * openzetten voor een import die er ooit ook `taught_by_id`, `start_time` of `status` in legt,
@@ -2231,7 +2276,7 @@ export interface ImportWijziging {
    * wat geweest is blijft staan — een afspraak die iemand kan vergeten. Zo is het een fout die
    * niet compileert.
    */
-  gewijzigdeBoekingen: Array<{ id: string; patch: { coach_id: string } }>;
+  gewijzigdeBoekingen: Array<{ id: string; patch: BoekingBijwerking }>;
   /** Wat er van het plan niet weggeschreven wordt, met regelnummer en reden. */
   fouten: ImportFoutLessen[];
 }
@@ -2636,6 +2681,8 @@ export function bouwImportWijziging(
     uit.nieuweGroepen.push(nieuweGroep);
   }
 
+  /** Het rooster dat elke bijgewerkte groep krijgt, als echte ids; de komende lessen volgen. */
+  const roosterVanGroep = new Map<string, string[]>();
   for (const inPlan of plan.groepenBijgewerkt) {
     const bestaand = inPlan.groep.bestaand;
     if (!bestaand) continue;
@@ -2647,6 +2694,7 @@ export function bouwImportWijziging(
     // aparte bevestiging blijft wie eruit zou vallen gewoon staan; wie erbij komt zit al in
     // `inPlan.roster` en gaat dus hoe dan ook door.
     const rooster = keuze.ingrijpend ? inPlan.roster : [...inPlan.roster, ...inPlan.verwijderd];
+    roosterVanGroep.set(bestaand.id, echteIds(rooster));
     uit.gewijzigdeGroepen.push({
       id: bestaand.id,
       patch: { ...inPlan.wijzigingen, roster: echteIds(rooster) },
@@ -2665,12 +2713,40 @@ export function bouwImportWijziging(
   //     het plan dat de beheerder goedkeurde; er wordt hier niets herrekend.
   //     Tweede en laatste plek waar de keuze werkt: zonder de aparte bevestiging blijft de
   //     trainer op de komende lessen staan zoals hij stond.
+  //     Eén patch per les: wisselt een les van trainer én van spelers, dan zou een tweede patch
+  //     de eerste in de provider stilletjes overschrijven.
+  const patchVan = new Map<string, BoekingBijwerking>();
+  const voegToe = (id: string, patch: BoekingBijwerking): void => {
+    const was = patchVan.get(id);
+    if (was) Object.assign(was, patch);
+    else {
+      const nieuw = { ...patch };
+      patchVan.set(id, nieuw);
+      uit.gewijzigdeBoekingen.push({ id, patch: nieuw });
+    }
+  };
   if (keuze.ingrijpend) {
     for (const wissel of plan.trainerwissels) {
-      for (const id of wissel.boekingIds) {
-        uit.gewijzigdeBoekingen.push({ id, patch: { coach_id: wissel.trainerId } });
-      }
+      for (const id of wissel.boekingIds) voegToe(id, { coach_id: wissel.trainerId });
     }
+  }
+
+  // 2c. De spelers op de komende lessen: hetzelfde rooster dat de groep hierboven kreeg, dus
+  //     mét de keuze erin — zonder bevestiging valt er niemand van een les, maar wie erbij komt
+  //     staat er wel op. De betaler is de eerste van het rooster, zoals bij een nieuwe les
+  //     (`deelnemersVoorLes`); de lesreeksen worden buiten de app gefactureerd.
+  for (const wissel of plan.deelnemerswissels) {
+    const rooster = roosterVanGroep.get(wissel.groepId);
+    const deelnemers = rooster ? deelnemersVoorLes(rooster) : null;
+    if (!deelnemers) continue;
+    const patch: BoekingBijwerking = {
+      player_id: deelnemers.player_id,
+      participant_ids: deelnemers.participant_ids,
+    };
+    // Een groepsles gaat altijd op factuur. Wordt een groep een privéles, dan blijft de
+    // betaalwijze die er stond: daar is niets nieuws over afgesproken.
+    if (deelnemers.participant_ids.length > 0) patch.payment_method = deelnemers.payment_method;
+    for (const id of wissel.boekingIds) voegToe(id, patch);
   }
 
   // 3. De lessen. Ze verwijzen naar de groep én naar haar spelers, dus ze kunnen pas nu.

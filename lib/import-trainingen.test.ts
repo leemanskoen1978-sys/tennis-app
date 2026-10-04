@@ -1898,8 +1898,8 @@ describe('planImportLessen', () => {
 
   it('geeft een plan met alles erin wat de droogloop moet tonen', () => {
     expect(Object.keys(plan()).sort()).toEqual([
-      'botsingen', 'dubbel', 'fouten', 'groepenBijgewerkt', 'groepenNieuw', 'groepenOngewijzigd',
-      'handmatigGewijzigd', 'nietHerkend', 'nieuweLessen', 'ongewijzigdeLessen', 'overgeslagen',
+      'botsingen', 'deelnemerswissels', 'dubbel', 'fouten', 'groepenBijgewerkt', 'groepenNieuw',
+      'groepenOngewijzigd', 'handmatigGewijzigd', 'nietHerkend', 'nieuweLessen', 'ongewijzigdeLessen', 'overgeslagen',
       'regels', 'spelersNieuw', 'trainersNieuw', 'trainerwissels', 'verdwenenUitBestand',
       'waarschuwingen',
     ]);
@@ -3523,5 +3523,130 @@ describe('lessen-voorbeeld.xlsx — van bytes tot lesplan', () => {
     expect(tweede.spelersNieuw).toEqual([]);
     expect(tweede.nieuweLessen).toEqual([]);
     expect(tweede.groepenOngewijzigd).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Een speler die van moment wisselt (oktober 2026)
+//
+// De club stuurde in oktober een nieuwe indeling: dezelfde lesdagen, maar spelers op een ander
+// moment. Een herimport zette het rooster van de groep goed en liet de lessen die al ingepland
+// stonden zoals ze waren — wie van groep wisselde, stond tot juni op de afvinklijst van zijn
+// oude groep. Bij het weekschema geldt het rooster voor elke week, dus volgen de komende lessen.
+// ---------------------------------------------------------------------------
+
+describe('de komende lessen volgen het nieuwe rooster', () => {
+  const KOP_WEEK = [
+    'Doelgroep', 'Groep', 'Weekdag', 'Uur', 'Terrein(en)', 'Trainer(s)', 'Speler(s)',
+  ];
+  const SETTINGS_WEEK = {
+    lesson_duration_minutes: 60,
+    vakanties: [],
+    season_start: '2026-09-07',
+    season_end: '2026-09-30',
+  };
+  const ASTOR = userVan({ id: 'u-astor', name: 'Peferoen Astor' });
+  const CLARA = userVan({ id: 'u-clara', name: 'Martens Clara' });
+  const TOM = userVan({ id: 'u-tom', name: 'Peeters Tom' });
+  const BLAUW = groepVan({
+    id: 'g-blauw', name: 'Blauw 1', weekday: 3, start_hour: 14,
+    coach_id: KOEN.id, court_id: BAAN.id, roster: ['u-astor', 'u-tom'],
+  });
+  /** De vier woensdagen van september om 14 uur, met Tom erin — zoals ze nu ingepland staan. */
+  function lessenMetTom(): ImportBoeking[] {
+    return [9, 16, 23, 30].map((dag, i) => boekingVan({
+      id: `b-blauw-${i}`,
+      group_id: 'g-blauw',
+      coach_id: KOEN.id,
+      start_time: new Date(2026, 8, dag, 14, 0).toISOString(),
+      end_time: new Date(2026, 8, dag, 15, 0).toISOString(),
+    }));
+  }
+  const rij = (spelers: string, trainer = 'Koen Leemans') => [
+    'Kidstennis blauw', 'Blauw 1', 'woensdag', '14:00 - 15:00', 'Baan 1', trainer, spelers,
+  ];
+  const plan = (
+    spelers = 'Peferoen Astor, Martens Clara',
+    lessen = lessenMetTom(),
+    nu = NU,
+    trainer = 'Koen Leemans',
+  ) => planImportLessen(
+    [KOP_WEEK, rij(spelers, trainer)], [BLAUW], [KOEN, SOFIE, ASTOR, CLARA, TOM], [BAAN], lessen,
+    SETTINGS_WEEK, nu,
+  );
+
+  it('noemt in het plan hoeveel komende lessen andere spelers krijgen', () => {
+    expect(plan().deelnemerswissels).toEqual([{
+      groep: 'Blauw 1',
+      groepId: 'g-blauw',
+      aantal: 4,
+      boekingIds: ['b-blauw-0', 'b-blauw-1', 'b-blauw-2', 'b-blauw-3'],
+    }]);
+  });
+
+  it('zet met de bevestiging het nieuwe rooster op elke komende les', () => {
+    const uit = bouwImportWijziging(plan(), teller(), { ingrijpend: true });
+    expect(uit.gewijzigdeBoekingen).toEqual([0, 1, 2, 3].map((i) => ({
+      id: `b-blauw-${i}`,
+      patch: { player_id: 'u-astor', participant_ids: ['u-clara'], payment_method: GROEPSLES_METHOD },
+    })));
+  });
+
+  it('haalt zonder de bevestiging niemand van een les, maar zet wie erbij komt er wél op', () => {
+    const uit = bouwImportWijziging(plan(), teller(), { ingrijpend: false });
+    for (const { patch } of uit.gewijzigdeBoekingen) {
+      expect(patch.player_id).toBe('u-astor');
+      expect(patch.participant_ids).toEqual(['u-clara', 'u-tom']);
+    }
+  });
+
+  it('kiest een nieuwe betaler als de vorige de groep verlaat', () => {
+    const uit = bouwImportWijziging(plan('Martens Clara'), teller(), { ingrijpend: true });
+    expect(uit.gewijzigdeBoekingen[0].patch).toEqual({ player_id: 'u-clara', participant_ids: [] });
+  });
+
+  it('laat een les die al geweest is en een afgezegde les staan zoals ze staan', () => {
+    const lessen = lessenMetTom();
+    lessen[3] = { ...lessen[3], status: 'cancelled' };
+    const uit = plan(undefined, lessen, new Date(2026, 8, 10));
+    // 9 september is geweest, 30 september is afgezegd.
+    expect(uit.deelnemerswissels[0].boekingIds).toEqual(['b-blauw-1', 'b-blauw-2']);
+  });
+
+  it('raakt geen enkele les als het rooster hetzelfde bleef', () => {
+    const uit = plan('Peferoen Astor, Peeters Tom');
+    expect(uit.deelnemerswissels).toEqual([]);
+    expect(bouwImportWijziging(uit, teller(), { ingrijpend: true }).gewijzigdeBoekingen).toEqual([]);
+  });
+
+  it('maakt van een trainerwissel en een roosterwissel op dezelfde les één patch', () => {
+    const opSofie = lessenMetTom().map((b) => ({ ...b, coach_id: SOFIE.id }));
+    const uit = bouwImportWijziging(plan(undefined, opSofie), teller(), { ingrijpend: true });
+    expect(uit.gewijzigdeBoekingen).toHaveLength(4);
+    expect(uit.gewijzigdeBoekingen[0].patch).toEqual({
+      coach_id: KOEN.id,
+      player_id: 'u-astor',
+      participant_ids: ['u-clara'],
+      payment_method: GROEPSLES_METHOD,
+    });
+  });
+
+  it('geeft een nieuwe speler zijn echte id, en niet de plaatshouder', () => {
+    const uit = bouwImportWijziging(plan('Peferoen Astor, Nieuw Kind'), teller(), { ingrijpend: true });
+    const nieuw = uit.nieuweUsers.find((u) => u.name === 'Nieuw Kind');
+    expect(uit.gewijzigdeBoekingen[0].patch.participant_ids).toEqual([nieuw?.id]);
+  });
+
+  it('laat de lessen van het bestand met datums met rust: daar heeft elke les haar eigen spelers', () => {
+    const club = groepVan({ id: 'g-8', coach_id: KOEN.id, court_id: BAAN.id, roster: ['u-astor', 'u-tom'] });
+    const rijen = [
+      KOP_VOLLEDIG,
+      volleRij('09/09/2026', '17:00', 'Groep 8', 'Peferoen Astor'),
+      volleRij('09/09/2026', '17:00', 'Groep 8', 'Martens Clara'),
+    ];
+    const lessen = [boekingVan({ id: 'b-8', group_id: 'g-8' })];
+    const uit = planImportLessen(rijen, [club], [KOEN, ASTOR, CLARA, TOM], [BAAN], lessen, {}, NU);
+    expect(uit.groepenBijgewerkt).toHaveLength(1);
+    expect(uit.deelnemerswissels).toEqual([]);
   });
 });

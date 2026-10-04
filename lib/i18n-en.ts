@@ -1055,9 +1055,11 @@ export const EN: Record<string, string> = {
     '{nieuw} new lesson groups, {bijgewerkt} updated, {ongewijzigd} unchanged.',
   '{spelers} nieuwe spelers, {lessen} lessen ingepland.':
     '{spelers} new players, {lessen} lessons scheduled.',
-  '{groepen} lesgroepen aangemaakt, {bijgewerkt} bijgewerkt, {spelers} spelers erbij, {lessen} lessen ingepland, {gewisseld} lessen kregen een andere trainer.':
+  '{groepen} lesgroepen aangemaakt, {bijgewerkt} bijgewerkt, {spelers} spelers erbij, {lessen} lessen ingepland, {gewisseld} komende lessen bijgewerkt.':
     '{groepen} lesson groups created, {bijgewerkt} updated, {spelers} players added, '
-    + '{lessen} lessons scheduled, {gewisseld} lessons got a different coach.',
+    + '{lessen} lessons scheduled, {gewisseld} upcoming lessons updated.',
+  '{lessen} komende lessen van {groepen} lesgroepen krijgen het nieuwe rooster.':
+    '{lessen} upcoming lessons of {groepen} lesson groups get the new roster.',
   '{n} lessen staan al goed en blijven zoals ze zijn.':
     '{n} lessons are already correct and stay as they are.',
   '{vakantie} vallen in een clubvakantie, {verleden} zijn al geweest.':

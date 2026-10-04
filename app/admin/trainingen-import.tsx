@@ -468,7 +468,7 @@ function PlanInBeeld({
         {bestandsnaam ? <Text style={styles.mededeling}>{bestandsnaam}</Text> : null}
         {uitkomst ? (
           <Text style={styles.telling}>
-            {t('{groepen} lesgroepen aangemaakt, {bijgewerkt} bijgewerkt, {spelers} spelers erbij, {lessen} lessen ingepland, {gewisseld} lessen kregen een andere trainer.', {
+            {t('{groepen} lesgroepen aangemaakt, {bijgewerkt} bijgewerkt, {spelers} spelers erbij, {lessen} lessen ingepland, {gewisseld} komende lessen bijgewerkt.', {
               groepen: uitkomst.nieuweGroepen,
               bijgewerkt: uitkomst.bijgewerkteGroepen,
               spelers: uitkomst.spelers,
@@ -504,6 +504,17 @@ function PlanInBeeld({
             ) : null}
           </>
         )}
+        {/* Wie van moment wisselt, verhuist ook op de lessen die al ingepland staan; anders blijft
+            hij tot juni op de afvinklijst van zijn oude groep. Het getal komt uit
+            `plan.deelnemerswissels`, dezelfde lijst die straks weggeschreven wordt. */}
+        {plan.deelnemerswissels.length > 0 && !uitkomst ? (
+          <Text style={styles.telling}>
+            {t('{lessen} komende lessen van {groepen} lesgroepen krijgen het nieuwe rooster.', {
+              lessen: plan.deelnemerswissels.reduce((som, w) => som + w.aantal, 0),
+              groepen: plan.deelnemerswissels.length,
+            })}
+          </Text>
+        ) : null}
         <Text style={styles.mededeling}>
           {t('{n} lessen staan al goed en blijven zoals ze zijn.', { n: plan.ongewijzigdeLessen.length })}
         </Text>
