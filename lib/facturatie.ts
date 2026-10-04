@@ -170,6 +170,20 @@ export interface VrijeLijn {
 }
 
 /**
+ * Eén extra les op het overzicht dat met de factuur meegaat.
+ *
+ * Een eigen, smal type en niet `Factuurles`: wat Racso wil zien is wie, wanneer, wat en
+ * hoe lang. De groep, de status en de sleutel van een geplakte les hebben daar niets te
+ * zoeken, en ze zouden wél mee in de databank belanden.
+ */
+export interface ExtraLes {
+  datum: string;
+  naam: string;
+  type: string;
+  uren: number;
+}
+
+/**
  * Een gemaakte factuur.
  *
  * De klantgegevens staan hier uitgeschreven en niet als verwijzing naar `Klant`: verhuist een
@@ -194,6 +208,13 @@ export interface Factuur {
   btw_bedrag: number;
   totaal: number;
   vrije_lijnen: VrijeLijn[];
+  /**
+   * Het overzicht dat Racso elke maand vraagt, zoals het bij het maken van de factuur was.
+   *
+   * Een kopie en geen verwijzing, om dezelfde reden als de klantgegevens hierboven: wordt
+   * er volgende maand een les geschrapt, dan mag een verstuurde factuur niet meeveranderen.
+   */
+  extra_lessen: ExtraLes[];
   betaald: boolean;
   betaald_op: string | null;
   opmerking: string;
@@ -378,4 +399,155 @@ export function urenUitApp(
   }
 
   return rond2(uren);
+}
+
+/**
+ * De extra lessen van één klant in één maand, oudste eerst.
+ *
+ * Dit is hetzelfde rijtje dat `urenPerClub` als `urenPrive` optelt, maar dan uitgeschreven:
+ * Racso wil niet alleen het getal maar ook waar het vandaan komt.
+ */
+export function extraLessenUit(
+  lessen: readonly Factuurles[],
+  klant: Klant,
+  maand: number,
+  jaar: number,
+): ExtraLes[] {
+  const korteNaam = schoon(klant.korte_naam);
+
+  return lessen
+    .filter((l) => l.bron === 'prive' && l.actief
+      && schoon(l.club_tekst) === korteNaam && inMaand(l.datum, maand, jaar))
+    .sort((a, b) => a.datum.localeCompare(b.datum))
+    .map((l) => ({
+      datum: l.datum,
+      naam: l.naam_prive,
+      type: l.type_prive,
+      uren: urenVan(l),
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// Een factuur samenstellen
+// ---------------------------------------------------------------------------
+
+export interface FactuurOpties {
+  id: string;
+  klant: Klant;
+  /** Het totaal van de gekozen bron plus de privélessen. */
+  uren: number;
+  vrijeLijnen: readonly VrijeLijn[];
+  /** Het overzicht dat als tweede tabblad meegaat. Leeg mag. */
+  extraLessen: readonly ExtraLes[];
+  factuurnr: string;
+  /** `2026-10-01`. */
+  factuurdatum: string;
+  omschrijving: string;
+  maand: number;
+  jaar: number;
+  /** Wanneer hij gemaakt is, als ISO-tijdstip. Meegegeven zodat de test niet van de klok afhangt. */
+  aangemaakt: string;
+}
+
+/** Hoeveel dagen een factuur de tijd krijgt. Staat ook in de voettekst van het blad. */
+const BETAALTERMIJN_DAGEN = 15;
+
+/**
+ * De cijfers van een factuur, klaar om te bewaren en om er een blad van te maken.
+ *
+ * Elke lijn wordt apart afgerond en daarna opgeteld, niet omgekeerd. Zo staat op de factuur
+ * precies de som van de bedragen die erop te lezen zijn — anders klopt de optelling van wie
+ * het natelt een cent niet, en dat is precies waar een boekhouder op terugkomt.
+ */
+export function factuurUit(opties: FactuurOpties): Factuur {
+  const { klant, uren, vrijeLijnen } = opties;
+
+  const urenBedrag = rond2(uren * klant.uurtarief);
+  const vrijBedrag = vrijeLijnen.reduce((som, l) => som + rond2(l.aantal * l.tarief), 0);
+  const netto = rond2(urenBedrag + vrijBedrag);
+  const btw_bedrag = rond2((netto * klant.btw_percentage) / 100);
+
+  return {
+    id: opties.id,
+    factuurnr: opties.factuurnr,
+    klant_naam: klant.klantnaam,
+    klant_adres: klant.adres,
+    klant_postcode_gemeente: klant.postcode_gemeente,
+    klant_btw: klant.btw_nummer,
+    factuurdatum: opties.factuurdatum,
+    vervaldatum: plusDagen(opties.factuurdatum, BETAALTERMIJN_DAGEN),
+    omschrijving: opties.omschrijving,
+    dienstmaand: opties.maand,
+    dienstjaar: opties.jaar,
+    aantal_uren: rond2(uren),
+    uurtarief: klant.uurtarief,
+    netto,
+    btw_percentage: klant.btw_percentage,
+    btw_bedrag,
+    totaal: rond2(netto + btw_bedrag),
+    vrije_lijnen: [...vrijeLijnen],
+    extra_lessen: [...opties.extraLessen],
+    betaald: false,
+    betaald_op: null,
+    opmerking: '',
+    aangemaakt: opties.aangemaakt,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Waarmee het begint
+// ---------------------------------------------------------------------------
+
+/**
+ * Mijn gegevens zoals ze op elke factuur komen.
+ *
+ * Eén leverancier voor beide clubs. De Gantoise-factuur ging vroeger uit op naam van AI4U;
+ * dat is op 4 oktober 2026 afgeschaft en komt hier bewust niet in terug.
+ */
+export function standaardLeverancier(id: string): Leverancier {
+  return {
+    id,
+    naam: 'Sport4fun',
+    adres: 'Broekstraat 51 9290 Overmere',
+    btw: 'BE0647703840',
+    iban: 'BE90143103210832',
+    bic: 'GEBA BE BB',
+  };
+}
+
+/**
+ * De twee clubs, met de gegevens van 4 oktober 2026.
+ *
+ * `naam_in_lijst` van Racso is `T.C. RACSO` en niet `RACSO`: zo staat hij in de geplakte
+ * lijst. In `facturen.xlsx` stond `RACSO`, en daardoor telde die werkmap Racso op nul uur.
+ */
+export function standaardKlanten([idGantoise, idRacso]: readonly string[]): Klant[] {
+  return [
+    {
+      id: idGantoise,
+      klantnaam: 'VZW Gantoise',
+      adres: 'Noorderlaan 25',
+      postcode_gemeente: '9000 Gent',
+      btw_nummer: 'BE0409025343',
+      uurtarief: 33,
+      korte_naam: 'Gantoise',
+      naam_in_lijst: 'GANTOISE',
+      btw_percentage: 0,
+      bron_voorkeur: 'app',
+      volgorde: 1,
+    },
+    {
+      id: idRacso,
+      klantnaam: 'VZW Racso',
+      adres: 'Graaf Wickmanstraat 16',
+      postcode_gemeente: '9070 Destelbergen',
+      btw_nummer: 'BE0418482744',
+      uurtarief: 31,
+      korte_naam: 'Racso',
+      naam_in_lijst: 'T.C. RACSO',
+      btw_percentage: 0,
+      bron_voorkeur: 'geplakt',
+      volgorde: 2,
+    },
+  ];
 }

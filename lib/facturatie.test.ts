@@ -4,6 +4,7 @@ import { leesPlaktekst } from './facturatie-plak';
 import {
   magFactureren, schoon, sleutelVan, rond2, plusDagen, MAANDNAMEN, urenVan,
   urenPerClub, urenUitApp, onbekendeClubs,
+  factuurUit, extraLessenUit, standaardLeverancier, standaardKlanten,
   type Factuurles, type Klant, type AppBoeking,
 } from './facturatie';
 
@@ -350,5 +351,180 @@ describe('urenUitApp', () => {
     });
     expect(urenUitApp([overMiddernacht], 'koen', 9, 2026)).toBe(1);
     expect(urenUitApp([overMiddernacht], 'koen', 10, 2026)).toBe(0);
+  });
+});
+
+describe('extraLessenUit', () => {
+  /** Een privéles bij Racso: zo zet het scherm er een weg. */
+  function extra(naam: string, datum: string, velden: Partial<Factuurles> = {}): Factuurles {
+    return {
+      id: `p-${naam}-${datum}`, bron: 'prive', club_tekst: 'Racso', aanbod: '',
+      doelgroep: '', groep: '', dag_uur: '', trainer: '', status: '', datum, uren: 1,
+      uren_handmatig: null, actief: true, naam_prive: naam, type_prive: 'sponsor',
+      sleutel: `p|${naam}|${datum}`, ...velden,
+    };
+  }
+
+  it('geeft de extra lessen van die klant en die maand, oudste eerst', () => {
+    const lessen = [extra('Veerle', '2026-09-14'), extra('Stan', '2026-09-07')];
+    expect(extraLessenUit(lessen, RACSO, 9, 2026)).toEqual([
+      { datum: '2026-09-07', naam: 'Stan', type: 'sponsor', uren: 1 },
+      { datum: '2026-09-14', naam: 'Veerle', type: 'sponsor', uren: 1 },
+    ]);
+  });
+
+  it('laat een geschrapte les weg', () => {
+    const lessen = [extra('Stan', '2026-09-07', { actief: false })];
+    expect(extraLessenUit(lessen, RACSO, 9, 2026)).toEqual([]);
+  });
+
+  it('laat een andere maand en een andere club weg', () => {
+    const lessen = [extra('Stan', '2026-10-05'), extra('Stan', '2026-09-07', { club_tekst: 'Gantoise' })];
+    expect(extraLessenUit(lessen, RACSO, 9, 2026)).toEqual([]);
+  });
+
+  it('neemt handmatige uren over', () => {
+    const lessen = [extra('Stan', '2026-09-07', { uren_handmatig: 0.5 })];
+    expect(extraLessenUit(lessen, RACSO, 9, 2026)[0].uren).toBe(0.5);
+  });
+
+  it('telt op tot hetzelfde getal als urenPrive', () => {
+    const lessen = [extra('Stan', '2026-09-07'), extra('Veerle', '2026-09-07')];
+    const overzicht = extraLessenUit(lessen, RACSO, 9, 2026);
+    const som = overzicht.reduce((t, l) => t + l.uren, 0);
+    expect(som).toBe(urenPerClub(lessen, [RACSO], 9, 2026)[0].urenPrive);
+  });
+
+  it('geeft een lege lijst en niet undefined als er niets is', () => {
+    expect(extraLessenUit([], RACSO, 9, 2026)).toEqual([]);
+  });
+});
+
+describe('factuurUit', () => {
+  const basis = {
+    id: 'f1',
+    klant: RACSO,
+    uren: 8,
+    vrijeLijnen: [],
+    extraLessen: [],
+    factuurnr: 'NG-0007',
+    factuurdatum: '2026-10-01',
+    omschrijving: 'Tennislessen September 2026',
+    maand: 9,
+    jaar: 2026,
+    aangemaakt: '2026-10-01T09:00:00.000Z',
+  };
+
+  it('rekent 8 uur aan € 31 tot € 248', () => {
+    const f = factuurUit(basis);
+    expect(f.netto).toBe(248);
+    expect(f.btw_bedrag).toBe(0);
+    expect(f.totaal).toBe(248);
+  });
+
+  it('zet de vervaldatum vijftien dagen later', () => {
+    expect(factuurUit(basis).vervaldatum).toBe('2026-10-16');
+  });
+
+  it('schrijft de klantgegevens uit in plaats van ernaar te verwijzen', () => {
+    const f = factuurUit(basis);
+    expect(f.klant_naam).toBe('VZW Racso');
+    expect(f.klant_adres).toBe('Graaf Wickmanstraat 16');
+    expect(f.klant_postcode_gemeente).toBe('9070 Destelbergen');
+    expect(f.klant_btw).toBe('BE0418482744');
+    expect(f.uurtarief).toBe(31);
+  });
+
+  it('telt een vrije lijn bij het netto', () => {
+    const f = factuurUit({
+      ...basis,
+      vrijeLijnen: [{ omschrijving: 'Verplaatsing', aantal: 2, eenheid: 'stuk', tarief: 12.5 }],
+    });
+    expect(f.netto).toBe(273);
+    expect(f.vrije_lijnen).toHaveLength(1);
+  });
+
+  it('rekent BTW als het percentage van de klant niet nul is', () => {
+    const metBtw = factuurUit({ ...basis, klant: klant({ btw_percentage: 21 }) });
+    expect(metBtw.btw_bedrag).toBe(52.08);
+    expect(metBtw.totaal).toBe(300.08);
+  });
+
+  it('rondt elke lijn apart af en telt daarna pas op', () => {
+    const f = factuurUit({
+      ...basis,
+      uren: 1,
+      klant: klant({ uurtarief: 0.335 }),
+      vrijeLijnen: [{ omschrijving: 'x', aantal: 1, eenheid: 'stuk', tarief: 0.335 }],
+    });
+    expect(f.netto).toBe(0.68);
+  });
+
+  it('begint onbetaald en zonder opmerking', () => {
+    const f = factuurUit(basis);
+    expect(f.betaald).toBe(false);
+    expect(f.betaald_op).toBeNull();
+    expect(f.opmerking).toBe('');
+  });
+
+  it('onthoudt voor welke maand hij is', () => {
+    const f = factuurUit(basis);
+    expect(f.dienstmaand).toBe(9);
+    expect(f.dienstjaar).toBe(2026);
+  });
+
+  it('bewaart het overzicht van de extra lessen mee', () => {
+    const f = factuurUit({
+      ...basis,
+      extraLessen: [{ datum: '2026-09-07', naam: 'Stan', type: 'sponsor', uren: 1 }],
+    });
+    expect(f.extra_lessen).toEqual([
+      { datum: '2026-09-07', naam: 'Stan', type: 'sponsor', uren: 1 },
+    ]);
+  });
+
+  it('bewaart een kopie, zodat een latere wijziging de factuur niet raakt', () => {
+    const lijst = [{ datum: '2026-09-07', naam: 'Stan', type: 'sponsor', uren: 1 }];
+    const f = factuurUit({ ...basis, extraLessen: lijst });
+    lijst.push({ datum: '2026-09-14', naam: 'Veerle', type: 'sponsor', uren: 1 });
+    expect(f.extra_lessen).toHaveLength(1);
+  });
+});
+
+describe('standaardLeverancier en standaardKlanten', () => {
+  it('geeft Sport4fun als leverancier', () => {
+    const l = standaardLeverancier('lev-1');
+    expect(l.naam).toBe('Sport4fun');
+    expect(l.btw).toBe('BE0647703840');
+    expect(l.iban).toBe('BE90143103210832');
+    expect(l.bic).toBe('GEBA BE BB');
+    expect(l.adres).toBe('Broekstraat 51 9290 Overmere');
+  });
+
+  it('geeft Gantoise op de app en Racso op de geplakte lijst', () => {
+    const [gantoise, racso] = standaardKlanten(['k-1', 'k-2']);
+    expect(gantoise).toMatchObject({
+      klantnaam: 'VZW Gantoise',
+      adres: 'Noorderlaan 25',
+      postcode_gemeente: '9000 Gent',
+      btw_nummer: 'BE0409025343',
+      uurtarief: 33,
+      naam_in_lijst: 'GANTOISE',
+      bron_voorkeur: 'app',
+      volgorde: 1,
+    });
+    expect(racso).toMatchObject({
+      klantnaam: 'VZW Racso',
+      btw_nummer: 'BE0418482744',
+      uurtarief: 31,
+      naam_in_lijst: 'T.C. RACSO',
+      bron_voorkeur: 'geplakt',
+      volgorde: 2,
+    });
+  });
+
+  it('telt de uren van het voorbeeldbestand met de standaardklanten', () => {
+    const uit = urenPerClub(voorbeeldLessen(), standaardKlanten(['a', 'b']), 10, 2026);
+    expect(uit.map((r) => r.urenGeplakt)).toEqual([25, 9]);
   });
 });
