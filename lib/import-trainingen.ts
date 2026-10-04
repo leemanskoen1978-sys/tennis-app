@@ -1250,7 +1250,10 @@ export function koppelingVoorGroep(
  */
 export type ImportBoeking = Pick<
   Booking, 'id' | 'group_id' | 'coach_id' | 'court_id' | 'start_time' | 'end_time' | 'status'
->;
+>
+  // Wie er op de les staat, om te zien of de komende lessen het rooster al volgen. Optioneel:
+  // een les die het bestand zelf net inplant (`alsBezet`) heeft nog niemand.
+  & Partial<Pick<Booking, 'player_id' | 'participant_ids'>>;
 
 /** Hoe lang een les duurt als de club er niets over zei. Zie `Settings.lesson_duration_minutes`. */
 export const LESDUUR_MINUTEN = 60;
@@ -1493,6 +1496,8 @@ export interface DeelnemersWissel {
   groep: string;
   /** Het id van de bestaande groep: twee groepen van de club kunnen dezelfde naam dragen. */
   groepId: string;
+  /** Het rooster uit het bestand; een nieuwe speler draagt nog zijn plaatshouder. */
+  roster: string[];
   aantal: number;
   boekingIds: string[];
 }
@@ -2201,13 +2206,18 @@ export function planImportLessen(
     plan.handmatigGewijzigd.push(...lessen.handmatigGewijzigd);
     plan.verdwenenUitBestand.push(...lessen.verdwenenUitBestand);
     if (lessen.trainerwissel) plan.trainerwissels.push(lessen.trainerwissel);
-    if (isWeek && groep.bestaand && status === 'bijgewerkt'
-      && (verschil.toegevoegd.length > 0 || verschil.verwijderd.length > 0)) {
-      const komend = komendeLessen([...(opGroep.get(groep.bestaand.id) ?? [])], groep.bestaand.id, nu);
+    // Op de lessen zelf vergeleken en niet op het verschil in het rooster: brak een vorige
+    // import af nadat de groep al weggeschreven was, dan is het rooster "ongewijzigd" en staan
+    // de lessen nog verkeerd. Zo zet opnieuw inlezen ze alsnog recht (D-21).
+    if (isWeek && groep.bestaand && roster.length > 0) {
+      const wordt = [...new Set(roster)].sort().join('|');
+      const komend = komendeLessen([...(opGroep.get(groep.bestaand.id) ?? [])], groep.bestaand.id, nu)
+        .filter((b) => [...new Set([b.player_id, ...(b.participant_ids ?? [])])].sort().join('|') !== wordt);
       if (komend.length > 0) {
         plan.deelnemerswissels.push({
           groep: groep.naam,
           groepId: groep.bestaand.id,
+          roster,
           aantal: komend.length,
           boekingIds: komend.map((b) => b.id),
         });
@@ -2736,8 +2746,10 @@ export function bouwImportWijziging(
   //     staat er wel op. De betaler is de eerste van het rooster, zoals bij een nieuwe les
   //     (`deelnemersVoorLes`); de lesreeksen worden buiten de app gefactureerd.
   for (const wissel of plan.deelnemerswissels) {
-    const rooster = roosterVanGroep.get(wissel.groepId);
-    const deelnemers = rooster ? deelnemersVoorLes(rooster) : null;
+    // Een groep die zelf niet bijgewerkt wordt (een afgebroken vorige import) heeft geen rooster
+    // in `roosterVanGroep`; dan is het rooster van het bestand het rooster van de groep.
+    const rooster = roosterVanGroep.get(wissel.groepId) ?? echteIds(wissel.roster);
+    const deelnemers = deelnemersVoorLes(rooster);
     if (!deelnemers) continue;
     const patch: BoekingBijwerking = {
       player_id: deelnemers.player_id,

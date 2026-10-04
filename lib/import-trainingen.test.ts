@@ -1062,6 +1062,7 @@ function boekingVan(over: Partial<ImportBoeking> = {}): ImportBoeking {
     start_time: new Date(2026, 8, 9, 17, 0).toISOString(),
     end_time: new Date(2026, 8, 9, 18, 0).toISOString(),
     status: 'confirmed',
+    player_id: 'u-speler',
     ...over,
   };
 }
@@ -3557,6 +3558,8 @@ describe('de komende lessen volgen het nieuwe rooster', () => {
     return [9, 16, 23, 30].map((dag, i) => boekingVan({
       id: `b-blauw-${i}`,
       group_id: 'g-blauw',
+      player_id: 'u-astor',
+      participant_ids: ['u-tom'],
       coach_id: KOEN.id,
       start_time: new Date(2026, 8, dag, 14, 0).toISOString(),
       end_time: new Date(2026, 8, dag, 15, 0).toISOString(),
@@ -3579,6 +3582,7 @@ describe('de komende lessen volgen het nieuwe rooster', () => {
     expect(plan().deelnemerswissels).toEqual([{
       groep: 'Blauw 1',
       groepId: 'g-blauw',
+      roster: ['u-astor', 'u-clara'],
       aantal: 4,
       boekingIds: ['b-blauw-0', 'b-blauw-1', 'b-blauw-2', 'b-blauw-3'],
     }]);
@@ -3616,6 +3620,8 @@ describe('de komende lessen volgen het nieuwe rooster', () => {
   it('raakt geen enkele les als het rooster hetzelfde bleef', () => {
     const uit = plan('Peferoen Astor, Peeters Tom');
     expect(uit.deelnemerswissels).toEqual([]);
+    // Ook niet als de betaler een ander is dan de eerste van het bestand: de les heeft dezelfde
+    // mensen, en daar gaat het om.
     expect(bouwImportWijziging(uit, teller(), { ingrijpend: true }).gewijzigdeBoekingen).toEqual([]);
   });
 
@@ -3635,6 +3641,31 @@ describe('de komende lessen volgen het nieuwe rooster', () => {
     const uit = bouwImportWijziging(plan('Peferoen Astor, Nieuw Kind'), teller(), { ingrijpend: true });
     const nieuw = uit.nieuweUsers.find((u) => u.name === 'Nieuw Kind');
     expect(uit.gewijzigdeBoekingen[0].patch.participant_ids).toEqual([nieuw?.id]);
+  });
+
+  it('zet de lessen ook recht als de groep zelf al bijgewerkt was (een afgebroken import)', () => {
+    // Zo liep het op 4 oktober 2026: de groepen stonden al in de databank, de lessen niet. Een
+    // tweede poging ziet dan geen verschil in het rooster, en moet de lessen tóch rechtzetten.
+    const alBijgewerkt = { ...BLAUW, roster: ['u-astor', 'u-clara'] };
+    const lessen = lessenMetTom().map((b) => ({ ...b, player_id: 'u-astor', participant_ids: ['u-tom'] }));
+    const uit = planImportLessen(
+      [KOP_WEEK, rij('Peferoen Astor, Martens Clara')], [alBijgewerkt],
+      [KOEN, SOFIE, ASTOR, CLARA, TOM], [BAAN], lessen, SETTINGS_WEEK, NU,
+    );
+    // Het rooster van de groep verandert niet meer; de lessen wel.
+    expect([...uit.groepenBijgewerkt, ...uit.groepenOngewijzigd].flatMap((g) => [...g.toegevoegd, ...g.verwijderd]))
+      .toEqual([]);
+    expect(uit.deelnemerswissels[0].aantal).toBe(4);
+    const wijziging = bouwImportWijziging(uit, teller(), { ingrijpend: true });
+    expect(wijziging.gewijzigdeBoekingen[0].patch.participant_ids).toEqual(['u-clara']);
+  });
+
+  it('laat een les staan die al precies de spelers van de groep heeft', () => {
+    const lessen = lessenMetTom().map((b, i) => (i === 0
+      ? { ...b, player_id: 'u-clara', participant_ids: ['u-astor'] }
+      : { ...b, player_id: 'u-astor', participant_ids: ['u-tom'] }));
+    expect(plan(undefined, lessen).deelnemerswissels[0].boekingIds)
+      .toEqual(['b-blauw-1', 'b-blauw-2', 'b-blauw-3']);
   });
 
   it('laat de lessen van het bestand met datums met rust: daar heeft elke les haar eigen spelers', () => {
