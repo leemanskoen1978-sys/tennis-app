@@ -329,7 +329,12 @@ export async function saveToSupabase(
       const rows = table === 'users'
         ? (upsert as unknown as Row[]).map(zonderTarief)
         : (upsert as unknown as Row[]);
-      const { error } = await supabase.from(name).upsert(rows);
+      // `defaultToNull: false`: in één upsert met verschillende soorten rijen vult supabase-js
+      // een veld dat in de ene rij ontbreekt anders met null. Zo liep de herimport van
+      // 4 oktober 2026 stuk: bestaande lessen droegen `zoekt_trainer`, de nieuwe niet, en
+      // die kolom is `not null default false`. Nu krijgt zo'n rij de standaardwaarde van de
+      // kolom. Een veld leegmaken blijft werken: een kolom zonder standaardwaarde wordt null.
+      const { error } = await supabase.from(name).upsert(rows, { defaultToNull: false });
       if (error) throw new Error(`${name}: ${error.message}`);
     }
     if (remove.length > 0) {
