@@ -375,6 +375,19 @@ function vrijeCelXml(vrij: XlsxVrijeCel): string {
 export function vrijBladXml(blad: XlsxVrijBlad): string {
   const gelegd = blad.cellen.map((c) => ({ ...c, ...refOntleden(c.ref) }));
 
+  // Twee cellen op dezelfde plaats levert een blad op dat Excel weigert te openen zonder
+  // eerst te "herstellen" — en dan opent de ontvanger een factuur met een foutmelding
+  // ervoor. Het is precies de vergissing die je maakt bij het uitrekenen van een rijnummer,
+  // dus hij wordt hier gevonden en niet daar.
+  const gezien = new Set<string>();
+  for (const cel of gelegd) {
+    const plaats = `${kolomLetter(cel.kolom)}${cel.rij}`;
+    if (gezien.has(plaats)) {
+      throw new Error(`Twee cellen op ${plaats} in blad "${blad.naam}"`);
+    }
+    gezien.add(plaats);
+  }
+
   const laatsteRij = gelegd.reduce((max, c) => Math.max(max, c.rij), 1);
   const laatsteKolom = kolomLetter(gelegd.reduce((max, c) => Math.max(max, c.kolom), 0));
 
@@ -534,6 +547,10 @@ function meerBladenPakket(
   namen: readonly string[],
   inhouden: readonly string[],
 ): Uint8Array {
+  // Excel weigert een werkmap zonder bladen. Hem toch wegschrijven levert een bestand op
+  // dat pas bij de ontvanger stukloopt, en dat is de slechtste plek om het te merken.
+  if (namen.length === 0) throw new Error('Een werkmap zonder bladen bestaat niet.');
+
   const bladPad = (index: number) => `worksheets/sheet${index + 1}.xml`;
 
   const contentTypes = `${KOP}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">`
