@@ -204,9 +204,12 @@ function Lesregel({ les, onBewaar }: {
 
   function zetUren() {
     const getal = Number(urenTekst.replace(',', '.'));
-    // Onzin of hetzelfde getal: niets wegschrijven. Een lege databankronde per toetsaanslag
-    // is precies wat dit scherm traag zou maken.
-    if (!Number.isFinite(getal) || getal < 0 || getal === urenVan(les)) {
+    // Een leeg veld is géén nul uur. `Number('')` is 0, en dat is finiet en niet negatief,
+    // dus zonder deze regel schrijft wegvegen-en-wegklikken stilletjes nul uur weg en telt
+    // de factuur een les te weinig. Onzin en hetzelfde getal vallen hier ook af: een
+    // databankronde per toetsaanslag is precies wat dit scherm traag zou maken.
+    if (urenTekst.trim() === '' || !Number.isFinite(getal) || getal < 0
+      || getal === urenVan(les)) {
       setUrenTekst(String(urenVan(les)));
       return;
     }
