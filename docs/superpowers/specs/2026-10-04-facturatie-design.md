@@ -169,18 +169,20 @@ Daaronder de clubs. Per club: klantnaam, adres, postcode + gemeente, BTW-nummer,
 korte naam, en **de naam zoals die in de plaktekst staat**. Een club toevoegen of
 verwijderen kan.
 
-De twee clubs worden bij het eerste gebruik aangemaakt uit `facturen.xlsx`:
+De twee clubs worden bij het eerste gebruik aangemaakt. Racso komt uit `facturen.xlsx`;
+de gegevens van Gantoise stonden daar niet in en zijn op 4 oktober 2026 door Koen gegeven:
 
-| | klantnaam | adres | BTW | tarief | korte naam | naam in de lijst |
-|---|---|---|---|---|---|---|
-| 1 | VZW Gantoise | *leeg* | *leeg* | € 33 | Gantoise | GANTOISE |
-| 2 | VZW Racso | Graaf Wickmanstraat 16, 9070 Destelbergen | 0418482744 | € 31 | Racso | T.C. RACSO |
+| | klantnaam | adres | postcode + gemeente | BTW | tarief | korte naam | naam in de lijst | bron |
+|---|---|---|---|---|---|---|---|---|
+| 1 | VZW Gantoise | Noorderlaan 25 | 9000 Gent | BE0409025343 | € 33 | Gantoise | GANTOISE | app |
+| 2 | VZW Racso | Graaf Wickmanstraat 16 | 9070 Destelbergen | BE0418482744 | € 31 | Racso | T.C. RACSO | geplakt |
 
-Gantoise krijgt `bron_voorkeur = 'app'`, Racso `bron_voorkeur = 'geplakt'`.
+Het BTW-nummer van Racso staat in het Excel-blad als `BTW nummer: 0418482744`, dus zonder
+landcode en met een opschrift ervoor. In de app staat alleen het nummer zelf, met `BE`
+ervoor, zoals bij Gantoise — het opschrift zet het factuurblad er zelf bij.
 
-De gegevens van Gantoise staan ook in het Excel-blad niet ingevuld. Ze blijven leeg tot Koen
-ze aanvult; het scherm zegt erbij dat een factuur zonder adres en BTW-nummer van de klant
-niet in orde is.
+Het scherm waarschuwt als het adres of het BTW-nummer van een klant leeg is: een factuur
+zonder die twee is niet in orde.
 
 ## Club herkennen
 
@@ -437,5 +439,5 @@ Bewust buiten deze eerste versie, in volgorde van waarschijnlijkheid dat het gev
 
 1. `FACTURATIE.sql` draaien op de databank, en daarna de app **hard herladen** — hij leest
    de databank bij het opstarten.
-2. In **Beheer → Facturatie → Instellingen** het adres en het BTW-nummer van VZW Gantoise
-   aanvullen.
+2. Nakijken of de uren die de app voor Gantoise toont, kloppen met wat hij verwacht. Staat
+   er een verschil met de geplakte lijst, dan zegt de factuurkaart dat erbij.
