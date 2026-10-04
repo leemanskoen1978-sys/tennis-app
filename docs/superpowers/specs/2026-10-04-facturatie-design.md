@@ -41,6 +41,8 @@ Genomen in gesprek op 4 oktober 2026, in volgorde van het gesprek:
 8. Facturatie **schrijft nooit in de rest van de app** en koppelt geen enkele geplakte regel
    aan een bestaande les, speler of boeking. Lezen mag wel: zie *Twee bronnen* hieronder.
 9. De leverancier is **Sport4fun** voor beide clubs.
+11. **Racso wil een overzicht van de extra lessen.** Dat komt als tweede tabblad mee in
+    hetzelfde bestand (bijgekomen op 4 oktober 2026).
 10. Er zijn **twee bronnen van uren** en je kiest er per club één: de geplakte lijst, of de
     lessen die al in de app staan (bijgekomen op 4 oktober 2026, na het eerste ontwerp).
 
@@ -104,7 +106,26 @@ gewoon terug. Geschrapte regels staan doorstreept en zijn met één tik terug te
 uren zijn te overschrijven; staat er een eigen getal, dan toont de app het gerekende getal
 ernaast zodat zichtbaar blijft dat er iets is aangepast.
 
-Een knop **Privéles toevoegen** opent een klein formulier: naam, type, datum, club, uren.
+### Extra lessen
+
+De privélessen heten naar de club toe **extra lessen**. Er zijn er op dit moment precies
+twee, allebei bij Racso en allebei van het type `sponsor`:
+
+| naam | uur | club | type |
+|---|---|---|---|
+| Stan | 09:00 – 10:00 | Racso | sponsor |
+| Veerle | 10:00 – 11:00 | Racso | sponsor |
+
+Daarom staan er op het Lessen-blad twee knoppen die alles al ingevuld hebben — **Stan
+9-10u** en **Veerle 10-11u** — waarbij je alleen nog de datum kiest. Het volle formulier
+(naam, type, club, datum, uren) blijft eronder staan: die twee zijn de huidige stand van
+zaken, geen wet. Komt er een derde bij, dan tik je hem gewoon in.
+
+De twee knoppen staan niet in de code vastgespijkerd maar in één lijst bovenaan
+`components/facturatie/LessenBlad.tsx`, zodat er een regel bij kan zonder dat iemand door
+het scherm moet.
+
+Een knop **Privéles toevoegen** opent het volle formulier: naam, type, datum, club, uren.
 Dat is het blokje M–Q uit `Sheet3`.
 
 ### Blad 2 — Factuur maken
@@ -261,9 +282,31 @@ Alle geldopmaak gaat door `formatEuro` uit `lib/money.ts`.
 
 ## Het xlsx-bestand
 
-Eén blad per factuur, dat het bestaande factuurblad nabootst. Bestandsnaam:
+Eén bestand met **twee tabbladen**: `Factuur` en `Extra lessen`. Bestandsnaam:
 `factuur-<nummer>.xlsx`, met alles wat geen letter, cijfer, streepje of liggend streepje is
 vervangen door een streepje.
+
+Het tweede tabblad is er altijd, ook als het leeg is: dan staat er "Geen extra lessen in
+deze maand." Racso vraagt dat overzicht elke maand, en een tabblad dat er soms wel en soms
+niet is, is een tabblad waarvan iemand denkt dat het vergeten werd.
+
+### Tabblad 2 — Extra lessen
+
+```
+ rij 1   EXTRA LESSEN
+ rij 2   VZW Racso · September 2026 · factuur NG-0007
+ rij 4   Datum        Naam      Type      Uren
+ rij 5   07/09/2026   Stan      sponsor   1,00
+ rij 6   07/09/2026   Veerle    sponsor   1,00
+ rij 7   14/09/2026   Stan      sponsor   1,00
+ ...
+         Totaal                           6,00
+```
+
+Op datum geordend, oudste eerst. De uren onderaan tellen op tot het getal dat op blad 1 in
+het urenblok mee verrekend is.
+
+### Tabblad 1 — de factuur
 
 De indeling, in de rijen van het origineel:
 
@@ -314,8 +357,13 @@ export interface XlsxVrijBlad {
 }
 ```
 
-`bladXml` krijgt een broer `vrijBladXml`, en `buildXlsx`/`buildWorkbook` nemen beide vormen
-aan. De bestaande functies en hun tests blijven zoals ze zijn — de rapporten hangen eraan.
+`bladXml` krijgt een broer `vrijBladXml`, en daarnaast komen `buildVrijXlsx` (één vrij blad)
+en `buildVrijWorkbook` (meer dan één). Dat laatste is wat de factuur nodig heeft: twee
+tabbladen die allebei vrij zijn. `buildWorkbook` kan vandaag wel twee tabbladen aan, maar
+alleen als tabel met een koprij — en een factuur is geen tabel.
+
+De bestaande functies en hun tests blijven zoals ze zijn: `lib/csv.ts` en het
+historiekscherm hangen eraan.
 
 Samengevoegde cellen zijn nodig voor de lange regels (de omschrijving, de twee
 BTW-voetnoten, de betalingsinstructie); zonder dat lopen ze achter de kolom met bedragen.
@@ -344,7 +392,8 @@ facturatie_facturen      id, eigenaar, factuurnr, klant_naam, klant_adres,
                          vervaldatum date, omschrijving, dienstmaand int, dienstjaar int,
                          aantal_uren numeric, uurtarief numeric, netto numeric,
                          btw_percentage numeric, btw_bedrag numeric, totaal numeric,
-                         vrije_lijnen jsonb, betaald bool default false, betaald_op date,
+                         vrije_lijnen jsonb, extra_lessen jsonb,
+                         betaald bool default false, betaald_op date,
                          opmerking text, aangemaakt timestamptz
 ```
 
@@ -353,9 +402,13 @@ met een unieke index op `(eigenaar, sleutel)`. Daardoor kan ook een dubbele plak
 tegelijk binnenkomt geen dubbels maken. Privélessen krijgen een sleutel uit hun eigen velden
 plus hun id, zodat twee identieke privélessen op dezelfde dag elkaar niet uitsluiten.
 
-`vrije_lijnen` is jsonb en geen eigen tabel: die lijnen hebben alleen betekenis samen met
-hun factuur en worden nooit los opgevraagd — dezelfde keuze als voor de beurten van een
-kaart, zie de kop van `supabase-schema.sql`.
+`vrije_lijnen` en `extra_lessen` zijn jsonb en geen eigen tabel: ze hebben alleen betekenis
+samen met hun factuur en worden nooit los opgevraagd — dezelfde keuze als voor de beurten
+van een kaart, zie de kop van `supabase-schema.sql`.
+
+`extra_lessen` is een kopie van de privélessen van die maand, niet een verwijzing ernaar.
+Dezelfde reden als bij de klantgegevens: wat op een verstuurde factuur stond, mag niet
+veranderen omdat er achteraf een les geschrapt wordt.
 
 De klantgegevens worden **mee op de factuur bewaard**, niet alleen als verwijzing. Verhuist
 een club volgend jaar, dan mag een factuur van vorig jaar niet van adres veranderen.
@@ -417,6 +470,9 @@ Alles in `lib/` krijgt tests, zoals de 1935 die er al staan.
 - een afgezegde boeking telt niet mee
 - een boeking van 18:00 tot 19:30 levert 1,50 uur
 - een vrije lijn telt mee in het netto
+- `extraLessenUit` geeft de privélessen van die klant en die maand, op datum geordend
+- een geschrapte privéles komt niet in het overzicht
+- het overzicht telt op tot hetzelfde getal als `urenPrive`
 - BTW 0 % geeft een nettobedrag gelijk aan het totaal
 - `magFactureren` is waar voor het adres in elke schrijfwijze, en onwaar voor elk ander
   adres en voor `null`
@@ -424,7 +480,13 @@ Alles in `lib/` krijgt tests, zoals de 1935 die er al staan.
 `lib/xlsx.test.ts` (uitbreiding)
 - een vrij blad met cellen op hun plaats leest weer uit elkaar op de verwachte coördinaten
 - een samengevoegd bereik komt in de XML terecht
+- een werkmap met twee vrije bladen draagt beide tabbladen, met hun eigen naam
 - de bestaande tabeltests blijven draaien
+
+`lib/facturatie-xlsx.test.ts`
+- het tweede tabblad staat er ook als er geen extra lessen zijn, met de zin erin
+- de extra lessen staan op datum, met een totaalrij die optelt tot `aantal_uren` min de
+  gewone uren
 
 ## Wat er daarna nog niet is
 
@@ -434,6 +496,7 @@ Bewust buiten deze eerste versie, in volgorde van waarschijnlijkheid dat het gev
 - een factuur opnieuw downloaden uit het register
 - een PDF
 - meer dan één trainer
+- een extra les die zichzelf elke week herhaalt — de twee knoppen vragen per keer een datum
 
 ## Wat Koen moet doen
 
