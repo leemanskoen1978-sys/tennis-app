@@ -164,6 +164,18 @@ describe('ontsnapTerug', () => {
     expect(ontsnapTerug('Dupont &amp; Zoon')).toBe('Dupont & Zoon');
     expect(ontsnapTerug('&amp;lt;')).toBe('&lt;');
   });
+
+  it('leest een teken dat als nummer geschreven is, decimaal en hexadecimaal', () => {
+    // Excel schrijft een ë gewoon als ë, maar andere programma's — openpyxl bijvoorbeeld —
+    // schrijven `&#235;`. Dat is even geldige XML. Zonder dit werd "Beltrami Joël" drie
+    // spelers: de `;` van de entiteit is ook het scheidingsteken van de kolom Speler(s).
+    expect(ontsnapTerug('Beltrami Jo&#235;l')).toBe('Beltrami Joël');
+    expect(ontsnapTerug('Delestr&#xE9;')).toBe('Delestré');
+  });
+
+  it('laat de tekst "&#235;" staan als hij zelf ontsnapt was', () => {
+    expect(ontsnapTerug('&amp;#235;')).toBe('&#235;');
+  });
 });
 
 describe('leesSharedStrings', () => {

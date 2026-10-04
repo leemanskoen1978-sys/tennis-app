@@ -165,7 +165,9 @@ export function bytesNaarTekst(bytes: Uint8Array): string {
 // ---------------------------------------------------------------------------
 
 /**
- * De vijf entiteiten die `xml()` in `lib/xlsx.ts` erin zet, er weer uit.
+ * De vijf entiteiten die `xml()` in `lib/xlsx.ts` erin zet, er weer uit — en een teken dat als
+ * nummer geschreven is (`&#235;`, `&#xE9;`). Excel zelf schrijft een ë gewoon als ë, maar een
+ * bestand uit een ander programma doet dat niet altijd, en dat is even geldige XML.
  *
  * De volgorde is niet vrij: `&amp;` gaat als láátste. Andersom wordt `&amp;lt;` — de tekst
  * "&lt;" die een coach letterlijk in een naam kan hebben staan — eerst "&lt;" en daarna het
@@ -178,6 +180,8 @@ export function ontsnapTerug(tekst: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#([0-9]+);/g, (_, dec: string) => String.fromCodePoint(parseInt(dec, 10)))
     .replace(/&amp;/g, '&');
 }
 
