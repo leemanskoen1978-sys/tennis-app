@@ -38,9 +38,45 @@ Genomen in gesprek op 4 oktober 2026, in volgorde van het gesprek:
 5. De **klantgegevens zijn beheerbaar** in een scherm, niet vast in de code.
 6. **Alles wat geplakt is, telt mee.** Geen filter op trainer of status.
 7. Het hangt onder **Beheer → Facturatie**.
-8. Het staat **volledig los** van de lessen, spelers en boekingen die al in de app zitten.
-   De app probeert geen enkele geplakte regel te herkennen als een bestaande les.
+8. Facturatie **schrijft nooit in de rest van de app** en koppelt geen enkele geplakte regel
+   aan een bestaande les, speler of boeking. Lezen mag wel: zie *Twee bronnen* hieronder.
 9. De leverancier is **Sport4fun** voor beide clubs.
+10. Er zijn **twee bronnen van uren** en je kiest er per club één: de geplakte lijst, of de
+    lessen die al in de app staan (bijgekomen op 4 oktober 2026, na het eerste ontwerp).
+
+## Twee bronnen
+
+Voor Gantoise staan de lessen ook gewoon in de app: het zijn de boekingen waar Koen de
+lesgever van is. Voor Racso niet. Beide wegen moeten kunnen, en het scherm moet tonen welke
+je neemt.
+
+Per club kies je daarom **één** bron. Op de factuurkaart staan de twee getallen naast
+elkaar:
+
+```
+  Uit de app              35,00 u      ( )
+  Uit de geplakte lijst   35,00 u      (•)
+  Privélessen              0,00 u
+```
+
+Eén tik wisselt. Lopen de twee uiteen, dan zie je dat meteen — dat is precies de controle
+die vandaag niemand doet. Optellen kan niet: de twee beschrijven dezelfde lessen, en de som
+zou dubbel zijn.
+
+**Privélessen tellen altijd mee**, bij welke bron je ook kiest. Ze staan per definitie in
+geen van beide lijsten.
+
+De keuze wordt per klant bewaard (`bron_voorkeur` op `facturatie_klanten`), zodat Gantoise
+op de app blijft staan en Racso op de geplakte lijst. Standaard is de geplakte lijst.
+
+**Wat "uit de app" precies telt.** De boekingen waarvan Koen de lesgever is — `lesgeverId`
+uit `lib/lesgever.ts`, dus inclusief lessen die hij van een collega overnam en zonder lessen
+die hij liet overnemen. Dat is dezelfde definitie die zijn profiel al gebruikt
+(`coachPayoutThisMonth` in `lib/reports.ts`). Afgezegde lessen (`status: 'cancelled'`)
+tellen niet mee. De uren zijn `end_time - start_time`, op twee decimalen.
+
+Schrappen en uren corrigeren werkt alleen op de geplakte lijst. Klopt er iets niet aan een
+les in de app, dan hoort dat in de app rechtgezet te worden en niet in de facturatie.
 
 ## Toegang
 
@@ -59,6 +95,9 @@ Eén scherm, `app/admin/facturatie.tsx`, met vier bladen in de stijl van de rest
 Bovenaan een plakvlak met een knop **Verwerken**. Daaronder de lijst van alle gekende
 lessen, nieuwste eerst, met een filter op club en op maand.
 
+De lijst toont alleen de geplakte lessen en de privélessen. Lessen uit de app staan hier
+niet: die horen in de app zelf thuis en zijn hier alleen een getal op de factuurkaart.
+
 Per regel: datum, dag + uur, club, groep, uren, en of hij meetelt. Een regel schrappen zet
 `actief` op onwaar — hij verdwijnt niet, want anders komt hij bij de volgende plakbeurt
 gewoon terug. Geschrapte regels staan doorstreept en zijn met één tik terug te zetten. De
@@ -74,8 +113,9 @@ Maand en jaar kiezen (standaard de vorige maand). Daaronder per club een kaart:
 
 ```
 VZW Racso                                    T.C. RACSO
-  Lessen            6,00 u
-  Privélessen       2,00 u
+  Uit de app             0,00 u   ( )
+  Uit de geplakte lijst  6,00 u   (•)
+  Privélessen            2,00 u
   ───────────────────────
   Totaal            8,00 u  ×  € 31,00  =  € 248,00
   BTW 0 %                                  € 0,00
@@ -102,6 +142,7 @@ het nettobedrag.
 |---|---|
 | "Dit nummer staat al in het register" | het factuurnummer bestaat al — waarschuwing, je mag door |
 | "Er zijn geen uren voor deze maand" | het totaal is nul — de knop is uit |
+| "De app zegt 35,00 u, de geplakte lijst 34,00 u" | de twee bronnen verschillen — waarschuwing, je mag door |
 | "De factuurdatum valt buiten de dienstmaand" | losse waarschuwing, je mag door |
 | "Deze club is deze maand al gefactureerd" | er staat al een factuur voor die klant en die maand in het register — waarschuwing |
 | "3 lessen bij een club die ik niet ken: T.C. RACSO" | zie *Club herkennen* |
@@ -134,6 +175,8 @@ De twee clubs worden bij het eerste gebruik aangemaakt uit `facturen.xlsx`:
 |---|---|---|---|---|---|---|
 | 1 | VZW Gantoise | *leeg* | *leeg* | € 33 | Gantoise | GANTOISE |
 | 2 | VZW Racso | Graaf Wickmanstraat 16, 9070 Destelbergen | 0418482744 | € 31 | Racso | T.C. RACSO |
+
+Gantoise krijgt `bron_voorkeur = 'app'`, Racso `bron_voorkeur = 'geplakt'`.
 
 De gegevens van Gantoise staan ook in het Excel-blad niet ingevuld. Ze blijven leeg tot Koen
 ze aanvult; het scherm zegt erbij dat een factuur zonder adres en BTW-nummer van de klant
@@ -190,17 +233,23 @@ bij, met de reden. Niets verdwijnt zonder dat het op het scherm komt.
 ```ts
 urenPerClub(lessen, klanten, maand, jaar): Array<{
   klant: Klant;
-  urenLessen: number;
+  urenGeplakt: number;
   urenPrive: number;
-  totaalUren: number;
 }>
+urenUitApp(bookings, lesgeverId, maand, jaar): number
 onbekendeClubs(lessen, klanten, maand, jaar): Array<{ naam: string; aantal: number }>
-factuurUit(klant, leverancier, uren, vrijeLijnen, nummer, datum, omschrijving): Factuur
+factuurUit(klant, uren, vrijeLijnen, nummer, datum, omschrijving, maand, jaar): Factuur
 ```
 
-Meetellen doet een les als ze `actief` is, haar datum in de gevraagde maand valt, en haar
-club op een klant uitkomt. Geplakte lessen en privélessen tellen apart maar gaan samen in het
-totaal, zoals kolom T en U in `Sheet3`.
+Meetellen doet een geplakte les als ze `actief` is, haar datum in de gevraagde maand valt,
+en haar club op een klant uitkomt. Het totaal op de factuur is de gekozen bron
+(`urenGeplakt` of `urenUitApp`) plus `urenPrive`.
+
+`urenUitApp` kent geen clubs: de app weet niet bij welke club een boeking hoort. Het getal
+is dus hetzelfde voor elke club, en het heeft alleen betekenis bij de club waarvoor Koen
+`bron_voorkeur = 'app'` zet. Zou er ooit een tweede club op de app staan, dan telt die
+dezelfde uren een tweede keer — het scherm waarschuwt daarvoor zodra meer dan één klant op
+`'app'` staat.
 
 Bedragen worden per lijn afgerond op twee decimalen en dan opgeteld, niet omgekeerd. BTW
 staat op 0 % en is een veld op de klant, geen vaste nul: zou de regeling ooit wijzigen, dan
@@ -315,6 +364,9 @@ boekhouding.
 
 ## Waar het in de app hangt
 
+De uren uit de app komen uit `bookings`, die de provider al bij het opstarten heeft; daar
+hoeft niets extra voor opgehaald te worden.
+
 De provider leest bij het opstarten alles op wat je mag zien, en dat moet zo blijven: deze
 lessenlijst groeit elk jaar en heeft niets met de rest van de app te maken. Facturatie gaat
 daarom **niet** door `SimpleDataProvider`. Het volgt het pad dat `bezetteUren` al bewandelt:
@@ -357,7 +409,11 @@ Alles in `lib/` krijgt tests, zoals de 1935 die er al staan.
   het Gantoise-blad) en Racso 0 uur; oktober geeft Gantoise 25 uur en Racso 9 uur
 - een geschrapte les telt niet mee
 - `uren_handmatig` gaat voor op de gerekende uren
-- privélessen tellen bij het clubtotaal
+- privélessen tellen bij het clubtotaal, bij beide bronnen
+- `urenUitApp` telt alleen boekingen waarvan de gevraagde trainer de lesgever is
+- een boeking die hij liet overnemen telt niet mee, een die hij overnam wel
+- een afgezegde boeking telt niet mee
+- een boeking van 18:00 tot 19:30 levert 1,50 uur
 - een vrije lijn telt mee in het netto
 - BTW 0 % geeft een nettobedrag gelijk aan het totaal
 - `magFactureren` is waar voor het adres in elke schrijfwijze, en onwaar voor elk ander
