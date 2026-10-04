@@ -60,7 +60,13 @@ Vier dingen om te onthouden:
   gelijk is aan die club (`urenUitAppPerKlant`). Terrein 1–11 staan op `GANTOISE`. Uren op een
   terrein zonder bekende club worden bovenaan het factuurblad gemeld. Komt er een
   Racso-terrein bij, vul dan zijn club in. Nagekeken op 4 oktober 2026: september geeft
-  Gantoise 35 u en Racso 0 u.
+  Gantoise 35 u en Racso 0 u; oktober geeft Gantoise 45 u uit de app én uit de geplakte lijst
+  (lesuur per lesuur nagekeken in de databank), en Racso 15 u uit de geplakte lijst.
+- **De factuurkaart opent op de vórige maand.** Wie een lijst van deze maand plakt en de
+  kaart vergelijkt, kijkt naar twee verschillende maanden. Op 4 oktober 2026 leek dat een
+  verschil tussen de app en de lijst; het was de gekozen maand.
+- **Gantoise en Racso mogen door elkaar in de plaktekst staan.** Elke regel telt bij de klant
+  van zijn eerste kolom; de volgorde doet niets.
 - **De clubnaam in de plaktekst is een eigen veld** (`naam_in_lijst`). `T.C. RACSO` is niet
   `RACSO`. In `facturen.xlsx` stond het verkeerd en telde die werkmap Racso een heel seizoen
   op nul uur, zonder dat iets dat zei. Het instellingenscherm waarschuwt als twee clubs
@@ -606,6 +612,9 @@ Op volgorde van wat ik als eerste zou doen:
 - **Voor elke commit**: `npx tsc --noEmit`, `npm test`, en `npx expo export --platform web
   --output-dir .webbuild-check` gevolgd door `rm -rf .webbuild-check`.
 - **Eén agent per bestand.** Twee agents in hetzelfde bestand overschrijven elkaars werk.
+- **SQL voor de eigenaar via het klembord** (`pbcopy < bestand.sql`), niet om over te nemen uit
+  de terminal: daar braken lange regels af en gaf de SQL-editor van Supabase drie keer een
+  syntaxfout op een telkens andere regel. Gebruik ook geen `begin` als kolomnaam.
 - **De dev-server draait** (`npx expo start --web`, poort 8081) en herlaadt bij elke opslag —
   laat dus nooit een half bestand achter dat naar iets verwijst dat nog moet komen.
 - Bestaande vormgeving hergebruiken: `components/ui/ActionTile.tsx` (tegels),
@@ -637,10 +646,10 @@ niet-geëxporteerd zijn ze niet te testen, en dat is de prijs waard.
 
 ## Losse bestanden die niet in git horen
 
-De zeven *Planning lessen Tennis - Jaarcyclus 2026 - 2027 (3) t/m (9).docx* in de projectmap en
-`~/Downloads/Lesgroepen-oktober-2026.xlsx` bevatten de echte namen van de spelers. Ze horen
-niet in git (de repository is publiek). Bewaar ze als naslag buiten de projectmap, of verwijder
-ze. Hetzelfde geldt voor `facturen.xlsx` (zie *Facturatie*).
+`~/Downloads/Lesgroepen-oktober-2026.xlsx` bevat de echte namen van de spelers en hoort niet in
+git (de repository is publiek). Hetzelfde geldt voor `facturen.xlsx` in de projectmap (zie
+*Facturatie*). De zeven Word-documenten van de herindeling en `KEYMOMENT 1.docx` zijn op
+4 oktober 2026 naar de prullenmand verplaatst.
 
 `tennis-oefeningen.html` in de projectmap is de bron van de oefeningen per kleur (zie 1f). De
 inhoud zit nu in `lib/oefeningen.ts`; het bestand zelf is niet gecommit en de app leest het niet.
