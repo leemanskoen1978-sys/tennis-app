@@ -170,6 +170,11 @@ export function factuurWerkmap(factuur: Factuur, leverancier: Leverancier): Uint
  * download zonder uitleg.
  */
 export function factuurBestandsnaam(factuurnr: string): string {
-  const net = factuurnr.trim().replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+  const net = factuurnr.trim()
+    .replace(/[^A-Za-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    // Een bestandsnaam langer dan ongeveer 255 tekens weigeren sommige schijven en
+    // browsers zonder uitleg. Honderd is ruim voor een factuurnummer.
+    .slice(0, 100);
   return net === '' ? 'factuur.xlsx' : `factuur-${net}.xlsx`;
 }

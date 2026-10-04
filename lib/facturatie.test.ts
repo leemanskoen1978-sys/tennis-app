@@ -460,6 +460,15 @@ describe('factuurUit', () => {
     expect(metBtw.totaal).toBe(300.08);
   });
 
+  it('laat de urenlijn optellen tot het netto, ook bij uren met drie decimalen', () => {
+    // 8,005 u wordt op de factuur 8,01 u. Het bedrag op die regel hoort dan 8,01 × € 31 te
+    // zijn en niet 8,005 × € 31, anders staat er een regel van € 248,31 boven een netto
+    // van € 248,16.
+    const f = factuurUit({ ...basis, uren: 8.005 });
+    expect(f.aantal_uren).toBe(8.01);
+    expect(f.netto).toBe(rond2(f.aantal_uren * f.uurtarief));
+  });
+
   it('rondt elke lijn apart af en telt daarna pas op', () => {
     const f = factuurUit({
       ...basis,

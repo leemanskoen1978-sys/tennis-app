@@ -189,6 +189,19 @@ describe('factuurWerkmap', () => {
     expect(bytes[0]).toBe(0x50);
     expect(bytes[1]).toBe(0x4b);
   });
+
+  it('botst nooit op zichzelf, hoeveel vrije lijnen er ook bij komen', () => {
+    // `vrijBladXml` gooit als twee cellen op dezelfde plaats landen. Het totalenblok
+    // schuift op met het aantal vrije lijnen, dus dat is precies waar een rijnummer één
+    // te ver kan tellen. Deze test laat het blad écht schrijven in plaats van losse
+    // celverwijzingen na te kijken.
+    for (const aantal of [0, 1, 2, 5, 12]) {
+      const lijnen = Array.from({ length: aantal }, (_, i) => ({
+        omschrijving: `Lijn ${i + 1}`, aantal: 1, eenheid: 'stuk', tarief: 10,
+      }));
+      expect(() => factuurWerkmap(factuur({ vrije_lijnen: lijnen }), LEVERANCIER)).not.toThrow();
+    }
+  });
 });
 
 describe('factuurBestandsnaam', () => {
@@ -203,5 +216,14 @@ describe('factuurBestandsnaam', () => {
 
   it('valt terug op "factuur.xlsx" als het nummer leeg is', () => {
     expect(factuurBestandsnaam('   ')).toBe('factuur.xlsx');
+  });
+
+  it('haalt streepjes aan de randen weg', () => {
+    expect(factuurBestandsnaam('-NG-0007-')).toBe('factuur-NG-0007.xlsx');
+  });
+
+  it('topt een onwaarschijnlijk lang nummer af', () => {
+    const lang = 'A'.repeat(300);
+    expect(factuurBestandsnaam(lang).length).toBeLessThanOrEqual(113);
   });
 });

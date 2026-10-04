@@ -474,7 +474,11 @@ const BETAALTERMIJN_DAGEN = 15;
 export function factuurUit(opties: FactuurOpties): Factuur {
   const { klant, uren, vrijeLijnen } = opties;
 
-  const urenBedrag = rond2(uren * klant.uurtarief);
+  // Met de áfgedrukte uren rekenen, niet met het ruwe getal. Staat er 8,01 u op de factuur
+  // en rekent het bedrag met 8,005, dan telt de regel niet op tot het nettobedrag eronder —
+  // en dan heeft wie het natelt gelijk en de factuur ongelijk.
+  const aantalUren = rond2(uren);
+  const urenBedrag = rond2(aantalUren * klant.uurtarief);
   const vrijBedrag = vrijeLijnen.reduce((som, l) => som + rond2(l.aantal * l.tarief), 0);
   const netto = rond2(urenBedrag + vrijBedrag);
   const btw_bedrag = rond2((netto * klant.btw_percentage) / 100);
@@ -491,7 +495,7 @@ export function factuurUit(opties: FactuurOpties): Factuur {
     omschrijving: opties.omschrijving,
     dienstmaand: opties.maand,
     dienstjaar: opties.jaar,
-    aantal_uren: rond2(uren),
+    aantal_uren: aantalUren,
     uurtarief: klant.uurtarief,
     netto,
     btw_percentage: klant.btw_percentage,
