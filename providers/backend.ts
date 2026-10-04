@@ -9,13 +9,16 @@
 // profiel). Wat hij niet kan, is samenwerken — twee toestellen weten niets van elkaar.
 
 import { supabaseConfigured } from '../lib/supabase';
+import { facturatieLokaal } from './facturatieLokaal';
 import {
   bezetteUrenLokaal, loadStore, saveStore, resetStore, type StoreData,
 } from './mockStore';
+import { facturatieSupabase } from './facturatieStore';
 import {
   bezetteUrenUitSupabase, currentAppUserId, loadFromSupabase, onAuthChange, saveToSupabase,
   signIn, signOut, signUp, stuurHerstelmail, zetNieuwWachtwoord, type AuthGebeurtenis,
 } from './supabaseStore';
+import type { Factuur, Factuurles, FacturatieData, Klant, Leverancier } from '../lib/facturatie';
 import type { AanmeldUitkomst } from '../lib/wachtwoord';
 import type { BezetUur } from '../lib/types';
 
@@ -25,6 +28,26 @@ import type { BezetUur } from '../lib/types';
  *  - 'wachtwoord': e-mailadres en wachtwoord, echte accounts (Supabase).
  */
 export type AuthMode = 'profiel' | 'wachtwoord';
+
+/**
+ * De facturatie, los van de rest.
+ *
+ * Waarom dit niet in `load`/`save` zit: die halen bij het opstarten alles op wat je mag zien,
+ * voor iedereen. Deze gegevens gaan één persoon aan, groeien elk jaar, en worden pas gelezen
+ * als hij het scherm opent. Hetzelfde argument als bij `bezetteUren` hieronder.
+ */
+export interface FacturatieBackend {
+  /** `null` betekent "de tabellen staan er nog niet", niet "er is niets". */
+  laden: () => Promise<FacturatieData | null>;
+  leverancierBewaren: (l: Leverancier) => Promise<void>;
+  klantBewaren: (k: Klant) => Promise<void>;
+  klantVerwijderen: (id: string) => Promise<void>;
+  lessenToevoegen: (lessen: readonly Factuurles[]) => Promise<void>;
+  lesBewaren: (les: Factuurles) => Promise<void>;
+  lesVerwijderen: (id: string) => Promise<void>;
+  factuurBewaren: (f: Factuur) => Promise<void>;
+  factuurVerwijderen: (id: string) => Promise<void>;
+}
 
 export interface Backend {
   /** Voor de foutmelding en het inlogscherm: waar praat de app mee? */
@@ -62,6 +85,7 @@ export interface Backend {
    * plaats van te doen alsof de dag leeg is.
    */
   bezetteUren: (coachId: string, van: Date, tot: Date) => Promise<BezetUur[] | null>;
+  facturatie: FacturatieBackend;
 }
 
 const localBackend: Backend = {
@@ -90,6 +114,7 @@ const localBackend: Backend = {
   // Lokaal is er geen grens tussen wat je mag zien en wat er is: alles staat in deze browser.
   // Deze kant kan de vraag dus altijd beantwoorden, en geeft nooit null.
   bezetteUren: bezetteUrenLokaal,
+  facturatie: facturatieLokaal,
 };
 
 const supabaseBackend: Backend = {
@@ -110,6 +135,7 @@ const supabaseBackend: Backend = {
   stuurHerstelmail,
   zetNieuwWachtwoord,
   bezetteUren: bezetteUrenUitSupabase,
+  facturatie: facturatieSupabase,
 };
 
 export const backend: Backend = supabaseConfigured ? supabaseBackend : localBackend;
