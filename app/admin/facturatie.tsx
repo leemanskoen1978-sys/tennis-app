@@ -42,7 +42,7 @@ type Stand =
   | { soort: 'klaar'; data: FacturatieData };
 
 export default function Facturatie() {
-  const { currentUser, bookings } = useSimpleData();
+  const { currentUser, bookings, courts } = useSimpleData();
   const [blad, setBlad] = useState<Blad>('factuur');
   const [stand, setStand] = useState<Stand>({ soort: 'laden' });
 
@@ -139,7 +139,7 @@ export default function Facturatie() {
 
       {blad === 'lessen' && <LessenBlad data={data} opnieuwLaden={laden} />}
       {blad === 'factuur' && (
-        <FactuurBlad data={data} bookings={bookings} trainerId={currentUser?.id ?? ''} opnieuwLaden={laden} />
+        <FactuurBlad data={data} bookings={bookings} courts={courts} trainerId={currentUser?.id ?? ''} opnieuwLaden={laden} />
       )}
       {blad === 'register' && <RegisterBlad data={data} opnieuwLaden={laden} />}
       {blad === 'instellingen' && <InstellingenBlad data={data} opnieuwLaden={laden} />}

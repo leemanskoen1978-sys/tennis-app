@@ -22,8 +22,8 @@ import { factuurBestandsnaam, factuurWerkmap } from '../../lib/facturatie-xlsx';
 import { shareXlsx, xlsxWordtOndersteund } from '../../lib/share';
 import {
   MAANDNAMEN, extraLessenUit, factuurUit, nieuwId, onbekendeClubs, rond2, urenPerClub,
-  urenUitApp,
-  type AppBoeking, type Bron, type ExtraLes, type FacturatieData, type Klant,
+  urenUitAppPerKlant,
+  type AppBoeking, type AppTerrein, type Bron, type ExtraLes, type FacturatieData, type Klant,
   type VrijeLijn,
 } from '../../lib/facturatie';
 import { formatEuro, parseEuro } from '../../lib/money';
@@ -76,9 +76,10 @@ function vorigeMaand(nu: Date): { maand: number; jaar: number } {
     : { maand, jaar: nu.getFullYear() };
 }
 
-export function FactuurBlad({ data, bookings, trainerId, opnieuwLaden }: {
+export function FactuurBlad({ data, bookings, courts, trainerId, opnieuwLaden }: {
   data: FacturatieData;
   bookings: readonly AppBoeking[];
+  courts: readonly AppTerrein[];
   trainerId: string;
   opnieuwLaden: () => Promise<void>;
 }) {
@@ -90,16 +91,15 @@ export function FactuurBlad({ data, bookings, trainerId, opnieuwLaden }: {
     () => urenPerClub(data.lessen, data.klanten, maand, jaar),
     [data.lessen, data.klanten, maand, jaar],
   );
+  // Per klant: een les telt bij de klant van haar terrein (Beheer → Banen → Club).
   const uitApp = useMemo(
-    () => urenUitApp(bookings, trainerId, maand, jaar),
-    [bookings, trainerId, maand, jaar],
+    () => urenUitAppPerKlant(bookings, courts, data.klanten, trainerId, maand, jaar),
+    [bookings, courts, data.klanten, trainerId, maand, jaar],
   );
   const onbekend = useMemo(
     () => onbekendeClubs(data.lessen, data.klanten, maand, jaar),
     [data.lessen, data.klanten, maand, jaar],
   );
-
-  const opApp = data.klanten.filter((k) => k.bron_voorkeur === 'app').length;
 
   return (
     <View style={styles.blad}>
@@ -125,12 +125,13 @@ export function FactuurBlad({ data, bookings, trainerId, opnieuwLaden }: {
         </Text>
       ))}
 
-      {opApp > 1 && (
-        <Text style={styles.waarschuwing}>
-          {opApp} clubs staan op de bron &quot;de app&quot;. De app weet niet bij welke club een
-          les hoort, dus die tellen allebei dezelfde uren.
+      {uitApp.zonderKlant.map((z) => (
+        <Text key={z.terrein} style={styles.waarschuwing}>
+          {formatEuro(z.uren)} u in de app op {z.terrein}, en dat terrein hoort bij geen klant
+          {z.club ? ` (club: ${z.club})` : ''}. Vul bij Beheer → Banen de club in, met dezelfde
+          naam als de klant hier.
         </Text>
-      )}
+      ))}
 
       {perClub.map((rij) => (
         <KlantFactuur
@@ -143,7 +144,7 @@ export function FactuurBlad({ data, bookings, trainerId, opnieuwLaden }: {
           klant={rij.klant}
           urenGeplakt={rij.urenGeplakt}
           urenPrive={rij.urenPrive}
-          urenApp={uitApp}
+          urenApp={uitApp.perKlant.get(rij.klant.id) ?? 0}
           extraLessen={extraLessenUit(data.lessen, rij.klant, maand, jaar)}
           maand={maand}
           jaar={jaar}

@@ -1060,6 +1060,10 @@ export const EN: Record<string, string> = {
     + '{lessen} lessons scheduled, {gewisseld} upcoming lessons updated.',
   '{lessen} komende lessen van {groepen} lesgroepen krijgen het nieuwe rooster.':
     '{lessen} upcoming lessons of {groepen} lesson groups get the new roster.',
+  'bv. GANTOISE': 'e.g. GANTOISE',
+  'Club van {baan}': 'Club of {baan}',
+  'De facturatie telt de uren op dit terrein bij de klant met dezelfde naam.':
+    'Invoicing counts the hours on this court towards the client with the same name.',
   '{n} lessen staan al goed en blijven zoals ze zijn.':
     '{n} lessons are already correct and stay as they are.',
   '{vakantie} vallen in een clubvakantie, {verleden} zijn al geweest.':

@@ -138,6 +138,12 @@ export interface Court {
    * zelf en kiest de laagste stap die groot genoeg is.
    */
   group_rates?: CourtGroupRate[];
+  /**
+   * De club waar dit terrein ligt, zoals de planning van de club haar schrijft: "GANTOISE".
+   * Beheer → Facturatie telt de uren van een les bij de klant met die naam
+   * (`urenUitAppPerKlant` in lib/facturatie). Leeg: onbekend, en dan meldt de facturatie het.
+   */
+  club?: string;
 }
 
 /**

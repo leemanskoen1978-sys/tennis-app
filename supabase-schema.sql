@@ -235,6 +235,9 @@ create table if not exists installed_catalogues (
 alter table lessons add column if not exists tags jsonb;
 alter table bookings add column if not exists created_by text references users(id) on delete set null;
 alter table courts add column if not exists group_rates jsonb;
+-- De club waar het terrein ligt ("GANTOISE"). De facturatie telt de uren van een terrein bij
+-- de klant met die naam. Leeg: onbekend. Zie BANEN-CLUB.sql.
+alter table courts add column if not exists club text;
 -- Wie de club beheert. Bewust een vinkje en geen vierde rol: een beheerder is meestal ook
 -- gewoon trainer, met zijn eigen agenda en zijn eigen spelers. Zie lib/rechten.ts.
 alter table users add column if not exists is_admin boolean not null default false;

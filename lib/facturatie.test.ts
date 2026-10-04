@@ -3,9 +3,9 @@ import { join } from 'path';
 import { leesPlaktekst } from './facturatie-plak';
 import {
   magFactureren, schoon, sleutelVan, rond2, plusDagen, MAANDNAMEN, urenVan,
-  urenPerClub, urenUitApp, onbekendeClubs,
+  urenPerClub, urenUitApp, urenUitAppPerKlant, onbekendeClubs,
   factuurUit, extraLessenUit, standaardLeverancier, standaardKlanten, nieuwId,
-  type Factuurles, type Klant, type AppBoeking,
+  type Factuurles, type Klant, type AppBoeking, type AppTerrein,
 } from './facturatie';
 
 /** Een geplakte les met alleen de velden die de test nodig heeft ingevuld. */
@@ -299,6 +299,7 @@ describe('urenUitApp', () => {
   function boeking(velden: Partial<AppBoeking>): AppBoeking {
     return {
       coach_id: 'koen',
+      court_id: 'c7',
       start_time: '2026-09-09T14:00:00.000Z',
       end_time: '2026-09-09T15:00:00.000Z',
       status: 'confirmed',
@@ -565,5 +566,68 @@ describe('nieuwId', () => {
   it('geeft twee keer na elkaar niet hetzelfde', () => {
     const veel = new Set(Array.from({ length: 500 }, () => nieuwId('les')));
     expect(veel.size).toBe(500);
+  });
+});
+
+describe('urenUitAppPerKlant', () => {
+  const TERREINEN: AppTerrein[] = [
+    { id: 'c7', name: 'Terrein 7', club: 'GANTOISE' },
+    { id: 'c8', name: 'Terrein 8', club: '  gantoise ' },
+    { id: 'r1', name: 'Racso 1', club: 'Racso' },
+    { id: 'c3', name: 'Terrein 3' },
+    { id: 'x1', name: 'Elders 1', club: 'Ergens Anders' },
+  ];
+  function les(court_id: string, velden: Partial<AppBoeking> = {}): AppBoeking {
+    return {
+      coach_id: 'koen',
+      court_id,
+      start_time: '2026-09-09T14:00:00.000Z',
+      end_time: '2026-09-09T15:00:00.000Z',
+      status: 'confirmed',
+      ...velden,
+    };
+  }
+  const tel = (boekingen: AppBoeking[]) =>
+    urenUitAppPerKlant(boekingen, TERREINEN, [GANTOISE, RACSO], 'koen', 9, 2026);
+
+  it('geeft elke klant alleen de uren op zijn eigen terreinen', () => {
+    const uit = tel([les('c7'), les('c8'), les('r1')]);
+    expect(uit.perKlant.get(GANTOISE.id)).toBe(2);
+    expect(uit.perKlant.get(RACSO.id)).toBe(1);
+  });
+
+  it('geeft een klant zonder lessen nul, en niet niets', () => {
+    expect(tel([les('c7')]).perKlant.get(RACSO.id)).toBe(0);
+  });
+
+  it('herkent de club aan de naam in de lijst én aan de korte naam, zonder op hoofdletters te letten', () => {
+    // Terrein 8 zegt "  gantoise ", Racso 1 zegt "Racso": de korte naam van VZW Racso.
+    const uit = tel([les('c8'), les('r1')]);
+    expect(uit.perKlant.get(GANTOISE.id)).toBe(1);
+    expect(uit.perKlant.get(RACSO.id)).toBe(1);
+  });
+
+  it('meldt de uren op een terrein zonder club en op een club zonder klant, per terrein', () => {
+    const uit = tel([les('c3'), les('c3'), les('x1'), les('weg')]);
+    expect(uit.zonderKlant).toEqual([
+      { terrein: 'Terrein 3', club: '', uren: 2 },
+      { terrein: 'Elders 1', club: 'Ergens Anders', uren: 1 },
+      // Een terrein dat niet meer bestaat: het id is beter dan niets.
+      { terrein: 'weg', club: '', uren: 1 },
+    ]);
+  });
+
+  it('telt alleen wat urenUitApp ook telt: geen andere trainer, geen afgezegde les', () => {
+    const uit = tel([les('c7', { coach_id: 'ann' }), les('c7', { status: 'cancelled' })]);
+    expect(uit.perKlant.get(GANTOISE.id)).toBe(0);
+    expect(uit.zonderKlant).toEqual([]);
+  });
+
+  it('telt per klant samen precies het totaal van urenUitApp', () => {
+    const lessen = [les('c7'), les('r1'), les('c3'), les('c8', { end_time: '2026-09-09T15:30:00.000Z' })];
+    const uit = tel(lessen);
+    const som = [...uit.perKlant.values()].reduce((a, b) => a + b, 0)
+      + uit.zonderKlant.reduce((a, z) => a + z.uren, 0);
+    expect(som).toBe(urenUitApp(lessen, 'koen', 9, 2026));
   });
 });

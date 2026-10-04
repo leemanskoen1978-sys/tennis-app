@@ -227,6 +227,30 @@ function BaanTarieven({ court }: { court: Court }): React.JSX.Element {
         />
       </View>
 
+      <Text style={styles.label}>{t('Club')}</Text>
+      {/* Bewaard bij het verlaten van het veld en niet bij elke toets: een half getypte
+          clubnaam ("GANT") zou anders even de uren van dit terrein bij geen enkele klant
+          laten tellen. Leeg wordt `undefined`, zoals bij de staffel. */}
+      <TextInput
+        style={styles.input}
+        value={value(`club-${court.id}`, court.club ?? '')}
+        onChangeText={(tekst) => setTypedValue(`club-${court.id}`, tekst)}
+        onBlur={() => {
+          const getypt = typed[`club-${court.id}`];
+          if (getypt !== undefined && getypt.trim() !== (court.club ?? '')) {
+            void updateCourt(court.id, { club: getypt.trim() || undefined });
+          }
+          setTyped({});
+        }}
+        placeholder={t('bv. GANTOISE')}
+        autoCapitalize="characters"
+        accessibilityLabel={t('Club van {baan}', { baan: court.name })}
+        placeholderTextColor={tennisColors.textMuted}
+      />
+      <Text style={styles.muted}>
+        {t('De facturatie telt de uren op dit terrein bij de klant met dezelfde naam.')}
+      </Text>
+
       <Text style={styles.label}>{t('Uurtarief privéles')}</Text>
       <View style={styles.field}>
         <Text style={styles.euro}>€</Text>

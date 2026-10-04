@@ -357,6 +357,8 @@ export function onbekendeClubs(
 export interface AppBoeking {
   coach_id: string;
   taught_by_id?: string;
+  /** Het terrein. Daaraan hangt de club, en dus de klant: zie `urenUitAppPerKlant`. */
+  court_id: string;
   start_time: string;
   end_time: string;
   status: string;
@@ -379,8 +381,8 @@ export interface AppBoeking {
  * en een tweede `taught_by_id ?? coach_id` hier zou precies het gat terugzetten waar het
  * voor waarschuwt.
  *
- * Dit getal kent geen clubs: de app weet niet bij welke club een boeking hoort. Het heeft
- * dus alleen betekenis bij de ene klant waarvoor `bron_voorkeur` op `'app'` staat.
+ * Dit is het totaal over alle clubs. Per klant telt `urenUitAppPerKlant`, en die telt
+ * precies dezelfde lessen: allebei gaan ze langs `appUren` hieronder.
  */
 export function urenUitApp(
   boekingen: readonly AppBoeking[],
@@ -389,25 +391,104 @@ export function urenUitApp(
   jaar: number,
 ): number {
   let uren = 0;
+  for (const b of boekingen) uren += appUren(b, trainerId, maand, jaar);
+  return rond2(uren);
+}
+
+/** Hoeveel uur deze boeking telt voor deze trainer in deze maand; 0 als ze niet meetelt. */
+function appUren(b: AppBoeking, trainerId: string, maand: number, jaar: number): number {
+  if (b.status === 'cancelled') return 0;
+  if (lesgeverId(b) !== trainerId) return 0;
+
+  const start = new Date(b.start_time);
+  const eind = new Date(b.end_time);
+  const ms = eind.getTime() - start.getTime();
+  // Een onleesbaar tijdstip geeft NaN, en NaN zou het hele totaal wegvagen zonder dat er
+  // iets op het scherm verandert. Zo'n boeking telt niet mee.
+  if (!Number.isFinite(ms) || ms <= 0) return 0;
+  // De maand van de kalender, niet van UTC: een les van 's avonds laat hoort bij de dag
+  // die je op de klok ziet.
+  if (start.getFullYear() !== jaar || start.getMonth() + 1 !== maand) return 0;
+
+  return ms / 3_600_000;
+}
+
+/**
+ * De velden van een terrein die deze telling nodig heeft. Om dezelfde reden als bij
+ * `AppBoeking` geen `Court`: het scherm geeft de banen van de club gewoon door.
+ */
+export interface AppTerrein {
+  id: string;
+  name: string;
+  /** De club waar het terrein ligt, zoals in Beheer → Banen ingevuld. Leeg: onbekend. */
+  club?: string;
+}
+
+/** Uren in de app die bij geen enkele klant uitkomen, per terrein. */
+export interface UrenZonderKlant {
+  /** De naam van het terrein, of zijn id als het terrein niet meer bestaat. */
+  terrein: string;
+  /** De club zoals ze op het terrein staat; leeg als er niets ingevuld is. */
+  club: string;
+  uren: number;
+}
+
+/**
+ * De uren uit de app per klant: een les telt bij de klant van haar terrein.
+ *
+ * WAAROM. Tot 4 oktober 2026 kende dit getal geen clubs, en stond bij VZW Racso hetzelfde als
+ * bij Gantoise. De club van een les volgt uit haar terrein (`Court.club`): Racso-lessen komen
+ * op Racso-terreinen. Zie `docs/superpowers/specs/2026-10-04-banen-club-design.md`.
+ *
+ * De club van het terrein moet, door `schoon()`, gelijk zijn aan de naam in de lijst óf aan de
+ * korte naam van de klant. Exact en niet gedeeltelijk, om dezelfde reden als in `schoon`.
+ *
+ * Wat bij niemand uitkomt, verdwijnt niet: het staat per terrein in `zonderKlant`, zodat het
+ * scherm het kan melden — dezelfde belofte als `onbekendeClubs` voor de geplakte lijst. Elke
+ * klant staat in `perKlant`, ook met nul: nul is een antwoord, en een ontbrekende sleutel niet.
+ */
+export function urenUitAppPerKlant(
+  boekingen: readonly AppBoeking[],
+  terreinen: readonly AppTerrein[],
+  klanten: readonly Klant[],
+  trainerId: string,
+  maand: number,
+  jaar: number,
+): { perKlant: Map<string, number>; zonderKlant: UrenZonderKlant[] } {
+  const klantVanNaam = new Map<string, string>();
+  for (const k of klanten) {
+    for (const naam of [k.naam_in_lijst, k.korte_naam]) {
+      const sleutel = schoon(naam);
+      // Een lege naam matcht niets, zoals in `urenPerClub`; de eerste klant wint bij een dubbel,
+      // en dat dubbel meldt het instellingenscherm al.
+      if (sleutel !== '' && !klantVanNaam.has(sleutel)) klantVanNaam.set(sleutel, k.id);
+    }
+  }
+  const terreinVanId = new Map(terreinen.map((t) => [t.id, t] as const));
+
+  const perKlant = new Map<string, number>(klanten.map((k) => [k.id, 0] as const));
+  const zonder = new Map<string, UrenZonderKlant>();
 
   for (const b of boekingen) {
-    if (b.status === 'cancelled') continue;
-    if (lesgeverId(b) !== trainerId) continue;
-
-    const start = new Date(b.start_time);
-    const eind = new Date(b.end_time);
-    const ms = eind.getTime() - start.getTime();
-    // Een onleesbaar tijdstip geeft NaN, en NaN zou het hele totaal wegvagen zonder dat er
-    // iets op het scherm verandert. Zo'n boeking telt niet mee.
-    if (!Number.isFinite(ms) || ms <= 0) continue;
-    // De maand van de kalender, niet van UTC: een les van 's avonds laat hoort bij de dag
-    // die je op de klok ziet.
-    if (start.getFullYear() !== jaar || start.getMonth() + 1 !== maand) continue;
-
-    uren += ms / 3_600_000;
+    const uren = appUren(b, trainerId, maand, jaar);
+    if (uren === 0) continue;
+    const terrein = terreinVanId.get(b.court_id);
+    const club = terrein?.club?.trim() ?? '';
+    const klantId = club ? klantVanNaam.get(schoon(club)) : undefined;
+    if (klantId) {
+      perKlant.set(klantId, (perKlant.get(klantId) ?? 0) + uren);
+      continue;
+    }
+    const al = zonder.get(b.court_id);
+    if (al) al.uren += uren;
+    else zonder.set(b.court_id, { terrein: terrein?.name ?? b.court_id, club, uren });
   }
 
-  return rond2(uren);
+  for (const [id, uren] of perKlant) perKlant.set(id, rond2(uren));
+  return {
+    perKlant,
+    zonderKlant: [...zonder.values()].map((z) => ({ ...z, uren: rond2(z.uren) })),
+  };
 }
 
 /**
