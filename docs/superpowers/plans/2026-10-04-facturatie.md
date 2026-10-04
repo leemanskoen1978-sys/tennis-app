@@ -1689,6 +1689,17 @@ describe('refOntleden', () => {
     expect(() => refOntleden('zomaar')).toThrow();
     expect(() => refOntleden('A0')).toThrow();
   });
+
+  it('leest een verwijzing met kleine letters en spaties eromheen', () => {
+    expect(refOntleden(' h7 ')).toEqual({ rij: 7, kolom: 7 });
+  });
+
+  it('is het omgekeerde van kolomLetter, ook voorbij Z', () => {
+    // A, Z, AA, AZ, BA, ZZ — de plekken waar een kolomteller het laat afweten.
+    for (const kolom of [0, 25, 26, 51, 52, 701]) {
+      expect(refOntleden(`${kolomLetter(kolom)}3`)).toEqual({ rij: 3, kolom });
+    }
+  });
 });
 
 describe('vrijBladXml', () => {
@@ -1768,6 +1779,24 @@ describe('vrijBladXml', () => {
     const xml = vrijBladXml(vrij({ breedtes: [38, 10] }));
     expect(xml).toContain('<col min="1" max="1" width="38" customWidth="1"/>');
   });
+
+  it('weigert twee cellen op dezelfde plaats', () => {
+    // Excel zou zo'n blad alleen openen na een "herstel"-melding. Een factuur met zo'n
+    // melding ervoor is erger dan geen factuur, dus dit valt hier om.
+    expect(() => vrijBladXml(vrij({
+      cellen: [
+        { ref: 'A1', cel: { soort: 'tekst', waarde: 'eerste' } },
+        { ref: 'a1', cel: { soort: 'tekst', waarde: 'tweede' } },
+      ],
+    }))).toThrow(/A1/);
+  });
+
+  it('ontsnapt tekens die XML anders stukmaken', () => {
+    const xml = vrijBladXml(vrij({
+      cellen: [{ ref: 'A1', cel: { soort: 'tekst', waarde: 'Jan & Piet <"lang">' } }],
+    }));
+    expect(xml).toContain('Jan &amp; Piet &lt;&quot;lang&quot;&gt;');
+  });
 });
 
 describe('buildVrijWorkbook', () => {
@@ -1806,6 +1835,10 @@ describe('buildVrijWorkbook', () => {
   it('deelt één opmaaktabel, zodat een bedrag ook op blad twee een getal blijft', () => {
     const ingangen = leesZip(buildVrijWorkbook([vrij({ naam: 'A' }), vrij({ naam: 'B' })]));
     expect(ingangen.filter((i) => i.naam === 'xl/styles.xml')).toHaveLength(1);
+  });
+
+  it('weigert een werkmap zonder bladen — Excel kan die niet openen', () => {
+    expect(() => buildVrijWorkbook([])).toThrow();
   });
 });
 
@@ -1881,6 +1914,19 @@ function vrijeCelXml(vrij: XlsxVrijeCel): string {
 
 export function vrijBladXml(blad: XlsxVrijBlad): string {
   const gelegd = blad.cellen.map((c) => ({ ...c, ...refOntleden(c.ref) }));
+
+  // Twee cellen op dezelfde plaats levert een blad op dat Excel weigert te openen zonder
+  // eerst te "herstellen" — en dan opent de ontvanger een factuur met een foutmelding
+  // ervoor. Het is precies de vergissing die je maakt bij het uitrekenen van een rijnummer,
+  // dus hij wordt hier gevonden en niet daar.
+  const gezien = new Set<string>();
+  for (const cel of gelegd) {
+    const plaats = `${kolomLetter(cel.kolom)}${cel.rij}`;
+    if (gezien.has(plaats)) {
+      throw new Error(`Twee cellen op ${plaats} in blad "${blad.naam}"`);
+    }
+    gezien.add(plaats);
+  }
 
   const laatsteRij = gelegd.reduce((max, c) => Math.max(max, c.rij), 1);
   const laatsteKolom = kolomLetter(gelegd.reduce((max, c) => Math.max(max, c.kolom), 0));
@@ -2010,6 +2056,10 @@ function meerBladenPakket(
   namen: readonly string[],
   inhouden: readonly string[],
 ): Uint8Array {
+  // Excel weigert een werkmap zonder bladen. Hem toch wegschrijven levert een bestand op
+  // dat pas bij de ontvanger stukloopt, en dat is de slechtste plek om het te merken.
+  if (namen.length === 0) throw new Error('Een werkmap zonder bladen bestaat niet.');
+
   const bladPad = (index: number) => `worksheets/sheet${index + 1}.xml`;
 
   const contentTypes = `${KOP}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">`
