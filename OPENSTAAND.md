@@ -11,8 +11,8 @@ verder te kunnen zonder de hele geschiedenis te hoeven lezen.
 **Alle SQL-bestanden zijn gedraaid op de databank van de club**: `supabase-schema.sql`,
 `AANWEZIGHEID-VERLEDEN.sql`, `ZOEKT-TRAINER.sql`, `LESPLANNING.sql`, `BEZETTE-UREN.sql`,
 `OEFENAFBEELDINGEN.sql` en `LESPLANNING-OEFENING.sql`. De laatste twee zijn gemeld door de
-eigenaar op 21 september 2026; de bucket en de nieuwe kolommen zelf zijn niet nagekeken. Er staat
-niets meer klaar dat nog gedraaid moet worden.
+eigenaar op 21 september 2026; de bucket en de nieuwe kolommen zelf zijn niet nagekeken.
+**`FACTURATIE.sql` staat wél klaar en moet nog gedraaid worden** — zie hieronder.
 
 - **`main`** bevat de merge `cc5b61b` (oefeningen per kleur) en is gepusht naar
   <https://github.com/leemanskoen1978-sys/tennis-app>. Elke push naar `main` bouwt en zet de
@@ -23,11 +23,48 @@ niets meer klaar dat nog gedraaid moet worden.
   `gh auth setup-git`: Git gebruikt nu het actieve `gh`-account. Krijg je in een nieuwe
   terminal weer een 403, kijk dan met `gh auth status` welk account actief is. De naam en het
   e-mailadres op commits (`user.name` / `user.email` in `~/.gitconfig`) staan hier los van.
-- Testsuite: **1951 tests**, allemaal in `lib/` (40 daarvan slaan zichzelf over, zie
+- Testsuite: **2095 tests**, allemaal in `lib/` (40 daarvan slaan zichzelf over, zie
   `koen.xlsx`). `npx tsc --noEmit`, `npm test` en `npx expo export -p web` horen bij elke
   oplevering.
 - `koen.xlsx` is een **testfixture** en moet op de schijf blijven staan — 40 tests lezen dat
   bestand en slaan zichzelf stilzwijgend over als het weg is. Zie `.gitignore`.
+
+### Facturatie — Koen factureert vanuit de app
+
+`facturen.xlsx` is vervangen door **Beheer → Facturatie**, zichtbaar voor één e-mailadres
+(`leemanskoen@telenet.be`). Het ontwerp staat in
+`docs/superpowers/specs/2026-10-04-facturatie-design.md`, het plan in
+`docs/superpowers/plans/2026-10-04-facturatie.md`.
+
+Vier bladen: de lessen plakken en aanvullen, de factuur maken, het register, en de
+instellingen (mijn gegevens en de twee clubs). De uitvoer is één `.xlsx` met **twee
+tabbladen** — de factuur, in de indeling van het oude blad, en het overzicht van de extra
+lessen dat Racso elke maand vraagt. Zonder formules: wat erin staat is uitgerekend, zodat
+een verstuurde factuur niet meer kan veranderen.
+
+**`FACTURATIE.sql` moet gedraaid zijn** op de databank van de club. Vier tabellen met RLS op
+`auth.uid()`: niemand anders ziet deze gegevens, de beheerder ook niet. Draai hem in de
+SQL-editor van Supabase en herlaad daarna hard.
+
+Vier dingen om te onthouden:
+
+- **Er zijn twee bronnen van uren** en per club staat welke telt (`bron_voorkeur`). Gantoise
+  staat op "de app" — zijn lessen staan er toch al in, als boekingen waarvan Koen de lesgever
+  is — en Racso op "de geplakte lijst". Optellen kan niet; de kaart zet de twee naast elkaar
+  zodat een verschil opvalt.
+- **De clubnaam in de plaktekst is een eigen veld** (`naam_in_lijst`). `T.C. RACSO` is niet
+  `RACSO`. In `facturen.xlsx` stond het verkeerd en telde die werkmap Racso een heel seizoen
+  op nul uur, zonder dat iets dat zei. Het instellingenscherm waarschuwt als twee clubs
+  dezelfde naam dragen; het rekenwerk houdt dat bewust niet tegen.
+- **De extra lessen bij Racso** (Stan 9-10u en Veerle 10-11u, allebei sponsor) staan als
+  snelknoppen in `SNELLE_EXTRA_LESSEN` bovenaan `components/facturatie/LessenBlad.tsx`. Daar
+  kan een regel bij zonder dat iemand door het scherm moet.
+- **De factuurkaart is gesleuteld op klant én maand.** Wissel je van maand, dan krijg je een
+  schone kaart — een half ingevulde factuur gaat dan verloren. Dat is met opzet: anders staat
+  de omschrijving van september boven de uren van augustus.
+
+`facturen.xlsx` blijft voorlopig op de schijf staan als naslag. Hij wordt niet meer
+bijgewerkt.
 
 ### De Agenda-tab is opgeheven — alle vier de stukken zijn af
 

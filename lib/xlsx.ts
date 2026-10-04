@@ -28,6 +28,36 @@ export interface XlsxBlad {
   breedtes?: readonly number[];
 }
 
+/**
+ * Eén cel van een vrij blad, op de plaats die `ref` noemt ("H7").
+ *
+ * `vet` geldt alleen voor tekst. Een bedrag en een datum dragen hun eigen stijl — die bepaalt
+ * hoe Excel het getal toont, en dat is belangrijker dan of het dik staat. Een vierde stijl
+ * "vet bedrag" erbij zetten zou de stijlentabel verdubbelen voor iets wat een factuur niet
+ * nodig heeft.
+ */
+export interface XlsxVrijeCel {
+  ref: string;
+  cel: XlsxCel;
+  vet?: boolean;
+}
+
+/**
+ * Een blad zonder koprij, waarin elke cel zelf zegt waar hij staat.
+ *
+ * Waarom dit naast `XlsxBlad` bestaat en niet in de plaats ervan: een lijst lessen ís een
+ * tabel, met een koprij die blijft staan en een filter erop, en die moet dat blijven. Een
+ * factuur is geen tabel — de opschriften staan links, de bedragen rechts, en er zit lucht
+ * tussen de blokken.
+ */
+export interface XlsxVrijBlad {
+  naam: string;
+  cellen: readonly XlsxVrijeCel[];
+  breedtes?: readonly number[];
+  /** Bereiken als "A23:E23". Nodig voor de lange regels, die anders achter de bedragen lopen. */
+  samengevoegd?: readonly string[];
+}
+
 // ---------------------------------------------------------------------------
 // Tekst naar bytes
 // ---------------------------------------------------------------------------
@@ -286,6 +316,15 @@ const KOP = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 const HOOFD_NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const REL_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 
+/** "H7" → rij 7, kolom 7 (A is 0). Het omgekeerde van `kolomLetter`. */
+export function refOntleden(ref: string): { rij: number; kolom: number } {
+  const m = /^([A-Z]+)([1-9]\d*)$/.exec(ref.trim().toUpperCase());
+  if (!m) throw new Error(`Geen geldige celverwijzing: ${ref}`);
+  let kolom = 0;
+  for (const letter of m[1]) kolom = kolom * 26 + (letter.charCodeAt(0) - 64);
+  return { rij: Number(m[2]), kolom: kolom - 1 };
+}
+
 export function bladXml(blad: XlsxBlad): string {
   const kolommen = blad.koppen.length;
   const laatsteKolom = kolomLetter(Math.max(0, kolommen - 1));
@@ -321,6 +360,77 @@ export function bladXml(blad: XlsxBlad): string {
     + breedtes
     + `<sheetData>${koprij}${rijen}</sheetData>`
     + `<autoFilter ref="A1:${laatsteKolom}${laatsteRij}"/>`
+    + '</worksheet>';
+}
+
+/** Dezelfde cel-XML als een tabel schrijft, met één verschil: tekst mag vet. */
+function vrijeCelXml(vrij: XlsxVrijeCel): string {
+  if (vrij.vet && vrij.cel.soort === 'tekst') {
+    return `<c r="${vrij.ref}" t="inlineStr" s="${STIJL_VET}">`
+      + `<is><t xml:space="preserve">${xml(vrij.cel.waarde)}</t></is></c>`;
+  }
+  return celXml(vrij.cel, vrij.ref);
+}
+
+export function vrijBladXml(blad: XlsxVrijBlad): string {
+  const gelegd = blad.cellen.map((c) => ({ ...c, ...refOntleden(c.ref) }));
+
+  // Twee cellen op dezelfde plaats levert een blad op dat Excel weigert te openen zonder
+  // eerst te "herstellen" — en dan opent de ontvanger een factuur met een foutmelding
+  // ervoor. Het is precies de vergissing die je maakt bij het uitrekenen van een rijnummer,
+  // dus hij wordt hier gevonden en niet daar.
+  const gezien = new Set<string>();
+  for (const cel of gelegd) {
+    const plaats = `${kolomLetter(cel.kolom)}${cel.rij}`;
+    if (gezien.has(plaats)) {
+      throw new Error(`Twee cellen op ${plaats} in blad "${blad.naam}"`);
+    }
+    gezien.add(plaats);
+  }
+
+  const laatsteRij = gelegd.reduce((max, c) => Math.max(max, c.rij), 1);
+  const laatsteKolom = kolomLetter(gelegd.reduce((max, c) => Math.max(max, c.kolom), 0));
+
+  const perRij = new Map<number, typeof gelegd>();
+  for (const cel of gelegd) {
+    const rij = perRij.get(cel.rij);
+    if (rij) rij.push(cel);
+    else perRij.set(cel.rij, [cel]);
+  }
+
+  // Oplopend, en binnen een rij op kolom: Excel leest een blad waarin de rijen door elkaar
+  // staan wel, maar sommige lezers niet — en een bestand dat alleen in Excel opengaat is
+  // precies wat deze schrijver niet wil zijn.
+  const rijen = [...perRij.keys()].sort((a, b) => a - b)
+    .map((nummer) => {
+      const cellen = perRij.get(nummer)!
+        .sort((a, b) => a.kolom - b.kolom)
+        .map(vrijeCelXml)
+        .join('');
+      return `<row r="${nummer}">${cellen}</row>`;
+    })
+    .join('');
+
+  const breedtes = blad.breedtes && blad.breedtes.length > 0
+    ? `<cols>${blad.breedtes
+      .map((b, i) => `<col min="${i + 1}" max="${i + 1}" width="${b}" customWidth="1"/>`)
+      .join('')}</cols>`
+    : '';
+
+  const samengevoegd = blad.samengevoegd && blad.samengevoegd.length > 0
+    ? `<mergeCells count="${blad.samengevoegd.length}">`
+      + blad.samengevoegd.map((r) => `<mergeCell ref="${xml(r)}"/>`).join('')
+      + '</mergeCells>'
+    : '';
+
+  // Geen bevroren koprij en geen filter, anders dan bij een tabel: een factuur heeft geen
+  // koprij om te bevriezen en geen kolommen om op te filteren. De volgorde van de
+  // onderdelen ligt vast in het formaat — afmeting, kolommen, gegevens, samengevoegd.
+  return `${KOP}<worksheet xmlns="${HOOFD_NS}">`
+    + `<dimension ref="A1:${laatsteKolom}${laatsteRij}"/>`
+    + breedtes
+    + `<sheetData>${rijen}</sheetData>`
+    + samengevoegd
     + '</worksheet>';
 }
 
@@ -409,10 +519,10 @@ export function buildXlsx(blad: XlsxBlad): Uint8Array {
  *
  * Hoofdletters tellen niet mee: voor Excel zijn "Lessen" en "lessen" dezelfde tab.
  */
-function uniekeBladnamen(bladen: readonly XlsxBlad[]): string[] {
+function uniekeBladnamen(voorstellen: readonly string[]): string[] {
   const gezien = new Set<string>();
-  return bladen.map((blad) => {
-    const schoon = bladnaam(blad.naam);
+  return voorstellen.map((voorstel) => {
+    const schoon = bladnaam(voorstel);
     let naam = schoon;
     let volgnummer = 2;
     while (gezien.has(naam.toLowerCase())) {
@@ -426,28 +536,28 @@ function uniekeBladnamen(bladen: readonly XlsxBlad[]): string[] {
 }
 
 /**
- * Hetzelfde bestand, maar met meer dan één tabblad.
+ * De verpakking rond meer dan één blad.
  *
- * Waarom dit een nieuwe functie is en geen ruimere signatuur van `buildXlsx`: `lib/csv.ts`
- * en het historiekscherm roepen `buildXlsx` vandaag aan met één blad, en er staan tests om
- * die aanroepen heen. Die mogen niet omvallen omdat er elders vier tabbladen nodig zijn.
- * `buildXlsx` blijft daarom letterlijk zoals hij was; hier staat ernaast wat hij niet kan.
- *
- * Wat in `buildXlsx` drie vaste strings zijn — het ene blad in `[Content_Types].xml`, in
- * `xl/workbook.xml` en in `xl/_rels/workbook.xml.rels` — zijn hieronder drie lussen. De
- * volgorde van `bladen` is de volgorde van de tabs onderin Excel. De opmaak wordt één keer
- * geschreven en door alle bladen gedeeld: een bedrag blijft dus ook op blad vier een getal
- * en een datum een datum.
+ * Wat in `buildXlsx` drie vaste strings zijn, zijn hier drie lussen. De volgorde van
+ * `namen` is de volgorde van de tabs onderin Excel. Het soort blad doet er niet toe: de
+ * inhoud komt als tekst binnen, en of die van een tabel of van een vrij blad komt, weet
+ * alleen de aanroeper.
  */
-export function buildWorkbook(bladen: readonly XlsxBlad[]): Uint8Array {
-  const namen = uniekeBladnamen(bladen);
+function meerBladenPakket(
+  namen: readonly string[],
+  inhouden: readonly string[],
+): Uint8Array {
+  // Excel weigert een werkmap zonder bladen. Hem toch wegschrijven levert een bestand op
+  // dat pas bij de ontvanger stukloopt, en dat is de slechtste plek om het te merken.
+  if (namen.length === 0) throw new Error('Een werkmap zonder bladen bestaat niet.');
+
   const bladPad = (index: number) => `worksheets/sheet${index + 1}.xml`;
 
   const contentTypes = `${KOP}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">`
     + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
     + '<Default Extension="xml" ContentType="application/xml"/>'
     + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-    + bladen
+    + namen
       .map((_, i) => `<Override PartName="/xl/${bladPad(i)}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`)
       .join('')
     + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
@@ -458,18 +568,14 @@ export function buildWorkbook(bladen: readonly XlsxBlad[]): Uint8Array {
     + '</Relationships>';
 
   const workbook = `${KOP}<workbook xmlns="${HOOFD_NS}" xmlns:r="${REL_NS}">`
-    + `<sheets>${namen
-      .map((naam, i) => `<sheet name="${xml(naam)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`)
-      .join('')}</sheets>`
+    + `<sheets>${namen.map((naam, i) => `<sheet name="${xml(naam)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets>`
     + '</workbook>';
 
-  // De opmaak krijgt de rId ná die van het laatste blad; anders wijst een blad naar de
-  // stijlen en de stijlen naar een blad, en dan opent het bestand niet.
   const workbookRels = `${KOP}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
-    + bladen
+    + namen
       .map((_, i) => `<Relationship Id="rId${i + 1}" Type="${REL_NS}/worksheet" Target="${bladPad(i)}"/>`)
       .join('')
-    + `<Relationship Id="rId${bladen.length + 1}" Type="${REL_NS}/styles" Target="styles.xml"/>`
+    + `<Relationship Id="rId${namen.length + 1}" Type="${REL_NS}/styles" Target="styles.xml"/>`
     + '</Relationships>';
 
   return zip([
@@ -478,9 +584,43 @@ export function buildWorkbook(bladen: readonly XlsxBlad[]): Uint8Array {
     { naam: 'xl/workbook.xml', inhoud: utf8(workbook) },
     { naam: 'xl/_rels/workbook.xml.rels', inhoud: utf8(workbookRels) },
     { naam: 'xl/styles.xml', inhoud: utf8(stijlenXml()) },
-    ...bladen.map((blad, i) => ({
-      naam: `xl/${bladPad(i)}`,
-      inhoud: utf8(bladXml({ ...blad, naam: namen[i] })),
-    })),
+    ...inhouden.map((inhoud, i) => ({ naam: `xl/${bladPad(i)}`, inhoud: utf8(inhoud) })),
   ]);
+}
+
+/**
+ * Hetzelfde bestand, maar met meer dan één tabblad.
+ *
+ * Waarom dit een nieuwe functie is en geen ruimere signatuur van `buildXlsx`: `lib/csv.ts`
+ * en het historiekscherm roepen `buildXlsx` vandaag aan met één blad, en er staan tests om
+ * die aanroepen heen. Die mogen niet omvallen omdat er elders vier tabbladen nodig zijn.
+ * `buildXlsx` blijft daarom letterlijk zoals hij was; hier staat ernaast wat hij niet kan.
+ */
+export function buildWorkbook(bladen: readonly XlsxBlad[]): Uint8Array {
+  const namen = uniekeBladnamen(bladen.map((b) => b.naam));
+  return meerBladenPakket(
+    namen,
+    bladen.map((blad, i) => bladXml({ ...blad, naam: namen[i] })),
+  );
+}
+
+/**
+ * Meer dan één vrij blad in één werkmap.
+ *
+ * Dit is wat de factuur nodig heeft: blad 1 de factuur, blad 2 het overzicht van de extra
+ * lessen dat Racso elke maand vraagt. `buildWorkbook` kan ook meer dan één tabblad, maar
+ * alleen als tabel met een koprij — en een factuur is geen tabel.
+ *
+ * Er is bewust géén variant voor één vrij blad. Die zou nergens aangeroepen worden: de
+ * factuur heeft er altijd twee, ook als het tweede leeg is.
+ *
+ * De opmaak wordt één keer geschreven en door alle bladen gedeeld, net als bij
+ * `buildWorkbook`: een bedrag blijft dus ook op blad twee een getal en een datum een datum.
+ */
+export function buildVrijWorkbook(bladen: readonly XlsxVrijBlad[]): Uint8Array {
+  const namen = uniekeBladnamen(bladen.map((b) => b.naam));
+  return meerBladenPakket(
+    namen,
+    bladen.map((blad, i) => vrijBladXml({ ...blad, naam: namen[i] })),
+  );
 }

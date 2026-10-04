@@ -2,7 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   CreditCard, BarChart3, LayoutGrid, Settings as SettingsIcon, Target, Ticket,
-  Users, UserCog, BookOpen, CalendarOff, GraduationCap,
+  Users, UserCog, BookOpen, CalendarOff, GraduationCap, Receipt,
   type LucideIcon,
 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
@@ -13,6 +13,7 @@ import { spacing, typography } from '../../constants/theme';
 import { useT } from '../../lib/i18n';
 import { isAdmin, isCoach } from '../../lib/rechten';
 import { openAanvragen } from '../../lib/ouderkind';
+import { magFactureren } from '../../lib/facturatie';
 
 interface Tile {
   key: string;
@@ -60,6 +61,11 @@ export default function Admin() {
         { key: 'pay', title: t('Betalingen'), subtitle: t('Openstaande lessen afhandelen'), icon: CreditCard, onPress: () => router.push('/admin/payments'), badge: pending.length },
         { key: 'cards', title: t('Beurtenkaarten'), subtitle: t('Kaarten en resterende beurten'), icon: Ticket, onPress: () => router.push('/admin/beurtenkaarten') },
         { key: 'rep', title: t('Rapport'), subtitle: t('Omzet en aantallen'), icon: BarChart3, onPress: () => router.push('/admin/reports') },
+        // Alleen voor Koen: `magFactureren` laat één e-mailadres door. Dit is zijn eigen
+        // boekhouding voor de twee clubs, geen voorziening van de club zelf.
+        ...(magFactureren(currentUser?.email)
+          ? [{ key: 'fact', title: t('Facturatie'), subtitle: t('Mijn uren aan de clubs'), icon: Receipt, onPress: () => router.push('/admin/facturatie') } as Tile]
+          : []),
       ],
     },
     {

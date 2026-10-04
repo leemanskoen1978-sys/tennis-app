@@ -10,6 +10,12 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-04-facturatie-design.md` — lees die eerst.
 
+> **Bijgewerkt op 4 oktober 2026, ná taak 1 en 2.** Racso vraagt elke maand een overzicht
+> van de extra lessen. Dat komt als tweede tabblad mee in hetzelfde bestand. Geraakt:
+> taak 4 (een type en een functie erbij), taak 5 (een werkmap met twee vrije bladen),
+> taak 6 (het tweede tabblad), taak 7 (een kolom erbij), taak 10 (twee knoppen) en
+> taak 12 (de extra lessen meegeven).
+
 ---
 
 ## Belangrijk voor wie dit uitvoert
@@ -82,7 +88,7 @@ function les(velden: Partial<Factuurles>): Factuurles {
     actief: true,
     naam_prive: '',
     type_prive: '',
-    sleutel: 'GANTOISE|DUOLES - GROEP 4|WO 09/09/2026 14:00 - 15:00',
+    sleutel: sleutelVan('GANTOISE', 'Duoles - Groep 4', 'wo 09/09/2026 14:00 - 15:00'),
     ...velden,
   };
 }
@@ -109,6 +115,10 @@ describe('schoon', () => {
   it('negeert hoofdletters', () => {
     expect(schoon('t.c. racso')).toBe('T.C. RACSO');
   });
+
+  it('behandelt een tab als een spatie — zo komt tekst uit Excel binnen', () => {
+    expect(schoon('T.C.\tRACSO')).toBe('T.C. RACSO');
+  });
 });
 
 describe('sleutelVan', () => {
@@ -121,12 +131,30 @@ describe('sleutelVan', () => {
     expect(sleutelVan('GANTOISE', 'Groep 4', 'wo 09/09/2026 14:00 - 15:00'))
       .not.toBe(sleutelVan('GANTOISE', 'Groep 5', 'wo 09/09/2026 14:00 - 15:00'));
   });
+
+  it('botst niet als een veld zelf een scheidingsteken bevat', () => {
+    expect(sleutelVan('A|B', 'C', 'D')).not.toBe(sleutelVan('A', 'B|C', 'D'));
+  });
 });
 
 describe('rond2', () => {
   it('rondt af op twee decimalen', () => {
     expect(rond2(1.005)).toBe(1.01);
     expect(rond2(33 * 1.5)).toBe(49.5);
+  });
+
+  it('rondt een half naar boven, ook waar het binaire getal er net onder ligt', () => {
+    expect(rond2(35.855)).toBe(35.86);
+    expect(rond2(5.015)).toBe(5.02);
+  });
+
+  it('laat een bedrag dat al klopt met rust', () => {
+    expect(rond2(248)).toBe(248);
+    expect(rond2(31 * 8)).toBe(248);
+  });
+
+  it('rondt een negatief half getal van nul weg', () => {
+    expect(rond2(-1.005)).toBe(-1.01);
   });
 });
 
@@ -141,6 +169,10 @@ describe('plusDagen', () => {
 
   it('gaat over de jaargrens', () => {
     expect(plusDagen('2026-12-28', 15)).toBe('2027-01-12');
+  });
+
+  it('kan ook achteruit', () => {
+    expect(plusDagen('2026-01-03', -5)).toBe('2025-12-29');
   });
 });
 
@@ -161,6 +193,10 @@ describe('urenVan', () => {
   it('laat een handmatig getal voorgaan, ook als dat nul is', () => {
     expect(urenVan(les({ uren: 1, uren_handmatig: 0.5 }))).toBe(0.5);
     expect(urenVan(les({ uren: 1, uren_handmatig: 0 }))).toBe(0);
+  });
+
+  it('geeft nul als er niets gerekend is en niets gezet', () => {
+    expect(urenVan(les({ uren: 0, uren_handmatig: null }))).toBe(0);
   });
 });
 ```
@@ -211,18 +247,42 @@ export function schoon(tekst: string): string {
 }
 
 /**
+ * Waarmee de drie velden van een sleutel gescheiden worden: U+001F, "unit separator".
+ *
+ * Een gewoon leesteken zou botsen. Met een streepje krijgen ("A|B", "C", "D") en
+ * ("A", "B|C", "D") dezelfde sleutel, en dan houdt de ontdubbeling twee verschillende
+ * lessen voor één en verdwijnt er één van de factuur — precies het omgekeerde van waarvoor
+ * de sleutel bestaat. U+001F komt in geplakte tekst niet voor.
+ *
+ * Niet U+0000, hoe verleidelijk ook: Postgres weigert dat teken in een tekstkolom, en deze
+ * sleutel gaat de databank in.
+ */
+const VELDSCHEIDER = '\u001f';
+
+/**
  * Wanneer zijn twee geplakte regels dezelfde les: club, groep en dag/uur gelijk.
  *
  * Dit is wat een tweede plakbeurt tegenhoudt. Zonder zo'n sleutel komt elke les die je in
  * oktober nog eens plakt er een tweede keer bij, en telt de factuur van september dubbel.
  */
 export function sleutelVan(clubTekst: string, groep: string, dagUur: string): string {
-  return [schoon(clubTekst), schoon(groep), schoon(dagUur)].join('|');
+  return [schoon(clubTekst), schoon(groep), schoon(dagUur)].join(VELDSCHEIDER);
 }
 
-/** Twee decimalen. Elk bedrag en elk urental in dit bestand gaat hier doorheen. */
+/**
+ * Twee decimalen. Elk bedrag en elk urental in dit bestand gaat hier doorheen.
+ *
+ * Niet `Math.round(n * 100) / 100`: 35,855 ligt als binair getal nét ónder 35,855, en dan
+ * wordt het 35,85 terwijl iedereen 35,86 verwacht. Op een factuur is dat de cent waar de
+ * optelling van wie het natelt op strandt. De speling van een miljardste vangt dat op; ze
+ * is absoluut en niet relatief, en bij bedragen van deze grootte is dat ruim genoeg.
+ *
+ * Een half bedrag gaat van nul wég, ook met een minteken ervoor: -1,005 wordt -1,01 en
+ * niet -1,00. Zo is afronden dezelfde bewerking aan beide kanten van nul.
+ */
 export function rond2(n: number): number {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
+  const teken = n < 0 ? -1 : 1;
+  return (teken * Math.round(Math.abs(n) * 100 + 1e-9)) / 100;
 }
 
 /**
@@ -240,7 +300,14 @@ export function plusDagen(iso: string, dagen: number): string {
   return `${uit.getUTCFullYear()}-${two(uit.getUTCMonth() + 1)}-${two(uit.getUTCDate())}`;
 }
 
-/** De maandnamen zoals ze op de factuur komen; index 0 is januari. */
+/**
+ * De maandnamen zoals ze op de factuur komen; index 0 is januari.
+ *
+ * Een eigen lijst naast die in lib/kalenderrooster en `monthName` in lib/period, om
+ * dezelfde reden als daar: een factuur is een Belgisch document en blijft Nederlands, ook
+ * als iemand de app op Engels zet. Zou hij door `t()` gaan, dan stond er "Invoice for
+ * September" op een factuur aan een Gentse vzw.
+ */
 export const MAANDNAMEN = [
   'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni',
   'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December',
@@ -361,7 +428,7 @@ export function urenVan(les: Factuurles): number {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx jest lib/facturatie.test.ts`
-Expected: PASS — 14 tests.
+Expected: PASS — 19 tests.
 
 - [ ] **Step 5: Check types**
 
@@ -827,6 +894,34 @@ describe('urenPerClub', () => {
     const uit = urenPerClub(voorbeeldLessen(), [RACSO, GANTOISE], 10, 2026);
     expect(uit.map((r) => r.klant.id)).toEqual(['k0', 'k1']);
   });
+
+  it('laat bij gelijke volgorde de binnengekomen volgorde staan', () => {
+    const a = klant({ id: 'a', volgorde: 1 });
+    const b = klant({ id: 'b', volgorde: 1 });
+    expect(urenPerClub([], [a, b], 10, 2026).map((r) => r.klant.id)).toEqual(['a', 'b']);
+    expect(urenPerClub([], [b, a], 10, 2026).map((r) => r.klant.id)).toEqual(['b', 'a']);
+  });
+
+  it('telt een les op de eerste en op de laatste dag van de maand mee', () => {
+    const lessen = voorbeeldLessen().slice(0, 1).map((l, i) => ({
+      ...l, id: `r${i}`, club_tekst: 'T.C. RACSO', datum: '2026-09-01',
+    }));
+    lessen.push({ ...lessen[0], id: 'r-laatst', datum: '2026-09-30', sleutel: 'r-laatst' });
+    expect(urenPerClub(lessen, [RACSO], 9, 2026)[0].urenGeplakt).toBe(2);
+  });
+
+  it('negeert een klant waarvan de naam in de lijst nog niet ingevuld is', () => {
+    // Zo maakt het instellingenscherm een nieuwe club aan: alle velden leeg.
+    const nieuw = klant({ id: 'leeg', naam_in_lijst: '', korte_naam: '' });
+    const blanco = voorbeeldLessen().slice(0, 1).map((l) => ({ ...l, club_tekst: '' }));
+    expect(urenPerClub(blanco, [nieuw], 9, 2026)[0].urenGeplakt).toBe(0);
+  });
+
+  it('telt dezelfde lessen bij twee klanten met dezelfde naam — het scherm waarschuwt', () => {
+    const tweeling = klant({ id: 'k2', naam_in_lijst: 'T.C. RACSO', volgorde: 3 });
+    const uit = urenPerClub(voorbeeldLessen(), [RACSO, tweeling], 10, 2026);
+    expect(uit.map((r) => r.urenGeplakt)).toEqual([9, 9]);
+  });
 });
 
 describe('onbekendeClubs', () => {
@@ -841,6 +936,12 @@ describe('onbekendeClubs', () => {
 
   it('kijkt alleen naar de gevraagde maand', () => {
     expect(onbekendeClubs(voorbeeldLessen(), [GANTOISE], 9, 2026)).toEqual([]);
+  });
+
+  it('meldt een lege clubnaam in plaats van hem te verzwijgen', () => {
+    const nieuw = klant({ id: 'leeg', naam_in_lijst: '' });
+    const blanco = voorbeeldLessen().slice(0, 1).map((l) => ({ ...l, club_tekst: '' }));
+    expect(onbekendeClubs(blanco, [nieuw], 9, 2026)).toEqual([{ naam: '(leeg)', aantal: 1 }]);
   });
 });
 
@@ -892,6 +993,15 @@ describe('urenUitApp', () => {
   it('slikt een boeking met een onleesbaar tijdstip in plaats van NaN terug te geven', () => {
     expect(urenUitApp([boeking({ end_time: 'later' })], 'koen', 9, 2026)).toBe(0);
   });
+
+  it('rekent een les die over middernacht de maand uit loopt bij de maand van de start', () => {
+    const overMiddernacht = boeking({
+      start_time: new Date(2026, 8, 30, 23, 30).toISOString(),
+      end_time: new Date(2026, 9, 1, 0, 30).toISOString(),
+    });
+    expect(urenUitApp([overMiddernacht], 'koen', 9, 2026)).toBe(1);
+    expect(urenUitApp([overMiddernacht], 'koen', 10, 2026)).toBe(0);
+  });
 });
 ```
 
@@ -902,7 +1012,18 @@ Expected: FAIL — `urenPerClub is not a function`.
 
 - [ ] **Step 3: Write the implementation**
 
-Zet onderaan `lib/facturatie.ts` erbij:
+Zet eerst bovenaan `lib/facturatie.ts`, onder het kopcommentaar, de enige import die dit
+bestand nodig heeft:
+
+```ts
+import { lesgeverId } from './lesgever';
+```
+
+`lib/lesgever.ts` heeft zelf alleen een *type*-import van `Booking`, en die verdwijnt bij
+het compileren. Deze module krijgt er dus geen runtime-afhankelijkheid van `lib/types.ts`
+bij.
+
+Zet daarna onderaan `lib/facturatie.ts` erbij:
 
 ```ts
 // ---------------------------------------------------------------------------
@@ -928,7 +1049,14 @@ export interface ClubUren {
  *
  * De volgorde van het antwoord is die van `volgorde` op de klant, niet die van de lijst die
  * binnenkwam: het scherm zet de kaarten eronder en die horen altijd in dezelfde volgorde te
- * staan.
+ * staan. Bij gelijke `volgorde` blijft de binnengekomen volgorde staan, want `sort` is
+ * stabiel.
+ *
+ * Aangenomen wordt dat `naam_in_lijst` en `korte_naam` uniek zijn over alle klanten. Staan
+ * er twee klanten met dezelfde naam, dan krijgen ze allebei dezelfde uren en wordt er
+ * dubbel gefactureerd. Dat wordt hier niet tegengehouden maar in het instellingenscherm
+ * gemeld: hier weten we niet of het een vergissing is of niet, en een telling hoort geen
+ * rijen te laten verdwijnen die iemand bewust zo heeft gezet.
  */
 export function urenPerClub(
   lessen: readonly Factuurles[],
@@ -951,9 +1079,13 @@ export function urenPerClub(
       // Een privéles hangt aan de korte naam ("Racso"), een geplakte les aan de naam zoals
       // die in de lijst staat ("T.C. RACSO"). Dat zijn twee verschillende namen voor
       // dezelfde club, en ze allebei aan één veld hangen zou er één van de twee breken.
+      //
+      // Een lege ingestelde naam matcht niets. Zonder die regel zou een club die net
+      // toegevoegd is en nog niet ingevuld — het instellingenscherm maakt hem met lege
+      // velden aan — elke regel claimen waarvan de clubkolom leeg is.
       if (les.bron === 'prive') {
-        if (club === korteNaam) urenPrive += urenVan(les);
-      } else if (club === geplakteNaam) {
+        if (korteNaam !== '' && club === korteNaam) urenPrive += urenVan(les);
+      } else if (geplakteNaam !== '' && club === geplakteNaam) {
         urenGeplakt += urenVan(les);
       }
     }
@@ -975,7 +1107,11 @@ export function onbekendeClubs(
   maand: number,
   jaar: number,
 ): Array<{ naam: string; aantal: number }> {
-  const gekend = new Set(klanten.map((k) => schoon(k.naam_in_lijst)));
+  // Een klant zonder ingevulde naam telt niet als "gekend": anders zou een lege clubkolom
+  // in de plaktekst op hem uitkomen en nooit gemeld worden.
+  const gekend = new Set(
+    klanten.map((k) => schoon(k.naam_in_lijst)).filter((naam) => naam !== ''),
+  );
   const geteld = new Map<string, { naam: string; aantal: number }>();
 
   for (const les of lessen) {
@@ -984,10 +1120,11 @@ export function onbekendeClubs(
     const sleutel = schoon(les.club_tekst);
     if (gekend.has(sleutel)) continue;
     // De naam zoals hij in de lijst stond, niet de opgeschoonde: dat is wat de gebruiker
-    // straks in het veld "naam in de lijst" moet overnemen.
+    // straks in het veld "naam in de lijst" moet overnemen. Een lege naam krijgt een
+    // woord, want "0 lessen bij een club die ik niet ken: " leest als een bug.
     const al = geteld.get(sleutel);
     if (al) al.aantal++;
-    else geteld.set(sleutel, { naam: les.club_tekst.trim(), aantal: 1 });
+    else geteld.set(sleutel, { naam: les.club_tekst.trim() || '(leeg)', aantal: 1 });
   }
 
   return [...geteld.values()];
@@ -1009,11 +1146,21 @@ export interface AppBoeking {
 }
 
 /**
+ * De maand waarin een boeking telt, is die van de begintijd.
+ *
+ * Een les van 23:30 op 30 september tot 00:30 op 1 oktober hoort bij september: zo staat
+ * hij in de agenda en zo praat men erover. Het alternatief — de uren splitsen over twee
+ * maanden — zou twee facturen een half uur geven dat op geen van beide klopt.
+ */
+
+/**
  * De uren die al in de app staan: de lessen waarvan deze trainer de lesgever was.
  *
  * Dezelfde definitie als het bedrag op zijn profiel (`coachPayoutThisMonth` in lib/reports):
- * wie de les werkelijk gaf telt, niet van wie de les was. Daarom `taught_by_id ?? coach_id`
- * en niet `coach_id` — zie lib/lesgever.
+ * wie de les werkelijk gaf telt, niet van wie de les was. Die vraag wordt beantwoord door
+ * `lesgeverId` in lib/lesgever en door niets anders — dat bestand zegt in zijn kop waarom,
+ * en een tweede `taught_by_id ?? coach_id` hier zou precies het gat terugzetten waar het
+ * voor waarschuwt.
  *
  * Dit getal kent geen clubs: de app weet niet bij welke club een boeking hoort. Het heeft
  * dus alleen betekenis bij de ene klant waarvoor `bron_voorkeur` op `'app'` staat.
@@ -1028,7 +1175,7 @@ export function urenUitApp(
 
   for (const b of boekingen) {
     if (b.status === 'cancelled') continue;
-    if ((b.taught_by_id ?? b.coach_id) !== trainerId) continue;
+    if (lesgeverId(b) !== trainerId) continue;
 
     const start = new Date(b.start_time);
     const eind = new Date(b.end_time);
@@ -1050,7 +1197,7 @@ export function urenUitApp(
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx jest lib/facturatie.test.ts`
-Expected: PASS — 35 tests.
+Expected: PASS — 47 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -1063,21 +1210,80 @@ git commit -m "feat(facturatie): de uren per club, uit de lijst en uit de app"
 
 ## Task 4: Een factuur samenstellen, en de startgegevens
 
+Hier komt ook het overzicht van de extra lessen bij dat Racso elke maand vraagt.
+
 **Files:**
-- Modify: `lib/facturatie.ts` (erbij onderaan)
+- Modify: `lib/facturatie.ts` (één veld op `Factuur`, de rest erbij onderaan)
 - Modify: `lib/facturatie.test.ts` (erbij onderaan)
 
 - [ ] **Step 1: Write the failing test**
 
-Vul de import bovenaan `lib/facturatie.test.ts` aan met `factuurUit, standaardLeverancier, standaardKlanten` en zet onderaan erbij:
+Vul de import bovenaan `lib/facturatie.test.ts` aan met `factuurUit, extraLessenUit, standaardLeverancier, standaardKlanten` en zet onderaan erbij:
 
 ```ts
+describe('extraLessenUit', () => {
+  /** Een privéles bij Racso: zo zet het scherm er een weg. */
+  function extra(naam: string, datum: string, velden: Partial<Factuurles> = {}): Factuurles {
+    return {
+      id: `p-${naam}-${datum}`, bron: 'prive', club_tekst: 'Racso', aanbod: '',
+      doelgroep: '', groep: '', dag_uur: '', trainer: '', status: '', datum, uren: 1,
+      uren_handmatig: null, actief: true, naam_prive: naam, type_prive: 'sponsor',
+      sleutel: `p|${naam}|${datum}`, ...velden,
+    };
+  }
+
+  it('geeft de extra lessen van die klant en die maand, oudste eerst', () => {
+    const lessen = [extra('Veerle', '2026-09-14'), extra('Stan', '2026-09-07')];
+    expect(extraLessenUit(lessen, RACSO, 9, 2026)).toEqual([
+      { datum: '2026-09-07', naam: 'Stan', type: 'sponsor', uren: 1 },
+      { datum: '2026-09-14', naam: 'Veerle', type: 'sponsor', uren: 1 },
+    ]);
+  });
+
+  it('laat een geschrapte les weg', () => {
+    const lessen = [extra('Stan', '2026-09-07', { actief: false })];
+    expect(extraLessenUit(lessen, RACSO, 9, 2026)).toEqual([]);
+  });
+
+  it('laat een andere maand en een andere club weg', () => {
+    const lessen = [extra('Stan', '2026-10-05'), extra('Stan', '2026-09-07', { club_tekst: 'Gantoise' })];
+    expect(extraLessenUit(lessen, RACSO, 9, 2026)).toEqual([]);
+  });
+
+  it('neemt handmatige uren over', () => {
+    const lessen = [extra('Stan', '2026-09-07', { uren_handmatig: 0.5 })];
+    expect(extraLessenUit(lessen, RACSO, 9, 2026)[0].uren).toBe(0.5);
+  });
+
+  it('telt op tot hetzelfde getal als urenPrive', () => {
+    const lessen = [extra('Stan', '2026-09-07'), extra('Veerle', '2026-09-07')];
+    const overzicht = extraLessenUit(lessen, RACSO, 9, 2026);
+    const som = overzicht.reduce((t, l) => t + l.uren, 0);
+    expect(som).toBe(urenPerClub(lessen, [RACSO], 9, 2026)[0].urenPrive);
+  });
+
+  it('geeft een lege lijst en niet undefined als er niets is', () => {
+    expect(extraLessenUit([], RACSO, 9, 2026)).toEqual([]);
+  });
+
+  it('zegt hetzelfde als urenPerClub voor een club die nog niet ingevuld is', () => {
+    // Zo maakt het instellingenscherm een nieuwe club aan: alle velden leeg. Zou dit
+    // overzicht wél een les tonen, dan spreken blad 1 en blad 2 van dezelfde factuur
+    // elkaar tegen: nul uur in het bedrag, één les in de lijst erachter.
+    const leeg = klant({ id: 'leeg', korte_naam: '', naam_in_lijst: '' });
+    const blanco = [extra('Stan', '2026-09-07', { club_tekst: '' })];
+    expect(extraLessenUit(blanco, leeg, 9, 2026)).toEqual([]);
+    expect(urenPerClub(blanco, [leeg], 9, 2026)[0].urenPrive).toBe(0);
+  });
+});
+
 describe('factuurUit', () => {
   const basis = {
     id: 'f1',
     klant: RACSO,
     uren: 8,
     vrijeLijnen: [],
+    extraLessen: [],
     factuurnr: 'NG-0007',
     factuurdatum: '2026-10-01',
     omschrijving: 'Tennislessen September 2026',
@@ -1121,6 +1327,15 @@ describe('factuurUit', () => {
     expect(metBtw.totaal).toBe(300.08);
   });
 
+  it('laat de urenlijn optellen tot het netto, ook bij uren met drie decimalen', () => {
+    // 8,005 u wordt op de factuur 8,01 u. Het bedrag op die regel hoort dan 8,01 × € 31 te
+    // zijn en niet 8,005 × € 31, anders staat er een regel van € 248,31 boven een netto
+    // van € 248,16.
+    const f = factuurUit({ ...basis, uren: 8.005 });
+    expect(f.aantal_uren).toBe(8.01);
+    expect(f.netto).toBe(rond2(f.aantal_uren * f.uurtarief));
+  });
+
   it('rondt elke lijn apart af en telt daarna pas op', () => {
     const f = factuurUit({
       ...basis,
@@ -1142,6 +1357,32 @@ describe('factuurUit', () => {
     const f = factuurUit(basis);
     expect(f.dienstmaand).toBe(9);
     expect(f.dienstjaar).toBe(2026);
+  });
+
+  it('bewaart het overzicht van de extra lessen mee', () => {
+    const f = factuurUit({
+      ...basis,
+      extraLessen: [{ datum: '2026-09-07', naam: 'Stan', type: 'sponsor', uren: 1 }],
+    });
+    expect(f.extra_lessen).toEqual([
+      { datum: '2026-09-07', naam: 'Stan', type: 'sponsor', uren: 1 },
+    ]);
+  });
+
+  it('bewaart een kopie, zodat een latere wijziging de factuur niet raakt', () => {
+    const lijst = [{ datum: '2026-09-07', naam: 'Stan', type: 'sponsor', uren: 1 }];
+    const f = factuurUit({ ...basis, extraLessen: lijst });
+    lijst.push({ datum: '2026-09-14', naam: 'Veerle', type: 'sponsor', uren: 1 });
+    expect(f.extra_lessen).toHaveLength(1);
+  });
+
+  it('geeft de bedragen die Koen deze maanden echt verwacht', () => {
+    // De twee getallen waar dit hele onderdeel om draait: 35 uur bij Gantoise in september
+    // (hetzelfde getal dat in facturen.xlsx met de hand in F24 stond) en 9 uur bij Racso in
+    // oktober. Staan die hier verkeerd, dan klopt er niets van.
+    const [gantoise, racso] = standaardKlanten(['k-1', 'k-2']);
+    expect(factuurUit({ ...basis, klant: gantoise, uren: 35 }).totaal).toBe(1155);
+    expect(factuurUit({ ...basis, klant: racso, uren: 9, maand: 10 }).totaal).toBe(279);
   });
 });
 
@@ -1191,9 +1432,73 @@ Expected: FAIL — `factuurUit is not a function`.
 
 - [ ] **Step 3: Write the implementation**
 
-Zet onderaan `lib/facturatie.ts` erbij:
+Zoek eerst in `lib/facturatie.ts` het blok waar `VrijeLijn` staat en zet het nieuwe type
+ernaast:
 
 ```ts
+/**
+ * Eén extra les op het overzicht dat met de factuur meegaat.
+ *
+ * Een eigen, smal type en niet `Factuurles`: wat Racso wil zien is wie, wanneer, wat en
+ * hoe lang. De groep, de status en de sleutel van een geplakte les hebben daar niets te
+ * zoeken, en ze zouden wél mee in de databank belanden.
+ */
+export interface ExtraLes {
+  datum: string;
+  naam: string;
+  type: string;
+  uren: number;
+}
+```
+
+Zet in `interface Factuur`, direct onder `vrije_lijnen: VrijeLijn[];`, het veld erbij:
+
+```ts
+  /**
+   * Het overzicht dat Racso elke maand vraagt, zoals het bij het maken van de factuur was.
+   *
+   * Een kopie en geen verwijzing, om dezelfde reden als de klantgegevens hierboven: wordt
+   * er volgende maand een les geschrapt, dan mag een verstuurde factuur niet meeveranderen.
+   */
+  extra_lessen: ExtraLes[];
+```
+
+Zet daarna onderaan `lib/facturatie.ts` erbij:
+
+```ts
+/**
+ * De extra lessen van één klant in één maand, oudste eerst.
+ *
+ * Dit is hetzelfde rijtje dat `urenPerClub` als `urenPrive` optelt, maar dan uitgeschreven:
+ * Racso wil niet alleen het getal maar ook waar het vandaan komt.
+ *
+ * "Hetzelfde rijtje" is hier geen manier van spreken maar een eis: het bedrag op blad 1 en
+ * het overzicht op blad 2 van dezelfde factuur moeten over dezelfde lessen gaan. Daarom
+ * staat hier dezelfde regel over een lege naam als in `urenPerClub` — zonder die regel zou
+ * een club die nog niet ingevuld is, op blad 2 lessen tonen die in het bedrag niet
+ * meegeteld zijn. Er staat een test op dat de twee hetzelfde zeggen.
+ */
+export function extraLessenUit(
+  lessen: readonly Factuurles[],
+  klant: Klant,
+  maand: number,
+  jaar: number,
+): ExtraLes[] {
+  const korteNaam = schoon(klant.korte_naam);
+  if (korteNaam === '') return [];
+
+  return lessen
+    .filter((l) => l.bron === 'prive' && l.actief
+      && schoon(l.club_tekst) === korteNaam && inMaand(l.datum, maand, jaar))
+    .sort((a, b) => a.datum.localeCompare(b.datum))
+    .map((l) => ({
+      datum: l.datum,
+      naam: l.naam_prive,
+      type: l.type_prive,
+      uren: urenVan(l),
+    }));
+}
+
 // ---------------------------------------------------------------------------
 // Een factuur samenstellen
 // ---------------------------------------------------------------------------
@@ -1204,6 +1509,8 @@ export interface FactuurOpties {
   /** Het totaal van de gekozen bron plus de privélessen. */
   uren: number;
   vrijeLijnen: readonly VrijeLijn[];
+  /** Het overzicht dat als tweede tabblad meegaat. Leeg mag. */
+  extraLessen: readonly ExtraLes[];
   factuurnr: string;
   /** `2026-10-01`. */
   factuurdatum: string;
@@ -1223,11 +1530,20 @@ const BETAALTERMIJN_DAGEN = 15;
  * Elke lijn wordt apart afgerond en daarna opgeteld, niet omgekeerd. Zo staat op de factuur
  * precies de som van de bedragen die erop te lezen zijn — anders klopt de optelling van wie
  * het natelt een cent niet, en dat is precies waar een boekhouder op terugkomt.
+ *
+ * Wat hier binnenkomt wordt niet gekeurd: een negatief aantal of een onzinnig tarief op een
+ * vrije lijn komt gewoon op de factuur. Dat is met opzet — `parseEuro` in lib/money keurt
+ * aan het invulveld, en een tweede keuring hier zou een creditlijn onmogelijk maken zonder
+ * dat iemand dat besloten heeft.
  */
 export function factuurUit(opties: FactuurOpties): Factuur {
   const { klant, uren, vrijeLijnen } = opties;
 
-  const urenBedrag = rond2(uren * klant.uurtarief);
+  // Met de áfgedrukte uren rekenen, niet met het ruwe getal. Staat er 8,01 u op de factuur
+  // en rekent het bedrag met 8,005, dan telt de regel niet op tot het nettobedrag eronder —
+  // en dan heeft wie het natelt gelijk en de factuur ongelijk.
+  const aantalUren = rond2(uren);
+  const urenBedrag = rond2(aantalUren * klant.uurtarief);
   const vrijBedrag = vrijeLijnen.reduce((som, l) => som + rond2(l.aantal * l.tarief), 0);
   const netto = rond2(urenBedrag + vrijBedrag);
   const btw_bedrag = rond2((netto * klant.btw_percentage) / 100);
@@ -1244,13 +1560,14 @@ export function factuurUit(opties: FactuurOpties): Factuur {
     omschrijving: opties.omschrijving,
     dienstmaand: opties.maand,
     dienstjaar: opties.jaar,
-    aantal_uren: rond2(uren),
+    aantal_uren: aantalUren,
     uurtarief: klant.uurtarief,
     netto,
     btw_percentage: klant.btw_percentage,
     btw_bedrag,
     totaal: rond2(netto + btw_bedrag),
     vrije_lijnen: [...vrijeLijnen],
+    extra_lessen: [...opties.extraLessen],
     betaald: false,
     betaald_op: null,
     opmerking: '',
@@ -1284,8 +1601,12 @@ export function standaardLeverancier(id: string): Leverancier {
  *
  * `naam_in_lijst` van Racso is `T.C. RACSO` en niet `RACSO`: zo staat hij in de geplakte
  * lijst. In `facturen.xlsx` stond `RACSO`, en daardoor telde die werkmap Racso op nul uur.
+ *
+ * De twee id's komen binnen als een paar en niet als een lijst, zodat een aanroep met één
+ * id niet compileert. Met `readonly string[]` zou dat wél mogen, en dan kreeg Racso
+ * `id: undefined` — als primaire sleutel, in de databank.
  */
-export function standaardKlanten([idGantoise, idRacso]: readonly string[]): Klant[] {
+export function standaardKlanten([idGantoise, idRacso]: readonly [string, string]): Klant[] {
   return [
     {
       id: idGantoise,
@@ -1320,13 +1641,13 @@ export function standaardKlanten([idGantoise, idRacso]: readonly string[]): Klan
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx jest lib/facturatie.test.ts`
-Expected: PASS — 46 tests.
+Expected: PASS — 69 tests.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add lib/facturatie.ts lib/facturatie.test.ts
-git commit -m "feat(facturatie): een factuur samenstellen, en de twee clubs"
+git commit -m "feat(facturatie): een factuur samenstellen, met het overzicht van de extra lessen"
 ```
 
 ---
@@ -1345,8 +1666,9 @@ Vul de import bovenaan `lib/xlsx.test.ts` aan:
 
 ```ts
 import {
-  buildXlsx, buildWorkbook, buildVrijXlsx, bladXml, vrijBladXml, refOntleden, bladnaam,
-  crc32, datumNaarSerie, kolomLetter, zip, type XlsxCel, type XlsxVrijBlad,
+  buildXlsx, buildWorkbook, buildVrijWorkbook, bladXml, vrijBladXml,
+  refOntleden, bladnaam, crc32, datumNaarSerie, kolomLetter, zip,
+  type XlsxCel, type XlsxVrijBlad,
 } from './xlsx';
 ```
 
@@ -1379,6 +1701,17 @@ describe('refOntleden', () => {
   it('weigert iets wat geen verwijzing is', () => {
     expect(() => refOntleden('zomaar')).toThrow();
     expect(() => refOntleden('A0')).toThrow();
+  });
+
+  it('leest een verwijzing met kleine letters en spaties eromheen', () => {
+    expect(refOntleden(' h7 ')).toEqual({ rij: 7, kolom: 7 });
+  });
+
+  it('is het omgekeerde van kolomLetter, ook voorbij Z', () => {
+    // A, Z, AA, AZ, BA, ZZ — de plekken waar een kolomteller het laat afweten.
+    for (const kolom of [0, 25, 26, 51, 52, 701]) {
+      expect(refOntleden(`${kolomLetter(kolom)}3`)).toEqual({ rij: 3, kolom });
+    }
   });
 });
 
@@ -1459,27 +1792,69 @@ describe('vrijBladXml', () => {
     const xml = vrijBladXml(vrij({ breedtes: [38, 10] }));
     expect(xml).toContain('<col min="1" max="1" width="38" customWidth="1"/>');
   });
-});
 
-describe('buildVrijXlsx', () => {
-  it('levert een leesbare werkmap met het vrije blad erin', () => {
-    const bytes = buildVrijXlsx(vrij({
-      cellen: [{ ref: 'H8', cel: { soort: 'tekst', waarde: 'NG-0007' } }],
+  it('weigert twee cellen op dezelfde plaats', () => {
+    // Excel zou zo'n blad alleen openen na een "herstel"-melding. Een factuur met zo'n
+    // melding ervoor is erger dan geen factuur, dus dit valt hier om.
+    expect(() => vrijBladXml(vrij({
+      cellen: [
+        { ref: 'A1', cel: { soort: 'tekst', waarde: 'eerste' } },
+        { ref: 'a1', cel: { soort: 'tekst', waarde: 'tweede' } },
+      ],
+    }))).toThrow(/A1/);
+  });
+
+  it('ontsnapt tekens die XML anders stukmaken', () => {
+    const xml = vrijBladXml(vrij({
+      cellen: [{ ref: 'A1', cel: { soort: 'tekst', waarde: 'Jan & Piet <"lang">' } }],
     }));
-    const ingangen = leesZip(bytes);
-    const blad = ingangen.find((i) => i.naam === 'xl/worksheets/sheet1.xml');
-    expect(blad).toBeDefined();
-    expect(tekst(blad!.inhoud)).toContain('NG-0007');
-    const werkmap = ingangen.find((i) => i.naam === 'xl/workbook.xml');
-    expect(tekst(werkmap!.inhoud)).toContain('name="Factuur"');
-  });
-
-  it('maakt de tabnaam net, net als buildXlsx', () => {
-    const bytes = buildVrijXlsx(vrij({ naam: 'Factuur/2026' }));
-    const werkmap = leesZip(bytes).find((i) => i.naam === 'xl/workbook.xml');
-    expect(tekst(werkmap!.inhoud)).toContain('name="Factuur 2026"');
+    expect(xml).toContain('Jan &amp; Piet &lt;&quot;lang&quot;&gt;');
   });
 });
+
+describe('buildVrijWorkbook', () => {
+  it('draagt twee vrije tabbladen, elk met hun eigen naam en inhoud', () => {
+    const bytes = buildVrijWorkbook([
+      vrij({ naam: 'Factuur', cellen: [{ ref: 'H8', cel: { soort: 'tekst', waarde: 'NG-0007' } }] }),
+      vrij({ naam: 'Extra lessen', cellen: [{ ref: 'A1', cel: { soort: 'tekst', waarde: 'EXTRA LESSEN' } }] }),
+    ]);
+    const ingangen = leesZip(bytes);
+
+    const werkmap = tekst(ingangen.find((i) => i.naam === 'xl/workbook.xml')!.inhoud);
+    expect(werkmap).toContain('name="Factuur"');
+    expect(werkmap).toContain('name="Extra lessen"');
+
+    expect(tekst(ingangen.find((i) => i.naam === 'xl/worksheets/sheet1.xml')!.inhoud))
+      .toContain('NG-0007');
+    expect(tekst(ingangen.find((i) => i.naam === 'xl/worksheets/sheet2.xml')!.inhoud))
+      .toContain('EXTRA LESSEN');
+  });
+
+  it('houdt de volgorde aan waarin de bladen binnenkomen', () => {
+    const werkmap = tekst(leesZip(buildVrijWorkbook([
+      vrij({ naam: 'Eerste' }), vrij({ naam: 'Tweede' }),
+    ])).find((i) => i.naam === 'xl/workbook.xml')!.inhoud);
+    expect(werkmap.indexOf('name="Eerste"')).toBeLessThan(werkmap.indexOf('name="Tweede"'));
+  });
+
+  it('geeft twee bladen met dezelfde naam een eigen naam — Excel weigert dubbels', () => {
+    const werkmap = tekst(leesZip(buildVrijWorkbook([
+      vrij({ naam: 'Factuur' }), vrij({ naam: 'Factuur' }),
+    ])).find((i) => i.naam === 'xl/workbook.xml')!.inhoud);
+    expect(werkmap).toContain('name="Factuur"');
+    expect(werkmap).toContain('name="Factuur (2)"');
+  });
+
+  it('deelt één opmaaktabel, zodat een bedrag ook op blad twee een getal blijft', () => {
+    const ingangen = leesZip(buildVrijWorkbook([vrij({ naam: 'A' }), vrij({ naam: 'B' })]));
+    expect(ingangen.filter((i) => i.naam === 'xl/styles.xml')).toHaveLength(1);
+  });
+
+  it('weigert een werkmap zonder bladen — Excel kan die niet openen', () => {
+    expect(() => buildVrijWorkbook([])).toThrow();
+  });
+});
+
 ```
 
 > **Let op:** `leesZip` en `tekst` zijn de helpers die al bovenaan `lib/xlsx.test.ts` staan. Gebruik ze; schrijf geen tweede zip-lezer.
@@ -1553,6 +1928,19 @@ function vrijeCelXml(vrij: XlsxVrijeCel): string {
 export function vrijBladXml(blad: XlsxVrijBlad): string {
   const gelegd = blad.cellen.map((c) => ({ ...c, ...refOntleden(c.ref) }));
 
+  // Twee cellen op dezelfde plaats levert een blad op dat Excel weigert te openen zonder
+  // eerst te "herstellen" — en dan opent de ontvanger een factuur met een foutmelding
+  // ervoor. Het is precies de vergissing die je maakt bij het uitrekenen van een rijnummer,
+  // dus hij wordt hier gevonden en niet daar.
+  const gezien = new Set<string>();
+  for (const cel of gelegd) {
+    const plaats = `${kolomLetter(cel.kolom)}${cel.rij}`;
+    if (gezien.has(plaats)) {
+      throw new Error(`Twee cellen op ${plaats} in blad "${blad.naam}"`);
+    }
+    gezien.add(plaats);
+  }
+
   const laatsteRij = gelegd.reduce((max, c) => Math.max(max, c.rij), 1);
   const laatsteKolom = kolomLetter(gelegd.reduce((max, c) => Math.max(max, c.kolom), 0));
 
@@ -1600,21 +1988,100 @@ export function vrijBladXml(blad: XlsxVrijBlad): string {
 }
 ```
 
-Vervang nu het lijf van `buildXlsx` door een aanroep van een gedeelde helper, en zet `buildVrijXlsx` ernaast. Knip alles tussen `export function buildXlsx(blad: XlsxBlad): Uint8Array {` en de afsluitende `}` weg en zet in de plaats:
+Zet daarna `buildVrijWorkbook` onderaan `lib/xlsx.ts` erbij:
 
 ```ts
 /**
- * De verpakking rond één blad: de vier XML-bestanden die elke werkmap nodig heeft.
+ * Meer dan één vrij blad in één werkmap.
  *
- * Stond tweemaal uitgeschreven zodra er een tweede soort blad bijkwam. De inhoud van het
- * blad is het enige verschil tussen de twee, dus die komt als tekst binnen.
+ * Dit is wat de factuur nodig heeft: blad 1 de factuur, blad 2 het overzicht van de extra
+ * lessen dat Racso elke maand vraagt. `buildWorkbook` kan ook meer dan één tabblad, maar
+ * alleen als tabel met een koprij — en een factuur is geen tabel.
+ *
+ * Er is bewust géén variant voor één vrij blad. Die zou nergens aangeroepen worden: de
+ * factuur heeft er altijd twee, ook als het tweede leeg is.
+ *
+ * De opmaak wordt één keer geschreven en door alle bladen gedeeld, net als bij
+ * `buildWorkbook`: een bedrag blijft dus ook op blad twee een getal en een datum een datum.
  */
-function eenBladPakket(naam: string, bladInhoud: string): Uint8Array {
+export function buildVrijWorkbook(bladen: readonly XlsxVrijBlad[]): Uint8Array {
+  const namen = uniekeBladnamen(bladen.map((b) => b.naam));
+  return meerBladenPakket(
+    namen,
+    bladen.map((blad, i) => vrijBladXml({ ...blad, naam: namen[i] })),
+  );
+}
+```
+
+`buildXlsx` blijft letterlijk zoals hij is — `lib/csv.ts` en het historiekscherm hangen
+eraan, en er is geen reden om hem aan te raken.
+
+Pas ten slotte `uniekeBladnamen` en `buildWorkbook` aan zodat ze met `buildVrijWorkbook`
+hetzelfde pakwerk delen. Verander de signatuur van `uniekeBladnamen` van
+`(bladen: readonly XlsxBlad[])` naar `(voorstellen: readonly string[])`, en vervang
+`blad.naam` in het lijf door de binnengekomen string:
+
+```ts
+function uniekeBladnamen(voorstellen: readonly string[]): string[] {
+  const gezien = new Set<string>();
+  return voorstellen.map((voorstel) => {
+    const schoon = bladnaam(voorstel);
+    let naam = schoon;
+    let volgnummer = 2;
+    while (gezien.has(naam.toLowerCase())) {
+      const achtervoegsel = ` (${volgnummer})`;
+      naam = schoon.slice(0, 31 - achtervoegsel.length) + achtervoegsel;
+      volgnummer++;
+    }
+    gezien.add(naam.toLowerCase());
+    return naam;
+  });
+}
+```
+
+Knip daarna uit `buildWorkbook` alles wat niet over `XlsxBlad` gaat en zet het in een
+helper ernaast. Het lijf van `buildWorkbook` wordt:
+
+```ts
+export function buildWorkbook(bladen: readonly XlsxBlad[]): Uint8Array {
+  const namen = uniekeBladnamen(bladen.map((b) => b.naam));
+  return meerBladenPakket(
+    namen,
+    bladen.map((blad, i) => bladXml({ ...blad, naam: namen[i] })),
+  );
+}
+```
+
+en `meerBladenPakket` krijgt wat eruit kwam — de drie lussen over `[Content_Types].xml`,
+`xl/workbook.xml` en `xl/_rels/workbook.xml.rels`, met de bladinhoud als binnenkomende
+tekst in plaats van als `XlsxBlad`:
+
+```ts
+/**
+ * De verpakking rond meer dan één blad.
+ *
+ * Wat in `buildXlsx` drie vaste strings zijn, zijn hier drie lussen. De volgorde van
+ * `namen` is de volgorde van de tabs onderin Excel. Het soort blad doet er niet toe: de
+ * inhoud komt als tekst binnen, en of die van een tabel of van een vrij blad komt, weet
+ * alleen de aanroeper.
+ */
+function meerBladenPakket(
+  namen: readonly string[],
+  inhouden: readonly string[],
+): Uint8Array {
+  // Excel weigert een werkmap zonder bladen. Hem toch wegschrijven levert een bestand op
+  // dat pas bij de ontvanger stukloopt, en dat is de slechtste plek om het te merken.
+  if (namen.length === 0) throw new Error('Een werkmap zonder bladen bestaat niet.');
+
+  const bladPad = (index: number) => `worksheets/sheet${index + 1}.xml`;
+
   const contentTypes = `${KOP}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">`
     + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
     + '<Default Extension="xml" ContentType="application/xml"/>'
     + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-    + '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+    + namen
+      .map((_, i) => `<Override PartName="/xl/${bladPad(i)}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`)
+      .join('')
     + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
     + '</Types>';
 
@@ -1623,12 +2090,14 @@ function eenBladPakket(naam: string, bladInhoud: string): Uint8Array {
     + '</Relationships>';
 
   const workbook = `${KOP}<workbook xmlns="${HOOFD_NS}" xmlns:r="${REL_NS}">`
-    + `<sheets><sheet name="${xml(naam)}" sheetId="1" r:id="rId1"/></sheets>`
+    + `<sheets>${namen.map((naam, i) => `<sheet name="${xml(naam)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets>`
     + '</workbook>';
 
   const workbookRels = `${KOP}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`
-    + `<Relationship Id="rId1" Type="${REL_NS}/worksheet" Target="worksheets/sheet1.xml"/>`
-    + `<Relationship Id="rId2" Type="${REL_NS}/styles" Target="styles.xml"/>`
+    + namen
+      .map((_, i) => `<Relationship Id="rId${i + 1}" Type="${REL_NS}/worksheet" Target="${bladPad(i)}"/>`)
+      .join('')
+    + `<Relationship Id="rId${namen.length + 1}" Type="${REL_NS}/styles" Target="styles.xml"/>`
     + '</Relationships>';
 
   return zip([
@@ -1637,27 +2106,19 @@ function eenBladPakket(naam: string, bladInhoud: string): Uint8Array {
     { naam: 'xl/workbook.xml', inhoud: utf8(workbook) },
     { naam: 'xl/_rels/workbook.xml.rels', inhoud: utf8(workbookRels) },
     { naam: 'xl/styles.xml', inhoud: utf8(stijlenXml()) },
-    { naam: 'xl/worksheets/sheet1.xml', inhoud: utf8(bladInhoud) },
+    ...inhouden.map((inhoud, i) => ({ naam: `xl/${bladPad(i)}`, inhoud: utf8(inhoud) })),
   ]);
 }
-
-/** Het hele bestand, klaar om weg te schrijven. */
-export function buildXlsx(blad: XlsxBlad): Uint8Array {
-  const naam = bladnaam(blad.naam);
-  return eenBladPakket(naam, bladXml({ ...blad, naam }));
-}
-
-/** Hetzelfde bestand, met een vrij blad in plaats van een tabel. */
-export function buildVrijXlsx(blad: XlsxVrijBlad): Uint8Array {
-  const naam = bladnaam(blad.naam);
-  return eenBladPakket(naam, vrijBladXml({ ...blad, naam }));
-}
 ```
+
+> **Let op:** vergelijk je `meerBladenPakket` regel voor regel met het oude lijf van
+> `buildWorkbook` voor je iets weggooit. De bestaande tests op `buildWorkbook` moeten groen
+> blijven; worden ze rood, dan is er iets uit de verpakking gevallen.
 
 - [ ] **Step 4: Run the whole xlsx suite**
 
 Run: `npx jest lib/xlsx.test.ts`
-Expected: PASS — de nieuwe tests én alle bestaande. Valt een bestaande test om, dan is de herschikking van `buildXlsx` fout; vergelijk met `git diff`.
+Expected: PASS — de nieuwe tests én alle bestaande. Valt een bestaande test om, dan is de herschikking van `buildXlsx` of `buildWorkbook` fout; vergelijk met `git diff`.
 
 - [ ] **Step 5: Run everything that leest of schrijft via xlsx**
 
@@ -1668,7 +2129,7 @@ Expected: PASS.
 
 ```bash
 git add lib/xlsx.ts lib/xlsx.test.ts
-git commit -m "feat(xlsx): een blad met cellen op hun plaats, naast de tabel"
+git commit -m "feat(xlsx): een blad met cellen op hun plaats, en een werkmap van twee"
 ```
 
 ---
@@ -1684,9 +2145,9 @@ git commit -m "feat(xlsx): een blad met cellen op hun plaats, naast de tabel"
 Maak `lib/facturatie-xlsx.test.ts`:
 
 ```ts
-import { factuurBlad, factuurBestandsnaam } from './facturatie-xlsx';
+import { factuurBlad, extraLessenBlad, factuurWerkmap, factuurBestandsnaam } from './facturatie-xlsx';
 import { factuurUit, standaardKlanten, standaardLeverancier, type Factuur } from './facturatie';
-import { buildVrijXlsx, type XlsxVrijeCel } from './xlsx';
+import { type XlsxVrijeCel } from './xlsx';
 
 const LEVERANCIER = standaardLeverancier('lev-1');
 const [, RACSO] = standaardKlanten(['k-1', 'k-2']);
@@ -1698,6 +2159,7 @@ function factuur(extra: Partial<Factuur> = {}): Factuur {
       klant: RACSO,
       uren: 8,
       vrijeLijnen: [],
+      extraLessen: [],
       factuurnr: 'NG-0007',
       factuurdatum: '2026-10-01',
       omschrijving: 'Tennislessen September 2026',
@@ -1708,6 +2170,12 @@ function factuur(extra: Partial<Factuur> = {}): Factuur {
     ...extra,
   };
 }
+
+/** De twee extra lessen die Racso op dit moment heeft. */
+const EXTRA = [
+  { datum: '2026-09-07', naam: 'Stan', type: 'sponsor', uren: 1 },
+  { datum: '2026-09-14', naam: 'Veerle', type: 'sponsor', uren: 1 },
+];
 
 /** De cel op die plaats, of undefined. */
 function cel(cellen: readonly XlsxVrijeCel[], ref: string): XlsxVrijeCel | undefined {
@@ -1809,12 +2277,77 @@ describe('factuurBlad', () => {
     expect(teksten).not.toContain('=');
   });
 
-  it('levert een werkmap op die weer te lezen is', () => {
-    const bytes = buildVrijXlsx(factuurBlad(factuur(), LEVERANCIER));
+});
+
+describe('extraLessenBlad', () => {
+  it('heet "Extra lessen"', () => {
+    expect(extraLessenBlad(factuur({ extra_lessen: EXTRA })).naam).toBe('Extra lessen');
+  });
+
+  it('zet de kop en de regel met klant, maand en factuurnummer bovenaan', () => {
+    const { cellen } = extraLessenBlad(factuur({ extra_lessen: EXTRA }));
+    expect(cel(cellen, 'A1')?.cel).toEqual({ soort: 'tekst', waarde: 'EXTRA LESSEN' });
+    expect(cel(cellen, 'A2')?.cel).toEqual({
+      soort: 'tekst',
+      waarde: 'VZW Racso · September 2026 · factuur NG-0007',
+    });
+  });
+
+  it('zet de kolomkoppen op rij 4 en de eerste les op rij 5', () => {
+    const { cellen } = extraLessenBlad(factuur({ extra_lessen: EXTRA }));
+    expect(cel(cellen, 'A4')?.cel).toEqual({ soort: 'tekst', waarde: 'Datum' });
+    expect(cel(cellen, 'B4')?.cel).toEqual({ soort: 'tekst', waarde: 'Naam' });
+    expect(cel(cellen, 'C4')?.cel).toEqual({ soort: 'tekst', waarde: 'Type' });
+    expect(cel(cellen, 'D4')?.cel).toEqual({ soort: 'tekst', waarde: 'Uren' });
+    expect(cel(cellen, 'A5')?.cel).toEqual({ soort: 'datum', waarde: new Date(2026, 8, 7) });
+    expect(cel(cellen, 'B5')?.cel).toEqual({ soort: 'tekst', waarde: 'Stan' });
+    expect(cel(cellen, 'C5')?.cel).toEqual({ soort: 'tekst', waarde: 'sponsor' });
+    expect(cel(cellen, 'D5')?.cel).toEqual({ soort: 'getal', waarde: 1 });
+  });
+
+  it('zet de lessen op datum, oudste eerst', () => {
+    const omgekeerd = [EXTRA[1], EXTRA[0]];
+    const { cellen } = extraLessenBlad(factuur({ extra_lessen: omgekeerd }));
+    expect(cel(cellen, 'B5')?.cel).toEqual({ soort: 'tekst', waarde: 'Stan' });
+    expect(cel(cellen, 'B6')?.cel).toEqual({ soort: 'tekst', waarde: 'Veerle' });
+  });
+
+  it('sluit af met een totaalrij die optelt', () => {
+    const { cellen } = extraLessenBlad(factuur({ extra_lessen: EXTRA }));
+    expect(cel(cellen, 'C7')?.cel).toEqual({ soort: 'tekst', waarde: 'Totaal' });
+    expect(cel(cellen, 'D7')?.cel).toEqual({ soort: 'getal', waarde: 2 });
+  });
+
+  it('bestaat ook als er geen extra lessen zijn, met een zin in plaats van een tabel', () => {
+    const { cellen } = extraLessenBlad(factuur({ extra_lessen: [] }));
+    expect(cel(cellen, 'A4')?.cel).toEqual({
+      soort: 'tekst',
+      waarde: 'Geen extra lessen in deze maand.',
+    });
+    expect(cel(cellen, 'D4')).toBeUndefined();
+  });
+});
+
+describe('factuurWerkmap', () => {
+  it('levert een leesbare werkmap met twee tabbladen', () => {
+    const bytes = factuurWerkmap(factuur({ extra_lessen: EXTRA }), LEVERANCIER);
     expect(bytes.length).toBeGreaterThan(500);
     // "PK" — de handtekening van een zip.
     expect(bytes[0]).toBe(0x50);
     expect(bytes[1]).toBe(0x4b);
+  });
+
+  it('botst nooit op zichzelf, hoeveel vrije lijnen er ook bij komen', () => {
+    // `vrijBladXml` gooit als twee cellen op dezelfde plaats landen. Het totalenblok
+    // schuift op met het aantal vrije lijnen, dus dat is precies waar een rijnummer één
+    // te ver kan tellen. Deze test laat het blad écht schrijven in plaats van losse
+    // celverwijzingen na te kijken.
+    for (const aantal of [0, 1, 2, 5, 12]) {
+      const lijnen = Array.from({ length: aantal }, (_, i) => ({
+        omschrijving: `Lijn ${i + 1}`, aantal: 1, eenheid: 'stuk', tarief: 10,
+      }));
+      expect(() => factuurWerkmap(factuur({ vrije_lijnen: lijnen }), LEVERANCIER)).not.toThrow();
+    }
   });
 });
 
@@ -1830,6 +2363,15 @@ describe('factuurBestandsnaam', () => {
 
   it('valt terug op "factuur.xlsx" als het nummer leeg is', () => {
     expect(factuurBestandsnaam('   ')).toBe('factuur.xlsx');
+  });
+
+  it('haalt streepjes aan de randen weg', () => {
+    expect(factuurBestandsnaam('-NG-0007-')).toBe('factuur-NG-0007.xlsx');
+  });
+
+  it('topt een onwaarschijnlijk lang nummer af', () => {
+    const lang = 'A'.repeat(300);
+    expect(factuurBestandsnaam(lang).length).toBeLessThanOrEqual(113);
   });
 });
 ```
@@ -1850,12 +2392,16 @@ Maak `lib/facturatie-xlsx.ts`:
 // aflevert er hetzelfde uitziet als het bestand dat de club al jaren krijgt. Alleen het
 // urenblok groeit mee met het aantal vrije lijnen; de rest schuift dan op.
 //
+// Het bestand heeft twee tabbladen: de factuur, en het overzicht van de extra lessen dat
+// Racso elke maand vraagt. Dat tweede blad is er altijd, ook leeg — een tabblad dat er soms
+// wel en soms niet is, is een tabblad waarvan iemand denkt dat het vergeten werd.
+//
 // WAT HIER NIET IN STAAT: formules. Het blad uit Excel rekent zichzelf uit, en dat is handig
 // zolang je ermee bezig bent. Een bewaarde factuur hoort juist niet meer te kunnen
 // veranderen omdat iemand per ongeluk een cel aanraakt. Wat hier staat is uitgerekend.
 
-import { rond2, type Factuur, type Leverancier } from './facturatie';
-import type { XlsxVrijBlad, XlsxVrijeCel } from './xlsx';
+import { MAANDNAMEN, rond2, type Factuur, type Leverancier } from './facturatie';
+import { buildVrijWorkbook, type XlsxVrijBlad, type XlsxVrijeCel } from './xlsx';
 
 /** Kolom A draagt de omschrijvingen en is daarom breed; G tot I dragen de bedragen. */
 const BREEDTES = [38, 10, 10, 10, 10, 10, 14, 16, 14];
@@ -1951,6 +2497,60 @@ export function factuurBlad(factuur: Factuur, leverancier: Leverancier): XlsxVri
 }
 
 /**
+ * Blad 2: het overzicht van de extra lessen.
+ *
+ * Racso vraagt dit elke maand. Het leest uit `factuur.extra_lessen` en niet uit de
+ * lessenlijst: wat op een verstuurde factuur stond, mag niet veranderen omdat er later een
+ * les geschrapt wordt.
+ */
+export function extraLessenBlad(factuur: Factuur): XlsxVrijBlad {
+  const cellen: XlsxVrijeCel[] = [];
+  const tekst = (ref: string, waarde: string, vet = false) =>
+    cellen.push({ ref, cel: { soort: 'tekst', waarde }, vet });
+
+  tekst('A1', 'EXTRA LESSEN', true);
+  tekst(
+    'A2',
+    `${factuur.klant_naam} · ${MAANDNAMEN[factuur.dienstmaand - 1]} ${factuur.dienstjaar}`
+    + ` · factuur ${factuur.factuurnr}`,
+  );
+
+  if (factuur.extra_lessen.length === 0) {
+    tekst('A4', 'Geen extra lessen in deze maand.');
+    return { naam: 'Extra lessen', cellen, breedtes: [14, 22, 18, 10] };
+  }
+
+  tekst('A4', 'Datum', true);
+  tekst('B4', 'Naam', true);
+  tekst('C4', 'Type', true);
+  tekst('D4', 'Uren', true);
+
+  // Op datum en niet in de volgorde waarin ze ingetikt zijn: wie het overzicht naast zijn
+  // eigen agenda legt, leest van boven naar beneden door de maand.
+  const opDatum = [...factuur.extra_lessen].sort((a, b) => a.datum.localeCompare(b.datum));
+
+  let rij = 4;
+  for (const les of opDatum) {
+    rij++;
+    cellen.push({ ref: `A${rij}`, cel: { soort: 'datum', waarde: alsDatum(les.datum) } });
+    tekst(`B${rij}`, les.naam);
+    tekst(`C${rij}`, les.type);
+    cellen.push({ ref: `D${rij}`, cel: { soort: 'getal', waarde: les.uren } });
+  }
+
+  const totaal = rond2(opDatum.reduce((som, les) => som + les.uren, 0));
+  tekst(`C${rij + 1}`, 'Totaal', true);
+  cellen.push({ ref: `D${rij + 1}`, cel: { soort: 'getal', waarde: totaal } });
+
+  return { naam: 'Extra lessen', cellen, breedtes: [14, 22, 18, 10] };
+}
+
+/** Het bestand zoals het gedownload wordt: de factuur, en het overzicht erachter. */
+export function factuurWerkmap(factuur: Factuur, leverancier: Leverancier): Uint8Array {
+  return buildVrijWorkbook([factuurBlad(factuur, leverancier), extraLessenBlad(factuur)]);
+}
+
+/**
  * De naam van het bestand dat gedownload wordt.
  *
  * Alles wat geen letter, cijfer, streepje of liggend streepje is, wordt een streepje: een
@@ -1958,7 +2558,12 @@ export function factuurBlad(factuur: Factuur, leverancier: Leverancier): XlsxVri
  * download zonder uitleg.
  */
 export function factuurBestandsnaam(factuurnr: string): string {
-  const net = factuurnr.trim().replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+  const net = factuurnr.trim()
+    .replace(/[^A-Za-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    // Een bestandsnaam langer dan ongeveer 255 tekens weigeren sommige schijven en
+    // browsers zonder uitleg. Honderd is ruim voor een factuurnummer.
+    .slice(0, 100);
   return net === '' ? 'factuur.xlsx' : `factuur-${net}.xlsx`;
 }
 ```
@@ -1966,7 +2571,7 @@ export function factuurBestandsnaam(factuurnr: string): string {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx jest lib/facturatie-xlsx.test.ts`
-Expected: PASS — 14 tests.
+Expected: PASS — 23 tests.
 
 - [ ] **Step 5: Run the whole suite and the typechecker**
 
@@ -1977,7 +2582,7 @@ Expected: PASS, geen typefouten.
 
 ```bash
 git add lib/facturatie-xlsx.ts lib/facturatie-xlsx.test.ts
-git commit -m "feat(facturatie): de factuur als Excel-blad, zonder formules"
+git commit -m "feat(facturatie): de factuur als Excel-bestand, met het overzicht erachter"
 ```
 
 ---
@@ -2007,6 +2612,10 @@ Maak `FACTURATIE.sql`:
 --
 -- Sleutels zijn `text` en komen van de app, zoals overal in dit schema. Zie de kop van
 -- supabase-schema.sql voor het waarom.
+--
+-- LET OP bij het met de hand invoegen van een rij vanuit de SQL-editor: `auth.uid()` is
+-- daar leeg, en `eigenaar` is `not null`. Zo'n insert wordt dus geweigerd tenzij je zelf
+-- je uuid meegeeft. De app heeft daar geen last van — die schrijft altijd ingelogd.
 
 -- ---------------------------------------------------------------------------
 -- Tabellen
@@ -2095,7 +2704,7 @@ create table if not exists facturatie_facturen (
   factuurdatum date not null,
   vervaldatum date not null,
   omschrijving text not null default '',
-  dienstmaand int not null,
+  dienstmaand int not null check (dienstmaand between 1 and 12),
   dienstjaar int not null,
   aantal_uren numeric(8,2) not null default 0,
   uurtarief numeric(10,2) not null default 0,
@@ -2106,6 +2715,10 @@ create table if not exists facturatie_facturen (
   -- De vrije lijnen hebben alleen betekenis samen met hun factuur en worden nooit los
   -- opgevraagd. Dezelfde keuze als voor de beurten van een kaart; zie supabase-schema.sql.
   vrije_lijnen jsonb not null default '[]'::jsonb,
+  -- Het overzicht dat Racso elke maand vraagt, zoals het bij het maken van de factuur was.
+  -- Een kopie en geen verwijzing naar facturatie_lessen: wordt er volgende maand een les
+  -- geschrapt, dan mag een verstuurde factuur niet meeveranderen.
+  extra_lessen jsonb not null default '[]'::jsonb,
   betaald boolean not null default false,
   betaald_op date,
   opmerking text not null default '',
@@ -2140,17 +2753,29 @@ begin
     execute format('drop policy if exists %1$s_update on %1$s', t);
     execute format('drop policy if exists %1$s_delete on %1$s', t);
 
+    -- `%s` en niet `%I` voor de tabelnaam: wat hier binnenkomt is de vaste lijst hierboven
+    -- en nooit iets van buiten. Zou dat ooit veranderen, dan moet dit `%I` worden.
+    --
+    -- `to authenticated` zoals overal in supabase-schema.sql. Strikt genomen overbodig —
+    -- voor de anon-rol is `auth.uid()` leeg en matcht `eigenaar = null` nooit — maar een
+    -- policy die alleen klopt omdat een vergelijking toevallig onwaar is, is er een die
+    -- niemand durft te wijzigen.
     execute format(
-      'create policy %1$s_select on %1$s for select using (eigenaar = auth.uid())', t);
+      'create policy %1$s_select on %1$s for select '
+      || 'to authenticated using (eigenaar = auth.uid())', t);
     -- Ook `with check` op insert: anders kan iemand een rij op naam van een ander wegschrijven
     -- door de kolom zelf mee te sturen, en de default `auth.uid()` komt daar niet aan te pas.
     execute format(
-      'create policy %1$s_insert on %1$s for insert with check (eigenaar = auth.uid())', t);
+      'create policy %1$s_insert on %1$s for insert '
+      || 'to authenticated with check (eigenaar = auth.uid())', t);
+    -- `with check` op update houdt tegen dat je je eigen rij op naam van iemand anders zet.
     execute format(
-      'create policy %1$s_update on %1$s for update using (eigenaar = auth.uid()) '
+      'create policy %1$s_update on %1$s for update '
+      || 'to authenticated using (eigenaar = auth.uid()) '
       || 'with check (eigenaar = auth.uid())', t);
     execute format(
-      'create policy %1$s_delete on %1$s for delete using (eigenaar = auth.uid())', t);
+      'create policy %1$s_delete on %1$s for delete '
+      || 'to authenticated using (eigenaar = auth.uid())', t);
   end loop;
 end
 $$;
@@ -2200,6 +2825,7 @@ Maak `providers/facturatieStore.ts`:
 // `laden` geeft `null` als de tabellen er nog niet zijn. Dat is iets anders dan een lege
 // boekhouding, en het scherm zegt dat ook anders — dezelfde afspraak als bij `bezetteUren`.
 
+import { alleRijen } from '../lib/paginering';
 import { supabase } from '../lib/supabase';
 import type {
   Factuur, Factuurles, FacturatieData, Klant, Leverancier,
@@ -2211,37 +2837,87 @@ function tabelBestaatNiet(error: { code?: string; message?: string }): boolean {
   return /schema cache/i.test(error.message ?? '');
 }
 
-/** De kolommen die de app niet kent en niet terugschrijft. */
-function zonderHuishouding<T>(rij: Record<string, unknown>): T {
-  const { eigenaar, aangemaakt, ...rest } = rij;
-  void eigenaar;
-  void aangemaakt;
-  return rest as T;
+/**
+ * De kolommen die de app niet kent, eraf halen.
+ *
+ * Welke dat zijn verschilt per tabel, en dat is geen slordigheid. `eigenaar` is overal
+ * huishouding. `aangemaakt` is dat bij een les — de databank zet hem en niemand leest hem —
+ * maar bij een factuur is het een veld van de app zelf: `factuurUit` zet erin wanneer de
+ * factuur gemaakt is, en het register toont dat. Knip je hem daar ook weg, dan is dat veld
+ * na een herlaadbeurt leeg terwijl het type belooft dat er een datum in staat.
+ */
+function zonderKolommen<T>(rij: Record<string, unknown>, weg: readonly string[]): T {
+  const uit = { ...rij };
+  for (const kolom of weg) delete uit[kolom];
+  return uit as T;
+}
+
+/** Overal huishouding. */
+const EIGENAAR = ['eigenaar'] as const;
+/** Bij een les zet de databank `aangemaakt` en leest de app hem nooit. */
+const EIGENAAR_EN_AANGEMAAKT = ['eigenaar', 'aangemaakt'] as const;
+
+/**
+ * Eén tabel volledig ophalen, in stukken.
+ *
+ * NIET `select('*')` zonder meer. PostgREST geeft nooit meer dan duizend rijen per verzoek
+ * terug, zonder foutmelding en zonder waarschuwing — zie de kop van lib/paginering, waar
+ * staat wat dat op 6 september 2026 kostte: een trainer zag zijn agenda leeg staan omdat de
+ * club over die grens heen gegroeid was. Een lessenlijst groeit hier met een paar honderd
+ * rijen per jaar, dus die grens komt vanzelf, en hij komt stil.
+ *
+ * Geeft `null` als de tabel er nog niet is. Elke andere fout gooit, en die gooi wint: hij
+ * komt uit de `Promise.all` hieronder naar boven ook als een andere tabel tegelijk "bestaat
+ * niet" zegt. Anders zou een echte fout verdwijnen achter een melding over een SQL-bestand
+ * dat allang gedraaid is.
+ */
+async function haalAlles(
+  tabel: string,
+  sorteer: string,
+  oplopend = true,
+): Promise<Array<Record<string, unknown>> | null> {
+  let ontbreekt = false;
+
+  const rijen = await alleRijen<Record<string, unknown>>(async (van, tot) => {
+    const { data, error } = await supabase
+      .from(tabel)
+      .select('*')
+      .order(sorteer, { ascending: oplopend })
+      .range(van, tot);
+    if (error) {
+      if (tabelBestaatNiet(error)) {
+        ontbreekt = true;
+        return [];
+      }
+      throw new Error(`${tabel}: ${error.message}`);
+    }
+    return (data ?? []) as Array<Record<string, unknown>>;
+  });
+
+  return ontbreekt ? null : rijen;
 }
 
 export async function laden(): Promise<FacturatieData | null> {
+  // Alle vier tegelijk: ze hangen niet van elkaar af, en na elkaar is vier keer wachten.
   const [lev, kla, les, fac] = await Promise.all([
-    supabase.from('facturatie_leverancier').select('*'),
-    supabase.from('facturatie_klanten').select('*').order('volgorde'),
-    supabase.from('facturatie_lessen').select('*').order('datum'),
-    supabase.from('facturatie_facturen').select('*').order('factuurdatum', { ascending: false }),
+    haalAlles('facturatie_leverancier', 'id'),
+    haalAlles('facturatie_klanten', 'volgorde'),
+    haalAlles('facturatie_lessen', 'datum'),
+    haalAlles('facturatie_facturen', 'factuurdatum', false),
   ]);
 
-  for (const uitkomst of [lev, kla, les, fac]) {
-    if (uitkomst.error) {
-      if (tabelBestaatNiet(uitkomst.error)) return null;
-      throw new Error(`facturatie: ${uitkomst.error.message}`);
-    }
-  }
+  // Staat er één tabel niet, dan staat het SQL-bestand nog te wachten. Een echte fout is
+  // hierboven al gegooid, dus er kan er geen één achter deze melding verdwijnen.
+  if (lev === null || kla === null || les === null || fac === null) return null;
 
-  const leveranciers = (lev.data ?? []).map((r) => zonderHuishouding<Leverancier>(r));
+  const leveranciers = lev.map((r) => zonderKolommen<Leverancier>(r, EIGENAAR));
 
   return {
     // Er is er hoogstens één; staat er nog geen, dan maakt het scherm hem bij de eerste keer.
     leverancier: leveranciers[0] ?? { id: '', naam: '', adres: '', btw: '', iban: '', bic: '' },
-    klanten: (kla.data ?? []).map((r) => zonderHuishouding<Klant>(r)),
-    lessen: (les.data ?? []).map((r) => zonderHuishouding<Factuurles>(r)),
-    facturen: (fac.data ?? []).map((r) => zonderHuishouding<Factuur>(r)),
+    klanten: kla.map((r) => zonderKolommen<Klant>(r, EIGENAAR)),
+    lessen: les.map((r) => zonderKolommen<Factuurles>(r, EIGENAAR_EN_AANGEMAAKT)),
+    facturen: fac.map((r) => zonderKolommen<Factuur>(r, EIGENAAR)),
   };
 }
 
@@ -2346,7 +3022,16 @@ export const facturatieLokaal = {
   lessenToevoegen: async (lessen: readonly Factuurles[]) => {
     const data = await lees();
     const gekend = new Set(data.lessen.map((l) => l.sleutel));
-    const nieuw = lessen.filter((l) => !gekend.has(l.sleutel));
+    const nieuw: Factuurles[] = [];
+    for (const les of lessen) {
+      // Ook binnen één plakbeurt: twee regels met dezelfde sleutel zijn dezelfde les. Aan
+      // de kant van de databank houdt de unieke index dat tegen; hier moet het met de hand,
+      // anders doen de twee kanten iets anders en merk je dat pas op een toestel zonder
+      // .env.
+      if (gekend.has(les.sleutel)) continue;
+      gekend.add(les.sleutel);
+      nieuw.push(les);
+    }
     await schrijf({ ...data, lessen: [...data.lessen, ...nieuw] });
   },
 
@@ -2726,6 +3411,19 @@ interface Uitkomst {
   overgeslagen: OvergeslagenRegel[];
 }
 
+/**
+ * De extra lessen die er op dit moment bij kunnen komen: twee, allebei bij Racso en allebei
+ * sponsor.
+ *
+ * Een lijst bovenaan en geen twee knoppen verderop in de opmaak, zodat er een regel bij kan
+ * komen zonder dat iemand door het scherm moet. Het volle formulier eronder blijft bestaan: deze
+ * twee zijn de stand van zaken van 4 oktober 2026, geen wet.
+ */
+const SNELLE_EXTRA_LESSEN = [
+  { naam: 'Stan', type: 'sponsor', club: 'Racso', van: '09:00', tot: '10:00', uren: 1 },
+  { naam: 'Veerle', type: 'sponsor', club: 'Racso', van: '10:00', tot: '11:00', uren: 1 },
+] as const;
+
 export function LessenBlad({ data, opnieuwLaden }: {
   data: FacturatieData;
   opnieuwLaden: () => Promise<void>;
@@ -2837,6 +3535,8 @@ export function LessenBlad({ data, opnieuwLaden }: {
         )}
       </Card>
 
+      <SnelleExtraLes onBewaar={bewaarLes} />
+
       <PriveFormulier
         open={prive}
         onOpen={() => setPrive(true)}
@@ -2886,9 +3586,12 @@ function Lesregel({ les, onBewaar }: {
 
   function zetUren() {
     const getal = Number(urenTekst.replace(',', '.'));
-    // Onzin of hetzelfde getal: niets wegschrijven. Een lege databankronde per toetsaanslag
-    // is precies wat dit scherm traag zou maken.
-    if (!Number.isFinite(getal) || getal < 0 || getal === urenVan(les)) {
+    // Een leeg veld is géén nul uur. `Number('')` is 0, en dat is finiet en niet negatief,
+    // dus zonder deze regel schrijft wegvegen-en-wegklikken stilletjes nul uur weg en telt
+    // de factuur een les te weinig. Onzin en hetzelfde getal vallen hier ook af: een
+    // databankronde per toetsaanslag is precies wat dit scherm traag zou maken.
+    if (urenTekst.trim() === '' || !Number.isFinite(getal) || getal < 0
+      || getal === urenVan(les)) {
       setUrenTekst(String(urenVan(les)));
       return;
     }
@@ -2932,6 +3635,90 @@ function Lesregel({ les, onBewaar }: {
   );
 }
 
+/**
+ * De twee vaste extra lessen bij Racso, met één tik.
+ *
+ * Alles staat al ingevuld behalve de datum, want dat is het enige wat per keer verschilt.
+ * Zo is een maand bijtikken acht tikken in plaats van acht formulieren.
+ */
+function SnelleExtraLes({ onBewaar }: { onBewaar: (les: Factuurles) => Promise<void> }) {
+  const [datum, setDatum] = useState(formatDayInput(new Date()));
+  const dag = parseDayInput(datum);
+
+  return (
+    <Card>
+      <Text style={styles.kop}>Extra les</Text>
+      <Text style={styles.uitleg}>
+        Kies de datum en tik op wie er les had. Staat er iemand anders op de baan, gebruik dan
+        het formulier eronder.
+      </Text>
+      <Veld label="Datum (dd/mm/jjjj)" waarde={datum} onChange={setDatum} />
+      <View style={styles.knoppen}>
+        {SNELLE_EXTRA_LESSEN.map((sjabloon) => (
+          <Button
+            key={sjabloon.naam}
+            label={`${sjabloon.naam} ${sjabloon.van}-${sjabloon.tot}`}
+            variant="secondary"
+            fullWidth={false}
+            disabled={dag === null}
+            onPress={() => {
+              if (dag === null) return;
+              void onBewaar(priveLes({
+                naam: sjabloon.naam,
+                type: sjabloon.type,
+                club: sjabloon.club,
+                dag,
+                uren: sjabloon.uren,
+                dagUur: `${sjabloon.van} - ${sjabloon.tot}`,
+              }));
+            }}
+          />
+        ))}
+      </View>
+    </Card>
+  );
+}
+
+/**
+ * Eén privéles, klaar om weg te schrijven.
+ *
+ * Staat apart omdat de snelknoppen en het volle formulier allebei precies dezelfde rij
+ * moeten maken — zou dat op twee plekken staan, dan loopt er ooit één achter.
+ */
+function priveLes({ naam, type, club, dag, uren, dagUur }: {
+  naam: string;
+  type: string;
+  club: string;
+  dag: Date;
+  uren: number;
+  dagUur: string;
+}): Factuurles {
+  const iso = `${dag.getFullYear()}-${String(dag.getMonth() + 1).padStart(2, '0')}-${String(dag.getDate()).padStart(2, '0')}`;
+  const id = nieuwId('priv');
+  return {
+    id,
+    bron: 'prive',
+    // De korte naam van de klant: zo telt `urenPerClub` een privéles mee. Een geplakte les
+    // hangt aan `naam_in_lijst`, en dat is een andere naam voor dezelfde club.
+    club_tekst: club.trim(),
+    aanbod: '',
+    doelgroep: '',
+    groep: '',
+    dag_uur: dagUur,
+    trainer: '',
+    status: '',
+    datum: iso,
+    uren,
+    uren_handmatig: null,
+    actief: true,
+    naam_prive: naam.trim(),
+    type_prive: type.trim(),
+    // Een eigen sleutel met het id erin: twee identieke privélessen op dezelfde dag zijn
+    // twee lessen, en mogen elkaar niet uitsluiten op de unieke index.
+    sleutel: `${sleutelVan(club, naam, iso)}|${id}`,
+  };
+}
+
 /** Een privéles bijtikken: het blokje M–Q uit Sheet3 van facturen.xlsx. */
 function PriveFormulier({ open, onOpen, onSluit, onBewaar }: {
   open: boolean;
@@ -2963,30 +3750,9 @@ function PriveFormulier({ open, onOpen, onSluit, onBewaar }: {
 
   function bewaar() {
     if (!mag || dag === null) return;
-    const iso = `${dag.getFullYear()}-${String(dag.getMonth() + 1).padStart(2, '0')}-${String(dag.getDate()).padStart(2, '0')}`;
-    const id = nieuwId('priv');
-    void onBewaar({
-      id,
-      bron: 'prive',
-      // De korte naam van de klant: zo telt `urenPerClub` een privéles mee. Een geplakte les
-      // hangt aan `naam_in_lijst`, en dat is een andere naam voor dezelfde club.
-      club_tekst: club.trim(),
-      aanbod: '',
-      doelgroep: '',
-      groep: '',
-      dag_uur: '',
-      trainer: '',
-      status: '',
-      datum: iso,
-      uren: urenGetal,
-      uren_handmatig: null,
-      actief: true,
-      naam_prive: naam.trim(),
-      type_prive: type.trim(),
-      // Een eigen sleutel met het id erin: twee identieke privélessen op dezelfde dag zijn
-      // twee lessen, en mogen elkaar niet uitsluiten op de unieke index.
-      sleutel: `${sleutelVan(club, naam, iso)}|${id}`,
-    });
+    void onBewaar(priveLes({
+      naam, type, club, dag, uren: urenGetal, dagUur: '',
+    }));
     setNaam('');
     setType('');
   }
@@ -3127,7 +3893,7 @@ Maak `components/facturatie/InstellingenBlad.tsx`:
 // zegt, en die werkmap telde Racso daardoor op nul uur zonder dat er iets misliep. Daarom
 // staat het hier als een gewoon, zichtbaar veld en niet verstopt in de code.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Plus } from 'lucide-react-native';
 
@@ -3157,12 +3923,31 @@ export function InstellingenBlad({ data, opnieuwLaden }: {
     }
   }
 
+  // `urenPerClub` gaat ervan uit dat elke naam bij één club hoort en houdt een dubbel niet
+  // tegen — daar weet het rekenwerk niet of het een vergissing is. Hier wel: dit is de
+  // enige plek waar iemand die naam intikt.
+  const dubbeleNamen = useMemo(() => {
+    const geteld = new Map<string, number>();
+    for (const k of data.klanten) {
+      const naam = k.naam_in_lijst.trim();
+      if (naam !== '') geteld.set(naam, (geteld.get(naam) ?? 0) + 1);
+    }
+    return [...geteld.entries()].filter(([, n]) => n > 1).map(([naam]) => naam);
+  }, [data.klanten]);
+
   return (
     <View style={styles.blad}>
       <LeverancierKaart
         leverancier={data.leverancier}
         onBewaar={(l) => doe(() => backend.facturatie.leverancierBewaren(l))}
       />
+
+      {dubbeleNamen.length > 0 && (
+        <Text style={styles.waarschuwing}>
+          Twee clubs met dezelfde naam in de lijst: {dubbeleNamen.join(', ')}. Ze tellen
+          allebei dezelfde lessen, en dan factureer je die twee keer.
+        </Text>
+      )}
 
       {data.klanten.map((klant) => (
         <KlantKaart
@@ -3336,17 +4121,40 @@ import { Button } from '../ui/Button';
 import { Chip } from '../ui/Chip';
 import { Veld } from './LessenBlad';
 import { backend } from '../../providers/backend';
-import { factuurBestandsnaam, factuurBlad } from '../../lib/facturatie-xlsx';
-import { buildVrijXlsx } from '../../lib/xlsx';
-import { shareXlsx } from '../../lib/share';
+import { factuurBestandsnaam, factuurWerkmap } from '../../lib/facturatie-xlsx';
+import { shareXlsx, xlsxWordtOndersteund } from '../../lib/share';
 import {
-  MAANDNAMEN, factuurUit, nieuwId, onbekendeClubs, rond2, urenPerClub, urenUitApp,
-  type AppBoeking, type Bron, type FacturatieData, type Klant, type VrijeLijn,
+  MAANDNAMEN, extraLessenUit, factuurUit, nieuwId, onbekendeClubs, rond2, urenPerClub,
+  urenUitApp,
+  type AppBoeking, type Bron, type ExtraLes, type FacturatieData, type Klant,
+  type VrijeLijn,
 } from '../../lib/facturatie';
 import { formatEuro, parseEuro } from '../../lib/money';
 import { formatDayInput, parseDayInput } from '../../lib/period';
 import { tennisColors } from '../../constants/tennis-colors';
 import { spacing, radius, typography, webCursor, minTapTarget } from '../../constants/theme';
+
+/**
+ * Een vrije lijn zoals het scherm hem vasthoudt, met een eigen sleutel erbij.
+ *
+ * Die sleutel staat er voor React en gaat niet mee de databank in. Zonder hem zou een lijst
+ * op volgnummer gesleuteld worden, en dan hergebruikt React de rij die op die plek stond
+ * zodra je er eentje wegneemt — met het aantal en het tarief van de verwijderde lijn nog in
+ * beeld, want die velden houden hun eigen tekst vast terwijl je typt.
+ */
+interface LijnInBewerking extends VrijeLijn {
+  sleutel: string;
+}
+
+/** Wat ervan op de factuur komt: zonder de sleutel, die alleen het scherm nodig had. */
+function zonderSleutel(lijn: LijnInBewerking): VrijeLijn {
+  return {
+    omschrijving: lijn.omschrijving,
+    aantal: lijn.aantal,
+    eenheid: lijn.eenheid,
+    tarief: lijn.tarief,
+  };
+}
 
 /**
  * Valt deze factuurdatum redelijk bij deze dienstmaand?
@@ -3429,11 +4237,17 @@ export function FactuurBlad({ data, bookings, trainerId, opnieuwLaden }: {
 
       {perClub.map((rij) => (
         <KlantFactuur
-          key={rij.klant.id}
+          // De maand hoort in de sleutel. Een factuurkaart draagt een nummer, een datum,
+          // een omschrijving en vrije lijnen die bij één maand horen; blijft dezelfde kaart
+          // staan als je van maand wisselt, dan houdt ze "Tennislessen September" en die
+          // ene extra lijn vast terwijl de uren al die van augustus zijn. Een andere
+          // sleutel geeft een schone kaart, en dat is precies wat een andere maand is.
+          key={`${rij.klant.id}-${jaar}-${maand}`}
           klant={rij.klant}
           urenGeplakt={rij.urenGeplakt}
           urenPrive={rij.urenPrive}
           urenApp={uitApp}
+          extraLessen={extraLessenUit(data.lessen, rij.klant, maand, jaar)}
           maand={maand}
           jaar={jaar}
           data={data}
@@ -3445,12 +4259,13 @@ export function FactuurBlad({ data, bookings, trainerId, opnieuwLaden }: {
 }
 
 function KlantFactuur({
-  klant, urenGeplakt, urenPrive, urenApp, maand, jaar, data, opnieuwLaden,
+  klant, urenGeplakt, urenPrive, urenApp, extraLessen, maand, jaar, data, opnieuwLaden,
 }: {
   klant: Klant;
   urenGeplakt: number;
   urenPrive: number;
   urenApp: number;
+  extraLessen: readonly ExtraLes[];
   maand: number;
   jaar: number;
   data: FacturatieData;
@@ -3462,14 +4277,18 @@ function KlantFactuur({
   const [omschrijving, setOmschrijving] = useState(
     `Tennislessen ${MAANDNAMEN[maand - 1]} ${jaar}`,
   );
-  const [lijnen, setLijnen] = useState<VrijeLijn[]>([]);
+  const [lijnen, setLijnen] = useState<LijnInBewerking[]>([]);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState('');
   const [klaar, setKlaar] = useState('');
 
   const urenBron = bron === 'app' ? urenApp : urenGeplakt;
   const uren = rond2(urenBron + urenPrive);
-  const urenBedrag = rond2(uren * klant.uurtarief);
+  // Met de áfgedrukte uren rekenen, niet met het ruwe getal. Staat er 8,01 u op de factuur
+  // en rekent het bedrag met 8,005, dan telt de regel niet op tot het nettobedrag eronder —
+  // en dan heeft wie het natelt gelijk en de factuur ongelijk.
+  const aantalUren = rond2(uren);
+  const urenBedrag = rond2(aantalUren * klant.uurtarief);
   const vrijBedrag = lijnen.reduce((som, l) => som + rond2(l.aantal * l.tarief), 0);
   const netto = rond2(urenBedrag + vrijBedrag);
   const btw = rond2((netto * klant.btw_percentage) / 100);
@@ -3511,7 +4330,8 @@ function KlantFactuur({
         id: nieuwId('fac'),
         klant,
         uren,
-        vrijeLijnen: lijnen,
+        vrijeLijnen: lijnen.map(zonderSleutel),
+        extraLessen,
         factuurnr: nummer.trim(),
         factuurdatum: dagIso,
         omschrijving,
@@ -3520,7 +4340,7 @@ function KlantFactuur({
         aangemaakt: new Date().toISOString(),
       });
 
-      const bytes = buildVrijXlsx(factuurBlad(factuur, data.leverancier));
+      const bytes = factuurWerkmap(factuur, data.leverancier);
       await shareXlsx(factuurBestandsnaam(factuur.factuurnr), bytes);
       // Pas registreren nadat het bestand er is: mislukt de download, dan staat er geen
       // factuur in het register die nooit verstuurd is.
@@ -3543,9 +4363,18 @@ function KlantFactuur({
       <BronRegel label="Uit de app" uren={urenApp} gekozen={bron === 'app'} onKies={() => void kiesBron('app')} />
       <BronRegel label="Uit de geplakte lijst" uren={urenGeplakt} gekozen={bron === 'geplakt'} onKies={() => void kiesBron('geplakt')} />
       <View style={styles.regel}>
-        <Text style={styles.regelLabel}>Privélessen</Text>
+        <Text style={styles.regelLabel}>
+          Extra lessen{extraLessen.length > 0 ? ` (${extraLessen.length})` : ''}
+        </Text>
         <Text style={styles.regelUren}>{formatEuro(urenPrive)} u</Text>
       </View>
+
+      {extraLessen.length > 0 && (
+        <Text style={styles.uitleg}>
+          Gaan als tweede tabblad mee in het bestand:{' '}
+          {extraLessen.map((l) => l.naam).join(', ')}.
+        </Text>
+      )}
 
       <View style={styles.totaalBlok}>
         <Text style={styles.totaalRegel}>
@@ -3585,12 +4414,14 @@ function KlantFactuur({
       </Text>
       <Veld label="Omschrijving" waarde={omschrijving} onChange={setOmschrijving} />
 
-      {lijnen.map((lijn, i) => (
+      {lijnen.map((lijn) => (
         <VrijeLijnRegel
-          key={i}
+          key={lijn.sleutel}
           lijn={lijn}
-          onWijzig={(nieuw) => setLijnen(lijnen.map((l, j) => (j === i ? nieuw : l)))}
-          onWeg={() => setLijnen(lijnen.filter((_, j) => j !== i))}
+          onWijzig={(nieuw) => setLijnen(lijnen.map(
+            (l) => (l.sleutel === lijn.sleutel ? { ...nieuw, sleutel: l.sleutel } : l),
+          ))}
+          onWeg={() => setLijnen(lijnen.filter((l) => l.sleutel !== lijn.sleutel))}
         />
       ))}
 
@@ -3598,14 +4429,27 @@ function KlantFactuur({
         label="Vrije lijn toevoegen"
         variant="secondary"
         icon={<Plus size={18} color={tennisColors.primary} />}
-        onPress={() => setLijnen([...lijnen, { omschrijving: '', aantal: 1, eenheid: 'stuk', tarief: 0 }])}
+        onPress={() => setLijnen([...lijnen, {
+          sleutel: nieuwId('lijn'), omschrijving: '', aantal: 1, eenheid: 'stuk', tarief: 0,
+        }])}
       />
 
-      <Button
-        label={bezig ? 'Bezig…' : 'Factuur downloaden'}
-        onPress={() => void maak()}
-        disabled={!mag}
-      />
+      {/*
+        Downloaden kan alleen op het web — `shareXlsx` zegt dat zelf ook. De knop hier laten
+        staan en hem daar laten omvallen is wat de andere exportschermen bewust níét doen;
+        zie app/admin/export en app/admin/reports.
+      */}
+      {xlsxWordtOndersteund ? (
+        <Button
+          label={bezig ? 'Bezig…' : 'Factuur downloaden'}
+          onPress={() => void maak()}
+          disabled={!mag}
+        />
+      ) : (
+        <Text style={styles.uitleg}>
+          Een factuur maken kan alleen op de website, niet op een telefoon.
+        </Text>
+      )}
 
       {klaar !== '' && <Text style={styles.klaar}>{klaar}</Text>}
       {fout !== '' && <Text style={styles.fout}>{fout}</Text>}
@@ -3975,8 +4819,14 @@ Start de app (`npm run web`), log in als `leemanskoen@telenet.be` en loop dit af
 4. **Factuur maken**, september 2026: Gantoise toont 35,00 u uit de geplakte lijst. Staat de app op een ander getal, dan zegt de kaart dat erbij — dat is de bedoeling, niet een fout.
 5. Oktober 2026: Racso toont 9,00 u, Gantoise 25,00 u.
 6. Typ een nummer, download de factuur, open hem in Excel: de indeling hoort op `facturen.xlsx` te lijken, bedragen zijn getallen en datums zijn datums.
-7. **Register**: de factuur staat er. Vink hem betaald en terug.
-8. Maak een tweede factuur met hetzelfde nummer: er hoort een waarschuwing te staan en de knop blijft werken.
+7. **Extra lessen**: zet op het Lessen-blad met de knop *Stan 09:00-10:00* twee lessen in
+   september en met *Veerle 10:00-11:00* één. De factuurkaart van Racso hoort dan
+   *Extra lessen (3)* te tonen en 3,00 u, en de namen eronder. Download de factuur en kijk
+   op **tabblad 2**: de drie lessen op datum, met een totaalrij van 3,00. Maak daarna een
+   factuur voor Gantoise: tabblad 2 hoort er ook te zijn, met "Geen extra lessen in deze
+   maand."
+8. **Register**: de factuur staat er. Vink hem betaald en terug.
+9. Maak een tweede factuur met hetzelfde nummer: er hoort een waarschuwing te staan en de knop blijft werken.
 
 - [ ] **Step 4: Update OPENSTAAND.md**
 
@@ -4002,6 +4852,10 @@ Twee dingen om te onthouden:
 - **Er zijn twee bronnen van uren** en per club staat welke telt. Gantoise staat op "de app"
   (zijn lessen staan er toch al in), Racso op "de geplakte lijst". Optellen kan niet; de
   kaart zet de twee naast elkaar zodat een verschil opvalt.
+- **Racso krijgt een overzicht van de extra lessen** als tweede tabblad in hetzelfde
+  bestand. Dat tabblad is er altijd, ook leeg. De twee vaste extra lessen (Stan 9-10u en
+  Veerle 10-11u, allebei sponsor) staan als snelknoppen in `SNELLE_EXTRA_LESSEN` bovenaan
+  `components/facturatie/LessenBlad.tsx`; daar kan een regel bij.
 - **De clubnaam in de plaktekst is een eigen veld.** `T.C. RACSO` is niet `RACSO`. In
   `facturen.xlsx` stond het verkeerd en telde die werkmap Racso op nul uur.
 
