@@ -525,7 +525,7 @@ function uniekeBladnamen(voorstellen: readonly string[]): string[] {
 /**
  * De verpakking rond meer dan één blad.
  *
- * Wat in `eenBladPakket` drie vaste strings zijn, zijn hier drie lussen. De volgorde van
+ * Wat in `buildXlsx` drie vaste strings zijn, zijn hier drie lussen. De volgorde van
  * `namen` is de volgorde van de tabs onderin Excel. Het soort blad doet er niet toe: de
  * inhoud komt als tekst binnen, en of die van een tabel of van een vrij blad komt, weet
  * alleen de aanroeper.
