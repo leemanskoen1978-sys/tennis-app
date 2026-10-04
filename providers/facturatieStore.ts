@@ -7,6 +7,7 @@
 // `laden` geeft `null` als de tabellen er nog niet zijn. Dat is iets anders dan een lege
 // boekhouding, en het scherm zegt dat ook anders — dezelfde afspraak als bij `bezetteUren`.
 
+import { alleRijen } from '../lib/paginering';
 import { supabase } from '../lib/supabase';
 import type {
   Factuur, Factuurles, FacturatieData, Klant, Leverancier,
@@ -38,29 +39,67 @@ const EIGENAAR = ['eigenaar'] as const;
 /** Bij een les zet de databank `aangemaakt` en leest de app hem nooit. */
 const EIGENAAR_EN_AANGEMAAKT = ['eigenaar', 'aangemaakt'] as const;
 
+/**
+ * Eén tabel volledig ophalen, in stukken.
+ *
+ * NIET `select('*')` zonder meer. PostgREST geeft nooit meer dan duizend rijen per verzoek
+ * terug, zonder foutmelding en zonder waarschuwing — zie de kop van lib/paginering, waar
+ * staat wat dat op 6 september 2026 kostte: een trainer zag zijn agenda leeg staan omdat de
+ * club over die grens heen gegroeid was. Een lessenlijst groeit hier met een paar honderd
+ * rijen per jaar, dus die grens komt vanzelf, en hij komt stil.
+ *
+ * Geeft `null` als de tabel er nog niet is. Elke andere fout gooit, en die gooi wint: hij
+ * komt uit de `Promise.all` hieronder naar boven ook als een andere tabel tegelijk "bestaat
+ * niet" zegt. Anders zou een echte fout verdwijnen achter een melding over een SQL-bestand
+ * dat allang gedraaid is.
+ */
+async function haalAlles(
+  tabel: string,
+  sorteer: string,
+  oplopend = true,
+): Promise<Array<Record<string, unknown>> | null> {
+  let ontbreekt = false;
+
+  const rijen = await alleRijen<Record<string, unknown>>(async (van, tot) => {
+    const { data, error } = await supabase
+      .from(tabel)
+      .select('*')
+      .order(sorteer, { ascending: oplopend })
+      .range(van, tot);
+    if (error) {
+      if (tabelBestaatNiet(error)) {
+        ontbreekt = true;
+        return [];
+      }
+      throw new Error(`${tabel}: ${error.message}`);
+    }
+    return (data ?? []) as Array<Record<string, unknown>>;
+  });
+
+  return ontbreekt ? null : rijen;
+}
+
 export async function laden(): Promise<FacturatieData | null> {
+  // Alle vier tegelijk: ze hangen niet van elkaar af, en na elkaar is vier keer wachten.
   const [lev, kla, les, fac] = await Promise.all([
-    supabase.from('facturatie_leverancier').select('*'),
-    supabase.from('facturatie_klanten').select('*').order('volgorde'),
-    supabase.from('facturatie_lessen').select('*').order('datum'),
-    supabase.from('facturatie_facturen').select('*').order('factuurdatum', { ascending: false }),
+    haalAlles('facturatie_leverancier', 'id'),
+    haalAlles('facturatie_klanten', 'volgorde'),
+    haalAlles('facturatie_lessen', 'datum'),
+    haalAlles('facturatie_facturen', 'factuurdatum', false),
   ]);
 
-  for (const uitkomst of [lev, kla, les, fac]) {
-    if (uitkomst.error) {
-      if (tabelBestaatNiet(uitkomst.error)) return null;
-      throw new Error(`facturatie: ${uitkomst.error.message}`);
-    }
-  }
+  // Staat er één tabel niet, dan staat het SQL-bestand nog te wachten. Een echte fout is
+  // hierboven al gegooid, dus er kan er geen één achter deze melding verdwijnen.
+  if (lev === null || kla === null || les === null || fac === null) return null;
 
-  const leveranciers = (lev.data ?? []).map((r) => zonderKolommen<Leverancier>(r, EIGENAAR));
+  const leveranciers = lev.map((r) => zonderKolommen<Leverancier>(r, EIGENAAR));
 
   return {
     // Er is er hoogstens één; staat er nog geen, dan maakt het scherm hem bij de eerste keer.
     leverancier: leveranciers[0] ?? { id: '', naam: '', adres: '', btw: '', iban: '', bic: '' },
-    klanten: (kla.data ?? []).map((r) => zonderKolommen<Klant>(r, EIGENAAR)),
-    lessen: (les.data ?? []).map((r) => zonderKolommen<Factuurles>(r, EIGENAAR_EN_AANGEMAAKT)),
-    facturen: (fac.data ?? []).map((r) => zonderKolommen<Factuur>(r, EIGENAAR)),
+    klanten: kla.map((r) => zonderKolommen<Klant>(r, EIGENAAR)),
+    lessen: les.map((r) => zonderKolommen<Factuurles>(r, EIGENAAR_EN_AANGEMAAKT)),
+    facturen: fac.map((r) => zonderKolommen<Factuur>(r, EIGENAAR)),
   };
 }
 

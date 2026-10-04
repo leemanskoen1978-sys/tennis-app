@@ -62,7 +62,16 @@ export const facturatieLokaal = {
   lessenToevoegen: async (lessen: readonly Factuurles[]) => {
     const data = await lees();
     const gekend = new Set(data.lessen.map((l) => l.sleutel));
-    const nieuw = lessen.filter((l) => !gekend.has(l.sleutel));
+    const nieuw: Factuurles[] = [];
+    for (const les of lessen) {
+      // Ook binnen één plakbeurt: twee regels met dezelfde sleutel zijn dezelfde les. Aan
+      // de kant van de databank houdt de unieke index dat tegen; hier moet het met de hand,
+      // anders doen de twee kanten iets anders en merk je dat pas op een toestel zonder
+      // .env.
+      if (gekend.has(les.sleutel)) continue;
+      gekend.add(les.sleutel);
+      nieuw.push(les);
+    }
     await schrijf({ ...data, lessen: [...data.lessen, ...nieuw] });
   },
 
